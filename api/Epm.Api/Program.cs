@@ -7,6 +7,7 @@ using Epm.Api.Features.Entities;
 using Epm.Api.Features.Portfolio;
 using Epm.Api.Features.Lookups;
 using Epm.Api.Features.Projects;
+using Epm.Api.Features.ScheduleControl;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,7 @@ app.MapContractsEndpoints();
 app.MapEntitiesEndpoints();
 app.MapPortfolioEndpoints();
 app.MapAlertsEndpoints();
+app.MapScheduleControlEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

@@ -18,6 +18,14 @@
   [crumbs]="crumbs()"
   [title]="lang.t('nav_alerts')"
   [sub]="lang.t('alerts_sub')">
+  <!-- Z4 action cluster, verbatim from DAlertsCenter. Both are demo stubs
+       there and here; the alert-rules engine is 07 §2, out of scope. -->
+  <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
+    <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
+  </button>
+  <button actions type="button" class="d-btn primary" (click)="toast.demo('ضبط القواعد', 'Configure rules')">
+    <epm-icon name="settings" [size]="16" />{{ lang.t('alert_rules') }}
+  </button>
 </epm-page-head>
 
 @if (loading()) {

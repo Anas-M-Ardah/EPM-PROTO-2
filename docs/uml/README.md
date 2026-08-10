@@ -9,9 +9,11 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 |---|---|---|---|
 | Projects | SCR-E2 Projects list | `EP-PRJ-01` | [projects.md](projects.md) |
 | Alerts | SCR-E6 Alerts Center | `EP-ALR-01` · `EP-ALR-02` | [alerts.md](alerts.md) |
+| Schedule Control | SCR-E5 Schedule Control | `EP-SCT-01` | [schedule-control.md](schedule-control.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
+| Shell | — (frames every screen) | — (reads `EP-ENT-01` · `EP-DEV-03`) | [_shell.md](_shell.md) |
 
 ## What every feature doc must contain
 

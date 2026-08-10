@@ -33,7 +33,9 @@ const STR = {
    *  its own shorter label and `DContractsAll` uses it for the title, the
    *  breadcrumb AND the nav item (desktop-shell.jsx:166). */
   nav_contracts_all:{ ar: 'العقود',                        en: 'Contracts' },
-  nav_schedule:    { ar: 'ضبط الجدولة',                    en: 'Schedule Control' },
+  /** Verbatim from data.jsx:235 — was 'ضبط الجدولة', which is not the
+   *  reference's wording. */
+  nav_schedule:    { ar: 'ضبط الجداول الزمنية',            en: 'Schedule Control' },
   nav_alerts:      { ar: 'مركز التنبيهات',                 en: 'Alerts Center' },
   nav_reports:     { ar: 'التقارير و التحليلات',           en: 'Reports & Analytics' },
   nav_group_ops:   { ar: 'العمليات',                       en: 'Operations' },
@@ -141,6 +143,24 @@ const STR = {
   empty_alerts_t:  { ar: 'لا توجد تنبيهات',                 en: 'No alerts' },
   empty_alerts_b:  { ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
 
+  // schedule control — ported from DScheduleControl (v1.1, enterprise-areas.jsx:8).
+  // The sc_* keys are verbatim from the reference's own STR map (data.jsx:237).
+  schedule_sub:    { ar: 'صحة الجداول الزمنية عبر المحفظة', en: 'Portfolio-wide schedule health' },
+  sc_avg_delay:    { ar: 'متوسط التأخر',                    en: 'Avg. delay' },
+  sc_delayed:      { ar: 'مشاريع متأخرة',                   en: 'Delayed projects' },
+  sc_critical:     { ar: 'أنشطة حرجة',                      en: 'Critical activities' },
+  sc_ontrack:      { ar: 'ضمن الجدول',                      en: 'On track' },
+  sc_import_status:{ ar: 'حالة الاستيراد',                  en: 'Import status' },
+  /** Neither delayed nor on track — no contract, or no forecast recorded. */
+  sc_no_schedule:  { ar: 'بلا موقف زمني',                   en: 'No schedule position' },
+  sc_no_schedule_note:{ ar: 'مشاريع بلا موقف زمني — غير محسوبة ضمن المتأخرة ولا ضمن ما هو ضمن الجدول:', en: 'Projects with no schedule position — counted in neither delayed nor on track:' },
+  /** Fallback only; the real reason ships from the server beside the rule. */
+  sc_critical_needs:{ ar: 'يتطلب جدول الأنشطة وعلاقات التتابع.', en: 'Needs the activity schedule and its dependencies.' },
+  col_baseline_finish:{ ar: 'إنجاز مخطط',                   en: 'Baseline finish' },
+  col_forecast_finish:{ ar: 'إنجاز متوقع',                  en: 'Forecast' },
+  empty_schedule_t:{ ar: 'لا توجد مشاريع بعد',              en: 'No projects yet' },
+  empty_schedule_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
   empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },
@@ -155,6 +175,33 @@ const STR = {
   // chrome
   persona:         { ar: 'العرض بصفة',                     en: 'Viewing as' },
   language:        { ar: 'English',                        en: 'العربية' },
+
+  // shell chrome — ported from v1.1 DSidebar / DTopbar / DAppFooter.
+  // Keys keep the reference's own names (data.jsx STR) so a label can be
+  // copied across verbatim.
+  search_ph:       { ar: 'ابحث في المشاريع، العقود، اللجان…', en: 'Search projects, contracts, committees…' },
+  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'All workspaces' },
+  enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
+  your_workspaces: { ar: 'مساحات العمل',                   en: 'Your workspaces' },
+  ws_active_short: { ar: 'نشط',                            en: 'active' },
+  /** 06 §? — Workspaces.Kind. Only four values exist; see EntitiesDto. */
+  ws_kind_university:  { ar: 'جامعة',                      en: 'University' },
+  ws_kind_institute:   { ar: 'معهد',                       en: 'Institute' },
+  ws_kind_directorate: { ar: 'مديرية',                     en: 'Directorate' },
+  ws_kind_other:       { ar: 'جهة أخرى',                   en: 'Other' },
+  /** The app footer. The env badge is not decoration — see AppFooterComponent. */
+  env_prototype:   { ar: 'بيئة تجريبية',                   en: 'PROTOTYPE' },
+  support:         { ar: 'الدعم الفني',                    en: 'Support' },
+  version:         { ar: 'الإصدار',                        en: 'Version' },
+
+  // page-head actions. The reference wires each of these to a toast saying it
+  // is a demo, and so do we — a button that silently does nothing is worse.
+  export:          { ar: 'تصدير',                          en: 'Export' },
+  new_project:     { ar: 'مشروع جديد',                     en: 'New project' },
+  new_contract:    { ar: 'عقد جديد',                       en: 'New contract' },
+  import_p6:       { ar: 'استيراد P6',                     en: 'Import P6' },
+  alert_rules:     { ar: 'قواعد التنبيه',                  en: 'Alert rules' },
+  new_workspace:   { ar: 'مساحة عمل جديدة',                en: 'New workspace' },
 } as const;
 
 export type StrKey = keyof typeof STR;

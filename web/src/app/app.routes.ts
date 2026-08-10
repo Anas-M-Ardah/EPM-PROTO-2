@@ -41,6 +41,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/entities/entities.page').then(m => m.EntitiesPage),
       },
 
+      // SCR-E5 · features/schedule-control · Features/ScheduleControl · [EP-SCT-01]
+      {
+        path: 'schedule-control',
+        loadComponent: () =>
+          import('./features/schedule-control/schedule-control.page').then(m => m.ScheduleControlPage),
+      },
+
       // SCR-E6 · features/alerts · Features/Alerts · [EP-ALR-01] [EP-ALR-02]
       {
         path: 'alerts',

@@ -15,6 +15,18 @@ export interface Stat {
   bar?: number;
   /** One line of context under the tile, e.g. 'المخطط حتى تاريخه 73%'. */
   foot?: string;
+  /**
+   * The REASON this figure cannot be derived yet. When set, the tile renders
+   * "unavailable + reason" instead of `value`, and `foot` is ignored.
+   *
+   * The design language is explicit: never render 0 or 100% for a missing
+   * input. A KPI band where one figure is genuinely underivable still has to
+   * be a band — dropping the tile silently makes the gap invisible, and
+   * showing a zero makes it a lie. SCR-E1 renders these in a separate panel
+   * because four of its figures are missing; SCR-E5 has one, so it belongs in
+   * the band beside the three that work.
+   */
+  unavailable?: string;
 }
 
 /**
@@ -47,26 +59,44 @@ export interface Stat {
   template: `
     <div class="d-grid stats fit">
       @for (s of stats; track s.label) {
-        <div class="d-stat">
-          <span class="d-stat-lbl">{{ s.label }}</span>
-          <!-- 05 §5.2 — the figure is bidi-isolated. -->
-          <span class="d-stat-val">
-            <bdi class="d-stat-num">{{ fmt.money(s.value) }}</bdi>@if (s.suffix) { <small>{{ s.suffix }}</small> }
-          </span>
-          @if (s.delta) {
-            <span class="d-stat-delta {{ s.deltaDir || 'flat' }}"><bdi>{{ s.delta }}</bdi></span>
-          }
-          @if (s.bar !== undefined && s.bar !== null) {
-            <div class="d-stat-bar"><i [style.width.%]="clamp(s.bar)"></i></div>
-          }
-          @if (s.foot) { <span class="d-stat-foot">{{ s.foot }}</span> }
-        </div>
+        @if (s.unavailable) {
+          <!-- The "in" class is required: .d-grid.stats .d-stat starts at
+               opacity 0 and is revealed by the class the count-up adds. This
+               tile carries no animated figure, so it is born settled. -->
+          <div class="d-stat epm-stat-na in">
+            <span class="d-stat-lbl">{{ s.label }}</span>
+            <span class="d-stat-val"><span class="epm-na">{{ unavailableLabel }}</span></span>
+            <span class="d-stat-foot">{{ s.unavailable }}</span>
+          </div>
+        } @else {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ s.label }}</span>
+            <!-- 05 §5.2 — the figure is bidi-isolated. -->
+            <span class="d-stat-val">
+              <bdi class="d-stat-num">{{ fmt.money(s.value) }}</bdi>@if (s.suffix) { <small>{{ s.suffix }}</small> }
+            </span>
+            @if (s.delta) {
+              <span class="d-stat-delta {{ s.deltaDir || 'flat' }}"><bdi>{{ s.delta }}</bdi></span>
+            }
+            @if (s.bar !== undefined && s.bar !== null) {
+              <div class="d-stat-bar"><i [style.width.%]="clamp(s.bar)"></i></div>
+            }
+            @if (s.foot) { <span class="d-stat-foot">{{ s.foot }}</span> }
+          </div>
+        }
       }
     </div>
   `,
 })
 export class SummaryStripComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) stats: Stat[] = [];
+
+  /**
+   * The word shown in place of an underivable figure — pass `lang.t('unavailable')`.
+   * An input rather than an injected string so this primitive stays free of
+   * the language service, like every other component in shared/.
+   */
+  @Input() unavailableLabel = 'غير متوفر';
 
   // inject<T>(Token) — NOT inject(ElementRef<HTMLElement>), which puts type
   // arguments on a value expression and does not compile.

@@ -17,6 +17,13 @@
   [crumbs]="crumbs()"
   [title]="lang.t('nav_portfolio')"
   [sub]="lang.t('portfolio_sub')">
+  <!-- Z4 action cluster, verbatim from DDashboard (v1.1). Demo stubs. -->
+  <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
+    <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
+  </button>
+  <button actions type="button" class="d-btn primary" (click)="toast.demo('التقارير', 'Reports')">
+    <epm-icon name="insights" [size]="16" />{{ lang.t('nav_reports') }}
+  </button>
 </epm-page-head>
 
 @if (loading()) {

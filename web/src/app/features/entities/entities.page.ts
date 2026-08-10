@@ -6,6 +6,7 @@ import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
+import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { EntitiesApi } from './entities.api';
 import { EntityRow } from './entities.types';
@@ -38,6 +39,8 @@ export class EntitiesPage {
   private api = inject(EntitiesApi);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  toast = inject(ToastService);
   fmt = fmt;
 
   rows = signal<EntityRow[]>([]);

@@ -64,6 +64,43 @@ public class PenaltyTests
     }
 
     [Fact]
+    public void DelayDays_is_the_same_figure_the_penalty_is_charged_on()
+    {
+        // Schedule Control (SCR-E5) shows the days without the money. If these
+        // two ever diverged, the same contract would be "61 days late" on one
+        // screen and charged for a different number on another.
+        var contractual = new DateOnly(2026, 6, 30);
+        var forecast = new DateOnly(2026, 8, 30);
+
+        Assert.Equal(61, Penalty.DelayDays(contractual, forecast));
+        Assert.Equal(
+            Penalty.For(100_000_000m, contractual, forecast).Days,
+            Penalty.DelayDays(contractual, forecast));
+    }
+
+    [Fact]
+    public void DelayDays_floors_at_zero_when_the_forecast_is_early()
+    {
+        Assert.Equal(0, Penalty.DelayDays(new DateOnly(2026, 6, 30), new DateOnly(2026, 5, 1)));
+        Assert.Equal(0, Penalty.DelayDays(new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30)));
+    }
+
+    [Fact]
+    public void An_applied_time_extension_removes_the_delay_it_granted()
+    {
+        // The baseline is the EFFECTIVE finish (BR-09), so a project granted
+        // 45 days is not still late by those 45 days. This is the whole reason
+        // Schedule Control measures against the effective finish and not the
+        // original one.
+        var original = new DateOnly(2026, 6, 30);
+        var effective = original.AddDays(45);
+        var forecast = new DateOnly(2026, 8, 14);
+
+        Assert.Equal(45, Penalty.DelayDays(original, forecast));
+        Assert.Equal(0, Penalty.DelayDays(effective, forecast));
+    }
+
+    [Fact]
     public void The_penalty_is_capped_at_10_percent()
     {
         // 200 days would be 20,000,000 uncapped.

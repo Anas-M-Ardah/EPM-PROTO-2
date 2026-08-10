@@ -1,82 +1,240 @@
 <!--
-  04 §1 — Shell.
-  .d-app is the grid: module nav + content. .d-topbar is the charcoal command
-  bar (its own fg tokens — never a light-theme surface token in there).
-  All classes come from src/styles/desktop.css, copied verbatim.
--->
-<div class="d-app">
+  04 §1 — Shell. Ported from v1.1 DSidebar / DTopbar / DAppFooter,
+  ../epm@design/system-revamp app/desktop-shell.jsx:155, :448, :716.
 
-  <!-- ── module nav (inline-start in LTR, inline-end in RTL) ───────────── -->
-  <aside class="d-side">
-    <div class="d-side-head">
-      <span class="d-side-logo"><epm-icon name="account_balance" [size]="21" /></span>
-      <span class="d-side-wm">
-        <b>{{ lang.t('app_title') }}</b>
-        <span>{{ lang.t('dept') }}</span>
+  .d-fill wraps .d-app and the app footer. .d-app is the grid: sidebar +
+  content. .d-topbar is the charcoal command bar (its own fg tokens — never a
+  light-theme surface token in there).
+
+  data-side="collapsed" is the sheet's own mechanism (desktop.css:35-50); the
+  sidebar keeps its width in a CSS var and every child collapses off it, so
+  nothing here needs to know the widths.
+
+  All classes come from src/styles/, copied verbatim.
+-->
+<div class="d-fill">
+  <div class="d-app" [attr.data-side]="collapsed() ? 'collapsed' : null">
+
+    <!-- ── module nav (inline-start in LTR, inline-end in RTL) ───────────── -->
+    <aside class="d-side">
+
+      <div class="d-side-head">
+        <span class="d-side-logo"><epm-icon name="account_balance" [size]="21" /></span>
+        <span class="d-side-wm">
+          <b>{{ lang.t('app_title') }}</b>
+          <span>{{ lang.t('dept') }}</span>
+        </span>
+        <button type="button" class="d-side-toggle"
+                [title]="collapseLabel()"
+                [attr.aria-label]="collapseLabel()"
+                [attr.aria-expanded]="!collapsed()"
+                (click)="toggleSide()">
+          <epm-icon name="menu" [size]="20" />
+        </button>
+      </div>
+
+      <div class="d-side-sep" aria-hidden="true"></div>
+
+      <!--
+        Scope switcher. Navigates with ?ws= rather than holding state, so a
+        scoped view is a shareable link (see the component comment).
+      -->
+      <button type="button" class="d-side-switch" #switchBtn
+              [title]="collapsed() ? scopeTitle() : ''"
+              [attr.aria-haspopup]="'dialog'"
+              [attr.aria-expanded]="!!switcherAnchor()"
+              (click)="openSwitcher(switchBtn)">
+        <span class="d-ctx-emblem" [class.ent]="!currentWs()">
+          @if (currentWs()) {
+            <bdi>{{ currentWs()!.code }}</bdi>
+          } @else {
+            <epm-icon name="account_balance" [size]="16" />
+          }
+        </span>
+        <span class="d-ctx-switch-meta">
+          <b>{{ scopeTitle() }}</b>
+          <span>{{ scopeSub() }}</span>
+        </span>
+        <epm-icon name="unfold_more" [size]="17" />
+      </button>
+
+      <nav class="d-nav">
+        @for (g of nav; track g.group) {
+          <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
+          @for (it of g.items; track it.path) {
+            <a class="d-nav-item"
+               routerLinkActive="on"
+               [routerLink]="it.path"
+               [queryParams]="wsCode() ? { ws: wsCode() } : {}"
+               [title]="collapsed() ? lang.t(it.key) : ''">
+              <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
+              <span class="d-nav-label">{{ lang.t(it.key) }}</span>
+              @if (it.count && it.count() !== null) {
+                <span class="d-nav-count"><bdi>{{ it.count() }}</bdi></span>
+              }
+            </a>
+          }
+        }
+      </nav>
+
+      <div class="d-side-foot">
+        <div class="d-side-ministry">
+          <epm-icon name="shield" [size]="16" />
+          <span class="d-nav-label">{{ lang.t('ministry') }}</span>
+        </div>
+
+        <!--
+          The account block. In the reference this is the signed-in user; here
+          it IS the identity (P-05), so it carries the persona switcher that
+          used to sit in the topbar. Same semantic slot, and it lets the topbar
+          match the reference exactly.
+        -->
+        <button type="button" class="d-side-acct" #acctBtn
+                [title]="collapsed() ? personaName() : ''"
+                [attr.aria-haspopup]="'dialog'"
+                [attr.aria-expanded]="!!accountAnchor()"
+                (click)="openAccount(acctBtn)">
+          <span class="d-side-av" aria-hidden="true">{{ initials() }}</span>
+          <span class="d-side-acct-id">
+            <b>{{ personaName() }}</b>
+            <span>{{ personaRole() }}</span>
+          </span>
+          <epm-icon class="mi" name="more_horiz" [size]="18" />
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── content ───────────────────────────────────────────────────────── -->
+    <main class="d-main">
+
+      <header class="d-topbar">
+        <div class="d-crumb">
+          @if (currentWs()) {
+            <span class="muted">{{ lang.t('ministry_short') }}</span>
+            <epm-icon class="sep" [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
+            <b>{{ scopeTitle() }}</b>
+          } @else {
+            <b>{{ lang.t('ministry_short') }}</b>
+          }
+        </div>
+
+        <span class="sp"></span>
+
+        <button type="button" class="d-search" (click)="paletteOpen.set(true)">
+          <epm-icon name="search" [size]="17" />
+          <span class="ph">{{ lang.t('search_ph') }}</span>
+          <span class="kbd">⌘K</span>
+        </button>
+      </header>
+
+      <div class="d-canvas">
+        <div class="d-canvas-pad">
+          <div class="d-canvas-wrap">
+            <router-outlet />
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!--
+      Third grid child of .d-app, NOT a sibling of it: the sheet gives it
+      `grid-column: 1 / -1` (desktop.css:2409), so it spans the sidebar and the
+      content in one band. Outside .d-app it lands below a full-viewport grid
+      and is pushed off-screen — measured.
+    -->
+    <epm-app-footer />
+  </div>
+</div>
+
+<!-- ── overlays ───────────────────────────────────────────────────────────── -->
+
+@if (switcherAnchor(); as anchor) {
+  <epm-popover [anchor]="anchor" [width]="300"
+               [label]="lang.t('all_workspaces')"
+               (closed)="closeOverlays()">
+    <button type="button" class="d-pop-row" [class.on]="!currentWs()" (click)="setWorkspace(null)">
+      <span class="d-ctx-emblem ent"><epm-icon name="account_balance" [size]="16" /></span>
+      <span class="d-pop-row-tx">
+        <b>{{ lang.t('all_workspaces') }}</b>
+        <span>{{ lang.t('enterprise_ctx') }}</span>
+      </span>
+      @if (!currentWs()) { <epm-icon name="check" [size]="18" /> }
+    </button>
+
+    <div class="d-pop-lbl">{{ lang.t('your_workspaces') }}</div>
+
+    @for (w of workspaces.list(); track w.code) {
+      <button type="button" class="d-pop-row"
+              [class.on]="currentWs()?.code === w.code"
+              (click)="setWorkspace(w.code)">
+        <span class="d-ctx-emblem"><bdi>{{ w.code }}</bdi></span>
+        <span class="d-pop-row-tx">
+          <b>{{ lang.pick(w.nameAr, w.nameEn) }}</b>
+          <span><bdi>{{ w.activeCount }}</bdi> {{ lang.t('ws_active_short') }}</span>
+        </span>
+        @if (currentWs()?.code === w.code) { <epm-icon name="check" [size]="18" /> }
+      </button>
+    }
+
+    @if (workspaces.list().length === 0) {
+      <div class="d-pop-lbl">{{ lang.t('empty_entities_t') }}</div>
+    }
+  </epm-popover>
+}
+
+@if (accountAnchor(); as anchor) {
+  <epm-popover [anchor]="anchor" [width]="320"
+               [label]="lang.t('persona')"
+               (closed)="closeOverlays()">
+    <div class="d-pop-row" style="cursor:default">
+      <span class="d-side-av" aria-hidden="true">{{ initials() }}</span>
+      <span class="d-pop-row-tx">
+        <b>{{ personaName() }}</b>
+        <span>{{ personaRole() }}</span>
       </span>
     </div>
 
-    <nav class="d-nav">
-      @for (g of nav; track g.group) {
-        <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
-        @for (it of g.items; track it.path) {
-          <a class="d-nav-item"
-             routerLinkActive="on"
-             [routerLink]="it.path">
-            <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
-            <span class="d-nav-label">{{ lang.t(it.key) }}</span>
-          </a>
-        }
-      }
-    </nav>
+    <hr />
 
-    <div class="d-side-foot">
-      <div class="d-side-ministry">
-        <epm-icon name="shield" [size]="16" />
-        <span class="d-nav-label">{{ lang.t('ministry') }}</span>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ── content ───────────────────────────────────────────────────────── -->
-  <main class="d-main">
-
-    <header class="d-topbar">
-      <div class="d-crumb">
-        <b>{{ lang.t('app_name') }}</b>
-      </div>
-
-      <span class="sp"></span>
-
-      <!--
-        العرض بصفة — the persona switcher (03 §7). In a real system this comes
-        from the session identity; here it IS the identity. Keeping it visible
-        is deliberate: it is the fastest way to review the permission model.
-      -->
-      <label class="d-crumb" style="gap:6px">
-        <span class="muted">{{ lang.t('persona') }}</span>
-        <select class="epm-persona-select"
-                [value]="persona.currentId()"
-                (change)="onPersona($any($event.target).value)">
-          @for (p of persona.all(); track p.id) {
-            <option [value]="p.id">{{ lang.pick(p.nameAr, p.nameEn) }} — {{ lang.pick(p.roleAr, p.roleEn) }}</option>
-          }
-        </select>
-      </label>
-
-      <button class="d-btn sm ghost" (click)="lang.toggle()">
-        <epm-icon name="translate" [size]="16" />
-        {{ lang.t('language') }}
+    <!--
+      العرض بصفة — the persona switcher (03 §7). In a real system this comes
+      from the session identity; here it IS the identity. Keeping it one click
+      from anywhere is deliberate: it is the fastest way to review the
+      permission model, which is what 03 §7 asks the switcher for.
+    -->
+    <div class="d-pop-lbl">{{ lang.t('persona') }}</div>
+    @for (p of persona.all(); track p.id) {
+      <button type="button" class="d-pop-row"
+              [class.on]="persona.currentId() === p.id"
+              (click)="onPersona(p.id)">
+        <span class="d-pop-row-tx">
+          <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
+          <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
+        </span>
+        @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
       </button>
-    </header>
+    }
 
-    <div class="d-canvas">
-      <div class="d-canvas-pad">
-        <div class="d-canvas-wrap">
-          <router-outlet />
-        </div>
-      </div>
-    </div>
+    <hr />
 
-  </main>
-</div>
+    <button type="button" class="d-pop-row" (click)="theme.toggle()">
+      <span class="epm-pop-ico"><epm-icon [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="18" /></span>
+      <span class="d-pop-row-tx">
+        <b>{{ lang.isAr() ? 'المظهر' : 'Appearance' }}</b>
+        <span>{{ theme.isDark() ? (lang.isAr() ? 'داكن' : 'Dark') : (lang.isAr() ? 'فاتح' : 'Light') }}</span>
+      </span>
+    </button>
+
+    <button type="button" class="d-pop-row" (click)="lang.toggle()">
+      <span class="epm-pop-ico"><epm-icon name="translate" [size]="18" /></span>
+      <span class="d-pop-row-tx"><b>{{ lang.t('language') }}</b></span>
+    </button>
+  </epm-popover>
+}
+
+@if (paletteOpen()) {
+  <epm-command-palette [actions]="actions()" (closed)="paletteOpen.set(false)" />
+}
+
+<epm-toast />

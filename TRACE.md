@@ -13,7 +13,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 *(v1.1)* | `features/portfolio/portfolio.page.ts` | `EP-PRT-01` | ✅ built — progress/EVM tiles render "unavailable + reason" until BR-04 and payments exist |
 | SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:299 *(v1.1)* | `features/contracts/contracts.page.ts` | `EP-CNT-01` | ✅ built |
 | SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built |
-| SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 | — | `EP-SCT-01` | ⬜ |
+| SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 *(v1.1)* | `features/schedule-control/schedule-control.page.ts` | `EP-SCT-01` | ✅ built — critical-activities tile renders "unavailable + reason" until Activities exists (Phase 4.3) |
 | SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:106 *(v1.1)* | `features/alerts/alerts.page.ts` | `EP-ALR-01` · `EP-ALR-02` | ✅ built — the first screen that writes; ack persists with the persona |
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:39 | — | `EP-RPT-01` | ⬜ |
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:1461 | — | `EP-OVW-01` | ⬜ |
@@ -49,6 +49,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-DOCS-01` | `GET /api/docs/rules` | `Features/Docs/DocsEndpoints.cs` | — (Phase 7 `/docs` route) | BR-01…BR-14 | — (pure) |
 | `EP-ALR-01` | `GET /api/alerts` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `list()` | — | Alerts · Projects |
 | `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
+| `EP-SCT-01` | `GET /api/schedule-control` | `Features/ScheduleControl/ScheduleControlEndpoints.cs` | `schedule-control.api.ts` `list()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces |
 
 ## Business rules
 
@@ -66,7 +67,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | `ChangeOrderGatesTests` | ✅ |
 | BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ (import checks: Phase 4.2) |
 | BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
-| BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ |
+| BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ **`DelayDays()` exposed** (Phase 2.5) — SCR-E5 shows the same days the penalty is charged on |
 | BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ |
 | BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ |
 | BR-13 | Six-stage workflow machine | 03 §2,5,6 | `Domain/WorkflowMachine.cs` | `WorkflowMachineTests` | ✅ |
