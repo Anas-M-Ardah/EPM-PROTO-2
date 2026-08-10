@@ -27,6 +27,12 @@ public static class Fixture
         // (01 §1) is visible from the very first screen, plus a few neighbours
         // so the list, the search and the status filter have something to do.
 
+        db.Workspaces.AddRange(
+            new Workspace { Code = "ub", NameAr = "جامعة بغداد", NameEn = "University of Baghdad", Kind = "university" },
+            new Workspace { Code = "nu", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Kind = "university" },
+            new Workspace { Code = "tu", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar", Kind = "university" }
+        );
+
         db.Projects.AddRange(
             new Project
             {
@@ -38,6 +44,7 @@ public static class Fixture
                 DesignerParty = "المكتب الاستشاري الهندسي", ConsultantParty = "دار الهندسة",
                 BeneficiaryCodes = "BEN-UOB,BEN-UOB-MED",
                 DataDate = new DateOnly(2026, 8, 2),
+                UpdatedAt = new DateOnly(2026, 7, 28),
             },
             new Project
             {
@@ -48,6 +55,7 @@ public static class Fixture
                 Branch = "شعبة الأبنية", Executor = "شركة بغداد للمقاولات",
                 BeneficiaryCodes = "BEN-UOB-ENG",
                 DataDate = new DateOnly(2026, 8, 2),
+                UpdatedAt = new DateOnly(2026, 7, 15),
             },
             new Project
             {
@@ -58,6 +66,7 @@ public static class Fixture
                 Branch = "شعبة الصيانة", Executor = "شركة النهرين",
                 BeneficiaryCodes = "BEN-UOB-ENG",
                 DataDate = new DateOnly(2026, 8, 2),
+                UpdatedAt = new DateOnly(2026, 3, 9),
             },
             new Project
             {
@@ -68,6 +77,7 @@ public static class Fixture
                 Branch = "شعبة البنى التحتية", Executor = "شركة الموصل",
                 BeneficiaryCodes = "BEN-UON",
                 DataDate = new DateOnly(2026, 8, 2),
+                UpdatedAt = new DateOnly(2026, 6, 30),
             },
             new Project
             {
@@ -78,6 +88,7 @@ public static class Fixture
                 Branch = "شعبة الأبنية", Executor = "شركة الجنوب",
                 BeneficiaryCodes = "BEN-UOT",
                 DataDate = new DateOnly(2026, 8, 2),
+                UpdatedAt = new DateOnly(2026, 5, 12),
             }
         );
 

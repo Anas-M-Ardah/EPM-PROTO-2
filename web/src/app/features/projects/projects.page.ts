@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { IconComponent } from '../../core/icon.component';
 import { LangService } from '../../core/lang';
 import * as fmt from '../../core/format';
@@ -33,6 +34,7 @@ import { ProjectRow } from './projects.types';
 export class ProjectsPage {
   private api = inject(ProjectsApi);
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
   lang = inject(LangService);
   fmt = fmt;
 
@@ -44,8 +46,43 @@ export class ProjectsPage {
   q = signal('');
   status = signal('');
 
+  /**
+   * SCOPE. Null/empty = the enterprise view (every workspace). A workspace code
+   * = that workspace only, reached as /projects?ws=ub.
+   *
+   * The reference calls this `scopeWs` and THREE things depend on it
+   * (enterprise-areas.jsx:130, :141, :145):
+   *   1. the heading — نص "كل المشاريع" vs "المشاريع"
+   *   2. the subtitle — the workspace's name vs the cross-portfolio line
+   *   3. the مساحة العمل column, which is HIDDEN when scoped because every row
+   *      would repeat the same value
+   */
+  workspace = signal('');
+
+  /** Enterprise view only. Reference: `{!scopeWs && <th>…}` */
+  showWorkspaceCol = computed(() => !this.workspace());
+
+  /** Column count for the loading skeleton — follows showWorkspaceCol. */
+  colCount = computed(() => (this.showWorkspaceCol() ? 7 : 6));
+
+  /** Subtitle is the workspace's own name when scoped; rows carry it. */
+  scopeName = computed(() => {
+    const first = this.rows()[0];
+    if (!first) return this.workspace();
+    return this.lang.pick(first.workspaceNameAr, first.workspaceNameEn);
+  });
+
   /** True only when the database itself is empty, not when a filter excluded everything. */
   isUnfiltered = computed(() => !this.q() && !this.status());
+
+  /** The "الكل / All" chip's count — every status added up. */
+  totalCount = computed(() =>
+    Object.values(this.countByStatus()).reduce((a, b) => a + b, 0));
+
+  /** Chip count for one status. 0 when the API reported none. */
+  count(code: string): number {
+    return this.countByStatus()[code] ?? 0;
+  }
 
   /** 06 §1 — the five-state canonical set. Labels belong in the Lookups table
    *  once that page exists; inline here so PAGE-01 stays self-contained. */
@@ -58,13 +95,17 @@ export class ProjectsPage {
   ];
 
   constructor() {
-    this.load();
+    // /projects?ws=ub scopes the page to one workspace.
+    this.route.queryParamMap.subscribe(p => {
+      this.workspace.set(p.get('ws') ?? '');
+      this.load();
+    });
   }
 
   load() {
     this.loading.set(true);
     this.error.set(null);
-    this.api.list({ q: this.q(), status: this.status() }).subscribe({
+    this.api.list({ q: this.q(), status: this.status(), workspace: this.workspace() }).subscribe({
       next: r => {
         this.rows.set(r.rows);
         this.countByStatus.set(r.countByStatus);

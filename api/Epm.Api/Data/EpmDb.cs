@@ -36,6 +36,7 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // ── PAGE-01 Projects list ────────────────────────────────────────────
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
 
     // ── next pages append their DbSets here ──────────────────────────────
 
@@ -44,6 +45,7 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // Natural string keys — readable in SQL and in URLs.
         b.Entity<Project>().HasKey(x => x.Id);
         b.Entity<Contract>().HasKey(x => x.Id);
+        b.Entity<Workspace>().HasKey(x => x.Code);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

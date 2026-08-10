@@ -43,19 +43,27 @@ public static class ProjectsEndpoints
                 .Select(c => new { c.ProjectId, c.OriginalValue })
                 .ToListAsync();
 
+            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
+
             var rows = projects.Select(p =>
             {
                 var mine = contracts.Where(c => c.ProjectId == p.Id).ToList();
+                var ws = workspaces.FirstOrDefault(w => w.Code == p.WorkspaceCode);
 
                 // DERIVED — 01 §3. Computed here via the Domain layer, never stored.
                 // Once the Contract page registers amendments this passes effective
                 // values instead of original ones; the call site does not change.
-                var value = ProjectValue.Total(mine.Select(c => c.OriginalValue));
+                var cost = ProjectValue.Total(mine.Select(c => c.OriginalValue));
 
                 return new ProjectRow(
-                    p.Id, p.NameAr, p.NameEn, p.Status, p.Type, p.ExecutionStage,
-                    p.FundingType, p.Region, p.Branch, p.Executor,
-                    value, mine.Count);
+                    p.Id, p.NameAr, p.NameEn,
+                    p.WorkspaceCode, ws?.NameAr ?? p.WorkspaceCode, ws?.NameEn ?? p.WorkspaceCode,
+                    p.Branch, p.Status,
+                    // PhysicalPct stays null until the BOQ page can derive it (BR-04).
+                    // Storing or guessing it would violate 01 §3.
+                    null,
+                    cost,
+                    p.UpdatedAt?.ToString("yyyy-MM-dd"));
             }).ToList();
 
             // Status counts come from the unfiltered-by-status set so the chips

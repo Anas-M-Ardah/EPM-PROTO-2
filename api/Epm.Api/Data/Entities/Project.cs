@@ -57,4 +57,7 @@ public class Project
     /// Falls back to AppConfiguration.DataDate when null. Never DateTime.Now. (D-06)
     /// </summary>
     public DateOnly? DataDate { get; set; }
+
+    /// <summary>Last edit. The register's آخر تحديث / Updated column.</summary>
+    public DateOnly? UpdatedAt { get; set; }
 }

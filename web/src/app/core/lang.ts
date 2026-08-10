@@ -22,6 +22,8 @@ const STR = {
   // navigation
   nav_portfolio:   { ar: 'النظرة العامة',                  en: 'Portfolio' },
   nav_projects:    { ar: 'المشاريع',                       en: 'Projects' },
+  /** Enterprise scope (no workspace selected). Verbatim from data.jsx:245. */
+  nav_projects_all:{ ar: 'كل المشاريع',                    en: 'Projects' },
   nav_contracts:   { ar: 'العقود و الملاحق',               en: 'Contracts & Addendums' },
   nav_schedule:    { ar: 'ضبط الجدولة',                    en: 'Schedule Control' },
   nav_alerts:      { ar: 'مركز التنبيهات',                 en: 'Alerts Center' },
@@ -29,17 +31,16 @@ const STR = {
   nav_group_ops:   { ar: 'العمليات',                       en: 'Operations' },
   nav_group_gov:   { ar: 'الحوكمة',                        en: 'Governance' },
 
-  // projects list
-  projects_sub:    { ar: 'كل المشاريع عبر مساحات العمل.',  en: 'All projects across workspaces.' },
-  search_projects: { ar: 'ابحث بالمعرّف أو الاسم…',        en: 'Search by ID or name…' },
-  col_id:          { ar: 'المعرّف',                        en: 'ID' },
+  // projects list — labels ported from DProjectsAll (enterprise-areas.jsx:112)
+  projects_sub:    { ar: 'كل المشاريع عبر التشكيلات والجامعات', en: 'All projects across entities & universities' },
+  search_projects: { ar: 'بحث في المشاريع…',               en: 'Search projects…' },
   col_project:     { ar: 'المشروع',                        en: 'Project' },
+  col_workspace:   { ar: 'مساحة العمل',                    en: 'Workspace' },
+  col_branch:      { ar: 'الفرع',                          en: 'Branch' },
   col_status:      { ar: 'الحالة',                         en: 'Status' },
-  col_stage:       { ar: 'مرحلة التنفيذ',                  en: 'Execution stage' },
-  col_branch:      { ar: 'الشعبة',                         en: 'Branch' },
-  col_executor:    { ar: 'الجهة المنفذة',                  en: 'Executor' },
-  col_contracts:   { ar: 'العقود',                         en: 'Contracts' },
-  col_value:       { ar: 'القيمة (IQD)',                   en: 'Value (IQD)' },
+  col_physical:    { ar: 'الإنجاز',                        en: 'Physical' },
+  col_cost:        { ar: 'الكلفة',                         en: 'Cost' },
+  col_updated:     { ar: 'آخر تحديث',                      en: 'Updated' },
   all:             { ar: 'الكل',                           en: 'All' },
   showing:         { ar: 'مشروع',                          en: 'projects' },
 

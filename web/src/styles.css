@@ -26,6 +26,16 @@
    table's shape). .d-skel supplies the shimmer; this only gives it a body. */
 .d-skel-row { height: 14px; margin: 6px 0; }
 
+/* Projects filter bar. The reference (enterprise-areas.jsx:112) set this
+   geometry inline; 05 §8 names inline-styles-beating-stylesheets as a recurring
+   defect class, so the same values live here as classes instead. */
+.d-proj-filters {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 10px; margin-bottom: 12px;
+}
+.d-proj-filters .d-field { height: 36px; min-inline-size: 240px; flex: 0 1 320px; }
+.d-proj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
 /* Persona switcher in the charcoal command bar. Uses the topbar's own field
    tokens — never a light-theme surface token up there (04 §1). */
 .epm-persona-select {

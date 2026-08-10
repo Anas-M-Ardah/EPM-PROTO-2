@@ -3,6 +3,10 @@
 The cross-portfolio project list (`04 §2`). Route `/projects`.
 Endpoint **`EP-PRJ-01`** · `GET /api/projects`
 
+**Ported from** `DProjectsAll` — [`docs/spec/reference/app/enterprise-areas.jsx:112`](../spec/reference/app/enterprise-areas.jsx).
+Column order, class names and the filter-bar layout follow that component. Do not
+add or drop a column without a spec or client reason.
+
 ---
 
 ## 1. What files make up this feature
@@ -31,6 +35,7 @@ graph RL
   subgraph SQL["SQL Server — EpmPrototype"]
     T1[("Projects")]
     T2[("Contracts")]
+    T3[("Workspaces")]
   end
 
   HTML --> PAGE
@@ -45,6 +50,7 @@ graph RL
   EP --> DB
   DB --> T1
   DB --> T2
+  DB --> T3
   TYPES -.->|"names must match"| DTO
 ```
 
@@ -140,7 +146,16 @@ erDiagram
         string  Consultant
     }
 
+    WORKSPACES {
+        string Code PK "ub"
+        string NameAr
+        string NameEn
+        string Kind "university · institute · directorate"
+        bool   Active
+    }
+
     PROJECTS ||..o{ CONTRACTS : "Contracts.ProjectId — convention, NOT a FK constraint"
+    WORKSPACES ||..o{ PROJECTS : "Projects.WorkspaceCode — convention, NOT a FK constraint"
 ```
 
 **Three things this diagram is telling you:**
@@ -151,7 +166,25 @@ erDiagram
 
 ---
 
-## 4. The four states this screen can be in
+## 4. Scope — the same page, two shapes
+
+The page is scoped by `?ws=<code>`. The reference calls this `scopeWs`, and
+**three** things depend on it (`enterprise-areas.jsx` lines 130, 141, 145).
+
+```mermaid
+graph TB
+    Q{"?ws= present?"}
+    Q -->|"no — enterprise"| E["heading: كل المشاريع<br/>subtitle: cross-portfolio line<br/>7 columns, مساحة العمل SHOWN<br/>counts across every workspace"]
+    Q -->|"yes — scoped"| S["heading: المشاريع<br/>subtitle: the workspace's own name<br/>6 columns, مساحة العمل HIDDEN<br/>counts within that workspace"]
+```
+
+The workspace column is hidden when scoped because every row would repeat the
+same value. It is not a cosmetic tweak — forgetting it puts a dead column in
+front of the user on every workspace-scoped view.
+
+---
+
+## 5. The four states this screen can be in
 
 The database starts **empty** — nothing is seeded on boot — so the empty state is load-bearing, not decoration (`04 §9`).
 
@@ -184,7 +217,7 @@ stateDiagram-v2
 
 ---
 
-## 5. Where to change what
+## 6. Where to change what
 
 | You want to… | Touch these, in this order |
 |---|---|
@@ -197,7 +230,7 @@ stateDiagram-v2
 
 ---
 
-## 6. Known gaps
+## 7. Known gaps
 
 - **`ExecutionStage` renders its raw code** (`finishes`, `handover`) instead of an Arabic label. The `Lookups` table (`06`) is not wired yet; the page that adds it fixes every enum column across the app at once.
 - **Project value uses `OriginalValue`.** It should use the *effective* value — original plus applied amendment deltas (`02 §9`). The Contract page adds `ContractAmendments`; only the argument passed to `ProjectValue.Total` changes.

@@ -1,52 +1,57 @@
 <!--
-  SCR-E2 Projects list. Classes come from src/styles/desktop.css (copied
-  verbatim). Tables are the primary element — not cards (04 §3).
-  Every figure is wrapped in <bdi> for RTL isolation (05 §5.2).
+  SCR-E2 Projects list.
+
+  PORTED from DProjectsAll — docs/spec/reference/app/enterprise-areas.jsx:112.
+  Structure, class names and column order follow the reference: .d-field search,
+  .d-fchip filter chips with a .n count, and a .d-table whose Project cell holds
+  the name with the id beneath it in mono.
+
+  Classes come from src/styles/desktop.css, copied verbatim. Before inventing a
+  class, grep that file — it almost certainly already exists.
+
+  Every figure is bidi-isolated with <bdi> (05 §5.2).
+-->
+<!--
+  Heading and subtitle both switch on scope (reference line 130):
+  scoped  → "المشاريع"    + the workspace's own name
+  all     → "كل المشاريع" + the cross-portfolio line
 -->
 <div class="d-page-head">
   <div>
-    <h1>{{ lang.t('nav_projects') }}</h1>
-    <p>{{ lang.t('projects_sub') }}</p>
-  </div>
-  <div class="d-head-actions">
-    <span class="muted">
-      <bdi class="mono">{{ rows().length }}</bdi> {{ lang.t('showing') }}
-    </span>
+    <h1>{{ workspace() ? lang.t('nav_projects') : lang.t('nav_projects_all') }}</h1>
+    <p>{{ workspace() ? scopeName() : lang.t('projects_sub') }}</p>
   </div>
 </div>
 
-<!-- filter bar: search + the 5-state canonical set (06 §1) -->
-<div class="d-secnav">
-  <label class="d-search" style="height:32px; min-width:260px;">
+<div class="d-proj-filters">
+  <div class="d-field">
     <epm-icon name="search" [size]="16" />
     <input
-      class="ph epm-bare-input"
       type="search"
       [placeholder]="lang.t('search_projects')"
       [value]="q()"
-      (change)="onSearch($any($event.target).value)" />
-  </label>
+      (input)="onSearch($any($event.target).value)" />
+  </div>
 
-  <button [class.on]="status() === ''" (click)="setStatus('')">
-    {{ lang.t('all') }}
-  </button>
-  @for (s of statuses; track s.code) {
-    <button [class.on]="status() === s.code" (click)="setStatus(s.code)">
-      {{ lang.pick(s.ar, s.en) }}
-      @if (countByStatus()[s.code]) {
-        <bdi class="mono">{{ countByStatus()[s.code] }}</bdi>
-      }
+  <div class="d-proj-chips">
+    <button class="d-fchip" [class.on]="status() === ''" (click)="setStatus('')">
+      {{ lang.t('all') }}<span class="n">{{ totalCount() }}</span>
     </button>
-  }
+    @for (s of statuses; track s.code) {
+      <button class="d-fchip" [class.on]="status() === s.code" (click)="setStatus(s.code)">
+        {{ lang.pick(s.ar, s.en) }}<span class="n">{{ count(s.code) }}</span>
+      </button>
+    }
+  </div>
 </div>
 
 @if (loading()) {
-  <!-- 04 §9: skeleton rows matching the table's real column widths -->
+  <!-- 04 §9: skeleton rows matching the table's real shape -->
   <div class="d-tablewrap">
     <table class="d-table">
       <tbody>
         @for (i of [1,2,3,4,5]; track i) {
-          <tr><td colspan="8"><div class="d-skel d-skel-row"></div></td></tr>
+          <tr><td [attr.colspan]="colCount()"><div class="d-skel d-skel-row"></div></td></tr>
         }
       </tbody>
     </table>
@@ -60,7 +65,7 @@
     <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (rows().length === 0 && isUnfiltered()) {
-  <!-- empty BECAUSE THE DATABASE IS EMPTY — the default state (DECISIONS: no auto-seed) -->
+  <!-- empty BECAUSE THE DATABASE IS EMPTY — the default state (no auto-seed) -->
   <div class="d-empty">
     <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
     <b>{{ lang.t('empty_projects_t') }}</b>
@@ -68,7 +73,7 @@
     <button class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
   </div>
 } @else if (rows().length === 0) {
-  <!-- empty BECAUSE A FILTER EXCLUDED EVERYTHING — a different state, a different fix -->
+  <!-- empty BECAUSE A FILTER EXCLUDED EVERYTHING — different problem, different fix -->
   <div class="d-empty">
     <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
     <b>{{ lang.t('empty_filter_t') }}</b>
@@ -80,30 +85,48 @@
     <table class="d-table">
       <thead>
         <tr>
-          <th>{{ lang.t('col_id') }}</th>
           <th>{{ lang.t('col_project') }}</th>
-          <th>{{ lang.t('col_status') }}</th>
-          <th>{{ lang.t('col_stage') }}</th>
+          <!-- Enterprise view only. Inside one workspace every row would repeat
+               the same value, so the reference hides it (`{{ '{' }}!scopeWs && …}`). -->
+          @if (showWorkspaceCol()) {
+            <th>{{ lang.t('col_workspace') }}</th>
+          }
           <th>{{ lang.t('col_branch') }}</th>
-          <th>{{ lang.t('col_executor') }}</th>
-          <th class="num">{{ lang.t('col_contracts') }}</th>
-          <th class="num">{{ lang.t('col_value') }}</th>
+          <th>{{ lang.t('col_status') }}</th>
+          <th>{{ lang.t('col_physical') }}</th>
+          <th>{{ lang.t('col_cost') }}</th>
+          <th>{{ lang.t('col_updated') }}</th>
         </tr>
       </thead>
       <tbody>
         @for (p of rows(); track p.id) {
           <tr>
-            <td><bdi class="mono">{{ p.id }}</bdi></td>
-            <td class="d-cell-strong">{{ lang.pick(p.nameAr, p.nameEn) }}</td>
+            <td class="d-cell-strong">
+              {{ lang.pick(p.nameAr, p.nameEn) }}
+              <div class="d-cell-sub mono"><bdi>{{ p.id }}</bdi></div>
+            </td>
+            @if (showWorkspaceCol()) {
+              <td class="d-cell-sub">{{ lang.pick(p.workspaceNameAr, p.workspaceNameEn) }}</td>
+            }
+            <td class="d-cell-sub">{{ p.branch }}</td>
             <td>
               <!-- 05 §7.6: status is NEVER colour-only — the pill always carries its label -->
-              <span class="d-pill" [class]="'d-pill ' + statusClass(p.status)">{{ statusLabel(p.status) }}</span>
+              <span class="d-pill {{ statusClass(p.status) }}">{{ statusLabel(p.status) }}</span>
             </td>
-            <td class="muted">{{ p.executionStage }}</td>
-            <td class="muted">{{ p.branch }}</td>
-            <td class="muted">{{ p.executor }}</td>
-            <td class="num"><bdi class="mono">{{ p.contractCount }}</bdi></td>
-            <td class="num"><bdi class="mono">{{ fmt.money(p.value) }}</bdi></td>
+            <td>
+              @if (p.physicalPct !== null) {
+                <span class="d-mini-bar" style="display:inline-flex">
+                  <span class="t" style="width:70px"><span [style.width.%]="p.physicalPct"></span></span>
+                  <span class="pc"><bdi>{{ fmt.pct(p.physicalPct, 0) }}</bdi></span>
+                </span>
+              } @else {
+                <!-- Derived from BOQ progress (BR-04), which does not exist yet.
+                     A 0% bar would be a lie; an em dash is the truth. -->
+                <span class="d-cell-sub">—</span>
+              }
+            </td>
+            <td class="mono"><bdi>{{ fmt.money(p.cost) }}</bdi></td>
+            <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></td>
           </tr>
         }
       </tbody>
