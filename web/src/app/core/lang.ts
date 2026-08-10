@@ -33,7 +33,9 @@ const STR = {
    *  its own shorter label and `DContractsAll` uses it for the title, the
    *  breadcrumb AND the nav item (desktop-shell.jsx:166). */
   nav_contracts_all:{ ar: 'العقود',                        en: 'Contracts' },
-  nav_schedule:    { ar: 'ضبط الجدولة',                    en: 'Schedule Control' },
+  /** Verbatim from data.jsx:235 — was 'ضبط الجدولة', which is not the
+   *  reference's wording. */
+  nav_schedule:    { ar: 'ضبط الجداول الزمنية',            en: 'Schedule Control' },
   nav_alerts:      { ar: 'مركز التنبيهات',                 en: 'Alerts Center' },
   nav_reports:     { ar: 'التقارير و التحليلات',           en: 'Reports & Analytics' },
   nav_group_ops:   { ar: 'العمليات',                       en: 'Operations' },
@@ -173,6 +175,33 @@ const STR = {
   // chrome
   persona:         { ar: 'العرض بصفة',                     en: 'Viewing as' },
   language:        { ar: 'English',                        en: 'العربية' },
+
+  // shell chrome — ported from v1.1 DSidebar / DTopbar / DAppFooter.
+  // Keys keep the reference's own names (data.jsx STR) so a label can be
+  // copied across verbatim.
+  search_ph:       { ar: 'ابحث في المشاريع، العقود، اللجان…', en: 'Search projects, contracts, committees…' },
+  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'All workspaces' },
+  enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
+  your_workspaces: { ar: 'مساحات العمل',                   en: 'Your workspaces' },
+  ws_active_short: { ar: 'نشط',                            en: 'active' },
+  /** 06 §? — Workspaces.Kind. Only four values exist; see EntitiesDto. */
+  ws_kind_university:  { ar: 'جامعة',                      en: 'University' },
+  ws_kind_institute:   { ar: 'معهد',                       en: 'Institute' },
+  ws_kind_directorate: { ar: 'مديرية',                     en: 'Directorate' },
+  ws_kind_other:       { ar: 'جهة أخرى',                   en: 'Other' },
+  /** The app footer. The env badge is not decoration — see AppFooterComponent. */
+  env_prototype:   { ar: 'بيئة تجريبية',                   en: 'PROTOTYPE' },
+  support:         { ar: 'الدعم الفني',                    en: 'Support' },
+  version:         { ar: 'الإصدار',                        en: 'Version' },
+
+  // page-head actions. The reference wires each of these to a toast saying it
+  // is a demo, and so do we — a button that silently does nothing is worse.
+  export:          { ar: 'تصدير',                          en: 'Export' },
+  new_project:     { ar: 'مشروع جديد',                     en: 'New project' },
+  new_contract:    { ar: 'عقد جديد',                       en: 'New contract' },
+  import_p6:       { ar: 'استيراد P6',                     en: 'Import P6' },
+  alert_rules:     { ar: 'قواعد التنبيه',                  en: 'Alert rules' },
+  new_workspace:   { ar: 'مساحة عمل جديدة',                en: 'New workspace' },
 } as const;
 
 export type StrKey = keyof typeof STR;

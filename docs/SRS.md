@@ -809,10 +809,11 @@ sets), one returned, and one approved-but-applying with the weight step failed.
 > delivered, but whether it is formally in scope needs confirming, because it
 > doubles the visual verification surface for every screen.
 
-> **NFR-DS-05** ✅ Two v1.1 colour values were **corrected on adoption** to
-> satisfy `NFR-A11Y-01`: `--outline` and `--viz-base` shipped at 2.16:1 against a
-> binding 3:1 floor for graphics, and are now 3.31:1 in light and 3.43:1 in dark.
-> *(`05 §1.6`)*
+> **NFR-DS-05** ⚠️ Two v1.1 colour values were corrected on adoption to satisfy
+> `NFR-A11Y-01` — `--outline` and `--viz-base`, which ship at 2.16:1 against a
+> binding 3:1 floor. **The correction was REVERTED at Phase 2.9 on the client's
+> instruction** that the screens match the signed-off prototype exactly. They
+> now render at v1.1's own values. *(`05 §1.6`, DECISIONS.md "REVERTED")*
 
 ### 11.1 Language and direction
 
@@ -834,6 +835,16 @@ sets), one returned, and one approved-but-applying with the weight step failed.
 
 `05 §7` came out of a formal adversarial audit. These are **requirements, not
 preferences**.
+
+> ⚠️ **`NFR-A11Y-01` is NOT met in the current build, by client decision.**
+> Four measured breaches are shipped deliberately so the screens are
+> indistinguishable from the signed-off prototype: `--outline`/`--viz-base` at
+> 2.16:1, `--fg-subtle` used as text at 3.07:1, `--fs-100` at 10px, and the
+> threshold-coloured delay figure on SCR-E5. Each was corrected and then
+> reverted; the measurements and exact restoring values are in DECISIONS.md
+> under "REVERTED". **This needs an explicit production decision** — `05 §7` is
+> written as binding, and a government system is the likeliest place for that
+> to be tested. See §12 P-37.
 
 | ID | Requirement |
 |---|---|
@@ -912,14 +923,15 @@ undecided, so each needs an explicit answer from the department.
 | **P-12** | Which **execution-stage list** does the client mean? `06 §2` names 12 construction stages, but the reference data carries a different administrative lifecycle list (دراسة · إعلان وإحالة · سحب عمل · تسوية حسابات) | The 12 construction stages | Wrong stage labels on every project; the two lists may both be needed as separate fields |
 | **P-13** | `06 §7`'s **order lifecycle** omits `approved` and `cancelled`, but `03 §5`–`§6` require both | Added, with our Arabic labels | Without `approved`, "approved ≠ applied" cannot be represented at all |
 | **P-18** | Should **field grids** show 3–4 columns on wide panes, or stay at the reference's 2? | 2, per the reference component | Cosmetic, but changing it requires rewriting the cell border rules |
-| **P-21** | v1.1 shipped `--outline` / `--viz-base` at **2.16:1**, below the binding 3:1 floor for graphics | **Corrected** to 3.31:1 light / 3.43:1 dark | Reversible in two lines. Left uncorrected, the Gantt data-date line and chart baselines breach `NFR-A11Y-01` |
+| **P-21** | v1.1 shipped `--outline` / `--viz-base` at **2.16:1**, below the binding 3:1 floor for graphics | Corrected, then **REVERTED** — ships at v1.1's value | Restoring it is two lines (`#858E9C` / `#6B7484`). As shipped, the Gantt data-date line and chart baselines breach `NFR-A11Y-01` |
 | **P-22** | **`--tertiary` now carries two meanings.** v1.1 sets it to the same blue as `ongoing` status text; the Redwood-red accent is gone from the palette | Flagged, not used as an accent anywhere yet | `05 §7.5` forbids one colour meaning two things. Nothing is broken in the two screens built — but any new screen could introduce it. **Audit before Phase 2 fans out** |
 | **P-23** | Is the **dark theme** in scope? | Delivered and working | It doubles the visual verification surface for every screen. Needs an explicit yes/no, not a default |
 | **P-24** | `04 §2` calls SCR-E4 "**Entities / Beneficiaries**", but the reference component named for it (`DSpaces`) is the **workspaces** register, and the reference has no beneficiaries screen at all | Built `DSpaces` as **Entities**; beneficiaries deferred to Phase 4.2 where BOQ distribution first needs them | These are two different lists. Entities own projects; beneficiaries receive quantity. Merging them would put a distribution target in the ownership hierarchy. Confirm the department wants two screens |
 | **P-25** | The reference's `DSpaces` uses `arrow_upward` / `arrow_downward`, which **its own `icons.js` does not define** — so its sort arrows render as a fallback glyph | Used the ported `expand_less` / `expand_more`, which are directional and read the same | Cosmetic, and a defect in the reference rather than a decision. Worth reporting upstream |
 | **P-26** | `06` defines **no value lists for alerts**, yet `Alerts.Severity` and `Alerts.Kind` are stored codes that need AR/EN labels like every other enum | Four lists added to `LookupCatalog.cs` in a marked **ADDENDUM** (`alert-severity`, `alert-kind`, `alert-status`, `schedule-import-status`), with our Arabic wording | Eleven labels the department has not seen. `06` should adopt the four sections so the lists have one home; until then the addendum marker is what keeps "`06` verbatim" honest for everything above it |
-| **P-32** | v1.1 uses **`--fg-subtle` as text** in ~100 rules at **3.07:1** on white, below the binding 4.5:1 | **Corrected** to 5.07 light / 5.46 dark | Affects `.d-stat-foot` and `.d-table td.d-cell-sub` on **every register already built**. Reversible in four lines. Left uncorrected it breaches `NFR-A11Y-01` on five screens |
-| **P-33** | v1.1's **`--fs-100` is 10px**, below the 11px floor of the binding type scale | **Raised to 11px** | Every filter-chip count in the app was below the minimum. One line |
+| **P-32** | v1.1 uses **`--fg-subtle` as text** in ~100 rules at **3.07:1** on white, below the binding 4.5:1 | Corrected, then **REVERTED** — ships at v1.1's value | Affects `.d-stat-foot` and `.d-table td.d-cell-sub` on **every register**. Restoring it is two lines (`#666F7F` / `#8D97A3`) |
+| **P-33** | v1.1's **`--fs-100` is 10px**, below the 11px floor of the binding type scale | Corrected, then **REVERTED** — ships at 10px | Every filter-chip count in the app is below the minimum. Restoring it is one line |
+| **P-37** | **`NFR-A11Y-01` is not met, by client decision.** Four measured breaches of `05 §7` are shipped deliberately so the screens match the signed-off prototype exactly | Fidelity chosen over the floors; all four recorded in DECISIONS.md "REVERTED" with their restoring values | This is the one open item that is a *choice* rather than a gap. It needs an explicit production decision before deployment — `05 §7` is written as binding and a government system is the likeliest place for that to be tested |
 
 ### 12.1 Resolved since version 1.0
 

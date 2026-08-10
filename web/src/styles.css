@@ -11,90 +11,64 @@
    font-size outside the eight-step scale 11/11.5/12/13/15/18/21/24 (05 §2).
    ============================================================ */
 
-/* ── ACCESSIBILITY CORRECTION TO THE v1.1 PALETTE (P-21) ──────────────────
-   05 §7.1 is binding: borders, icons and graphics must reach 3:1.
+/* ── THE FOUR ACCESSIBILITY CORRECTIONS ARE REVERTED ──────────────────────
+   CLIENT DECISION: visual fidelity to the reference prototype wins over the
+   05 §7 floors wherever the two conflict. This file used to override four
+   token values; all four are now gone and the v1.1 sheets render as shipped.
 
-   v1.1 ships --outline and --viz-base at #A9B1BC, which measures 2.16:1 on
-   white. The palette it replaced sat at 3.03:1 — the old values were chosen to
-   pass, the new ones do not. Dark theme fails harder: #454C57 is 1.87:1 on the
-   dark surface.
+   THIS IS DELIBERATE AND IT IS A KNOWN DEFECT, not an oversight. The
+   measurements stand and are recorded so the decision stays reversible —
+   restoring any of these is a few lines in this file. See DECISIONS.md
+   P-21, P-30, P-32, P-33 and the SRS §12 rows, all marked REVERTED.
 
-   These are not decorative tokens. 05 §1 defines --outline as "borders and
-   graphics only" and 04 §5 uses --viz-base for the Gantt data-date line and
-   bar edges — both are meaningful graphics, so 1.4.11 applies.
+     P-21  --outline / --viz-base   2.16:1 light · 1.87:1 dark   (floor 3:1)
+     P-32  --fg-subtle as TEXT      3.07:1 on white              (floor 4.5:1)
+     P-33  --fs-100                 10px                         (floor 11px)
+     P-30  the delay figure is coloured by threshold (05 §7.9)
 
-   #858E9C is the LIGHTEST value on v1.1's own neutral ramp that clears the
-   floor (3.31:1), so this stays as close to the intended look as the contract
-   permits. Dark uses #6B7484 (3.43:1).
+   The Phase 7 accessibility pass in ROADMAP.md is where this is settled for
+   production. NFR-A11Y-01 in the SRS is currently NOT met, by choice. */
 
-   Overridden here rather than edited into styles/tokens.css so the copied
-   stylesheets stay verbatim (P-07) and the deviation has exactly one home.
-   --outline-variant and --stroke-default are NOT touched: they are decorative
-   separators, which 1.4.11 exempts. */
-:root,
-[data-theme="light"] {
-  --outline:  #858E9C;   /* v1.1 ships #A9B1BC — 2.16:1 */
-  --viz-base: #858E9C;
-}
-[data-theme="dark"] {
-  --outline:  #6B7484;   /* v1.1 ships #454C57 — 1.87:1 */
-  --viz-base: #6B7484;   /* v1.1 ships #565E69 — 2.46:1 */
-}
+/* ── Schedule Control's threshold colouring (P-30, reverted to match) ──────
+   DScheduleControl paints the delay figure --error when late and
+   --status-completed-tx when not, and the forecast DATE --error when late.
+   05 §7.9 says the neutral branch of a magnitude is --on-surface; the client
+   chose fidelity, so the reference's colouring is reproduced here.
 
-/* ── SECOND ACCESSIBILITY CORRECTION: --fg-subtle (P-32) ──────────────────
-   05 §7.1 is binding: text must reach 4.5:1, and 12px/400 is not large text.
+   Classes rather than the reference's inline styles: 05 §8 names inline
+   styles beating the stylesheet as a defect class, and the rendered result is
+   identical. Tokens only, never literals. */
+.epm-sc-late   { color: var(--error); font-weight: var(--fw-semibold, 600); }
+.epm-sc-ontime { color: var(--status-completed-tx); font-weight: var(--fw-semibold, 600); }
+.epm-sc-fc-late { color: var(--error); }
+.epm-sc-fc-ok   { color: var(--on-surface-variant); }
 
-   v1.1 ships --fg-subtle at #8B94A1 light and #7D8794 dark, and desktop.css
-   uses it as TEXT colour in about a hundred rules — including two that every
-   register already built depends on:
+/* Angular wraps every component in its own custom element, so <epm-app-footer>
+   sits between .d-app and the <footer class="d-appfoot"> that carries
+   `grid-column: 1 / -1`. The wrapper becomes the grid item and the footer
+   inherits a 256px sidebar track instead of spanning the full width —
+   measured. `display: contents` removes the wrapper from the box tree and
+   hands the grid its real child back.
 
-     .d-stat-foot                       the KPI tile's foot line
-     .d-table tbody td.d-cell-sub       the secondary column in every table
+   Anywhere a component's ROOT element must be a direct child of a grid or
+   flex parent, its host needs this. */
+epm-app-footer { display: contents; }
 
-   Measured in the running app: 3.07:1 on white, 2.86:1 on --surface, 2.76:1
-   on --background. Dark is marginal rather than bad — 4.44:1 on
-   --surface-container, 3.91:1 on --surface-container-high.
+/* The leading icon slot in a .d-pop-row that has no emblem — the reference
+   sets this inline on each row (desktop-shell.jsx:437-442). */
+.epm-pop-ico { inline-size: 22px; display: grid; place-items: center; flex: none; }
 
-   This is NOT the same as --outline (P-21). That is a graphic token with a
-   3:1 floor; this one carries words, so it owes 4.5:1. It went unnoticed
-   because a .d-cell-sub nested INSIDE a td picks up a different, compliant
-   rule (6.56:1) — only a td that carries the class itself is affected, which
-   is the sub-line under a project name on four screens.
-
-   Same method as P-21: the LIGHTEST value on v1.1's own cool-grey ramp that
-   clears the floor on every surface the token actually lands on, so the
-   intended "quieter than body text" look survives as far as the contract
-   permits. Light #666F7F — 5.07 on white, 4.73 on --surface, 4.55 on
-   --background. Dark #8D97A3 — 6.01 on --surface, 5.46 on
-   --surface-container, 4.81 on --surface-container-high.
-
-   Overridden here, never edited into styles/tokens.css, so the copied sheets
-   stay verbatim (P-07). --fg-disabled is NOT touched: 05 §7 requires disabled
-   state to use explicit colours, and a disabled control is exempt from the
-   contrast minimum. */
-:root,
-[data-theme="light"] {
-  --fg-subtle: #666F7F;  /* v1.1 ships #8B94A1 — 3.07:1 on white */
-}
-[data-theme="dark"] {
-  --fg-subtle: #8D97A3;  /* v1.1 ships #7D8794 — 4.44:1 on --surface-container */
-}
-
-/* ── THIRD CORRECTION: the type scale's floor (P-33) ──────────────────────
-   05 §2 is binding and CLAUDE.md §6 repeats it: the scale is exactly
-   11 / 11.5 / 12 / 13 / 15 / 18 / 21 / 24, and NOTHING is smaller than 11px.
-
-   v1.1 defines --fs-100 as 10px. desktop.css:387 sets the filter-chip count to
-   a literal 11px and then desktop.css:3079 overrides it with var(--fs-100),
-   so every chip count in the app renders at 10px — measured, three of them on
-   this screen alone, and the same on Projects, Contracts and Alerts.
-
-   Raised to 11px, the scale's own floor, so this snaps to the nearest legal
-   step rather than inventing a size. --lh-100 (14px) still suits 11px text.
-   Overridden here rather than in styles/tokens.css so the copied sheets stay
-   verbatim (P-07). */
-:root {
-  --fs-100: 11px;  /* v1.1 ships 10px — below the binding floor */
+/* The ESC hint in the command palette's input. The reference styles this
+   inline; kept as a class here because 05 §8 names inline styles beating the
+   stylesheet as a defect class. Tokens only. */
+.epm-kbd-esc {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  border: 1px solid var(--outline-variant);
+  border-radius: 5px;
+  padding: 2px 6px;
+  flex: none;
 }
 
 /* Secondary text. The reference only ever scoped .muted under .d-crumb, but

@@ -9,6 +9,7 @@ import { PagerComponent } from '../../shared/pager.component';
 import { SevDotComponent } from '../../shared/sev-dot.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
+import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { AlertsApi } from './alerts.api';
 import { AlertRow } from './alerts.types';
@@ -66,6 +67,8 @@ export class AlertsPage {
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  toast = inject(ToastService);
   fmt = fmt;
 
   rows = signal<AlertRow[]>([]);

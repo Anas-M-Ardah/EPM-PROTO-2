@@ -11,10 +11,10 @@
   it was granted. When an amendment moved it, the original is shown underneath
   as "was …" — never a strikethrough (04 §6).
 
-  THE DELAY FIGURE IS NOT COLOURED BY THRESHOLD. The reference paints it
-  --error when late and --success when not; CLAUDE.md §6 and 05 §7.9 forbid
-  colouring a magnitude that way. Lateness is carried by the sign, the label
-  and the worst-first sort instead (P-30).
+  THE DELAY FIGURE IS COLOURED BY THRESHOLD, matching the reference exactly
+  (--error late / --status-completed-tx on time, and the forecast date red
+  when late). 05 §7.9 says the neutral branch of a magnitude is --on-surface;
+  the client chose visual fidelity over that floor. Known defect — P-30.
 
   Every number and date is <bdi>-isolated (05 §5.2).
 -->
@@ -22,6 +22,15 @@
   [crumbs]="crumbs()"
   [title]="lang.t('nav_schedule')"
   [sub]="lang.t('schedule_sub')">
+  <!-- Z4 action cluster. Both are demo stubs in the reference and here; each
+       says so in its toast rather than silently doing nothing. The P6 import
+       parser is explicitly out of scope (07 §8). -->
+  <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
+    <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
+  </button>
+  <button actions type="button" class="d-btn primary" (click)="toast.demo('استيراد Primavera', 'Import Primavera')">
+    <epm-icon name="upload_file" [size]="16" />{{ lang.t('import_p6') }}
+  </button>
 </epm-page-head>
 
 @if (loading()) {
@@ -146,7 +155,9 @@
                 }
               </td>
 
-              <td class="num d-cell-sub">
+              <td class="num"
+                  [class.epm-sc-fc-late]="r.delayDays !== null && r.delayDays > 0"
+                  [class.epm-sc-fc-ok]="r.delayDays === null || r.delayDays === 0">
                 <bdi>{{ fmt.date(r.forecastFinish) }}</bdi>
                 <!-- A blank here would read as missing data. Say which of the
                      two reasons it is. -->
@@ -155,7 +166,9 @@
                 }
               </td>
 
-              <td class="num r">
+              <td class="num r"
+                  [class.epm-sc-late]="r.delayDays !== null && r.delayDays > 0"
+                  [class.epm-sc-ontime]="r.delayDays === 0">
                 <bdi>{{ delayLabel(r) }}</bdi>
                 <!-- Which contract the figure came from — one hop to the source. -->
                 @if (r.delayDrivenBy) {

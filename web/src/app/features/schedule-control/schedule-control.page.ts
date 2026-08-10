@@ -9,6 +9,7 @@ import { PagerComponent } from '../../shared/pager.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
+import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ScheduleControlApi } from './schedule-control.api';
 import { ScheduleRow, ScheduleUnavailable } from './schedule-control.types';
@@ -46,6 +47,8 @@ export class ScheduleControlPage {
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  toast = inject(ToastService);
   fmt = fmt;
 
   rows = signal<ScheduleRow[]>([]);

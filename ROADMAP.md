@@ -238,9 +238,9 @@ today and would have cost 25+ after Phase 6.
 - [x] Stylesheets swapped verbatim — `tokens` `desktop` + new `boq.css`; 2,955 → 5,532 lines
 - [x] `boq.css` registered in `angular.json`; **Inter** loaded (tokens declare `--font-en: Inter`
       but the branch's own `index.html` loads Roboto and never loads Inter — P-20)
-- [x] **Two accessibility values corrected** — `--outline` / `--viz-base` were 2.16:1 against a
-      binding ≥3:1 floor; now 3.31:1 light / 3.43:1 dark, overridden in `styles.css` so the
-      copied sheets stay verbatim (P-21)
+- [x] ~~**Two accessibility values corrected** — `--outline` / `--viz-base` were 2.16:1 against a
+      binding ≥3:1 floor~~ **REVERTED at Phase 2.9** on the client's instruction to match the
+      reference exactly. They ship at v1.1's 2.16:1 light / 1.87:1 dark (P-21)
 - [x] `.d-proj-filters` / `.d-proj-chips` deleted — superseded by the standard `.d-toolbar`
 - [x] P-19 patch dropped — the upstream typo is fixed in v1.1
 - [x] `.d-grid.stats.fit` kept — v1.1 **still** pins `repeat(4, 1fr)` (P-17 stands)
@@ -256,6 +256,37 @@ today and would have cost 25+ after Phase 6.
 > **Still open from the adoption:** `--tertiary` is now the same blue as
 > `--status-ongoing-tx` (`05 §1.5`). If it is used as a decorative accent anywhere, that
 > breaks `05 §7.5` — audit its usages before Phase 2 fans out.
+
+---
+
+## Phase 2.9 — Shell parity pass ✅ COMPLETE
+
+Not originally on this roadmap. Added after a rendered-DOM diff of the two
+prototypes showed the gap was never in the screens — it was the **shell**.
+
+- [x] **Twelve chrome regions built**, all of which already had CSS in the
+      copied sheets and none of which had markup: `.d-fill` · `.d-appfoot` ·
+      `.d-side-toggle` + `data-side="collapsed"` · `.d-side-switch` +
+      `.d-ctx-emblem` · `.d-side-acct` + `.d-side-av` · `.d-side-sep` ·
+      `.d-search` + the `.d-cmdk` palette · `.d-nav-count`
+- [x] **Nothing is a dead prop** — collapse persists, the workspace switcher
+      navigates with `?ws=` (which every endpoint already accepts), and ⌘K is
+      built from the route table so it can only offer a page that exists
+- [x] **`.d-pacts` was empty on all five screens.** Every page-head action
+      cluster restored, each firing the reference's own «— تجريبي / — demo»
+      toast rather than silently doing nothing
+- [x] `ThemeService` — the sheets carry a full `[data-theme="dark"]` palette
+      and nothing was setting the attribute, so half the design system was
+      unreachable. Toggle lives in the account popover, as in the reference
+- [x] Nav label corrected to **ضبط الجداول الزمنية** (was «ضبط الجدولة»)
+- [x] Verified: zero `d-*` classes remain that the reference renders and we do not
+
+> **The four accessibility corrections are REVERTED** — client decision, visual
+> fidelity over the `05 §7` floors. `--outline`/`--viz-base` (2.16:1),
+> `--fg-subtle` as text (3.07:1), `--fs-100` (10px) and the threshold-coloured
+> delay figure are all back to what v1.1 ships. **`NFR-A11Y-01` is not met, by
+> choice.** The measurements and the exact restoring values are in DECISIONS.md
+> under "REVERTED"; **Phase 7's accessibility pass should start from that table.**
 
 ---
 
@@ -345,14 +376,11 @@ Independent of each other. Can run in parallel once Phase 1 lands.
       stay a band when one of its figures is genuinely underivable
 - [x] `EP-SCT-01` · Angular trio · `docs/uml/schedule-control.md` · TRACE row
 
-> **Two binding-contract breaches in the copied v1.1 sheets, found by measuring
-> this screen and fixed for the whole app** (`web/src/styles.css`, overrides only —
-> the sheets stay verbatim). Both affect screens already merged:
-> - **P-32** `--fg-subtle` is used as TEXT in ~100 rules but measures **3.07:1**
->   on white — `.d-stat-foot` and `.d-table td.d-cell-sub` on every register
->   built so far. Now 5.07 light / 5.46 dark.
-> - **P-33** `--fs-100` is **10px**; `05 §2` sets the floor at 11px. Every filter
->   chip count in the app was below it.
+> **Two binding-contract breaches in the copied v1.1 sheets were found by
+> measuring this screen** — `--fg-subtle` used as text at **3.07:1** (P-32) and
+> `--fs-100` at **10px** (P-33), both affecting screens already merged. They were
+> corrected, then **REVERTED at Phase 2.9** on the client's instruction to match
+> the reference exactly. See DECISIONS.md "REVERTED".
 
 > **Verified live against both prototypes** at 1440 and 1024, AR and EN, light and
 > dark: same page head, same KPI band order and labels, same eight columns, same

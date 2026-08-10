@@ -7,6 +7,7 @@ import { SummaryStripComponent, Stat } from '../../shared/summary-strip.componen
 import { DonutComponent, DonutSegment } from '../../shared/donut.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
+import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { PortfolioApi } from './portfolio.api';
 import { PortfolioResponse, EntityValue } from './portfolio.types';
@@ -41,6 +42,8 @@ export class PortfolioPage {
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  toast = inject(ToastService);
   fmt = fmt;
 
   data = signal<PortfolioResponse | null>(null);

@@ -13,6 +13,7 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
+| Shell | — (frames every screen) | — (reads `EP-ENT-01` · `EP-DEV-03`) | [_shell.md](_shell.md) |
 
 ## What every feature doc must contain
 
