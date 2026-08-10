@@ -384,7 +384,7 @@ Eight cross-portfolio screens (`04 §2`).
 | FR-ENT-04 | Entities | Dense sortable master table of the universities and units that own projects — code · name · type · active · projects · effective value · completion | ✅ |
 | FR-ENT-04a | Beneficiaries master list | The targets of BOQ quantity distribution (`01 §2.1`), including the parent tree. **Not the same screen as Entities** — see §12 P-24 | 🔨 Phase 4.2 |
 | FR-ENT-05 | Schedule Control | Portfolio schedule health, baseline vs forecast, delay, critical count, import status | 🔨 |
-| FR-ENT-06 | Alerts Center | Severity KPIs + aggregated feed | 🔨 |
+| FR-ENT-06 | Alerts Center | Severity band of four filter cards (count · share · what the count means), searchable and filterable register, and **acknowledgement as a persisted write** attributed to the acting persona. Severity is a glyph + colour + name, never colour alone | ✅ |
 | FR-ENT-07 | Reports & Analytics | Trend, by status, by workspace, by branch, period + export | 🔨 |
 | FR-ENT-08 | Administration | Control centre, users, roles, permission matrix, master data, audit log | 🔨 |
 
@@ -917,6 +917,7 @@ undecided, so each needs an explicit answer from the department.
 | **P-23** | Is the **dark theme** in scope? | Delivered and working | It doubles the visual verification surface for every screen. Needs an explicit yes/no, not a default |
 | **P-24** | `04 §2` calls SCR-E4 "**Entities / Beneficiaries**", but the reference component named for it (`DSpaces`) is the **workspaces** register, and the reference has no beneficiaries screen at all | Built `DSpaces` as **Entities**; beneficiaries deferred to Phase 4.2 where BOQ distribution first needs them | These are two different lists. Entities own projects; beneficiaries receive quantity. Merging them would put a distribution target in the ownership hierarchy. Confirm the department wants two screens |
 | **P-25** | The reference's `DSpaces` uses `arrow_upward` / `arrow_downward`, which **its own `icons.js` does not define** — so its sort arrows render as a fallback glyph | Used the ported `expand_less` / `expand_more`, which are directional and read the same | Cosmetic, and a defect in the reference rather than a decision. Worth reporting upstream |
+| **P-26** | `06` defines **no value lists for alerts**, yet `Alerts.Severity` and `Alerts.Kind` are stored codes that need AR/EN labels like every other enum | Three lists added to `LookupCatalog.cs` in a marked **ADDENDUM** (`alert-severity`, `alert-kind`, `alert-status`), with our Arabic wording | Nine labels the department has not seen. `06` should adopt the three sections so the lists have one home; until then the addendum marker is what keeps "`06` verbatim" honest for everything above it |
 
 ### 12.1 Resolved since version 1.0
 

@@ -3,7 +3,9 @@ using Epm.Api.Data.Entities;
 namespace Epm.Api.Features.Lookups;
 
 /// <summary>
-/// The twenty value lists of 06-DATA-DICTIONARY.md §1–§11, as code.
+/// The twenty value lists of 06-DATA-DICTIONARY.md §1–§11, as code, plus a
+/// clearly-marked ADDENDUM of three lists 06 does not define (alert severity,
+/// kind and status — see the marker near the bottom of Rows() and P-26).
 ///
 /// ── WHY THIS IS NOT IN Fixture.cs ─────────────────────────────────────────
 /// Fixture.cs is illustrative demo data and says so. These lists are not:
@@ -223,5 +225,47 @@ public static class LookupCatalog
         yield return L("allocation-coverage", "full",       "مخصص بالكامل",     "Fully assigned");
         yield return L("allocation-coverage", "partial",    "مخصص جزئياً",      "Partially assigned");
         yield return L("allocation-coverage", "over",       "تخصيص زائد",       "Over-assigned");
+
+        // ══ ADDENDUM — NOT IN 06 ══════════════════════════════════════════
+        // The three lists below are OURS, not the data dictionary's. 06 §1–§11
+        // stops before alerts, yet Alerts.Severity, Alerts.Kind and the derived
+        // alert status are stored codes that need AR/EN labels like any other
+        // enum — and P-11's whole argument is that stored codes belong here, so
+        // one mechanism (EP-LKP-01 → core/lookups.ts) labels every one of them.
+        //
+        // Keeping them in this file rather than in the page means the client can
+        // correct the wording without a code change, exactly as for the 06 lists.
+        // The codes come from the Alert entity's own documented vocabularies.
+        // See DECISIONS P-26 — 06 needs these three sections adding.
+
+        // ── ADDENDUM §A1 — alert severity (SCR-E6) ────────────────────────
+        // Order is worst-first: it drives the severity cards left to right.
+        //
+        // These are ONE alert's severity, so the Arabic agrees with «تنبيه» —
+        // masculine singular, verbatim from the reference's ALERT_SEV map. The
+        // cards and filter chips label a GROUP and take the feminine plural
+        // (حرِجة …) from core/lang.ts, which is the same split the reference
+        // makes. Two forms of one word, each correct where it stands.
+        sort = 0;
+        yield return L("alert-severity", "critical", "حرِج",   "High");
+        yield return L("alert-severity", "warning",  "متوسط",  "Medium");
+        yield return L("alert-severity", "info",     "منخفض",  "Low");
+
+        // ── ADDENDUM §A2 — alert kind, shown as the Source column ─────────
+        sort = 0;
+        yield return L("alert-kind", "sla-overdue",          "تجاوز المدة المحددة",   "SLA overdue");
+        yield return L("alert-kind", "apply-failed",         "فشل تطبيق أمر غيار",    "Apply failed");
+        yield return L("alert-kind", "distribution-blocked", "توزيع الكميات موقوف",   "Distribution blocked");
+        yield return L("alert-kind", "schedule-slip",        "انزياح الجدول الزمني",  "Schedule slip");
+        yield return L("alert-kind", "budget",               "مالي",                  "Financial");
+        yield return L("alert-kind", "other",                "أخرى",                  "Other");
+
+        // ── ADDENDUM §A3 — alert status ───────────────────────────────────
+        // DERIVED from Alerts.Acknowledged, not stored as a code. There is no
+        // `snoozed`: nothing in 02 or 03 says when a snooze expires or who may
+        // set one, so the reference's third state is not carried (Alert.cs).
+        sort = 0;
+        yield return L("alert-status", "open",         "مفتوح", "Open");
+        yield return L("alert-status", "acknowledged", "مُقَر",  "Acknowledged");
     }
 }

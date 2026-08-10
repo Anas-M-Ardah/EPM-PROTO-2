@@ -47,6 +47,11 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // but-unapplied rows are a projection and are never folded in (02 §9).
     public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
 
+    // ── PAGE-05 Alerts Center (SCR-E6) ───────────────────────────────────
+    // The one table in the system a screen WRITES to so far: acknowledging an
+    // alert is a real state change (EP-ALR-02), not a client-side toggle.
+    public DbSet<Alert> Alerts => Set<Alert>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -61,6 +66,9 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // (P-01 — invariants live where they can be read).
         b.Entity<Lookup>().HasKey(x => x.Id);
         b.Entity<ContractAmendment>().HasKey(x => x.Id);
+
+        // Alert has no natural key — an alert is an event, not a named thing.
+        b.Entity<Alert>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

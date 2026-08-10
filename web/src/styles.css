@@ -154,3 +154,21 @@
   font: inherit;
   inline-size: 100%;
 }
+
+/* Visible to assistive technology only. The v1.1 sheets define no such utility
+   (grepped), and the reference leaves its row-action column header empty — an
+   unlabelled header cell in an otherwise fully labelled table. Naming it costs
+   nothing visually and 05 §7 is a contract, not advice.
+   NOT display:none and NOT visibility:hidden — both remove it from the
+   accessibility tree, which is the opposite of the point. */
+.epm-sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

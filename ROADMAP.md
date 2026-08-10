@@ -63,6 +63,21 @@ move the box to "Known gaps" in the UML doc with a reason instead.
 
 Every screen, and the file that defines it. Paths are under `docs/spec/reference/app/`.
 
+> ⚠️ **`docs/spec/reference/` is the PRE-v1.1 copy.** It was never re-synced when
+> the v1.1 design system was adopted at Phase 1.5, so the line numbers below are
+> stale for every screen v1.1 rewrote, and some components differ in kind — the
+> pre-v1.1 `DAlertsCenter` is a card feed, the v1.1 one is a full register.
+>
+> **The v1.1 components live in the sibling `epm` repo on `origin/design/system-revamp`.**
+> Get one with:
+>
+> ```bash
+> git -C ../epm show origin/design/system-revamp:app/enterprise-areas.jsx
+> ```
+>
+> Rows already built carry their corrected v1.1 line in the phase checklist below.
+> **Check the sibling repo before starting any remaining row.**
+
 ### Enterprise screens
 
 | ID | Screen | Reference component |
@@ -72,7 +87,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | SCR-E3 | Contracts | `DContractsAll` — `enterprise-areas.jsx:160` |
 | SCR-E4 | Entities / Beneficiaries | `DSpaces` — `desktop-views.jsx:255` |
 | SCR-E5 | Schedule Control | `DScheduleControl` — `enterprise-areas.jsx:8` |
-| SCR-E6 | Alerts Center | `DAlertsCenter` — `enterprise-areas.jsx:65` |
+| SCR-E6 | Alerts Center | `DAlertsCenter` — `enterprise-areas.jsx:106` *(v1.1, sibling repo)* |
 | SCR-E7 | Reports & Analytics | `DReports` — `desktop-reports.jsx:39` |
 
 ### Workspace shell
@@ -281,9 +296,36 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 > The reasons come from the server so they stay beside the rules that own them.
 > `DBarCompare` · `DLineTrend` · `DSCurve` · `DTlMini` arrive with those inputs in Phase 4.
 
-### 2.4 Alerts Center — SCR-E6 · `DAlertsCenter` `enterprise-areas.jsx:65`
-- [ ] Register `Alert` DbSet · severity KPIs + aggregated feed
-- [ ] `EP-ALR-01` · Angular trio · UML · TRACE row
+### 2.4 Alerts Center — SCR-E6 · `DAlertsCenter` `enterprise-areas.jsx:106` (v1.1) ✅ COMPLETE
+- [x] Register `Alert` DbSet — columns pruned to what the register shows; `Body*`
+      deferred to SCR-W13, which has the drawer that displays them
+- [x] Severity band as four `.d-sevcard` filter toggles — count, share, bar and a
+      **foot line that says what the count means** (how many are still open)
+- [x] `EP-ALR-01` `GET /api/alerts` — counts taken BEFORE the severity/status
+      filters, so selecting a card never moves the numbers on the cards
+- [x] **`EP-ALR-02` `POST /api/alerts/{id}/ack` — the first WRITE in the system.**
+      The reference toggles component state; here it persists and stamps the
+      persona into `AcknowledgedByUserId`
+- [x] Severity marker is **glyph + colour + accessible name** (`shared/sev-dot`),
+      with the label printed beside it — never colour-only (`05 §7.6`)
+- [x] Alert severity / kind / status added to `LookupCatalog` as a **marked
+      addendum** — `06` defines none of the three (P-26)
+- [x] Angular trio · `docs/uml/alerts.md` · TRACE rows
+
+> **The ROADMAP line above used to read `enterprise-areas.jsx:65`.** That is the
+> **pre-v1.1** component in `docs/spec/reference/` — a card feed with no table.
+> The v1.1 one is a full register and lives in the sibling `epm` repo on
+> `origin/design/system-revamp` at line 106. Same drift 2.1–2.3 hit. **`docs/spec/reference/`
+> was never re-synced when v1.1 was adopted at Phase 1.5** — every remaining row
+> in the reference map points at the old copy, so check the sibling repo before
+> starting any of them.
+
+> **Verified live against both prototypes side by side** at 1440 and 1024, AR and
+> EN, light and dark: identical card band, chip set and order, column set, pill
+> and pager. Contrast measured in the running app — acknowledged-row text 6.34
+> light / 8.12 dark, severity glyphs 4.69–5.71 light (floors: 4.5 text, 3 graphic).
+> Both empty states checked separately; the empty-database state renders no
+> severity band and no toolbar, because there is nothing to summarise or clear.
 
 ### 2.5 Schedule Control — SCR-E5 · `DScheduleControl` `enterprise-areas.jsx:8`
 - [ ] Baseline vs forecast, delay, critical count, import status

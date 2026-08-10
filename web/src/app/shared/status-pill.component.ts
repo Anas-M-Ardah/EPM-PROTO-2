@@ -56,10 +56,20 @@ export class StatusPillComponent {
   });
 }
 
-/** 06 §1 canonical key → the class name the verbatim stylesheet defines. */
+/**
+ * 06 §1 canonical key → the class name the verbatim stylesheet defines.
+ *
+ * Keyed by CODE, not by kind+code, because no two lists in 06 (or the alert
+ * addendum) share a code. Check that before adding one.
+ */
 const CANONICAL_TO_CSS: Record<string, string> = {
   delayed: 'stalled',
   cancelled: 'withdrawn',
+  // `alert-status` (addendum, P-26). The classes are the ones DAlertsCenter
+  // itself uses for these two states — an open alert reads as needing action,
+  // an acknowledged one as settled.
+  open: 'stalled',
+  acknowledged: 'completed',
 };
 
 /** Every .d-pill.<x> that exists in src/styles/desktop.css:688-692. */

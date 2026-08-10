@@ -41,6 +41,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/entities/entities.page').then(m => m.EntitiesPage),
       },
 
+      // SCR-E6 · features/alerts · Features/Alerts · [EP-ALR-01] [EP-ALR-02]
+      {
+        path: 'alerts',
+        loadComponent: () => import('./features/alerts/alerts.page').then(m => m.AlertsPage),
+      },
+
       // ── next pages append their route here ────────────────────────────
     ],
   },

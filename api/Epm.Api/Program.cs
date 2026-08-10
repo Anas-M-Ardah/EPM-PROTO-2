@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Alerts;
 using Epm.Api.Features.Contracts;
 using Epm.Api.Features.Dev;
 using Epm.Api.Features.Docs;
@@ -51,6 +52,7 @@ app.MapProjectsEndpoints();
 app.MapContractsEndpoints();
 app.MapEntitiesEndpoints();
 app.MapPortfolioEndpoints();
+app.MapAlertsEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

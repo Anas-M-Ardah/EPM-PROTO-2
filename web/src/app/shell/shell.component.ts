@@ -33,13 +33,17 @@ export class ShellComponent {
       group: 'nav_group_ops' as const,
       items: [
         // Order follows the reference enterprise nav (desktop-shell.jsx:162):
-        // dashboard → spaces → projects → contracts.
+        // dashboard → spaces → projects → contracts → schedule → alerts →
+        // reports. Schedule Control and Reports are not built yet, so Alerts
+        // follows Contracts directly — the ORDER is preserved, the gaps are not
+        // filled with dead links.
         { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' as const },
         { path: '/entities', icon: 'apartment', key: 'nav_entities' as const },
         { path: '/projects', icon: 'projects', key: 'nav_projects' as const },
         // `description` is the icon the reference shell uses for this item
         // (desktop-shell.jsx:166) — not an invented one.
         { path: '/contracts', icon: 'description', key: 'nav_contracts_all' as const },
+        { path: '/alerts', icon: 'notifications', key: 'nav_alerts' as const },
       ],
     },
   ];
