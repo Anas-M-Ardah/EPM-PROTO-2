@@ -1,0 +1,331 @@
+/* ============================================================
+   EPM Design Tokens  —  Material 3 structured
+   Engineering Projects Management · MoHE Iraq
+   Bilingual AR/EN · RTL-first · Light + Dark
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Cairo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* ---- Autodesk-blue tonal ramp (platform primary) ---- */
+:root {
+  --navy-50:  #e8f4fb;
+  --navy-100: #c6e4f5;
+  --navy-200: #93cdec;
+  --navy-300: #57b0dd;
+  --navy-400: #1f92cf;
+  --navy-500: #0d7fbf; /* bright product blue */
+  --navy-600: #0b6499; /* PRIMARY */
+  --navy-700: #094f7a;
+  --navy-800: #0a3f60;
+  --navy-900: #23262b; /* charcoal command bar (Autodesk) */
+
+  /* ---- Oracle Redwood red ramp (action color) ---- */
+  --crimson-300: #e79087;
+  --crimson-400: #d76656;
+  --crimson-500: #c74634; /* ACCENT — Redwood red */
+  --crimson-600: #a83729;
+  --crimson-700: #892b20;
+}
+
+/* ============================================================
+   LIGHT THEME  (default)
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Primary — Autodesk product blue */
+  --primary:               #0b6499;
+  --on-primary:            #ffffff;
+  --primary-container:     #cfe7f6;
+  --on-primary-container:  #063049;
+  --primary-hover:         #094f7a;
+  --primary-deep:          #0a3f60;
+
+  /* Secondary — slate */
+  --secondary:             #4c5560;
+  --on-secondary:          #ffffff;
+  --secondary-container:   #e2e4e6;
+  --on-secondary-container: #1a1f25;
+
+  /* Tertiary / accent — Oracle Redwood red (action) */
+  --tertiary:              #c74634;
+  --on-tertiary:           #ffffff;
+  --tertiary-container:    #f8ddd7;
+  --on-tertiary-container:  #4b120a;
+  --tertiary-hover:        #a83729;
+
+  /* Status */
+  --error:    #bc2c1a;   --on-error: #ffffff;
+  --error-container: #f9ddd7; --on-error-container: #440d06;
+  --success:  #1e8a52;   --on-success: #ffffff;
+  --warning:  #b1741a;   --on-warning: #ffffff;
+  --info:     #0b6499;   --on-info: #ffffff;
+
+  /* Neutral surfaces (Redwood warm greige) */
+  --background:                 #eeece7;
+  --on-background:              #1c1a18;
+  --surface:                    #f2f1ee;
+  --surface-dim:                #ddd8d1;
+  --surface-bright:             #ffffff;
+  --surface-container-lowest:   #ffffff;
+  --surface-container-low:      #faf9f6;
+  --surface-container:          #f3f1ed;
+  --surface-container-high:     #ece9e3;
+  --surface-container-highest:  #e4e0d9;
+  --on-surface:                 #23201c;
+  --on-surface-variant:         #605a51;
+  --outline:                    #9b9389;
+  --outline-variant:            #ddd8cf;
+  --inverse-surface:            #2c2925;
+  --inverse-on-surface:         #f3f1ed;
+
+  /* Scrim / overlays */
+  --scrim: rgba(28, 26, 24, 0.45);
+  --hover-overlay:  rgba(11, 100, 153, 0.06);
+  --focus-ring:     rgba(11, 100, 153, 0.38);
+
+  /* Elevation (flat, warm-neutral tint) */
+  --elev-1: 0 1px 2px rgba(40, 34, 28, .05), 0 1px 2px rgba(40, 34, 28, .08);
+  --elev-2: 0 1px 2px rgba(40, 34, 28, .06), 0 2px 6px rgba(40, 34, 28, .09);
+  --elev-3: 0 4px 8px rgba(40, 34, 28, .07), 0 1px 3px rgba(40, 34, 28, .09);
+  --elev-4: 0 6px 14px rgba(40, 34, 28, .09), 0 2px 6px rgba(40, 34, 28, .07);
+  --elev-5: 0 12px 28px rgba(40, 34, 28, .13), 0 4px 10px rgba(40, 34, 28, .09);
+
+  /* Data-viz accents — Autodesk bright blue + signature gradients */
+  --azure-300:#6ec4ee; --azure-400:#2ba6e0; --azure-500:#0696d7; --azure-600:#0b6499;
+  --cyan-300:#7fdce6; --violet-400:#7c83e8;
+  /* Data-viz ramp — series colours, deliberately outside the status and
+     interactive namespaces. Pairwise dE: 1/2 35, 1/3 61, 2/3 49. */
+  --viz-1: #0696d7;  --viz-2: #7c83e8;  --viz-3: #8c3f6b;
+  --viz-track: #e4e0d9;  --viz-base: #9b9389;
+  /* Status namespace — separated from --primary/--info so no token
+     carries two meanings. Fills use these; pill text uses -tx. */
+  --status-ongoing: #0b6499;   --status-ongoing-tx: #094f7a;
+  --status-completed: #1e8a52; --status-completed-tx: #146b3e;
+  --status-delayed: #bc2c1a;   --status-delayed-tx: #bc2c1a;
+  --status-suspended: #b1741a; --status-suspended-tx: #8a5a12;
+  --status-cancelled: #605a51; --status-cancelled-tx: #605a51;
+  --grad-sky: linear-gradient(135deg,#23262b 0%,#0b6499 42%,#0696d7 82%,#57b0dd 100%);
+  --grad-sky-2: linear-gradient(120deg,#0b6499 0%,#0696d7 62%,#6ec4ee 100%);
+  --grad-accent: linear-gradient(120deg,#c74634 0%,#e07a63 100%);
+  --grad-soft: linear-gradient(135deg,#f5f3f0 0%,#eef1f4 45%,#f4eeec 100%);
+  --glass: rgba(255,255,255,.72);
+  --glass-strong: rgba(255,255,255,.88);
+  --glass-border: rgba(40,34,28,.10);
+  --ring-accent: rgba(6,150,215,.38);
+  --elev-glow: 0 8px 24px rgba(40,34,28,.10), 0 1px 4px rgba(40,34,28,.05);
+  --aurora: none;
+
+  /* Charcoal command bar (Autodesk platform) */
+  --topbar-bg: #23262b;
+  --topbar-fg: #f0f1f2;
+  --topbar-fg-dim: #a9adb4;
+  --topbar-border: #34383f;
+  --topbar-field: rgba(255,255,255,.09);
+  --topbar-field-hover: rgba(255,255,255,.15);
+  --topbar-hover: rgba(255,255,255,.10);
+
+  /* Left navigation — warm light rail, squared active w/ start accent */
+  --nav-bg: #f7f5f1;
+  --nav-bg-2: #efece6;
+  --nav-fg: #23201c;
+  --nav-fg-dim: #605a51;
+  --nav-hover: rgba(11,100,153,.07);
+  --nav-active-bg: #cfe7f6;   /* primary-container */
+  --nav-border: #ddd8cf;
+  --nav-accent: #0b6499;      /* primary */
+  --nav-accent-deep: #063049;
+}
+
+/* ============================================================
+   DARK THEME
+   ============================================================ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --primary:               #6ec4ee;
+  --on-primary:            #04314c;
+  --primary-container:     #0a4a72;
+  --on-primary-container:  #cfe7f6;
+  --primary-hover:         #8fd3f2;
+  --primary-deep:          #23262b;
+
+  --secondary:             #bcc1c8;
+  --on-secondary:          #262b31;
+  --secondary-container:   #3a4048;
+  --on-secondary-container: #e2e4e6;
+
+  --tertiary:              #f0a99b;
+  --on-tertiary:           #571509;
+  --tertiary-container:    #a83729;
+  --on-tertiary-container:  #f8ddd7;
+  --tertiary-hover:        #f4c0b5;
+
+  --error:    #f1b4a9;   --on-error: #5c1105;
+  --error-container: #892b20; --on-error-container: #f9ddd7;
+  --success:  #5cc28d;   --on-success: #00382a;
+  --warning:  #e7bd74;   --on-warning: #412d00;
+  --info:     #6ec4ee;   --on-info: #04314c;
+
+  --background:                 #141311;
+  --on-background:              #e7e3dd;
+  --surface:                    #141311;
+  --surface-dim:                #141311;
+  --surface-bright:             #3a3733;
+  --surface-container-lowest:   #0f0e0c;
+  --surface-container-low:      #1c1a17;
+  --surface-container:          #211f1b;
+  --surface-container-high:     #2b2823;
+  --surface-container-highest:  #363229;
+  --on-surface:                 #e7e3dd;
+  --on-surface-variant:         #c8c1b6;
+  --outline:                    #928b7f;
+  --outline-variant:            #45413a;
+  --inverse-surface:            #e7e3dd;
+  --inverse-on-surface:         #2c2925;
+
+  --scrim: rgba(0, 0, 0, 0.6);
+  --hover-overlay:  rgba(110, 196, 238, 0.09);
+  --focus-ring:     rgba(110, 196, 238, 0.45);
+
+  --elev-1: 0 1px 2px rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
+  --elev-2: 0 1px 2px rgba(0,0,0,.30), 0 2px 6px rgba(0,0,0,.44);
+  --elev-3: 0 4px 8px rgba(0,0,0,.36), 0 1px 3px rgba(0,0,0,.44);
+  --elev-4: 0 6px 14px rgba(0,0,0,.40), 0 2px 6px rgba(0,0,0,.40);
+  --elev-5: 0 12px 28px rgba(0,0,0,.50), 0 4px 10px rgba(0,0,0,.44);
+
+  /* Data-viz accents + signature gradients — dark */
+  --azure-300:#8ed3f2; --azure-400:#4fb6e8; --azure-500:#2ba6e0; --azure-600:#0696d7;
+  --cyan-300:#7fdce6; --violet-400:#9aa0f0;
+  --viz-1: #2ba6e0;  --viz-2: #9aa0f0;  --viz-3: #c47ba0;
+  --viz-track: #45413a;  --viz-base: #928b7f;
+  --status-ongoing: #8ed3f2;   --status-ongoing-tx: #8ed3f2;
+  --status-completed: #5cc28d; --status-completed-tx: #5cc28d;
+  --status-delayed: #f1b4a9;   --status-delayed-tx: #f1b4a9;
+  --status-suspended: #e7bd74; --status-suspended-tx: #e7bd74;
+  --status-cancelled: #a49d92; --status-cancelled-tx: #a49d92;
+  --grad-sky: linear-gradient(135deg,#23262b 0%,#0a4a72 42%,#0696d7 88%,#57b0dd 100%);
+  --grad-sky-2: linear-gradient(120deg,#0a4a72 0%,#0696d7 70%,#6ec4ee 100%);
+  --grad-accent: linear-gradient(120deg,#c74634 0%,#e07a63 100%);
+  --grad-soft: linear-gradient(135deg,#1c1a17 0%,#221f1b 100%);
+  --glass: rgba(28,26,23,.62);
+  --glass-strong: rgba(28,26,23,.84);
+  --glass-border: rgba(255,255,255,.08);
+  --ring-accent: rgba(6,150,215,.42);
+  --elev-glow: 0 8px 24px rgba(0,0,0,.42), 0 1px 4px rgba(0,0,0,.36);
+  --aurora: none;
+
+  /* Charcoal command bar — dark */
+  --topbar-bg: #1b1a18;
+  --topbar-fg: #e7e3dd;
+  --topbar-fg-dim: #a49d92;
+  --topbar-border: #2b2823;
+  --topbar-field: rgba(255,255,255,.07);
+  --topbar-field-hover: rgba(255,255,255,.13);
+  --topbar-hover: rgba(255,255,255,.08);
+
+  /* Left navigation — dark warm rail */
+  --nav-bg: #1a1815;
+  --nav-bg-2: #0f0e0c;
+  --nav-fg: #e7e3dd;
+  --nav-fg-dim: #c8c1b6;
+  --nav-hover: rgba(255,255,255,.06);
+  --nav-active-bg: #0a4a72;   /* primary-container */
+  --nav-border: #2b2823;
+  --nav-accent: #6ec4ee;
+  --nav-accent-deep: #cfe7f6;
+}
+
+/* ============================================================
+   NON-COLOR TOKENS  (shared)
+   ============================================================ */
+:root {
+  /* Type families */
+  --font-ar: 'Cairo', 'Hanken Grotesk', system-ui, sans-serif;
+  --font-en: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Type scale — compact, data-forward (px) */
+  --display-lg: 44px;  --display-lg-lh: 52px;
+  --display-sm: 32px;  --display-sm-lh: 40px;
+  --headline:   24px;  --headline-lh:   34px;
+  --title-lg:   21px;  --title-lg-lh:   28px;
+  --title:      18px;  --title-lh:      24px;
+  --body:       15px;  --body-lh:       21px;
+  --body-sm:    13px;  --body-sm-lh:    20px;
+  --label:      12px;  --label-lh:      16px;
+  --label-sm:   11px;  --label-sm-lh:   15px;
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-x: 700;
+
+  /* Spacing — 4px base */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Radius — squared, platform-tool geometry */
+  --r-xs: 4px;  --r-sm: 5px;  --r-md: 6px; --r-lg: 8px;
+  --r-xl: 12px; --r-pill: 999px;
+
+  /* Layout */
+  --shell-header-h: 60px;
+  --shell-nav-w: 264px;
+  --shell-nav-w-collapsed: 68px;
+  --content-max: 1360px;
+
+  /* Motion */
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+}
+
+/* ============================================================
+   BASE RESET / PRIMITIVES
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--on-surface);
+  font-family: var(--font-ar);
+  font-size: var(--body);
+  line-height: var(--body-lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* numerals & latin runs read better in mono in tables */
+.mono, .tnum { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+/* force the brand font on headings/controls (preview env can break inheritance) */
+h1, h2, h3, h4, h5, h6,
+button, input, select, textarea, optgroup {
+  font-family: var(--font-ar);
+}
+.num { font-family: var(--font-ar); font-variant-numeric: tabular-nums; }
+
+::selection { background: var(--primary-container); color: var(--on-primary-container); }
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* thin, themed scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--outline); }

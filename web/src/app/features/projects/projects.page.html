@@ -1,0 +1,112 @@
+<!--
+  SCR-E2 Projects list. Classes come from src/styles/desktop.css (copied
+  verbatim). Tables are the primary element — not cards (04 §3).
+  Every figure is wrapped in <bdi> for RTL isolation (05 §5.2).
+-->
+<div class="d-page-head">
+  <div>
+    <h1>{{ lang.t('nav_projects') }}</h1>
+    <p>{{ lang.t('projects_sub') }}</p>
+  </div>
+  <div class="d-head-actions">
+    <span class="muted">
+      <bdi class="mono">{{ rows().length }}</bdi> {{ lang.t('showing') }}
+    </span>
+  </div>
+</div>
+
+<!-- filter bar: search + the 5-state canonical set (06 §1) -->
+<div class="d-secnav">
+  <label class="d-search" style="height:32px; min-width:260px;">
+    <epm-icon name="search" [size]="16" />
+    <input
+      class="ph epm-bare-input"
+      type="search"
+      [placeholder]="lang.t('search_projects')"
+      [value]="q()"
+      (change)="onSearch($any($event.target).value)" />
+  </label>
+
+  <button [class.on]="status() === ''" (click)="setStatus('')">
+    {{ lang.t('all') }}
+  </button>
+  @for (s of statuses; track s.code) {
+    <button [class.on]="status() === s.code" (click)="setStatus(s.code)">
+      {{ lang.pick(s.ar, s.en) }}
+      @if (countByStatus()[s.code]) {
+        <bdi class="mono">{{ countByStatus()[s.code] }}</bdi>
+      }
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <!-- 04 §9: skeleton rows matching the table's real column widths -->
+  <div class="d-tablewrap">
+    <table class="d-table">
+      <tbody>
+        @for (i of [1,2,3,4,5]; track i) {
+          <tr><td colspan="8"><div class="d-skel d-skel-row"></div></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else if (error()) {
+  <!-- 04 §9: error is inline, in the pane that failed, with a retry -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (rows().length === 0 && isUnfiltered()) {
+  <!-- empty BECAUSE THE DATABASE IS EMPTY — the default state (DECISIONS: no auto-seed) -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
+    <b>{{ lang.t('empty_projects_t') }}</b>
+    <span>{{ lang.t('empty_projects_b') }}</span>
+    <button class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
+  </div>
+} @else if (rows().length === 0) {
+  <!-- empty BECAUSE A FILTER EXCLUDED EVERYTHING — a different state, a different fix -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+    <b>{{ lang.t('empty_filter_t') }}</b>
+    <span>{{ lang.t('empty_filter_b') }}</span>
+    <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+  </div>
+} @else {
+  <div class="d-tablewrap">
+    <table class="d-table">
+      <thead>
+        <tr>
+          <th>{{ lang.t('col_id') }}</th>
+          <th>{{ lang.t('col_project') }}</th>
+          <th>{{ lang.t('col_status') }}</th>
+          <th>{{ lang.t('col_stage') }}</th>
+          <th>{{ lang.t('col_branch') }}</th>
+          <th>{{ lang.t('col_executor') }}</th>
+          <th class="num">{{ lang.t('col_contracts') }}</th>
+          <th class="num">{{ lang.t('col_value') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of rows(); track p.id) {
+          <tr>
+            <td><bdi class="mono">{{ p.id }}</bdi></td>
+            <td class="d-cell-strong">{{ lang.pick(p.nameAr, p.nameEn) }}</td>
+            <td>
+              <!-- 05 §7.6: status is NEVER colour-only — the pill always carries its label -->
+              <span class="d-pill" [class]="'d-pill ' + statusClass(p.status)">{{ statusLabel(p.status) }}</span>
+            </td>
+            <td class="muted">{{ p.executionStage }}</td>
+            <td class="muted">{{ p.branch }}</td>
+            <td class="muted">{{ p.executor }}</td>
+            <td class="num"><bdi class="mono">{{ p.contractCount }}</bdi></td>
+            <td class="num"><bdi class="mono">{{ fmt.money(p.value) }}</bdi></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

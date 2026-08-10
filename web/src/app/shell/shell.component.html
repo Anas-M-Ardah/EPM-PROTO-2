@@ -1,0 +1,82 @@
+<!--
+  04 §1 — Shell.
+  .d-app is the grid: module nav + content. .d-topbar is the charcoal command
+  bar (its own fg tokens — never a light-theme surface token in there).
+  All classes come from src/styles/desktop.css, copied verbatim.
+-->
+<div class="d-app">
+
+  <!-- ── module nav (inline-start in LTR, inline-end in RTL) ───────────── -->
+  <aside class="d-side">
+    <div class="d-side-head">
+      <span class="d-side-logo"><epm-icon name="account_balance" [size]="21" /></span>
+      <span class="d-side-wm">
+        <b>{{ lang.t('app_title') }}</b>
+        <span>{{ lang.t('dept') }}</span>
+      </span>
+    </div>
+
+    <nav class="d-nav">
+      @for (g of nav; track g.group) {
+        <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
+        @for (it of g.items; track it.path) {
+          <a class="d-nav-item"
+             routerLinkActive="on"
+             [routerLink]="it.path">
+            <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
+            <span class="d-nav-label">{{ lang.t(it.key) }}</span>
+          </a>
+        }
+      }
+    </nav>
+
+    <div class="d-side-foot">
+      <div class="d-side-ministry">
+        <epm-icon name="shield" [size]="16" />
+        <span class="d-nav-label">{{ lang.t('ministry') }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── content ───────────────────────────────────────────────────────── -->
+  <main class="d-main">
+
+    <header class="d-topbar">
+      <div class="d-crumb">
+        <b>{{ lang.t('app_name') }}</b>
+      </div>
+
+      <span class="sp"></span>
+
+      <!--
+        العرض بصفة — the persona switcher (03 §7). In a real system this comes
+        from the session identity; here it IS the identity. Keeping it visible
+        is deliberate: it is the fastest way to review the permission model.
+      -->
+      <label class="d-crumb" style="gap:6px">
+        <span class="muted">{{ lang.t('persona') }}</span>
+        <select class="epm-persona-select"
+                [value]="persona.currentId()"
+                (change)="onPersona($any($event.target).value)">
+          @for (p of persona.all(); track p.id) {
+            <option [value]="p.id">{{ lang.pick(p.nameAr, p.nameEn) }} — {{ lang.pick(p.roleAr, p.roleEn) }}</option>
+          }
+        </select>
+      </label>
+
+      <button class="d-btn sm ghost" (click)="lang.toggle()">
+        <epm-icon name="translate" [size]="16" />
+        {{ lang.t('language') }}
+      </button>
+    </header>
+
+    <div class="d-canvas">
+      <div class="d-canvas-pad">
+        <div class="d-canvas-wrap">
+          <router-outlet />
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

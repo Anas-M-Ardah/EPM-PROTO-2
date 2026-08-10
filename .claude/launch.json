@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "web", "--", "--proxy-config", "web/proxy.conf.json"],
+      "port": 4200
+    }
+  ]
+}

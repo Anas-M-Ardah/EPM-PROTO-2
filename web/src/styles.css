@@ -1,0 +1,56 @@
+/* ============================================================
+   App-local additions ONLY.
+
+   The design system lives in src/styles/ — tokens.css, components.css,
+   app.css, desktop.css — copied VERBATIM from the reference prototype
+   and loaded before this file (see angular.json "styles").
+
+   Before adding anything here, GREP src/styles/ for the class. Re-deriving
+   the design instead of reusing it is how the two prototypes drift apart.
+   Anything added here must use tokens — never a literal colour, never a
+   font-size outside the eight-step scale 11/11.5/12/13/15/18/21/24 (05 §2).
+   ============================================================ */
+
+/* Secondary text. The reference only ever scoped .muted under .d-crumb, but
+   every register needs it. --on-surface-variant is the secondary text token
+   at 6.82:1 — NOT --outline, which is a graphic token at 3.03:1 (05 §7.2). */
+.muted { color: var(--on-surface-variant); }
+
+/* Numeric columns align to the end so digits line up. The reference does this
+   per-register (.d-vo-reg th.num); .d-table needs it too. Pairs with the
+   tabular-nums already set by .d-table .num in desktop.css. */
+.d-table th.num,
+.d-table td.num { text-align: end; }
+
+/* Loading skeleton row inside a register (04 §9 — skeletons match the real
+   table's shape). .d-skel supplies the shimmer; this only gives it a body. */
+.d-skel-row { height: 14px; margin: 6px 0; }
+
+/* Persona switcher in the charcoal command bar. Uses the topbar's own field
+   tokens — never a light-theme surface token up there (04 §1). */
+.epm-persona-select {
+  height: 28px;
+  max-inline-size: 280px;
+  padding-inline: 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: var(--topbar-field);
+  color: var(--topbar-fg);
+  font-family: var(--font-ar);
+  font-size: 12px;
+  cursor: pointer;
+}
+.epm-persona-select:hover { background: var(--topbar-field-hover); }
+.epm-persona-select option { background: var(--surface-container-lowest); color: var(--on-surface); }
+
+/* An <input> that inherits its container's chrome, so a search field can sit
+   inside .d-search without fighting it. Kept here rather than inline: inline
+   styles beating stylesheets is a named defect class in 05 §8. */
+.epm-bare-input {
+  border: none;
+  background: none;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  inline-size: 100%;
+}

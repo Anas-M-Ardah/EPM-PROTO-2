@@ -1,0 +1,6 @@
+@Epm.Api_HostAddress = http://localhost:5289
+
+GET {{Epm.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
