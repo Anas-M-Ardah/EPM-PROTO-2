@@ -9,9 +9,16 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- 05 §2: Cairo (Arabic UI) · Hanken Grotesk (Latin UI) · IBM Plex Mono (figures, tabular-nums) -->
+  <!--
+    v1.1 (05 §2): Cairo (Arabic UI) · Inter (Latin UI) · IBM Plex Mono (figures, tabular-nums).
+
+    tokens.css declares `--font-en: 'Inter'`, so Inter is what we load. The
+    reference branch's own index.html still loads Roboto and never loads Inter,
+    so its Latin text silently falls back to system-ui — a defect in the branch,
+    not a choice. Recorded as P-20.
+  -->
   <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 </head>
 <body>
   <app-root></app-root>

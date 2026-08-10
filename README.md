@@ -74,6 +74,8 @@ ROADMAP.md     the work, with a checklist per phase
 TRACE.md       screen → endpoint → rule → table index
 DECISIONS.md   every business-rule and port decision, with its reasoning
 
+docs/SRS.md    what the system does and why, end to end — start here to
+               understand the BUSINESS. Derived from docs/spec/; not binding.
 docs/spec/     the binding specification (01–07 + 22 screenshots)
 docs/spec/reference/app/   the React prototype — THE reference for every screen
 docs/uml/      one Mermaid doc per feature

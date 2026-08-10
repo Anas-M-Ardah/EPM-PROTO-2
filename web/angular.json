@@ -59,6 +59,7 @@
               "src/styles/components.css",
               "src/styles/app.css",
               "src/styles/desktop.css",
+              "src/styles/boq.css",
               "src/styles.css"
             ],
             "scripts": []

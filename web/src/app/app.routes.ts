@@ -15,12 +15,30 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'projects' },
+      { path: '', pathMatch: 'full', redirectTo: 'portfolio' },
+
+      // SCR-E1 · features/portfolio · Features/Portfolio · [EP-PRT-01]
+      {
+        path: 'portfolio',
+        loadComponent: () => import('./features/portfolio/portfolio.page').then(m => m.PortfolioPage),
+      },
 
       // SCR-E2 · features/projects · Features/Projects · [EP-PRJ-01]
       {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects.page').then(m => m.ProjectsPage),
+      },
+
+      // SCR-E3 · features/contracts · Features/Contracts · [EP-CNT-01]
+      {
+        path: 'contracts',
+        loadComponent: () => import('./features/contracts/contracts.page').then(m => m.ContractsPage),
+      },
+
+      // SCR-E4 · features/entities · Features/Entities · [EP-ENT-01]
+      {
+        path: 'entities',
+        loadComponent: () => import('./features/entities/entities.page').then(m => m.EntitiesPage),
       },
 
       // ── next pages append their route here ────────────────────────────

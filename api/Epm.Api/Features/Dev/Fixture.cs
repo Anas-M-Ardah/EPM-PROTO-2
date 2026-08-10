@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Data.Entities;
+using Epm.Api.Features.Lookups;
 
 namespace Epm.Api.Features.Dev;
 
@@ -22,6 +23,12 @@ public static class Fixture
 {
     public static void Load(EpmDb db)
     {
+        // ── PHASE 1.1 Lookups ────────────────────────────────────────────
+        // NOT illustrative: these are 06 §1–§11 verbatim, the specification's
+        // own value lists. They live in Features/Lookups/LookupCatalog.cs and
+        // are loaded here only because nothing is seeded on boot (P-03).
+        db.Lookups.AddRange(LookupCatalog.Rows());
+
         // ── PAGE-01 Projects list ────────────────────────────────────────
         // One fully-detailed project with TWO contracts, so contract scoping
         // (01 §1) is visible from the very first screen, plus a few neighbours
@@ -146,6 +153,46 @@ public static class Fixture
                 AwardAmount = 31_200_000m, ReserveAmount = 1_500_000m, SupervisionAmount = 800_000m,
                 IncomingNo = "3102", IncomingDate = new DateOnly(2024, 12, 3),
                 Contractor = "شركة الموصل", Consultant = "دار الهندسة",
+            }
+        );
+
+        // ── PAGE-02 Contracts list ───────────────────────────────────────
+        // Amendments exist so "approved ≠ applied" is visible on the very first
+        // screen that shows a contract value (02 §9, non-negotiable #2).
+        //
+        // CNT-0279 carries one APPLIED amendment and one APPROVED-BUT-UNAPPLIED,
+        // so its effective value (250,000,000) and its projection (253,000,000)
+        // differ on screen. CNT-0279-EM has none, so both read 100,000,000 —
+        // which is what makes the difference legible rather than decorative.
+        db.ContractAmendments.AddRange(
+            new ContractAmendment
+            {
+                ContractId = "CNT-0279", No = 1,
+                DeltaValue = 10_000_000m, DeltaDays = 45,
+                Value = 250_000_000m,
+                Finish = new DateOnly(2026, 8, 14), DurationDays = 531,
+                State = "effective",
+                AppliedAt = new DateTime(2026, 5, 18),
+            },
+            new ContractAmendment
+            {
+                ContractId = "CNT-0279", No = 2,
+                DeltaValue = 3_000_000m, DeltaDays = 12,
+                Value = 253_000_000m,
+                Finish = new DateOnly(2026, 8, 26), DurationDays = 543,
+                // Approved by the committee, NOT yet applied. AppliedAt stays
+                // null — that null is the whole rule (BR-09).
+                State = "pending",
+                AppliedAt = null,
+            },
+            new ContractAmendment
+            {
+                ContractId = "CNT-0148", No = 1,
+                DeltaValue = 1_500_000m, DeltaDays = 20,
+                Value = 70_000_000m,
+                Finish = new DateOnly(2026, 4, 20), DurationDays = 582,
+                State = "effective",
+                AppliedAt = new DateTime(2026, 2, 3),
             }
         );
 

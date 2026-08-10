@@ -1,5 +1,10 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Contracts;
 using Epm.Api.Features.Dev;
+using Epm.Api.Features.Docs;
+using Epm.Api.Features.Entities;
+using Epm.Api.Features.Portfolio;
+using Epm.Api.Features.Lookups;
 using Epm.Api.Features.Projects;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,5 +48,10 @@ using (var scope = app.Services.CreateScope())
 // ── Feature endpoints. APPEND ONE LINE PER PAGE. ─────────────────────────
 app.MapDevEndpoints();
 app.MapProjectsEndpoints();
+app.MapContractsEndpoints();
+app.MapEntitiesEndpoints();
+app.MapPortfolioEndpoints();
+app.MapLookupsEndpoints();
+app.MapDocsEndpoints();
 
 app.Run();
