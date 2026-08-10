@@ -14,7 +14,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:299 *(v1.1)* | `features/contracts/contracts.page.ts` | `EP-CNT-01` | ✅ built |
 | SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built |
 | SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 | — | `EP-SCT-01` | ⬜ |
-| SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:65 | — | `EP-ALR-01` | ⬜ |
+| SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:106 *(v1.1)* | `features/alerts/alerts.page.ts` | `EP-ALR-01` · `EP-ALR-02` | ✅ built — the first screen that writes; ack persists with the persona |
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:39 | — | `EP-RPT-01` | ⬜ |
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:1461 | — | `EP-OVW-01` | ⬜ |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:157 | — | `EP-INF-01` | ⬜ |
@@ -47,6 +47,8 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-ENT-01` | `GET /api/entities` | `Features/Entities/EntitiesEndpoints.cs` | `entities.api.ts` `list()` | BR-00 · BR-09 | Workspaces · Projects · Contracts · ContractAmendments |
 | `EP-PRT-01` | `GET /api/portfolio` | `Features/Portfolio/PortfolioEndpoints.cs` | `portfolio.api.ts` `get()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Workspaces |
 | `EP-DOCS-01` | `GET /api/docs/rules` | `Features/Docs/DocsEndpoints.cs` | — (Phase 7 `/docs` route) | BR-01…BR-14 | — (pure) |
+| `EP-ALR-01` | `GET /api/alerts` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `list()` | — | Alerts · Projects |
+| `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
 
 ## Business rules
 
@@ -82,3 +84,4 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `Workspaces` | PAGE-01 | `EP-PRJ-01` |
 | `Lookups` | Phase 1.1 | `EP-LKP-01` |
 | `ContractAmendments` | PAGE-02 | `EP-CNT-01` · `EP-PRJ-01` |
+| `Alerts` | Phase 2.4 | `EP-ALR-01` · `EP-ALR-02` *(the only table a screen writes so far)* |

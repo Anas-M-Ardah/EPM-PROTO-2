@@ -107,6 +107,40 @@ const STR = {
   empty_portfolio_t:{ ar: 'لا توجد بيانات بعد',             en: 'No data yet' },
   empty_portfolio_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
 
+  // alerts center — ported from DAlertsCenter (v1.1, enterprise-areas.jsx:106).
+  // The severity, kind and status LABELS are not here: they are stored codes and
+  // come from the Lookups addendum (P-26), like every other enum in the app.
+  alerts_sub:      { ar: 'التنبيهات والتصعيد عبر المحفظة',  en: 'Portfolio-wide alerts & escalation' },
+  search_alerts:   { ar: 'بحث في التنبيهات…',               en: 'Search alerts…' },
+  col_alert:       { ar: 'التنبيه',                         en: 'Alert' },
+  col_source:      { ar: 'المصدر',                          en: 'Source' },
+  col_severity:    { ar: 'الخطورة',                         en: 'Severity' },
+  col_raised:      { ar: 'التاريخ',                         en: 'Raised' },
+  /** Screen-reader name for the row-action column; the reference leaves it blank. */
+  col_action:      { ar: 'إجراء',                           en: 'Action' },
+  /**
+   * Severity as a GROUP heading — the cards and the filter chips. Feminine
+   * plural, agreeing with «تنبيهات». One alert's severity is the masculine
+   * singular (حرِج) and comes from the `alert-severity` lookup instead; the
+   * reference makes exactly this split (ALERT_SEV vs the inline card array).
+   */
+  sev_critical:    { ar: 'حرِجة',                           en: 'High' },
+  sev_warning:     { ar: 'متوسطة',                          en: 'Medium' },
+  sev_info:        { ar: 'منخفضة',                          en: 'Low' },
+  sev_open:        { ar: 'مفتوحة',                          en: 'Open' },
+  /** The CARD spells the top severity out; the chip stays short so the chip row
+   *  does not wrap. Only the top one differs, and only in English — verbatim
+   *  from the reference, which makes exactly this one exception. */
+  sev_critical_card:{ ar: 'حرِجة',                          en: 'High severity' },
+  alerts_unack:    { ar: 'غير مُقَرّة',                      en: 'Unacknowledged' },
+  alerts_ack:      { ar: 'مُقَرّة',                          en: 'Acknowledged' },
+  alerts_do_ack:   { ar: 'إقرار',                           en: 'Ack' },
+  alerts_reopen:   { ar: 'إعادة فتح',                       en: 'Reopen' },
+  /** An alert with no project belongs to the portfolio, not to nothing. */
+  scope_enterprise:{ ar: 'على مستوى الوزارة',               en: 'Ministry-wide' },
+  empty_alerts_t:  { ar: 'لا توجد تنبيهات',                 en: 'No alerts' },
+  empty_alerts_b:  { ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
   empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },

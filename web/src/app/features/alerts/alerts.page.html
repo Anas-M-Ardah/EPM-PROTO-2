@@ -1,0 +1,183 @@
+<!--
+  SCR-E6 Alerts Center — v1.1 page skeleton.
+  Ported from DAlertsCenter, ../epm@design/system-revamp
+  app/enterprise-areas.jsx:106.
+
+  Layout follows the reference: page head → four severity cards → one bordered
+  card containing toolbar strip → table → pager strip.
+
+  Column order follows the reference: alert · project · source · severity ·
+  status · raised · row action.
+
+  SEVERITY IS NEVER COLOUR-ONLY (05 §7.6) — <epm-sev-dot> gives each severity
+  its own GLYPH and an accessible name, and the label is printed beside it.
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_alerts')"
+  [sub]="lang.t('alerts_sub')">
+</epm-page-head>
+
+@if (loading()) {
+  <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (total() === 0) {
+  <!-- empty BECAUSE THE DATABASE IS EMPTY. Distinct from the filtered-empty
+       state below: nothing here can be cleared, so there is no clear button. -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="notifications" [size]="30" /></span>
+    <b>{{ lang.t('empty_alerts_t') }}</b>
+    <span>{{ lang.t('empty_alerts_b') }}</span>
+  </div>
+} @else {
+
+  <!-- The severity band. Each card is a filter toggle, so it is a <button>
+       with aria-pressed — not a div with a click handler. -->
+  <div class="d-sevcards">
+    @for (c of cards(); track c.key) {
+      <button type="button" class="d-sevcard {{ c.tone }}" [class.on]="isCardOn(c.key)"
+              [attr.aria-pressed]="isCardOn(c.key)"
+              (click)="toggleCard(c.key)">
+        <span class="hd">
+          <span class="ico"><epm-icon [name]="c.icon" [size]="18" /></span>
+          <span class="lbl">{{ c.label }}</span>
+        </span>
+        <span class="val">
+          <span class="num"><bdi>{{ c.value }}</bdi></span>
+          <span class="pc num"><bdi>{{ c.pct }}%</bdi></span>
+        </span>
+        <!-- The bar restates the share the figure beside it already gives; it
+             is geometry, never the only carrier of the number. -->
+        <span class="bar" aria-hidden="true"><i [style.width.%]="c.pct"></i></span>
+        <span class="foot"><bdi>{{ c.foot }}</bdi></span>
+      </button>
+    }
+  </div>
+
+  <div class="d-tablewrap">
+
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_alerts')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="isUnfiltered()" (click)="clearFilters()">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ total() }}</bdi></span>
+        </button>
+
+        <!-- Status first: "what still needs doing" is the question this screen
+             is opened to answer. -->
+        <button class="d-fchip" [class.on]="status() === 'open'" (click)="setStatus('open')">
+          {{ lang.t('alerts_unack') }}<span class="n"><bdi>{{ open() }}</bdi></span>
+        </button>
+        <button class="d-fchip" [class.on]="status() === 'acknowledged'" (click)="setStatus('acknowledged')">
+          {{ lang.t('alerts_ack') }}<span class="n"><bdi>{{ acknowledged() }}</bdi></span>
+        </button>
+
+        <!-- Severities in the addendum lookup's order — worst first. -->
+        @for (s of severities(); track s.code) {
+          <button class="d-fchip" [class.on]="severity() === s.code" (click)="setSeverity(s.code)">
+            {{ sevHeading(s.code) }}<span class="n"><bdi>{{ sevCount(s.code) }}</bdi></span>
+          </button>
+        }
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    @if (rows().length === 0) {
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_filter_t') }}</b>
+        <span>{{ lang.t('empty_filter_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th>{{ lang.t('col_alert') }}</th>
+            <th>{{ lang.t('col_project') }}</th>
+            <th>{{ lang.t('col_source') }}</th>
+            <th style="width:118px">{{ lang.t('col_severity') }}</th>
+            <th style="width:118px">{{ lang.t('col_status') }}</th>
+            <th>{{ lang.t('col_raised') }}</th>
+            <th style="width:116px"><span class="epm-sr-only">{{ lang.t('col_action') }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of pageRows(); track a.id) {
+            <tr [class.is-ack]="a.status === 'acknowledged'">
+              <td class="d-cell-strong">
+                {{ lang.pick(a.titleAr, a.titleEn) }}
+                @if (a.targetRef) {
+                  <div class="d-cell-sub mono"><bdi>{{ a.targetRef }}</bdi></div>
+                }
+              </td>
+              <td class="d-cell-sub">
+                {{ projectLabel(a) }}
+                @if (a.projectId) {
+                  <div class="d-cell-sub mono"><bdi>{{ a.projectId }}</bdi></div>
+                }
+              </td>
+              <!-- The Source column is the alert KIND, labelled from the
+                   addendum lookup (P-26) rather than a per-screen map. -->
+              <td class="d-cell-sub">{{ lookups.label('alert-kind', a.kind) }}</td>
+              <td>
+                <span class="d-sevcell">
+                  <epm-sev-dot [severity]="a.severity" [size]="15" />
+                  {{ lookups.label('alert-severity', a.severity) }}
+                </span>
+              </td>
+              <td>
+                <epm-status-pill kind="alert-status" [code]="a.status" />
+              </td>
+              <td class="num d-cell-sub"><bdi>{{ fmt.date(a.raisedAt) }}</bdi></td>
+              <td class="d-rowact">
+                <!-- EP-ALR-02. A real write, so the button reports its own
+                     in-flight state rather than appearing to have done nothing. -->
+                <button type="button"
+                        class="d-btn sm"
+                        [class.ghost]="a.status === 'acknowledged'"
+                        [disabled]="isAcking(a.id)"
+                        [attr.aria-busy]="isAcking(a.id)"
+                        [title]="a.status === 'acknowledged' ? lang.t('alerts_reopen') : lang.t('alerts_do_ack')"
+                        (click)="toggleAck(a)">
+                  <epm-icon [name]="a.status === 'acknowledged' ? 'undo' : 'done'" [size]="14" />
+                  {{ a.status === 'acknowledged' ? lang.t('alerts_reopen') : lang.t('alerts_do_ack') }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
+  </div>
+}

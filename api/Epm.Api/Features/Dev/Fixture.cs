@@ -196,6 +196,113 @@ public static class Fixture
             }
         );
 
+        // ── PAGE-05 Alerts Center (SCR-E6) ───────────────────────────────
+        // Titles are ported from the reference feed (data.jsx buildAlertsData)
+        // and re-pointed at THIS fixture's projects, so an alert names a project
+        // and a contract that actually exist and the row can be traced.
+        //
+        // Every RaisedAt sits on or before the data date 2026-08-02 (D-06) — an
+        // alert raised in the future would be nonsense, and a wall clock would
+        // make the whole feed drift out of the fixture's world.
+        //
+        // The mix is deliberate: enough of each severity that the four cards
+        // carry different numbers, some already acknowledged so the open counts
+        // differ from the totals, and 18 rows so the pager has a second page at
+        // the default size of 15.
+        db.Alerts.AddRange(
+            // PRJ-0207 — the delayed project carries the worst of it.
+            new Alert { ProjectId = "PRJ-0207", Severity = "critical", Kind = "schedule-slip",
+                TitleAr = "نشاط حرج «الأعمال الميكانيكية» متأخر 18 يوماً",
+                TitleEn = "Critical activity “Mechanical works” delayed 18 days",
+                TargetRef = "CNT-0207", RaisedAt = new DateTime(2026, 7, 18) },
+            new Alert { ProjectId = "PRJ-0207", Severity = "critical", Kind = "sla-overdue",
+                TitleAr = "مرحلة المراجعة الفنية تجاوزت المدة المحددة بـ 4 أيام",
+                TitleEn = "Technical review stage is 4 days past its SLA",
+                TargetRef = "CNT-0207", RaisedAt = new DateTime(2026, 7, 26) },
+            new Alert { ProjectId = "PRJ-0207", Severity = "warning", Kind = "budget",
+                TitleAr = "الصرف التراكمي بلغ 92% من التخصيص السنوي",
+                TitleEn = "Cumulative spend reached 92% of the annual allocation",
+                TargetRef = "CNT-0207", RaisedAt = new DateTime(2026, 7, 11) },
+            new Alert { ProjectId = "PRJ-0207", Severity = "info", Kind = "other",
+                TitleAr = "تقرير التقدم الشهري لشهر حزيران مُستلم",
+                TitleEn = "June monthly progress report received",
+                RaisedAt = new DateTime(2026, 7, 4),
+                Acknowledged = true, AcknowledgedByUserId = "user.project-manager" },
+
+            // PRJ-0279 — the two-contract project, incl. the unapplied amendment.
+            new Alert { ProjectId = "PRJ-0279", Severity = "critical", Kind = "apply-failed",
+                TitleAr = "تعذّر تطبيق الملحق رقم 2 — خطوة إعادة احتساب الأوزان لم تنجح",
+                TitleEn = "Amendment no. 2 could not be applied — the weight recalculation step failed",
+                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 30) },
+            new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "sla-overdue",
+                TitleAr = "الملحق رقم 2 معتمد منذ 21 يوماً ولم يُطبَّق بعد",
+                TitleEn = "Amendment no. 2 has been approved for 21 days and is still unapplied",
+                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 22) },
+            new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "distribution-blocked",
+                TitleAr = "توزيع الكميات على الجهات المستفيدة غير مكتمل لبندين",
+                TitleEn = "Quantity distribution to beneficiaries is incomplete on two items",
+                TargetRef = "CNT-0279-EM", RaisedAt = new DateTime(2026, 7, 19) },
+            new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "schedule-slip",
+                TitleAr = "معلم «إنجاز الهيكل» يقترب خلال 10 أيام",
+                TitleEn = "Milestone “Structure complete” is 10 days away",
+                RaisedAt = new DateTime(2026, 7, 9),
+                Acknowledged = true, AcknowledgedByUserId = "user.re-dept" },
+            new Alert { ProjectId = "PRJ-0279", Severity = "info", Kind = "other",
+                TitleAr = "وثيقة إلزامية مفقودة: شهادة فحص المواد",
+                TitleEn = "Mandatory document missing: material test certificate",
+                RaisedAt = new DateTime(2026, 7, 2) },
+            new Alert { ProjectId = "PRJ-0279", Severity = "info", Kind = "budget",
+                TitleAr = "سلفة تشغيلية مصروفة بقيمة 24,000,000 د.ع",
+                TitleEn = "Operating advance of IQD 24,000,000 disbursed",
+                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 6, 24),
+                Acknowledged = true, AcknowledgedByUserId = "user.re-dept" },
+
+            // PRJ-0277 — suspended.
+            new Alert { ProjectId = "PRJ-0277", Severity = "critical", Kind = "schedule-slip",
+                TitleAr = "المشروع متوقف منذ 84 يوماً دون قرار استئناف",
+                TitleEn = "The project has been suspended for 84 days with no resumption decision",
+                RaisedAt = new DateTime(2026, 7, 28) },
+            new Alert { ProjectId = "PRJ-0277", Severity = "warning", Kind = "budget",
+                TitleAr = "التخصيص المرصود غير مصروف — 0% من مخصص السنة",
+                TitleEn = "Allocated budget undisbursed — 0% of this year's allocation",
+                RaisedAt = new DateTime(2026, 7, 15) },
+            new Alert { ProjectId = "PRJ-0277", Severity = "info", Kind = "other",
+                TitleAr = "كتاب الجهة المستفيدة بخصوص الاستئناف مُسجَّل",
+                TitleEn = "Beneficiary letter regarding resumption has been recorded",
+                RaisedAt = new DateTime(2026, 6, 30) },
+
+            // PRJ-0148 — ongoing, one applied amendment.
+            new Alert { ProjectId = "PRJ-0148", Severity = "warning", Kind = "sla-overdue",
+                TitleAr = "إجراء اجتماع متأخر: تسريع أعمال الكهرباء",
+                TitleEn = "Overdue meeting action: accelerate electrical works",
+                RaisedAt = new DateTime(2026, 6, 28) },
+            new Alert { ProjectId = "PRJ-0148", Severity = "info", Kind = "other",
+                TitleAr = "الملحق رقم 1 طُبِّق وحُدِّثت قيمة العقد",
+                TitleEn = "Amendment no. 1 applied and the contract value updated",
+                TargetRef = "CNT-0148", RaisedAt = new DateTime(2026, 2, 3),
+                Acknowledged = true, AcknowledgedByUserId = "user.co-rapporteur" },
+
+            // PRJ-0159 — completed; only closeout items remain.
+            new Alert { ProjectId = "PRJ-0159", Severity = "info", Kind = "other",
+                TitleAr = "محضر الاستلام النهائي بانتظار التوقيع",
+                TitleEn = "Final handover certificate is awaiting signature",
+                RaisedAt = new DateTime(2026, 3, 12) },
+
+            // Enterprise-wide — ProjectId null. These exist so the null branch of
+            // the project column is exercised by the fixture and not only in
+            // theory: the Alerts Center is the one register whose rows are not
+            // all project-scoped.
+            new Alert { ProjectId = null, Severity = "warning", Kind = "other",
+                TitleAr = "لم تُستورد جداول Primavera لأربعة مشاريع هذا الشهر",
+                TitleEn = "Primavera schedules were not imported for four projects this month",
+                RaisedAt = new DateTime(2026, 8, 1) },
+            new Alert { ProjectId = null, Severity = "info", Kind = "other",
+                TitleAr = "تم تحديث قوائم القيم في دليل البيانات",
+                TitleEn = "The data dictionary value lists have been updated",
+                RaisedAt = new DateTime(2026, 7, 6),
+                Acknowledged = true, AcknowledgedByUserId = "user.senior-mgmt" }
+        );
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();
