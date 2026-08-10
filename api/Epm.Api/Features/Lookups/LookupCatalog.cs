@@ -267,5 +267,14 @@ public static class LookupCatalog
         sort = 0;
         yield return L("alert-status", "open",         "مفتوح", "Open");
         yield return L("alert-status", "acknowledged", "مُقَر",  "Acknowledged");
+
+        // ── ADDENDUM §A4 — schedule import status (SCR-E5) ────────────────
+        // Whether a Primavera P6 baseline has been imported and published for a
+        // project. Labels verbatim from DScheduleControl. DERIVED, not stored:
+        // it is "does this project have activities", which is always `pending`
+        // until Phase 4.3 registers the Activities table. See P-31.
+        sort = 0;
+        yield return L("schedule-import-status", "published", "منشور",   "Published");
+        yield return L("schedule-import-status", "pending",   "بانتظار", "Pending");
     }
 }

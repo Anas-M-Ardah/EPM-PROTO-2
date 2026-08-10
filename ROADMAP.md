@@ -327,10 +327,36 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 > Both empty states checked separately; the empty-database state renders no
 > severity band and no toolbar, because there is nothing to summarise or clear.
 
-### 2.5 Schedule Control — SCR-E5 · `DScheduleControl` `enterprise-areas.jsx:8`
-- [ ] Baseline vs forecast, delay, critical count, import status
-- [ ] `EP-SCT-01` · Angular trio · UML · TRACE row
-- [ ] *Depends on Phase 4.2 (Activities) for real figures*
+### 2.5 Schedule Control — SCR-E5 · `DScheduleControl` `enterprise-areas.jsx:8` (v1.1) ✅ COMPLETE
+- [x] Baseline vs forecast, delay, import status
+- [x] **Baseline is the EFFECTIVE finish** (BR-09) — `PRJ-0148` reads *on track*;
+      against its original finish it would read 20 days late, for time it was
+      formally granted. Approved-but-unapplied extensions are NOT counted (`02 §9`)
+- [x] **Delay is the WORST contract's, not the project's** — `PRJ-0279`'s
+      project-level subtraction gives 16 days while `CNT-0279-EM` is 61 days
+      late behind a longer sibling contract. The row shows 61 and names the contract
+- [x] `Domain/Penalty.DelayDays()` exposed (BR-10) so the days shown here and the
+      days charged for can never disagree — 3 new tests, `dotnet test` 131/131
+- [x] **Three states, not two** — delayed · on track · *no schedule position*;
+      the third is stated in a note bar because it is excluded from both counts
+- [x] Critical activities: **"unavailable + reason"** tile and an em-dash column.
+      The reference derives it from `p.id.charCodeAt(6) % 3`
+- [x] `epm-summary-strip` gained an `unavailable` tile variant, so a KPI band can
+      stay a band when one of its figures is genuinely underivable
+- [x] `EP-SCT-01` · Angular trio · `docs/uml/schedule-control.md` · TRACE row
+
+> **Two binding-contract breaches in the copied v1.1 sheets, found by measuring
+> this screen and fixed for the whole app** (`web/src/styles.css`, overrides only —
+> the sheets stay verbatim). Both affect screens already merged:
+> - **P-32** `--fg-subtle` is used as TEXT in ~100 rules but measures **3.07:1**
+>   on white — `.d-stat-foot` and `.d-table td.d-cell-sub` on every register
+>   built so far. Now 5.07 light / 5.46 dark.
+> - **P-33** `--fs-100` is **10px**; `05 §2` sets the floor at 11px. Every filter
+>   chip count in the app was below it.
+
+> **Verified live against both prototypes** at 1440 and 1024, AR and EN, light and
+> dark: same page head, same KPI band order and labels, same eight columns, same
+> delay format, same pager. Both empty states checked separately.
 
 ### 2.6 Reports & Analytics — SCR-E7 · `DReports` `desktop-reports.jsx:39`
 - [ ] Trend · by-status · by-workspace · by-branch · period + export

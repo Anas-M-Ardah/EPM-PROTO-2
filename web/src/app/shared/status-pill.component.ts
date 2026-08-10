@@ -50,26 +50,40 @@ export class StatusPillComponent {
    * still labelled, so 05 §7.6 holds for every enumeration.
    */
   cls = computed(() => {
+    const kind = this.kindSig();
     const code = this.codeSig();
-    const mapped = CANONICAL_TO_CSS[code] ?? code;
+    // Most specific first: a kind-qualified entry, then a bare code, then the
+    // code itself when it already names a pill class.
+    const mapped = CANONICAL_TO_CSS[`${kind}:${code}`] ?? CANONICAL_TO_CSS[code] ?? code;
     return PILL_CLASSES.has(mapped) ? mapped : 'withdrawn';
   });
 }
 
 /**
- * 06 §1 canonical key → the class name the verbatim stylesheet defines.
+ * Canonical key → the class name the verbatim stylesheet defines.
  *
- * Keyed by CODE, not by kind+code, because no two lists in 06 (or the alert
- * addendum) share a code. Check that before adding one.
+ * Keyed by `kind:code` OR by bare `code`. The bare form was fine while no two
+ * lists shared a code, but `pending` is already an `amendment-state` and
+ * `schedule-import-status` needs a different pill for its own `pending`. So
+ * entries that belong to one list are qualified, and only the genuinely global
+ * ones (06 §1's canonical statuses) stay bare. Qualify when in doubt — an
+ * unqualified entry silently repaints every list that reuses the word.
  */
 const CANONICAL_TO_CSS: Record<string, string> = {
+  // 06 §1 canonical statuses — shared by projects and contracts alike, so bare.
   delayed: 'stalled',
   cancelled: 'withdrawn',
+
   // `alert-status` (addendum, P-26). The classes are the ones DAlertsCenter
   // itself uses for these two states — an open alert reads as needing action,
   // an acknowledged one as settled.
-  open: 'stalled',
-  acknowledged: 'completed',
+  'alert-status:open': 'stalled',
+  'alert-status:acknowledged': 'completed',
+
+  // `schedule-import-status` (addendum, P-31). DScheduleControl's own pair:
+  // a published baseline is settled, one still awaited is not.
+  'schedule-import-status:published': 'completed',
+  'schedule-import-status:pending': 'suspended',
 };
 
 /** Every .d-pill.<x> that exists in src/styles/desktop.css:688-692. */

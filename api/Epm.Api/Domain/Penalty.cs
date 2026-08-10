@@ -24,10 +24,23 @@ public static class Penalty
 
     public record Result(int Days, decimal PerDay, decimal Cap, decimal Amount);
 
+    /// <summary>
+    /// Days late: max(0, forecast − contractual). Finishing early is not a
+    /// negative penalty, and it is not negative delay either.
+    ///
+    /// Public because Schedule Control (SCR-E5) shows this figure without the
+    /// money. Charging a penalty and reporting a slip must never disagree about
+    /// how late a contract is, so both read it from here rather than each
+    /// subtracting two dates. The contractual finish is the EFFECTIVE one
+    /// (BR-09) — an applied time extension moves the baseline, so a project
+    /// that was granted one is not still late by the days it was granted.
+    /// </summary>
+    public static int DelayDays(DateOnly contractualFinish, DateOnly forecastFinish) =>
+        Math.Max(0, forecastFinish.DayNumber - contractualFinish.DayNumber);
+
     public static Result For(decimal value, DateOnly contractualFinish, DateOnly forecastFinish)
     {
-        // Finishing early is not a negative penalty.
-        var days = Math.Max(0, forecastFinish.DayNumber - contractualFinish.DayNumber);
+        var days = DelayDays(contractualFinish, forecastFinish);
         var perDay = value * PerDayPct;
         var cap = value * CapPct;
 

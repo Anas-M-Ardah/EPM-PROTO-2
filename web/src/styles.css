@@ -41,6 +41,62 @@
   --viz-base: #6B7484;   /* v1.1 ships #565E69 — 2.46:1 */
 }
 
+/* ── SECOND ACCESSIBILITY CORRECTION: --fg-subtle (P-32) ──────────────────
+   05 §7.1 is binding: text must reach 4.5:1, and 12px/400 is not large text.
+
+   v1.1 ships --fg-subtle at #8B94A1 light and #7D8794 dark, and desktop.css
+   uses it as TEXT colour in about a hundred rules — including two that every
+   register already built depends on:
+
+     .d-stat-foot                       the KPI tile's foot line
+     .d-table tbody td.d-cell-sub       the secondary column in every table
+
+   Measured in the running app: 3.07:1 on white, 2.86:1 on --surface, 2.76:1
+   on --background. Dark is marginal rather than bad — 4.44:1 on
+   --surface-container, 3.91:1 on --surface-container-high.
+
+   This is NOT the same as --outline (P-21). That is a graphic token with a
+   3:1 floor; this one carries words, so it owes 4.5:1. It went unnoticed
+   because a .d-cell-sub nested INSIDE a td picks up a different, compliant
+   rule (6.56:1) — only a td that carries the class itself is affected, which
+   is the sub-line under a project name on four screens.
+
+   Same method as P-21: the LIGHTEST value on v1.1's own cool-grey ramp that
+   clears the floor on every surface the token actually lands on, so the
+   intended "quieter than body text" look survives as far as the contract
+   permits. Light #666F7F — 5.07 on white, 4.73 on --surface, 4.55 on
+   --background. Dark #8D97A3 — 6.01 on --surface, 5.46 on
+   --surface-container, 4.81 on --surface-container-high.
+
+   Overridden here, never edited into styles/tokens.css, so the copied sheets
+   stay verbatim (P-07). --fg-disabled is NOT touched: 05 §7 requires disabled
+   state to use explicit colours, and a disabled control is exempt from the
+   contrast minimum. */
+:root,
+[data-theme="light"] {
+  --fg-subtle: #666F7F;  /* v1.1 ships #8B94A1 — 3.07:1 on white */
+}
+[data-theme="dark"] {
+  --fg-subtle: #8D97A3;  /* v1.1 ships #7D8794 — 4.44:1 on --surface-container */
+}
+
+/* ── THIRD CORRECTION: the type scale's floor (P-33) ──────────────────────
+   05 §2 is binding and CLAUDE.md §6 repeats it: the scale is exactly
+   11 / 11.5 / 12 / 13 / 15 / 18 / 21 / 24, and NOTHING is smaller than 11px.
+
+   v1.1 defines --fs-100 as 10px. desktop.css:387 sets the filter-chip count to
+   a literal 11px and then desktop.css:3079 overrides it with var(--fs-100),
+   so every chip count in the app renders at 10px — measured, three of them on
+   this screen alone, and the same on Projects, Contracts and Alerts.
+
+   Raised to 11px, the scale's own floor, so this snaps to the nearest legal
+   step rather than inventing a size. --lh-100 (14px) still suits 11px text.
+   Overridden here rather than in styles/tokens.css so the copied sheets stay
+   verbatim (P-07). */
+:root {
+  --fs-100: 11px;  /* v1.1 ships 10px — below the binding floor */
+}
+
 /* Secondary text. The reference only ever scoped .muted under .d-crumb, but
    every register needs it. --on-surface-variant is the secondary text token
    at 6.56:1 in v1.1 — NOT --outline, which is a graphic token (05 §7.2). */

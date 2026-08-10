@@ -1,0 +1,193 @@
+<!--
+  SCR-E5 Schedule Control — v1.1 page skeleton.
+  Ported from DScheduleControl, ../epm@design/system-revamp
+  app/enterprise-areas.jsx:8.
+
+  Column order follows the reference: code · project · branch · baseline
+  finish · forecast · delay · critical · import status.
+
+  BASELINE FINISH IS THE EFFECTIVE FINISH (BR-09) — original plus APPLIED
+  amendment days. A project granted a formal extension is not late by the days
+  it was granted. When an amendment moved it, the original is shown underneath
+  as "was …" — never a strikethrough (04 §6).
+
+  THE DELAY FIGURE IS NOT COLOURED BY THRESHOLD. The reference paints it
+  --error when late and --success when not; CLAUDE.md §6 and 05 §7.9 forbid
+  colouring a magnitude that way. Lateness is carried by the sign, the label
+  and the worst-first sort instead (P-30).
+
+  Every number and date is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_schedule')"
+  [sub]="lang.t('schedule_sub')">
+</epm-page-head>
+
+@if (loading()) {
+  <div class="d-grid stats fit">
+    @for (i of [1,2,3,4]; track i) {
+      <div class="d-stat"><span class="d-skel" style="width:60%;height:12px;display:block"></span>
+        <span class="d-skel" style="width:80%;height:22px;display:block;margin-top:8px"></span></div>
+    }
+  </div>
+  <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (total() === 0) {
+  <!-- empty BECAUSE THE DATABASE IS EMPTY. Distinct from the filtered-empty
+       state below: nothing here can be cleared, so there is no clear button. -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="calendar_month" [size]="30" /></span>
+    <b>{{ lang.t('empty_schedule_t') }}</b>
+    <span>{{ lang.t('empty_schedule_b') }}</span>
+  </div>
+} @else {
+
+  <!-- Three figures the system can defend, and one it cannot. The fourth
+       renders "unavailable + reason" rather than being dropped: a missing
+       figure that leaves no trace is indistinguishable from one nobody wanted. -->
+  <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
+
+  <!-- Projects with no schedule position at all. Stated once, above the table,
+       because they are excluded from BOTH the delayed and the on-track counts
+       and that exclusion has to be visible for the two to add up. -->
+  @if (noSchedule() > 0) {
+    <div class="d-msgbar">
+      <epm-icon name="info" [size]="16" />
+      <span>
+        {{ lang.t('sc_no_schedule_note') }}
+        <bdi>{{ noSchedule() }}</bdi>
+      </span>
+    </div>
+  }
+
+  <div class="d-tablewrap">
+
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_projects')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="state() === ''" (click)="setState('')">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ total() }}</bdi></span>
+        </button>
+        <button class="d-fchip" [class.on]="state() === 'delayed'" (click)="setState('delayed')">
+          {{ lang.t('sc_delayed') }}<span class="n"><bdi>{{ delayed() }}</bdi></span>
+        </button>
+        <button class="d-fchip" [class.on]="state() === 'on-track'" (click)="setState('on-track')">
+          {{ lang.t('sc_ontrack') }}<span class="n"><bdi>{{ onTrack() }}</bdi></span>
+        </button>
+        <!-- The reference's third chip is "critical activities", which cannot
+             be derived until Phase 4.3. This one can, and answers a question
+             the reference never asks: which projects have no schedule at all. -->
+        <button class="d-fchip" [class.on]="state() === 'no-schedule'" (click)="setState('no-schedule')">
+          {{ lang.t('sc_no_schedule') }}<span class="n"><bdi>{{ noSchedule() }}</bdi></span>
+        </button>
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    @if (rows().length === 0) {
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_filter_t') }}</b>
+        <span>{{ lang.t('empty_filter_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th style="width:108px">{{ lang.t('col_code') }}</th>
+            <th>{{ lang.t('col_project') }}</th>
+            <th>{{ lang.t('col_branch') }}</th>
+            <th>{{ lang.t('col_baseline_finish') }}</th>
+            <th>{{ lang.t('col_forecast_finish') }}</th>
+            <th class="num r">{{ lang.t('sc_avg_delay') }}</th>
+            <th class="num r">{{ lang.t('sc_critical') }}</th>
+            <th>{{ lang.t('sc_import_status') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of pageRows(); track r.projectId) {
+            <tr>
+              <td class="mono d-cell-sub"><bdi>{{ r.projectId }}</bdi></td>
+              <td class="d-cell-strong">
+                {{ lang.pick(r.projectNameAr, r.projectNameEn) }}
+                <div class="d-cell-sub">{{ lang.pick(r.workspaceNameAr, r.workspaceNameEn) }}</div>
+              </td>
+              <td class="d-cell-sub">{{ r.branch }}</td>
+
+              <td class="num d-cell-sub">
+                <bdi>{{ fmt.date(r.baselineFinish) }}</bdi>
+                <!-- An applied amendment moved the contractual finish (BR-09).
+                     Showing the original keeps the fact that it moved visible. -->
+                @if (baselineMoved(r)) {
+                  <div class="d-cell-sub"><bdi>{{ lang.t('was') }} {{ fmt.date(r.originalFinish) }}</bdi></div>
+                }
+              </td>
+
+              <td class="num d-cell-sub">
+                <bdi>{{ fmt.date(r.forecastFinish) }}</bdi>
+                <!-- A blank here would read as missing data. Say which of the
+                     two reasons it is. -->
+                @if (r.delayDays === null) {
+                  <div class="d-cell-sub">{{ noScheduleReason(r) }}</div>
+                }
+              </td>
+
+              <td class="num r">
+                <bdi>{{ delayLabel(r) }}</bdi>
+                <!-- Which contract the figure came from — one hop to the source. -->
+                @if (r.delayDrivenBy) {
+                  <div class="d-cell-sub mono"><bdi>{{ r.delayDrivenBy }}</bdi></div>
+                }
+              </td>
+
+              <td class="num r">
+                <!-- Needs Activities and their dependencies (Phase 4.3). The
+                     reference fabricates this from a character of the project
+                     id; a 0 here would assert there is no critical work. -->
+                <span class="d-cell-sub">—</span>
+              </td>
+
+              <td>
+                <!-- True, not a placeholder: the Activities table is not
+                     registered, so no schedule has been imported for anyone. -->
+                <epm-status-pill
+                  kind="schedule-import-status"
+                  [code]="r.scheduleImported ? 'published' : 'pending'" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
+  </div>
+}

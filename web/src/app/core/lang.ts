@@ -141,6 +141,24 @@ const STR = {
   empty_alerts_t:  { ar: 'لا توجد تنبيهات',                 en: 'No alerts' },
   empty_alerts_b:  { ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
 
+  // schedule control — ported from DScheduleControl (v1.1, enterprise-areas.jsx:8).
+  // The sc_* keys are verbatim from the reference's own STR map (data.jsx:237).
+  schedule_sub:    { ar: 'صحة الجداول الزمنية عبر المحفظة', en: 'Portfolio-wide schedule health' },
+  sc_avg_delay:    { ar: 'متوسط التأخر',                    en: 'Avg. delay' },
+  sc_delayed:      { ar: 'مشاريع متأخرة',                   en: 'Delayed projects' },
+  sc_critical:     { ar: 'أنشطة حرجة',                      en: 'Critical activities' },
+  sc_ontrack:      { ar: 'ضمن الجدول',                      en: 'On track' },
+  sc_import_status:{ ar: 'حالة الاستيراد',                  en: 'Import status' },
+  /** Neither delayed nor on track — no contract, or no forecast recorded. */
+  sc_no_schedule:  { ar: 'بلا موقف زمني',                   en: 'No schedule position' },
+  sc_no_schedule_note:{ ar: 'مشاريع بلا موقف زمني — غير محسوبة ضمن المتأخرة ولا ضمن ما هو ضمن الجدول:', en: 'Projects with no schedule position — counted in neither delayed nor on track:' },
+  /** Fallback only; the real reason ships from the server beside the rule. */
+  sc_critical_needs:{ ar: 'يتطلب جدول الأنشطة وعلاقات التتابع.', en: 'Needs the activity schedule and its dependencies.' },
+  col_baseline_finish:{ ar: 'إنجاز مخطط',                   en: 'Baseline finish' },
+  col_forecast_finish:{ ar: 'إنجاز متوقع',                  en: 'Forecast' },
+  empty_schedule_t:{ ar: 'لا توجد مشاريع بعد',              en: 'No projects yet' },
+  empty_schedule_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
   empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },
