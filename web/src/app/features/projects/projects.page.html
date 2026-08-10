@@ -1,61 +1,31 @@
 <!--
-  SCR-E2 Projects list.
+  SCR-E2 Projects list — on the v1.1 page skeleton (Phase 1.5).
 
-  PORTED from DProjectsAll — docs/spec/reference/app/enterprise-areas.jsx:112.
-  Structure, class names and column order follow the reference: .d-field search,
-  .d-fchip filter chips with a .n count, and a .d-table whose Project cell holds
-  the name with the id beneath it in mono.
+  ZONE CONTRACT (v1.1 design language §"Standard page skeleton"):
+    Z2  <epm-page-head>  breadcrumb → title → action cluster
+    Z6  .d-toolbar       search + filter chips + result count, as the FIRST
+                         CHILD of .d-tablewrap so it renders as the card's top
+                         strip — filters live above the grid, never in the dark
+                         global bar and never floating over the grid
+    Z7  table.d-table    the content
+        <epm-pager>      bottom strip of the same card
 
-  Classes come from src/styles/desktop.css, copied verbatim. Before inventing a
-  class, grep that file — it almost certainly already exists.
+  The whole register is ONE bordered .d-tablewrap card: toolbar strip, rows,
+  pager strip. That is the v1.1 data-grid standard, and it replaces the bespoke
+  .d-proj-filters bar this page used before.
 
-  Every figure is bidi-isolated with <bdi> (05 §5.2).
+  Classes come from src/styles/, copied verbatim. Every figure is <bdi>-isolated
+  (05 §5.2).
 -->
-<!--
-  Heading and subtitle both switch on scope (reference line 130):
-  scoped  → "المشاريع"    + the workspace's own name
-  all     → "كل المشاريع" + the cross-portfolio line
--->
-<div class="d-page-head">
-  <div>
-    <h1>{{ workspace() ? lang.t('nav_projects') : lang.t('nav_projects_all') }}</h1>
-    <p>{{ workspace() ? scopeName() : lang.t('projects_sub') }}</p>
-  </div>
-</div>
-
-<div class="d-proj-filters">
-  <div class="d-field">
-    <epm-icon name="search" [size]="16" />
-    <input
-      type="search"
-      [placeholder]="lang.t('search_projects')"
-      [value]="q()"
-      (input)="onSearch($any($event.target).value)" />
-  </div>
-
-  <div class="d-proj-chips">
-    <button class="d-fchip" [class.on]="status() === ''" (click)="setStatus('')">
-      {{ lang.t('all') }}<span class="n">{{ totalCount() }}</span>
-    </button>
-    @for (s of statuses; track s.code) {
-      <button class="d-fchip" [class.on]="status() === s.code" (click)="setStatus(s.code)">
-        {{ lang.pick(s.ar, s.en) }}<span class="n">{{ count(s.code) }}</span>
-      </button>
-    }
-  </div>
-</div>
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="workspace() ? lang.t('nav_projects') : lang.t('nav_projects_all')"
+  [sub]="workspace() ? scopeName() : lang.t('projects_sub')">
+</epm-page-head>
 
 @if (loading()) {
   <!-- 04 §9: skeleton rows matching the table's real shape -->
-  <div class="d-tablewrap">
-    <table class="d-table">
-      <tbody>
-        @for (i of [1,2,3,4,5]; track i) {
-          <tr><td [attr.colspan]="colCount()"><div class="d-skel d-skel-row"></div></td></tr>
-        }
-      </tbody>
-    </table>
-  </div>
+  <epm-table-skeleton [cols]="colCount()" [rows]="5" [loadingLabel]="lang.t('loading')" />
 } @else if (error()) {
   <!-- 04 §9: error is inline, in the pane that failed, with a retry -->
   <div class="d-empty">
@@ -72,64 +42,110 @@
     <span>{{ lang.t('empty_projects_b') }}</span>
     <button class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
   </div>
-} @else if (rows().length === 0) {
-  <!-- empty BECAUSE A FILTER EXCLUDED EVERYTHING — different problem, different fix -->
-  <div class="d-empty">
-    <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
-    <b>{{ lang.t('empty_filter_t') }}</b>
-    <span>{{ lang.t('empty_filter_b') }}</span>
-    <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
-  </div>
 } @else {
   <div class="d-tablewrap">
-    <table class="d-table">
-      <thead>
-        <tr>
-          <th>{{ lang.t('col_project') }}</th>
-          <!-- Enterprise view only. Inside one workspace every row would repeat
-               the same value, so the reference hides it (`{{ '{' }}!scopeWs && …}`). -->
-          @if (showWorkspaceCol()) {
-            <th>{{ lang.t('col_workspace') }}</th>
-          }
-          <th>{{ lang.t('col_branch') }}</th>
-          <th>{{ lang.t('col_status') }}</th>
-          <th>{{ lang.t('col_physical') }}</th>
-          <th>{{ lang.t('col_cost') }}</th>
-          <th>{{ lang.t('col_updated') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (p of rows(); track p.id) {
-          <tr>
-            <td class="d-cell-strong">
-              {{ lang.pick(p.nameAr, p.nameEn) }}
-              <div class="d-cell-sub mono"><bdi>{{ p.id }}</bdi></div>
-            </td>
-            @if (showWorkspaceCol()) {
-              <td class="d-cell-sub">{{ lang.pick(p.workspaceNameAr, p.workspaceNameEn) }}</td>
-            }
-            <td class="d-cell-sub">{{ p.branch }}</td>
-            <td>
-              <!-- 05 §7.6: status is NEVER colour-only — the pill always carries its label -->
-              <span class="d-pill {{ statusClass(p.status) }}">{{ statusLabel(p.status) }}</span>
-            </td>
-            <td>
-              @if (p.physicalPct !== null) {
-                <span class="d-mini-bar" style="display:inline-flex">
-                  <span class="t" style="width:70px"><span [style.width.%]="p.physicalPct"></span></span>
-                  <span class="pc"><bdi>{{ fmt.pct(p.physicalPct, 0) }}</bdi></span>
-                </span>
-              } @else {
-                <!-- Derived from BOQ progress (BR-04), which does not exist yet.
-                     A 0% bar would be a lie; an em dash is the truth. -->
-                <span class="d-cell-sub">—</span>
-              }
-            </td>
-            <td class="mono"><bdi>{{ fmt.money(p.cost) }}</bdi></td>
-            <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></td>
-          </tr>
+
+    <!-- Z6 — the toolbar IS the card's top strip -->
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_projects')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="status() === ''" (click)="setStatus('')">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ totalCount() }}</bdi></span>
+        </button>
+        <!-- 06 §1, from the Lookups table (EP-LKP-01) — never hard-coded here -->
+        @for (s of statuses(); track s.code) {
+          <button class="d-fchip" [class.on]="status() === s.code" (click)="setStatus(s.code)">
+            {{ lang.pick(s.nameAr, s.nameEn) }}<span class="n"><bdi>{{ count(s.code) }}</bdi></span>
+          </button>
         }
-      </tbody>
-    </table>
+      </div>
+
+      <span class="sp"></span>
+
+      <!-- v1.1: a single Clear appears only while a filter or query is active -->
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <!-- v1.1: the result count is always visible -->
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    @if (rows().length === 0) {
+      <!-- empty BECAUSE A FILTER EXCLUDED EVERYTHING — different problem, different fix -->
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_filter_t') }}</b>
+        <span>{{ lang.t('empty_filter_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th>{{ lang.t('col_project') }}</th>
+            <!-- Enterprise view only. Inside one workspace every row would repeat
+                 the same value, so the reference hides it. -->
+            @if (showWorkspaceCol()) {
+              <th>{{ lang.t('col_workspace') }}</th>
+            }
+            <th>{{ lang.t('col_branch') }}</th>
+            <th>{{ lang.t('col_status') }}</th>
+            <th>{{ lang.t('col_physical') }}</th>
+            <th class="num">{{ lang.t('col_cost') }}</th>
+            <th>{{ lang.t('col_updated') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pageRows(); track p.id) {
+            <tr>
+              <td class="d-cell-strong">
+                {{ lang.pick(p.nameAr, p.nameEn) }}
+                <div class="d-cell-sub mono"><bdi>{{ p.id }}</bdi></div>
+              </td>
+              @if (showWorkspaceCol()) {
+                <td class="d-cell-sub">{{ lang.pick(p.workspaceNameAr, p.workspaceNameEn) }}</td>
+              }
+              <td class="d-cell-sub">{{ p.branch }}</td>
+              <td>
+                <!-- 05 §7.6: status is NEVER colour-only. The primitive has no
+                     input that could suppress the label. -->
+                <epm-status-pill kind="project-status" [code]="p.status" />
+              </td>
+              <td>
+                @if (p.physicalPct !== null) {
+                  <span class="d-mini-bar" style="display:inline-flex">
+                    <span class="t" style="width:70px"><span [style.width.%]="p.physicalPct"></span></span>
+                    <span class="pc"><bdi>{{ fmt.pct(p.physicalPct, 0) }}</bdi></span>
+                  </span>
+                } @else {
+                  <!-- Derived from BOQ progress (BR-04), which does not exist yet.
+                       A 0% bar would be a lie; an em dash is the truth. -->
+                  <span class="d-cell-sub">—</span>
+                }
+              </td>
+              <td class="mono num"><bdi>{{ fmt.money(p.cost) }}</bdi></td>
+              <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Bottom strip of the same card -->
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
   </div>
 }

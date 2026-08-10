@@ -225,13 +225,13 @@ stateDiagram-v2
 | Change how a figure is displayed | `core/format.ts` only |
 | Change a filter or the query | `ProjectsEndpoints.cs` only |
 | Change how project value is calculated | `Domain/ProjectValue.cs` only — it is the single definition |
-| Change a label | `core/lang.ts` (UI chrome) — enum labels will move to the `Lookups` table |
+| Change a label | `core/lang.ts` for UI chrome; `Features/Lookups/LookupCatalog.cs` for any enum label (status chips read `EP-LKP-01`) |
 | Restyle anything | Look in `web/src/styles/` first. Only add to `web/src/styles.css` if the class genuinely does not exist |
 
 ---
 
 ## 7. Known gaps
 
-- **`ExecutionStage` renders its raw code** (`finishes`, `handover`) instead of an Arabic label. The `Lookups` table (`06`) is not wired yet; the page that adds it fixes every enum column across the app at once.
+- **`ExecutionStage` is stored but not shown.** `DProjectsAll` has no stage column, so the list does not render it; the value is on `Projects` for the workspace tabs that will. Its Arabic label is now available from `Lookups` (`EP-LKP-01`, `execution-stage`) when a screen needs it. *(An earlier version of this note claimed the raw code was showing on this screen. It was not — the column set is Project · Workspace · Branch · Status · Physical · Cost · Updated.)*
 - **Project value uses `OriginalValue`.** It should use the *effective* value — original plus applied amendment deltas (`02 §9`). The Contract page adds `ContractAmendments`; only the argument passed to `ProjectValue.Total` changes.
 - **`physicalPct` / `financialPct` are absent.** They need BOQ progress (BR-04) and payments respectively.

@@ -1,0 +1,129 @@
+<!--
+  SCR-E4 Entities — v1.1 page skeleton.
+  Ported from DSpaces, docs/spec/reference/app/desktop-views.jsx:375.
+
+  Column order follows the reference: code · name · type · active · projects ·
+  completion, with value added (derivable now via BR-09).
+
+  Sortable headers carry an explicit direction ICON, never colour alone (05 §7.8).
+  Every figure is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_entities')"
+  [sub]="lang.t('entities_sub')">
+</epm-page-head>
+
+@if (loading()) {
+  <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (rows().length === 0 && isUnfiltered()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="apartment" [size]="30" /></span>
+    <b>{{ lang.t('empty_entities_t') }}</b>
+    <span>{{ lang.t('empty_entities_b') }}</span>
+  </div>
+} @else {
+  <div class="d-tablewrap">
+
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_entities')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="kind() === ''" (click)="setKind('')">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ totalCount() }}</bdi></span>
+        </button>
+        <!-- 06 §6 entity kinds, labelled from Lookups (EP-LKP-01) -->
+        @for (k of kinds(); track k) {
+          <button class="d-fchip" [class.on]="kind() === k" (click)="setKind(k)">
+            {{ kindLabel(k) }}<span class="n"><bdi>{{ count(k) }}</bdi></span>
+          </button>
+        }
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    @if (rows().length === 0) {
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_filter_t') }}</b>
+        <span>{{ lang.t('empty_filter_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th style="width:92px">{{ lang.t('col_code') }}</th>
+            <th class="sortable" (click)="toggleSort('name')">
+              {{ lang.t('col_entity') }}<epm-icon class="s-ico" [name]="sortIcon('name')" [size]="14" />
+            </th>
+            <th>{{ lang.t('col_type') }}</th>
+            <th class="sortable num" (click)="toggleSort('activeCount')">
+              {{ lang.t('col_active') }}<epm-icon class="s-ico" [name]="sortIcon('activeCount')" [size]="14" />
+            </th>
+            <th class="sortable num" (click)="toggleSort('projectCount')">
+              {{ lang.t('nav_projects') }}<epm-icon class="s-ico" [name]="sortIcon('projectCount')" [size]="14" />
+            </th>
+            <th class="sortable num" (click)="toggleSort('value')">
+              {{ lang.t('col_value') }}<epm-icon class="s-ico" [name]="sortIcon('value')" [size]="14" />
+            </th>
+            <th style="width:190px">{{ lang.t('col_completion') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of pageRows(); track e.code) {
+            <tr>
+              <td class="mono d-cell-sub"><bdi>{{ e.code }}</bdi></td>
+              <td class="d-cell-strong">{{ lang.pick(e.nameAr, e.nameEn) }}</td>
+              <td class="d-cell-sub">{{ kindLabel(e.kind) }}</td>
+              <td class="num"><bdi>{{ e.activeCount }}</bdi></td>
+              <td class="num"><bdi>{{ e.projectCount }}</bdi></td>
+              <!-- Σ EFFECTIVE contract values under this entity (BR-00 → BR-09) -->
+              <td class="num mono"><bdi>{{ fmt.money(e.value) }}</bdi></td>
+              <td>
+                @if (e.completionPct !== null) {
+                  <div class="d-progress">
+                    <span class="t"><span [style.width.%]="e.completionPct"></span></span>
+                    <span class="pc"><bdi>{{ fmt.pct(e.completionPct, 0) }}</bdi></span>
+                  </div>
+                } @else {
+                  <!-- Weight-rolled BOQ progress (BR-04) does not exist yet.
+                       A 0% bar would assert nothing has been built (P-09). -->
+                  <span class="d-cell-sub">—</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
+  </div>
+}

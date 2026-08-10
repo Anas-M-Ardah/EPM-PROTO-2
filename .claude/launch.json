@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "api/Epm.Api"],
+      "port": 5080
+    },
+    {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start", "--prefix", "web", "--", "--proxy-config", "web/proxy.conf.json"],
-      "port": 4200
+      "runtimeArgs": ["start", "--prefix", "web"],
+      "port": 4300
     }
   ]
 }

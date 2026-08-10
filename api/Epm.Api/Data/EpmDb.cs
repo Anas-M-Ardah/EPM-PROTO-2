@@ -38,6 +38,15 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
+    // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
+    public DbSet<Lookup> Lookups => Set<Lookup>();
+
+    // ── PAGE-02 Contracts list (SCR-E3) ──────────────────────────────────
+    // Amendments are what make a contract's EFFECTIVE value derivable (BR-09).
+    // Only rows with AppliedAt != null move the effective figures; approved-
+    // but-unapplied rows are a projection and are never folded in (02 §9).
+    public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -46,6 +55,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         b.Entity<Project>().HasKey(x => x.Id);
         b.Entity<Contract>().HasKey(x => x.Id);
         b.Entity<Workspace>().HasKey(x => x.Code);
+
+        // Lookup is the one table with a surrogate key: (Kind, Code) is the
+        // real identity but it is compared in the endpoint, not enforced here
+        // (P-01 — invariants live where they can be read).
+        b.Entity<Lookup>().HasKey(x => x.Id);
+        b.Entity<ContractAmendment>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

@@ -1,0 +1,118 @@
+<!--
+  SCR-E1 Executive Portfolio — v1.1 page skeleton.
+  Ported from DDashboard, docs/spec/reference/app/desktop-views.jsx:45.
+
+  The KPI band is ONE hairline-divided band on an auto-fit grid (04 §3, 05 §8) —
+  never floating cards, never a pinned column count.
+
+  The status donut is the SINGLE place status colour encodes data (05 §1), and
+  it is paired with a legend so nothing is colour-only (05 §7.6).
+
+  Figures that cannot yet be derived are rendered as explicit "unavailable +
+  reason" tiles, never as 0 (v1.1 design language §States, P-09).
+
+  Every figure is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_portfolio')"
+  [sub]="lang.t('portfolio_sub')">
+</epm-page-head>
+
+@if (loading()) {
+  <div class="d-grid stats fit">
+    @for (i of [1,2,3,4,5]; track i) {
+      <div class="d-stat"><span class="d-skel" style="width:60%;height:12px;display:block"></span>
+        <span class="d-skel" style="width:80%;height:22px;display:block;margin-top:8px"></span></div>
+    }
+  </div>
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (data()) {
+  <!-- `as` binds only on a primary @if, so the alias is taken here. -->
+  @if (data(); as d) {
+
+  @if (d.projectCount === 0) {
+    <div class="d-empty">
+      <span class="d-empty-ico"><epm-icon name="dashboard" [size]="30" /></span>
+      <b>{{ lang.t('empty_portfolio_t') }}</b>
+      <span>{{ lang.t('empty_portfolio_b') }}</span>
+    </div>
+  } @else {
+
+    <!-- The contractual position — what the system can actually defend -->
+    <epm-summary-strip [stats]="stats()" />
+
+    <!-- 02 §9 — approved but NOT applied. A projection, stated as one, kept
+         out of every figure above. Rendered only when it exists. -->
+    @if (hasPending()) {
+      <div class="d-msgbar">
+        <epm-icon name="info" [size]="16" />
+        <span>
+          {{ lang.t('portfolio_pending_note') }}
+          <bdi class="mono">{{ fmt.money(d.pendingValue) }}</bdi>
+          ({{ d.pendingAmendmentCount }})
+        </span>
+      </div>
+    }
+
+    <div class="d-grid c2">
+
+      <!-- Status distribution — the one chart that uses status colour -->
+      <div class="d-panel">
+        <div class="d-panel-head"><b>{{ lang.t('portfolio_by_status') }}</b></div>
+        <div class="epm-donut-row">
+          <epm-donut [segments]="statusSegments()" [centerLabel]="lang.t('kpi_projects')" />
+          <!-- The legend is not decoration: it is what stops the donut being
+               colour-only (05 §7.6). Label AND count, always. -->
+          <ul class="epm-legend">
+            @for (s of statusSegments(); track s.label) {
+              <li>
+                <span class="dot" [style.background]="s.color" aria-hidden="true"></span>
+                <span class="l">{{ s.label }}</span>
+                <span class="v mono"><bdi>{{ s.value }}</bdi></span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <!-- Value by entity — viz ramp, never status colour (05 §7.5) -->
+      <div class="d-panel">
+        <div class="d-panel-head"><b>{{ lang.t('portfolio_by_entity') }}</b></div>
+        <ul class="epm-bars">
+          @for (e of entityBars(); track e.code) {
+            <li>
+              <span class="l">{{ entityName(e) }}</span>
+              <span class="t"><span [style.width.%]="e.pct"></span></span>
+              <span class="v mono"><bdi>{{ fmt.money(e.value) }}</bdi></span>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+
+    <!-- Honestly absent. Each names what it is waiting for. -->
+    <div class="d-panel">
+      <div class="d-panel-head"><b>{{ lang.t('portfolio_unavailable') }}</b></div>
+      <div class="d-grid stats fit">
+        @for (u of d.unavailable; track u.key) {
+          <!-- `in` is required: .d-grid.stats .d-stat starts at opacity 0 and is
+               revealed by the class the summary-strip's count-up adds. These
+               tiles carry no animated figure, so they are born settled. -->
+          <div class="d-stat epm-stat-na in">
+            <span class="d-stat-lbl">{{ unavailableLabel(u.key) }}</span>
+            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
+            <span class="d-stat-foot">{{ unavailableReason(u) }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+  }
+}

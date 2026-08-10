@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Amendments = Epm.Api.Domain.Amendments;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Projects;
@@ -40,7 +41,15 @@ public static class ProjectsEndpoints
             var ids = projects.Select(p => p.Id).ToList();
             var contracts = await db.Contracts.AsNoTracking()
                 .Where(c => ids.Contains(c.ProjectId))
-                .Select(c => new { c.ProjectId, c.OriginalValue })
+                .Select(c => new { c.Id, c.ProjectId, c.OriginalValue, c.OriginalFinish, c.OriginalDurationDays })
+                .ToListAsync();
+
+            // PAGE-02 closed the BR-00 gap: project value is Σ contract
+            // EFFECTIVE values (01 §3), not Σ original ones. Amendments are
+            // registered now, so the real figure is derivable.
+            var contractIds = contracts.Select(c => c.Id).ToList();
+            var amendments = await db.ContractAmendments.AsNoTracking()
+                .Where(a => contractIds.Contains(a.ContractId))
                 .ToListAsync();
 
             var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
@@ -51,9 +60,21 @@ public static class ProjectsEndpoints
                 var ws = workspaces.FirstOrDefault(w => w.Code == p.WorkspaceCode);
 
                 // DERIVED — 01 §3. Computed here via the Domain layer, never stored.
-                // Once the Contract page registers amendments this passes effective
-                // values instead of original ones; the call site does not change.
-                var cost = ProjectValue.Total(mine.Select(c => c.OriginalValue));
+                // Each contract's EFFECTIVE value (BR-09) = original + Σ APPLIED
+                // amendment deltas. Approved-but-unapplied orders stay out: they
+                // are a projection and folding them in would overstate what the
+                // ministry is committed to (02 §9, non-negotiable #2).
+                var cost = ProjectValue.Total(mine.Select(c =>
+                {
+                    var deltas = amendments
+                        .Where(a => a.ContractId == c.Id)
+                        .OrderBy(a => a.No)
+                        .Select(a => new Amendments.Delta(a.No, a.DeltaValue, a.DeltaDays, a.AppliedAt != null))
+                        .ToList();
+
+                    var original = new Amendments.Version(0, c.OriginalValue, c.OriginalFinish, c.OriginalDurationDays);
+                    return Amendments.Effective(original, deltas).Value;
+                }));
 
                 return new ProjectRow(
                     p.Id, p.NameAr, p.NameEn,

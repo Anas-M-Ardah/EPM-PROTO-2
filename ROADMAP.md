@@ -134,45 +134,113 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 
 ---
 
-## Phase 1 — Shared primitives and the rules
+## Phase 1 — Shared primitives and the rules ✅ COMPLETE
 
 Everything downstream depends on these. Do them before fanning out.
 
-### 1.1 Lookups — unblocks every enum column in the app
-- [ ] Register `Lookup` DbSet; fill `Fixture.cs` from `06-DATA-DICTIONARY.md` (all 20 kinds)
-- [ ] `EP-LKP-01` `GET /api/lookups` — grouped by kind
-- [ ] `core/lookups.ts` — loads once, `label(kind, code)` returns the AR/EN name
-- [ ] Replace the inline `statuses` array in `projects.page.ts` with it
-- [ ] **Fixes the raw `finishes` / `handover` codes now showing on the Projects list**
-- [ ] `docs/uml/lookups.md` · `TRACE.md` row
+**Exit state:** `dotnet test` 128/128 green · `dotnet build` and `ng build` both clean ·
+`EP-LKP-01`, `EP-DOCS-01` verified live · Projects list checked at 1440 and 1024.
 
-### 1.2 Domain rules — the specification as code
-Port from `docs/spec/reference/prototype-lite/core/domain.js`, which already carries
-`@rule` / `@spec` / `@example` annotations in the right shape.
+**Four items need client confirmation before they harden** — P-12 (which execution-stage
+list), P-13 (the two `co-lifecycle` states missing from `06 §7`), P-18 (field-grid column
+count), and the pre-existing D-01…D-05. See [DECISIONS.md](DECISIONS.md).
 
-- [ ] `Rounding.LargestRemainder` — the exact-100.00% helper (D-07)
-- [ ] `BoqWeights` BR-01 · `ScheduleWeights` BR-02 · `Allocation` BR-03 · `ProgressReflection` BR-04
-- [ ] `TierSplit` BR-05 — **the 20% rule**, per line, against the *original* quantity (D-01)
-- [ ] `Proposals` BR-06 · `ChangeOrderGates` BR-07 · `Distribution` BR-08
-- [ ] `Amendments` BR-09 · `Penalty` BR-10 · `EarnedValue` BR-11 · `SlaLeadTime` BR-12
-- [ ] `WorkflowMachine` BR-13 · `ViewerRelation` BR-14
-- [ ] One xUnit file per rule, asserting the worked example from `02-BUSINESS-RULES.md`
-- [ ] Property test: BOQ weights sum to exactly 100.00 for any input set
-- [ ] **Tests must not read the database** — examples stay inline, so a wrong fixture cannot make a test lie
-- [ ] `RuleCatalog.cs` + `EP-DOCS-01` `GET /api/docs/rules` executing every example live
+### 1.1 Lookups — unblocks every enum column in the app ✅ COMPLETE
+- [x] Register `Lookup` DbSet; all 20 kinds (117 rows) from `06-DATA-DICTIONARY.md`
+      — in `Features/Lookups/LookupCatalog.cs`, called by `Fixture.Load()` (P-11)
+- [x] `EP-LKP-01` `GET /api/lookups` — grouped by kind, in spec order
+- [x] `core/lookups.ts` — loads once (shareReplay), `label(kind, code)` returns the AR/EN name
+- [x] Replace the inline `statuses` array in `projects.page.ts` with it
+- [x] `docs/uml/lookups.md` · `TRACE.md` row
+- [x] Verified in the browser: every enum value the fixture stores resolves to a label;
+      AR↔EN toggle swaps chips and pills from the API payload; one fetch per session;
+      `load-fixture` refetches; empty-db and 1024 both clean
+- ~~Fixes the raw `finishes` / `handover` codes now showing on the Projects list~~
+      **This was not true.** `DProjectsAll` has no stage column and the Projects list never
+      rendered `ExecutionStage`. The labels now exist for the workspace tabs that will.
 
-**Exit:** `dotnet test` green. 56.13 / 43.87 sums to exactly 100.00. Tier split of (100, +30)
-gives 20 at the original rate and 10 at the new one. Penalty example gives 6,100,000 → 1,680,000,
-waived 4,420,000.
+> **Behaviour change:** on an empty database the status filter chips no longer render —
+> `statuses()` comes from the Lookups table, which is empty until the fixture loads. Only
+> the *الكل / All* chip shows. This is correct (there is nothing to filter) but it is a
+> visible difference from the hard-coded array, so it is noted rather than discovered later.
 
-### 1.3 Shared UI primitives
-- [ ] `StatusPillComponent` from `DPill` — always carries a label, never colour-only (`05 §7.6`)
-- [ ] `SectionComponent` / `SecNavComponent` from `DSec` / `DSecNav`
-- [ ] `FieldGridComponent` from `DField` / `DFieldGrid` — `repeat(auto-fill, minmax(240px,1fr))`
-- [ ] `SummaryStripComponent` from `DStat` — grid `auto-fit minmax(120px,1fr)`, **never** a pinned column count (`05 §8`)
-- [ ] `TableSkeletonComponent` from `DTableSkeleton`
-- [ ] `DrawerComponent` from `DDrawer` — secondary detail goes in a drawer, not an expander (`04 §3`)
-- [ ] `docs/uml/_shared-primitives.md`
+### 1.2 Domain rules — the specification as code ✅ COMPLETE
+Ported from **`../epm/prototype-lite/core/domain.js`** — the base prototype's domain layer,
+which already carries the rule / spec / example annotations in the right shape.
+*(The path given here previously, `docs/spec/reference/prototype-lite/`, does not exist —
+the file is in the sibling `epm` repo. Signatures follow it: flat functions over plain
+values, not an object model.)*
+
+- [x] `Rounding.LargestRemainder` — the exact-100.00% helper (D-07)
+- [x] `BoqWeights` BR-01 · `ScheduleWeights` BR-02 · `Allocation` BR-03 · `ProgressReflection` BR-04
+- [x] `TierSplit` BR-05 — **the 20% rule**, per line, against the *original* quantity (D-01)
+- [x] `Proposals` BR-06 · `ChangeOrderGates` BR-07 · `Distribution` BR-08
+- [x] `Amendments` BR-09 · `Penalty` BR-10 · `EarnedValue` BR-11 · `SlaLeadTime` BR-12
+- [x] `WorkflowMachine` BR-13 · `ViewerRelation` BR-14
+- [x] One xUnit file per rule, asserting the worked example from `02-BUSINESS-RULES.md` — **128 tests**
+- [x] Property test: BOQ weights sum to exactly 100.00 across 500 random item sets
+- [x] **Tests do not read the database** — verified: `grep -rn "EpmDb\|DbContext" Domain/` returns nothing
+- [x] No clock in `Domain/` (D-06) — verified: `grep -rn "DateTime.Now"` returns nothing
+- [x] `RuleCatalog.cs` + `EP-DOCS-01` `GET /api/docs/rules` executing every example live
+- [x] `docs/uml/rules.md` · `TRACE.md` rows
+
+**Exit — all met.** `dotnet test` green (128/128). 56.13 / 43.87 sums to exactly 100.00.
+Tier split of (100, +30) gives 20 at the original rate and 10 at the new one. Penalty gives
+6,100,000 → 1,680,000, waived 4,420,000. All 14 rules verified live through `EP-DOCS-01`.
+
+### 1.3 Shared UI primitives ✅ COMPLETE
+All in `web/src/app/shared/`, standalone, `ViewEncapsulation.None`, **no component CSS**.
+
+- [x] `StatusPillComponent` from `DPill` — always carries a label, never colour-only (`05 §7.6`);
+      no input can suppress it. Labels come from `EP-LKP-01`, so it renders any 06 enum.
+      Owns the canonical→CSS map that was inline in `projects.page.ts` (P-08).
+- [x] `SectionComponent` / `SecNavComponent` from `DSec` / `DSecNav`
+- [x] `FieldGridComponent` from `DField` / `DFieldGrid` — **kept the reference's 2-column
+      `.d-form-grid`**, not `auto-fill minmax(240px,1fr)`: nothing in `05` requires auto-fill
+      here, and the cell borders depend on the 2-column count (P-18, needs CONFIRM)
+- [x] `SummaryStripComponent` from `DStat` — grid `auto-fit minmax(120px,1fr)` via
+      `.d-grid.stats.fit` in `styles.css`, since the copied sheet pins `repeat(4,1fr)` (P-17).
+      Count-up seeds the settled value and settles on hidden (`05 §6`).
+- [x] `TableSkeletonComponent` from `DTableSkeleton` — live on the Projects list
+- [x] `DrawerComponent` from `DDrawer` — secondary detail goes in a drawer, not an expander (`04 §3`)
+- [x] `docs/uml/_shared-primitives.md`
+- [x] `ng build` clean — **required fixing a syntax error in the verbatim `desktop.css`** (P-19)
+
+> **Verified:** `StatusPill` and `TableSkeleton` are rendering on the Projects list (pills
+> carry `d-pill stalled` + "متأخر" for the canonical `delayed`). The `.fit` override was
+> measured in the browser: 5 stats lay out 2+2+1 under the pinned rule, 5 equal tracks under
+> `.fit`. The other five primitives compile and follow their reference components but have no
+> consumer until Phase 3 — check each against its reference the first time a tab mounts it.
+
+---
+
+## Phase 1.5 — v1.1 design system ✅ COMPLETE
+
+Adopted from `epm@design/system-revamp`. **Done before Phase 2 deliberately**: the
+migration re-skins the class contract rather than renaming it, so it cost one screen
+today and would have cost 25+ after Phase 6.
+
+- [x] Stylesheets swapped verbatim — `tokens` `desktop` + new `boq.css`; 2,955 → 5,532 lines
+- [x] `boq.css` registered in `angular.json`; **Inter** loaded (tokens declare `--font-en: Inter`
+      but the branch's own `index.html` loads Roboto and never loads Inter — P-20)
+- [x] **Two accessibility values corrected** — `--outline` / `--viz-base` were 2.16:1 against a
+      binding ≥3:1 floor; now 3.31:1 light / 3.43:1 dark, overridden in `styles.css` so the
+      copied sheets stay verbatim (P-21)
+- [x] `.d-proj-filters` / `.d-proj-chips` deleted — superseded by the standard `.d-toolbar`
+- [x] P-19 patch dropped — the upstream typo is fixed in v1.1
+- [x] `.d-grid.stats.fit` kept — v1.1 **still** pins `repeat(4, 1fr)` (P-17 stands)
+- [x] `SummaryStripComponent` reworked to the new `DStat` (icon tile + watermark retired,
+      label→value→delta→bar→foot; count-up unchanged)
+- [x] New primitives: **`epm-page-head`** (Z2 breadcrumb · title · action cluster) and
+      **`epm-pager`** (from–to of total, windowed pages, RTL-aware, page size 15/30/60)
+- [x] Projects list moved onto the v1.1 page skeleton — one bordered card containing
+      toolbar strip → table → pager strip, with an always-visible result count
+- [x] `05-DESIGN-SYSTEM.md` re-baselined; every ratio **measured in the running app**
+- [x] Verified: `ng build` clean · AR + EN · light + dark · 1440 + 1024 · 128 API tests still green
+
+> **Still open from the adoption:** `--tertiary` is now the same blue as
+> `--status-ongoing-tx` (`05 §1.5`). If it is used as a decorative accent anywhere, that
+> breaks `05 §7.5` — audit its usages before Phase 2 fans out.
 
 ---
 
@@ -180,25 +248,38 @@ waived 4,420,000.
 
 Independent of each other. Can run in parallel once Phase 1 lands.
 
-### 2.1 Contracts list — SCR-E3 · `DContractsAll` `enterprise-areas.jsx:160`
-- [ ] Register `ContractAmendment` DbSet
-- [ ] `Domain/Amendments.cs` (BR-09) — effective value = original + Σ **applied** deltas
-- [ ] `EP-CNT-01` `GET /api/contracts`
-- [ ] **Then fix `ProjectValue.Total` callers to pass effective values, not original** (`02 §9`)
-- [ ] Angular trio · UML · TRACE row
+### 2.1 Contracts list — SCR-E3 · `DContractsAll` `enterprise-areas.jsx:299` (v1.1) ✅ COMPLETE
+- [x] Register `ContractAmendment` DbSet
+- [x] `Domain/Amendments.cs` (BR-09) — effective value = original + Σ **applied** deltas
+- [x] `EP-CNT-01` `GET /api/contracts`
+- [x] **`ProjectValue.Total` now receives effective values** — `PRJ-0279` moved 340M → 350M
+- [x] Angular trio · TRACE row · label corrected to **العقود** (`nav_contracts_all`)
 
-### 2.2 Entities / Beneficiaries — SCR-E4 · `DSpaces` `desktop-views.jsx:255`
-- [ ] Register `Beneficiary` + `Workspace` DbSets; beneficiary tree via `ParentCode`
-- [ ] `EP-ENT-01` `GET /api/beneficiaries` — dense sortable master table
-- [ ] Angular trio · UML · TRACE row
+### 2.2 Entities — SCR-E4 · `DSpaces` `desktop-views.jsx:375` (v1.1) ✅ COMPLETE
+- [x] `EP-ENT-01` `GET /api/entities` — dense sortable master table over `Workspaces`
+- [x] Sortable name / active / projects / value, direction by icon not colour (`05 §7.8`)
+- [x] Angular trio · TRACE row
 
-### 2.3 Executive Portfolio — SCR-E1 · `DDashboard` `desktop-views.jsx:45`
-- [ ] KPI strip as **one hairline-divided band**, not floating cards (`04 §3`)
-- [ ] Contract-status donut — the single place status colours carry data (`05 §1`)
-- [ ] Cost-comparison bars, annual-spend line, project timelines, milestones — `--viz-*` ramp only
-- [ ] Port `DDonutMulti` · `DBarCompare` · `DLineTrend` · `DSCurve` · `DTlMini`
-- [ ] Count-up animations must **seed the settled value** and respect `prefers-reduced-motion` (`05 §6`)
-- [ ] `EP-PRT-01` · Angular trio · UML · TRACE row
+> **Scope correction.** The reference component named here (`DSpaces`) renders
+> **workspaces**, and the branch has no beneficiaries screen at all. Entities own
+> projects; **beneficiaries receive quantity** (`01 §2.1`) and are a different list.
+> Beneficiaries move to Phase 4.2, where BOQ distribution first needs them. See P-24.
+
+### 2.3 Executive Portfolio — SCR-E1 · `DDashboard` `desktop-views.jsx:45` (v1.1) ✅ COMPLETE
+- [x] KPI band as **one hairline-divided band** on an auto-fit grid, not floating cards
+- [x] Contract-status donut — the single place status colours carry data (`05 §1`),
+      paired with a legend so nothing is colour-only (`05 §7.6`)
+- [x] Effective value by entity — `--viz-*` ramp, never status colour
+- [x] Approved-but-unapplied shown as a labelled **projection**, never folded in (`02 §9`)
+- [x] Count-up seeds the settled value and respects `prefers-reduced-motion` (`05 §6`)
+- [x] `EP-PRT-01` · Angular trio · TRACE row
+
+> **Physical %, financial %, SPI, CPI and the S-curve are NOT rendered as figures.**
+> Each needs an input that does not exist yet — weight-rolled BOQ progress (BR-04),
+> payments, or both (BR-11). They render as **"unavailable + reason"** tiles, which is
+> what the v1.1 design language requires: *"never render 0/100% for a missing input"*.
+> The reasons come from the server so they stay beside the rules that own them.
+> `DBarCompare` · `DLineTrend` · `DSCurve` · `DTlMini` arrive with those inputs in Phase 4.
 
 ### 2.4 Alerts Center — SCR-E6 · `DAlertsCenter` `enterprise-areas.jsx:65`
 - [ ] Register `Alert` DbSet · severity KPIs + aggregated feed
@@ -253,7 +334,11 @@ Where the value is. **Contract before BOQ; BOQ before everything else.**
 - [ ] `EP-BOQ-01..n` · Angular trio · UML · TRACE rows
 
 **Exit:** `CNT-0279-EM` reads 56.13% / 43.87%, footer sum exactly 100.00%.
-`BQ-003` linked to A5/A8 gives shares 52.7% / 47.3%, assigned 14,092,710 / 12,637,290, status **full**.
+`BQ-003` linked to A5/A8 gives shares 52.7% / 47.3%, assigned **14,094,000 / 12,636,000**, status **full**.
+
+> The figures 14,092,710 / 12,637,290 printed in `02 §3` come from unrounded underlying
+> weights, not from the stated 5.8 / 5.2 — `02 §4` says the same of its own example. The
+> rule's answer is 14,094,000 / 12,636,000 and `AllocationTests` asserts both. See P-15.
 
 ### 4.3 Schedule tab — SCR-W5 · `DModSchedule` + `DGantt`
 - [ ] Register `Activity` DbSet — WBS is a **path string**, not a tree table

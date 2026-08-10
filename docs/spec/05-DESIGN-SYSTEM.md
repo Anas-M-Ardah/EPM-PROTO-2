@@ -1,68 +1,100 @@
 # 05 — Design System
 
-Identity: **Autodesk Construction Cloud × Oracle Redwood** — charcoal command bar, warm greige canvas, Autodesk product blue as the interactive colour, Oracle Redwood red as the accent, squared geometry, dense tables.
+> **RE-BASELINED TO v1.1 — Phase 1.5, 2026-08-10.**
+> This document previously described the *Autodesk blue / warm-greige* system.
+> That system has been **superseded** by the v1.1 design system adopted from
+> `epm@design/system-revamp`. §1 below is rewritten from the shipped tokens and
+> **every ratio was measured in the running application**, not carried over.
+> The type scale, the §7 accessibility contract and the §8 cautions were not
+> loosened — §7 remains binding, and adopting v1.1 required correcting two of
+> its values to satisfy it (see §1.6 and P-21). Sections not touched by the
+> re-baseline still describe current behaviour.
+
+Identity: **cool-grey instrument panel** — dark command bar, cool neutral canvas,
+EPM blue as the single interactive colour, squared geometry, dense tables.
+Synthesised from Autodesk Construction Cloud (visual language), Primavera
+Unifier (record/workflow architecture), P6 (grids, WBS, Gantt), Procore
+(de-congestion) and Fluent 2 (foundation: spacing, type roles, focus, RTL).
 
 ---
 
 ## 1. Colour tokens
 
-### Brand ramps
-```
-Autodesk blue   navy-50  #e8f4fb   navy-100 #c6e4f5  navy-200 #93cdec  navy-300 #57b0dd
-                navy-400 #1f92cf   navy-500 #0d7fbf  navy-600 #0b6499 ← PRIMARY
-                navy-700 #094f7a   navy-800 #0a3f60  navy-900 #23262b ← command bar
-Redwood red     crimson-300 #e79087  crimson-400 #d76656  crimson-500 #c74634 ← accent
-                crimson-600 #a83729  crimson-700 #892b20
-```
+### 1.1 Semantic (light theme)
+| Token | Value | Measured | Use |
+|---|---|---|---|
+| `--primary` | `#1F5CDB` | 5.81:1 | interactive only — never a data series |
+| `--on-primary` | `#ffffff` | | |
+| `--tertiary` | `#1748B0` | 8.11:1 | **see §1.5 — this is now a blue, not the old Redwood accent** |
+| `--error` | `#C22B2E` | 5.71:1 | genuine adverse states only |
+| `--background` | `#F1F3F5` | | canvas / chrome |
+| `--surface-container-lowest` | `#ffffff` | | content sheet |
+| `--surface-container` | `#F6F7F9` | | header rows, disabled |
+| `--outline` | **`#858E9C`** | **3.31:1** | **borders and graphics only. Never text.** Corrected — see §1.6 |
+| `--outline-variant` | `#E1E5EA` | 1.27:1 | decorative separation only — exempt from the 3:1 floor |
+| `--stroke-default` | `#D5DAE1` | 1.41:1 | decorative separator — exempt |
+| `--on-surface` | `#1D2127` | 16.17:1 | body text |
+| `--on-surface-variant` | `#565E69` | 6.56:1 | secondary text |
+| `--topbar-bg` | `#1D2127` | | command bar |
 
-### Semantic (light theme)
-| Token | Value | Use |
-|---|---|---|
-| `--primary` | `#0b6499` | interactive only — never a data series |
-| `--on-primary` | `#ffffff` | |
-| `--primary-hover` | `#094f7a` | |
-| `--tertiary` | `#c74634` | accent; **not** an action colour on buttons (it collided with `--error`) |
-| `--error` | `#bc2c1a` | genuine adverse states only |
-| `--background` | `#eeece7` | canvas / chrome |
-| `--surface-container-lowest` | `#ffffff` | content sheet |
-| `--surface-container-low` | `#faf9f6` | hover / inset |
-| `--surface-container` | `#f3f1ed` | disabled background |
-| `--surface-container-high` | `#ece9e3` | row dividers |
-| `--surface-container-highest` | `#e4e0d9` | |
-| `--outline` | `#9b9389` | **borders and graphics only — 3.03:1. Never text.** |
-| `--outline-variant` | — | decorative separation only |
-| `--on-surface` | `#1c1a18` | |
-| `--on-surface-variant` | `#605a51` | secondary text — 6.82:1 |
-| `--topbar-fg` | `#f0f1f2` | command-bar text |
-| `--topbar-fg-dim` | `#a9adb4` | command-bar secondary |
+### 1.2 Status namespace
+Statuses keep their **own** tokens so no colour carries two meanings. Fills use
+the base value; **pill text uses the `-tx` variant**. All five measured on white:
 
-### Status namespace
-Statuses have their **own** tokens so no colour carries two meanings. Fills use the base value; **pill text uses the `-tx` variant** (which meets 4.5:1).
+| Status | Fill | Text | Measured |
+|---|---|---|---|
+| ongoing | `#1F5CDB` | `#1748B0` | 8.11:1 |
+| completed | `#177D48` | `#177D48` | 5.17:1 |
+| delayed | `#C22B2E` | `#C22B2E` | 5.71:1 |
+| suspended | `#9A6B05` | `#9A6B05` | 4.69:1 |
+| cancelled | `#565E69` | `#565E69` | 6.56:1 |
 
-| Status | Fill | Text |
-|---|---|---|
-| ongoing | `--status-ongoing #0b6499` | `#094f7a` |
-| completed | `--status-completed #1e8a52` | `#146b3e` |
-| delayed | `--status-delayed #bc2c1a` | `#bc2c1a` |
-| suspended | `--status-suspended #b1741a` | `#8a5a12` |
-| cancelled | `--status-cancelled #605a51` | `#605a51` |
+All clear the 4.5:1 text floor. Do **not** "equalise" them to a common ratio —
+that destroys the pairwise separation legend dots depend on.
 
-Pairwise ΔE (Lab) ranges 42–102 — all above the 25 threshold for 8px legend dots. Do **not** "equalise" these to a common contrast ratio: it destroys pairwise separation (measured: worst pair falls to ΔE 39).
+### 1.3 Data-visualisation ramp
+Series colours stay outside the status and interactive namespaces.
 
-### Data-visualisation ramp
-Series colours are deliberately outside the status and interactive namespaces.
+| Token | Value | Measured | Use |
+|---|---|---|---|
+| `--viz-1` | `#1F5CDB` | 5.81:1 | primary/actual series, progress fills, Gantt bars |
+| `--viz-2` | `#0F7480` | 5.48:1 | second series |
+| `--viz-3` | `#8B5CF6` | 4.23:1 | third series |
+| `--viz-track` | `#EAEDF0` | | planned/baseline fill |
+| `--viz-base` | **`#858E9C`** | **3.31:1** | baseline line, annotations, bar edges. Corrected — see §1.6 |
 
-| Token | Value | Use |
-|---|---|---|
-| `--viz-1` | `#0696d7` | primary/actual series, progress fills, Gantt bars |
-| `--viz-2` | `#7c83e8` | second series |
-| `--viz-3` | `#8c3f6b` | third series |
-| `--viz-track` | `#e4e0d9` | planned/baseline fill |
-| `--viz-base` | `#9b9389` | baseline line, annotations, bar edges (3.03:1 — graphics only) |
+**The dashboard status donut is the single exception** — it *is* status
+distribution, so it uses the status namespace.
 
-Pairwise ΔE: 1/2 = 35, 1/3 = 61, 2/3 = 49.
+### 1.4 Density, radius and control heights (new in v1.1)
+| Token | Value |
+|---|---|
+| `--r-xs / --r-sm / --r-md / --r-lg` | 2 / **4 (default)** / 6 / 8 px |
+| `--ctl-h-sm / md / lg` | 28 / **32** / 40 px |
+| `--row-h`, `--row-h-head` | 40 px |
+| `--cell-px` | 12 px |
+| `--page-pad`, `--section-gap` | 20 / 24 px |
 
-**The dashboard status donut is the single exception** — it *is* status distribution, so it uses the status namespace.
+A `[data-density="compact"]` override exists for dense registers.
+
+### 1.5 `--tertiary` is no longer an accent — OPEN
+v1.1 sets `--tertiary` to `#1748B0`, which is **the same blue as
+`--status-ongoing-tx`**. The Redwood red that this token carried is gone from
+the palette. §7.5 forbids one colour carrying two meanings, so `--tertiary`
+must not be used as a decorative accent anywhere it could be read as *ongoing*.
+**Audit its usages before Phase 2.** Recorded as an open question.
+
+### 1.6 Two values were corrected on adoption (P-21)
+v1.1 ships `--outline` and `--viz-base` at `#A9B1BC` — **2.16:1**, below the
+§7.1 floor of 3:1 for graphics. The palette they replaced sat at 3.03:1: the old
+values were chosen to pass, the new ones were not. Dark theme was worse
+(`#454C57` = 1.87:1).
+
+Both are corrected in `web/src/styles.css` — **`#858E9C`** (3.31:1) in light and
+**`#6B7484`** (3.43:1) in dark. These are the lightest values on v1.1's own
+neutral ramp that clear the floor, so the intended look is preserved as far as
+the contract allows. `--outline-variant` and `--stroke-default` are untouched:
+they are decorative separators, which WCAG 1.4.11 exempts.
 
 ---
 
@@ -145,8 +177,8 @@ label               11.5px / regular  / --on-surface-variant
 
 These came out of a formal adversarial audit; they are requirements, not preferences.
 
-1. **Text ≥ 4.5:1; borders, icons and graphics ≥ 3:1.**
-2. `--outline` and `--viz-base` are **graphic tokens**. Using them as text colour is a defect (2.57–3.03:1). Secondary text is `--on-surface-variant`.
+1. **Text ≥ 4.5:1; borders, icons and graphics ≥ 3:1.** Re-measured against v1.1 at Phase 1.5 — every token in §1 now carries its measured ratio, and the two that failed were corrected (§1.6).
+2. `--outline` and `--viz-base` are **graphic tokens**. Using them as text colour is a defect (3.31:1 — below the 4.5:1 text floor). Secondary text is `--on-surface-variant` (6.56:1).
 3. Fill hues (`--success`, `--warning`, status base values) are **never** text colours. Use the `-tx` variants.
 4. `18px/700` does **not** qualify as large text — it needs the full 4.5:1.
 5. **No colour carries two meanings.** Status colour never appears on a button, link or decoration; interactive colour never appears as a data series.

@@ -1,0 +1,153 @@
+<!--
+  SCR-E3 Contracts list — v1.1 page skeleton.
+  Ported from DContractsAll, docs/spec/reference/app/enterprise-areas.jsx:299.
+
+  Column order follows the reference: code · contract · contractor · start ·
+  finish · status · financial · value.
+
+  THE VALUE COLUMN IS THE EFFECTIVE VALUE (BR-09) — original plus APPLIED
+  amendments. Approved-but-unapplied deltas are shown as a separate labelled
+  note under the figure and are NEVER added into it (02 §9).
+
+  Every figure is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_contracts_all')"
+  [sub]="lang.t('contracts_sub')">
+</epm-page-head>
+
+@if (loading()) {
+  <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (rows().length === 0 && isUnfiltered()) {
+  <!-- empty BECAUSE THE DATABASE IS EMPTY — contracts arrive with the fixture -->
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+    <b>{{ lang.t('empty_contracts_t') }}</b>
+    <span>{{ lang.t('empty_contracts_b') }}</span>
+  </div>
+} @else {
+  <div class="d-tablewrap">
+
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_contracts')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="status() === ''" (click)="setStatus('')">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ totalCount() }}</bdi></span>
+        </button>
+        <!-- 06 §4 — the EXTENDED contract list, from Lookups (EP-LKP-01) -->
+        @for (s of activeStatuses(); track s.code) {
+          <button class="d-fchip" [class.on]="status() === s.code" (click)="setStatus(s.code)">
+            {{ lang.pick(s.nameAr, s.nameEn) }}<span class="n"><bdi>{{ count(s.code) }}</bdi></span>
+          </button>
+        }
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    @if (rows().length === 0) {
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_filter_t') }}</b>
+        <span>{{ lang.t('empty_filter_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th style="width:118px">{{ lang.t('col_code') }}</th>
+            <th>{{ lang.t('col_contract') }}</th>
+            <th>{{ lang.t('col_contractor') }}</th>
+            <th>{{ lang.t('col_start') }}</th>
+            <th>{{ lang.t('col_finish') }}</th>
+            <th>{{ lang.t('col_status') }}</th>
+            <th class="num">{{ lang.t('col_financial') }}</th>
+            <th class="num">{{ lang.t('col_value') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of pageRows(); track c.id) {
+            <tr>
+              <td class="mono d-cell-sub"><bdi>{{ c.id }}</bdi></td>
+              <td class="d-cell-strong">
+                {{ lang.pick(c.nameAr, c.nameEn) }}
+                <div class="d-cell-sub">{{ lang.pick(c.projectNameAr, c.projectNameEn) }}</div>
+              </td>
+              <td class="d-cell-sub">{{ c.contractor }}</td>
+              <td class="mono d-cell-sub"><bdi>{{ fmt.date(c.start) }}</bdi></td>
+              <td class="mono d-cell-sub">
+                <bdi>{{ fmt.date(c.effectiveFinish) }}</bdi>
+                <!-- An applied amendment moved the contractual finish (BR-09).
+                     Showing the original alongside it keeps the fact that it
+                     moved, and by how much, visible without a strikethrough. -->
+                @if (c.amendmentCount > 0 && c.effectiveFinish !== c.originalFinish) {
+                  <div class="d-cell-sub"><bdi>{{ lang.t('was') }} {{ fmt.date(c.originalFinish) }}</bdi></div>
+                }
+              </td>
+              <td>
+                <epm-status-pill kind="contract-status" [code]="c.status" />
+              </td>
+              <td class="num">
+                @if (c.financialPct !== null) {
+                  <bdi>{{ fmt.pct(c.financialPct, 0) }}</bdi>
+                } @else {
+                  <!-- Needs payments, which no page registers yet. A 0% would
+                       assert nothing has been paid — a different claim (P-09). -->
+                  <span class="d-cell-sub">—</span>
+                }
+              </td>
+              <td class="num mono">
+                <!-- THE EFFECTIVE VALUE — original + APPLIED amendments only -->
+                <bdi>{{ fmt.money(c.effectiveValue) }}</bdi>
+
+                @if (amendedBy(c); as delta) {
+                  <div class="d-cell-sub">
+                    <bdi>{{ lang.t('amended') }} {{ fmt.delta(delta) }}</bdi>
+                  </div>
+                }
+
+                <!-- 02 §9 — the projection. Labelled, separated, and NEVER
+                     added into the figure above it. -->
+                @if (pendingDelta(c); as pending) {
+                  <div class="d-cell-sub">
+                    <bdi>{{ lang.t('pending_apply') }} {{ fmt.delta(pending) }}</bdi>
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
+  </div>
+}

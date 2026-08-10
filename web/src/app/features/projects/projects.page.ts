@@ -1,8 +1,14 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { StatusPillComponent } from '../../shared/status-pill.component';
+import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
+import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
+import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
 import { ProjectsApi } from './projects.api';
 import { ProjectRow } from './projects.types';
@@ -27,7 +33,10 @@ import { ProjectRow } from './projects.types';
 @Component({
   selector: 'epm-projects-page',
   standalone: true,
-  imports: [IconComponent],
+  imports: [
+    IconComponent, StatusPillComponent, TableSkeletonComponent,
+    PageHeadComponent, PagerComponent,
+  ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './projects.page.html',
 })
@@ -36,6 +45,7 @@ export class ProjectsPage {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
+  lookups = inject(LookupsService);
   fmt = fmt;
 
   rows = signal<ProjectRow[]>([]);
@@ -75,6 +85,38 @@ export class ProjectsPage {
   /** True only when the database itself is empty, not when a filter excluded everything. */
   isUnfiltered = computed(() => !this.q() && !this.status());
 
+  /**
+   * Z2 breadcrumb. The last crumb is the current page and is never a link.
+   * Enterprise scope reads الوزارة › كل المشاريع; a workspace scope names it.
+   */
+  crumbs = computed<Crumb[]>(() => [
+    { label: this.workspace() ? this.scopeName() : this.lang.t('ministry_short') },
+    { label: this.workspace() ? this.lang.t('nav_projects') : this.lang.t('nav_projects_all') },
+  ]);
+
+  // ── Paging (v1.1 data-grid standard) ────────────────────────────────────
+  // The API returns the filtered set; the pager slices it client-side. That is
+  // honest at this scale — the fixture is 5 rows — and the slice moves to the
+  // endpoint the moment a real portfolio makes it worth a round trip.
+  page = signal(1);
+  pageSize = signal(15);
+
+  pageRows = computed(() => {
+    const start = (this.page() - 1) * this.pageSize();
+    return this.rows().slice(start, start + this.pageSize());
+  });
+
+  setPageSize(n: number) {
+    this.pageSize.set(n);
+    this.page.set(1);
+  }
+
+  /** v1.1 requires the result count to be visible at all times. */
+  resultLabel = computed(() => {
+    const n = this.rows().length;
+    return this.lang.isAr() ? `${n} نتيجة` : `${n} result${n === 1 ? '' : 's'}`;
+  });
+
   /** The "الكل / All" chip's count — every status added up. */
   totalCount = computed(() =>
     Object.values(this.countByStatus()).reduce((a, b) => a + b, 0));
@@ -84,15 +126,13 @@ export class ProjectsPage {
     return this.countByStatus()[code] ?? 0;
   }
 
-  /** 06 §1 — the five-state canonical set. Labels belong in the Lookups table
-   *  once that page exists; inline here so PAGE-01 stays self-contained. */
-  readonly statuses = [
-    { code: 'ongoing',   ar: 'مستمر',  en: 'Ongoing' },
-    { code: 'completed', ar: 'منجز',   en: 'Completed' },
-    { code: 'delayed',   ar: 'متأخر',  en: 'Delayed' },
-    { code: 'suspended', ar: 'متوقف',  en: 'Suspended' },
-    { code: 'cancelled', ar: 'ملغى',   en: 'Cancelled' },
-  ];
+  /**
+   * 06 §1 — the five-state canonical set, from the Lookups table (EP-LKP-01).
+   * These labels are business-maintained data, so they are NOT hard-coded here
+   * and NOT in core/lang.ts, which is UI chrome only. Empty until the fixture
+   * has been loaded, which is also when there are no projects to filter.
+   */
+  statuses = computed(() => this.lookups.list('project-status'));
 
   constructor() {
     // /projects?ws=ub scopes the page to one workspace.
@@ -105,10 +145,20 @@ export class ProjectsPage {
   load() {
     this.loading.set(true);
     this.error.set(null);
-    this.api.list({ q: this.q(), status: this.status(), workspace: this.workspace() }).subscribe({
-      next: r => {
-        this.rows.set(r.rows);
-        this.countByStatus.set(r.countByStatus);
+    // Both requests fly in parallel; lookups is cached after the first page
+    // load and completes immediately thereafter. Waiting for it means the
+    // status chips carry their labels on first paint instead of appearing
+    // as raw codes for a frame.
+    forkJoin({
+      lookups: this.lookups.ensureLoaded(),
+      res: this.api.list({ q: this.q(), status: this.status(), workspace: this.workspace() }),
+    }).subscribe({
+      next: ({ res }) => {
+        this.rows.set(res.rows);
+        this.countByStatus.set(res.countByStatus);
+        // v1.1: any filter or query change resets to page 1, otherwise a
+        // narrowed result set can leave the pager on a page that no longer exists.
+        this.page.set(1);
         this.loading.set(false);
       },
       error: e => {
@@ -122,29 +172,15 @@ export class ProjectsPage {
   setStatus(v: string) { this.status.set(v); this.load(); }
   clearFilters() { this.q.set(''); this.status.set(''); this.load(); }
 
-  statusLabel(code: string) {
-    const s = this.statuses.find(x => x.code === code);
-    return s ? this.lang.pick(s.ar, s.en) : code;
-  }
-
   /**
-   * The API speaks the CANONICAL status keys from 06 §1 (delayed, cancelled).
-   * The copied stylesheet was written against the reference prototype's older
-   * internal keys and only defines .d-pill.stalled / .d-pill.withdrawn.
-   *
-   * Map here rather than renaming either side: the spec keys are correct and
-   * must not be bent to the CSS, and editing the verbatim stylesheet would
-   * break the "copied, not re-derived" guarantee. Recorded in DECISIONS.md.
+   * Loads the demo fixture. Prototype affordance only — see Fixture.cs.
+   * The fixture also inserts the Lookups rows, so the cached lookup set is
+   * stale afterwards and has to be refetched before the chips can be labelled.
    */
-  statusClass(code: string) {
-    return { delayed: 'stalled', cancelled: 'withdrawn' }[code] ?? code;
-  }
-
-  /** Loads the demo fixture. Prototype affordance only — see Fixture.cs. */
   loadFixture() {
     this.loading.set(true);
     this.http.post('/api/dev/load-fixture', {}).subscribe({
-      next: () => this.load(),
+      next: () => this.lookups.reload().subscribe(() => this.load()),
       error: () => this.load(),
     });
   }

@@ -11,9 +11,39 @@
    font-size outside the eight-step scale 11/11.5/12/13/15/18/21/24 (05 §2).
    ============================================================ */
 
+/* ── ACCESSIBILITY CORRECTION TO THE v1.1 PALETTE (P-21) ──────────────────
+   05 §7.1 is binding: borders, icons and graphics must reach 3:1.
+
+   v1.1 ships --outline and --viz-base at #A9B1BC, which measures 2.16:1 on
+   white. The palette it replaced sat at 3.03:1 — the old values were chosen to
+   pass, the new ones do not. Dark theme fails harder: #454C57 is 1.87:1 on the
+   dark surface.
+
+   These are not decorative tokens. 05 §1 defines --outline as "borders and
+   graphics only" and 04 §5 uses --viz-base for the Gantt data-date line and
+   bar edges — both are meaningful graphics, so 1.4.11 applies.
+
+   #858E9C is the LIGHTEST value on v1.1's own neutral ramp that clears the
+   floor (3.31:1), so this stays as close to the intended look as the contract
+   permits. Dark uses #6B7484 (3.43:1).
+
+   Overridden here rather than edited into styles/tokens.css so the copied
+   stylesheets stay verbatim (P-07) and the deviation has exactly one home.
+   --outline-variant and --stroke-default are NOT touched: they are decorative
+   separators, which 1.4.11 exempts. */
+:root,
+[data-theme="light"] {
+  --outline:  #858E9C;   /* v1.1 ships #A9B1BC — 2.16:1 */
+  --viz-base: #858E9C;
+}
+[data-theme="dark"] {
+  --outline:  #6B7484;   /* v1.1 ships #454C57 — 1.87:1 */
+  --viz-base: #6B7484;   /* v1.1 ships #565E69 — 2.46:1 */
+}
+
 /* Secondary text. The reference only ever scoped .muted under .d-crumb, but
    every register needs it. --on-surface-variant is the secondary text token
-   at 6.82:1 — NOT --outline, which is a graphic token at 3.03:1 (05 §7.2). */
+   at 6.56:1 in v1.1 — NOT --outline, which is a graphic token (05 §7.2). */
 .muted { color: var(--on-surface-variant); }
 
 /* Numeric columns align to the end so digits line up. The reference does this
@@ -26,15 +56,11 @@
    table's shape). .d-skel supplies the shimmer; this only gives it a body. */
 .d-skel-row { height: 14px; margin: 6px 0; }
 
-/* Projects filter bar. The reference (enterprise-areas.jsx:112) set this
-   geometry inline; 05 §8 names inline-styles-beating-stylesheets as a recurring
-   defect class, so the same values live here as classes instead. */
-.d-proj-filters {
-  display: flex; align-items: center; flex-wrap: wrap;
-  gap: 10px; margin-bottom: 12px;
-}
-.d-proj-filters .d-field { height: 36px; min-inline-size: 240px; flex: 0 1 320px; }
-.d-proj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* REMOVED at v1.1 adoption: .d-proj-filters / .d-proj-chips.
+   They were our own bespoke filter bar. v1.1 ships `.d-toolbar` as the standard
+   Z6 zone — search + filter chips + result count, integrated into the grid card
+   as its top strip. The Projects page now uses that instead, which is the whole
+   point of adopting a system rather than accumulating per-page geometry. */
 
 /* Persona switcher in the charcoal command bar. Uses the topbar's own field
    tokens — never a light-theme surface token up there (04 §1). */
@@ -52,6 +78,70 @@
 }
 .epm-persona-select:hover { background: var(--topbar-field-hover); }
 .epm-persona-select option { background: var(--surface-container-lowest); color: var(--on-surface); }
+
+/* Summary strip column count (05 §8, binding · CLAUDE.md §6).
+
+   The copied stylesheet pins the strip: .d-grid.stats is repeat(4, 1fr) and
+   .d-grid.stats5 is repeat(5, 1fr), with media queries pinning 3 and 2 below.
+   05 §8 requires repeat(auto-fit, minmax(120px,1fr)) — a pinned count leaves a
+   ballooned orphan whenever the item count does not divide evenly, which is the
+   defect that section was written about.
+
+   This overrides ONLY the column count. Every other .d-grid.stats .d-stat rule
+   — hover, watermark, the staggered reveal, prefers-reduced-motion — still
+   applies, so the verbatim copy is untouched (P-07) and the binding rule holds.
+   .d-grid.stats.fit is 0,3,0 so it beats the 0,2,0 media-query rules without
+   !important. Recorded as P-17. */
+.d-grid.stats.fit,
+.d-grid.stats5.fit { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* The `auto` badge in a field grid — a system-derived value that cannot be
+   edited (01 §3). The reference set these colours inline in JSX; 05 §8 names
+   inline-styles-beating-stylesheets as a recurring defect class, so they live
+   here as a class, in tokens. */
+.d-proposed.epm-auto {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: color-mix(in srgb, var(--on-surface-variant) 14%, transparent);
+  color: var(--on-surface-variant);
+}
+
+/* Title + status pill on one line inside the Z2 identity bar. The reference
+   sets this inline in JSX; 05 §8 names inline-styles-beating-stylesheets as a
+   recurring defect class, so it lives here as a class. */
+.epm-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Ellipsis between windowed page numbers in <epm-pager>. */
+.epm-pg-gap { padding: 0 2px; color: var(--on-surface-variant); }
+
+/* ── Executive Portfolio (SCR-E1) ────────────────────────────────────────
+   The reference builds these three inline in JSX; 05 §8 names inline styles
+   beating stylesheets as a recurring defect class, so they live here. */
+
+/* Donut + its legend. The legend is load-bearing: without it the donut would
+   be colour-only, which 05 §7.6 forbids. */
+.epm-donut-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.epm-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-inline-size: 180px; flex: 1; }
+.epm-legend li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.epm-legend .dot { inline-size: 9px; block-size: 9px; border-radius: 999px; flex: none; }
+.epm-legend .l { color: var(--on-surface-variant); }
+.epm-legend .v { margin-inline-start: auto; font-weight: var(--fw-bold); color: var(--on-surface); }
+
+/* Value-by-entity bars. --viz-1 because this is a magnitude, not a status —
+   status colour never encodes a non-status quantity (05 §7.5). */
+.epm-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.epm-bars li { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr auto; align-items: center; gap: 10px; font-size: 12px; }
+.epm-bars .l { color: var(--on-surface-variant); }
+.epm-bars .t { block-size: 8px; border-radius: 999px; background: var(--viz-track); overflow: hidden; }
+.epm-bars .t > span { display: block; block-size: 100%; background: var(--viz-1); border-radius: 999px; }
+.epm-bars .v { font-size: 11.5px; color: var(--on-surface); }
+
+/* An "unavailable + reason" tile. --on-surface-variant, NOT --error: a figure
+   that cannot be derived yet is not an adverse state, and 05 §7.9 reserves
+   --error for genuine exceptions. */
+.epm-stat-na .epm-na {
+  font-size: 15px; font-weight: var(--fw-bold); color: var(--on-surface-variant);
+}
+.epm-stat-na .d-stat-foot { color: var(--on-surface-variant); }
 
 /* An <input> that inherits its container's chrome, so a search field can sit
    inside .d-search without fighting it. Kept here rather than inline: inline

@@ -10,9 +10,9 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | Screen | Spec | Reference component | Angular page | Endpoints | Status |
 |---|---|---|---|---|---|
 | SCR-E2 Projects | 04 §2 | `DProjectsAll` enterprise-areas.jsx:112 | `features/projects/projects.page.ts` | `EP-PRJ-01` | ✅ built |
-| SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 | — | `EP-PRT-01` | ⬜ |
-| SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:160 | — | `EP-CNT-01` | ⬜ |
-| SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:255 | — | `EP-ENT-01` | ⬜ |
+| SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 *(v1.1)* | `features/portfolio/portfolio.page.ts` | `EP-PRT-01` | ✅ built — progress/EVM tiles render "unavailable + reason" until BR-04 and payments exist |
+| SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:299 *(v1.1)* | `features/contracts/contracts.page.ts` | `EP-CNT-01` | ✅ built |
+| SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built |
 | SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 | — | `EP-SCT-01` | ⬜ |
 | SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:65 | — | `EP-ALR-01` | ⬜ |
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:39 | — | `EP-RPT-01` | ⬜ |
@@ -42,6 +42,11 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-DEV-01` | `POST /api/dev/reset` | `Features/Dev/DevEndpoints.cs` | — | — | all |
 | `EP-DEV-02` | `POST /api/dev/load-fixture` | `Features/Dev/DevEndpoints.cs` | `projects.page.ts` | — | all |
 | `EP-DEV-03` | `GET /api/dev/personas` | `Features/Dev/DevEndpoints.cs` | `persona.ts` `load()` | — | — (in code) |
+| `EP-LKP-01` | `GET /api/lookups` | `Features/Lookups/LookupsEndpoints.cs` | `core/lookups.ts` `ensureLoaded()` | — | Lookups |
+| `EP-CNT-01` | `GET /api/contracts` | `Features/Contracts/ContractsEndpoints.cs` | `contracts.api.ts` `list()` | BR-09 | Contracts · ContractAmendments · Projects |
+| `EP-ENT-01` | `GET /api/entities` | `Features/Entities/EntitiesEndpoints.cs` | `entities.api.ts` `list()` | BR-00 · BR-09 | Workspaces · Projects · Contracts · ContractAmendments |
+| `EP-PRT-01` | `GET /api/portfolio` | `Features/Portfolio/PortfolioEndpoints.cs` | `portfolio.api.ts` `get()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Workspaces |
+| `EP-DOCS-01` | `GET /api/docs/rules` | `Features/Docs/DocsEndpoints.cs` | — (Phase 7 `/docs` route) | BR-01…BR-14 | — (pure) |
 
 ## Business rules
 
@@ -49,21 +54,22 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 
 | ID | Rule | Spec | File | Tests | Status |
 |---|---|---|---|---|---|
-| BR-00 | Project value = Σ contract values | 01 §3 | `Domain/ProjectValue.cs` | — | ⚠️ uses original, must use effective |
-| BR-01 | BOQ weight, largest-remainder to 100.00% | 02 §1 | `Domain/BoqWeights.cs` | — | ⬜ |
-| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | — | ⬜ |
-| BR-03 | BOQ↔Activity allocation share | 02 §3 | `Domain/Allocation.cs` | — | ⬜ |
-| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | — | ⬜ |
-| BR-05 | **The 20% rule** | 02 §5 | `Domain/TierSplit.cs` | — | ⬜ |
-| BR-06 | Two proposals, one approved value | 02 §6 | `Domain/Proposals.cs` | — | ⬜ |
-| BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | — | ⬜ |
-| BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | — | ⬜ |
-| BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | — | ⬜ |
-| BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | — | ⬜ |
-| BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | — | ⬜ |
-| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | — | ⬜ |
-| BR-13 | Six-stage workflow machine | 03 §2,5,6 | `Domain/WorkflowMachine.cs` | — | ⬜ |
-| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | — | ⬜ |
+| BR-00 | Project value = Σ contract values | 01 §3 | `Domain/ProjectValue.cs` | `ProjectValueTests` | ✅ **now receives EFFECTIVE values** (Phase 2.1) |
+| BR-01 | BOQ weight, largest-remainder to 100.00% | 02 §1 | `Domain/BoqWeights.cs` | `BoqWeightsTests` | ✅ |
+| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | `ScheduleWeightsTests` | ✅ |
+| BR-03 | BOQ↔Activity allocation share | 02 §3 | `Domain/Allocation.cs` | `AllocationTests` | ✅ (see P-15) |
+| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | `ProgressReflectionTests` | ✅ |
+| BR-05 | **The 20% rule** | 02 §5 | `Domain/TierSplit.cs` | `TierSplitTests` | ✅ |
+| BR-06 | Two proposals, one approved value | 02 §6 | `Domain/Proposals.cs` | `ProposalsTests` | ✅ |
+| BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | `ChangeOrderGatesTests` | ✅ |
+| BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ (import checks: Phase 4.2) |
+| BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
+| BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ |
+| BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ |
+| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ |
+| BR-13 | Six-stage workflow machine | 03 §2,5,6 | `Domain/WorkflowMachine.cs` | `WorkflowMachineTests` | ✅ |
+| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | `ViewerRelationTests` | ✅ |
+| D-07 | Largest-remainder rounding | 02 §1 | `Domain/Rounding.cs` | `RoundingTests` | ✅ |
 
 ## Tables registered in `EpmDb`
 
@@ -74,3 +80,5 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `Projects` | PAGE-01 | `EP-PRJ-01` |
 | `Contracts` | PAGE-01 | `EP-PRJ-01` |
 | `Workspaces` | PAGE-01 | `EP-PRJ-01` |
+| `Lookups` | Phase 1.1 | `EP-LKP-01` |
+| `ContractAmendments` | PAGE-02 | `EP-CNT-01` · `EP-PRJ-01` |
