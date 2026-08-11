@@ -60,6 +60,42 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports.page').then(m => m.ReportsPage),
       },
 
+      // ── PHASE 3 · the project workspace ───────────────────────────────
+      // `/projects/:id/:module`. It must come AFTER the `projects` route
+      // above: a terminal route only matches when it consumes the whole URL,
+      // so `/projects` lands on the register and `/projects/PRJ-0148` here.
+      //
+      // ONLY MODULES THAT EXIST HAVE A ROUTE. features/workspace/
+      // project-modules.ts renders the other thirteen disabled, and the two
+      // halves have to agree: a `built: true` module with no route here would
+      // be exactly the dead link that list exists to prevent.
+      {
+        path: 'projects/:id',
+        loadComponent: () =>
+          import('./features/workspace/workspace.page').then(m => m.WorkspacePage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'overview' },
+
+          // SCR-W1 · features/overview · Features/Overview · [EP-OVW-01]
+          {
+            path: 'overview',
+            loadComponent: () =>
+              import('./features/overview/overview.page').then(m => m.OverviewPage),
+          },
+
+          // SCR-W2 · features/information · Features/Information · [EP-INF-01]
+          {
+            path: 'information',
+            loadComponent: () =>
+              import('./features/information/information.page').then(m => m.InformationPage),
+          },
+
+          // An unknown module segment is a typed URL, not a state — send it to
+          // the one module every project has.
+          { path: '**', redirectTo: 'overview' },
+        ],
+      },
+
       // ── next pages append their route here ────────────────────────────
     ],
   },

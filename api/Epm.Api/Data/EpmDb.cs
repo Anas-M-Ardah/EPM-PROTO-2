@@ -52,6 +52,13 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // alert is a real state change (EP-ALR-02), not a client-side toggle.
     public DbSet<Alert> Alerts => Set<Alert>();
 
+    // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
+    // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
+    // resolves it to names; nothing else reads the table yet, so its columns
+    // are pruned to what that list shows plus the tree link that gives a
+    // faculty its university.
+    public DbSet<Beneficiary> Beneficiaries => Set<Beneficiary>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -69,6 +76,9 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
 
         // Alert has no natural key — an alert is an event, not a named thing.
         b.Entity<Alert>().HasKey(x => x.Id);
+
+        // The code IS the identity — it is what Projects.BeneficiaryCodes stores.
+        b.Entity<Beneficiary>().HasKey(x => x.Code);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

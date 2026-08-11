@@ -1,0 +1,44 @@
+<!--
+  SCR-W2 Project Information — v1.1 module skeleton.
+  Ported from DModInformation, ../epm@design/system-revamp
+  app/project-modules.jsx:280.
+
+  Renders its own module frame: Z6 title bar → Z7 scrolling body. Four semantic
+  field groups, each a label + space and a two-column grid — never a nested box
+  (04 §3, CLAUDE.md §6).
+-->
+<div class="d-pframe">
+  <div class="d-pz6">
+    <span class="z6-t">{{ lang.t('mod_information') }}</span>
+    <span class="sp"></span>
+  </div>
+
+  <div class="d-pbody no-aside">
+    <div class="d-pz7">
+
+      @if (loading()) {
+        <epm-table-skeleton [cols]="2" [rows]="6" [loadingLabel]="lang.t('loading')" />
+      } @else if (error()) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+          <b>{{ lang.t('error_t') }}</b>
+          <span><bdi>{{ error() }}</bdi></span>
+          <button class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
+        </div>
+      } @else {
+        <!--
+          There is no "empty because the database is empty" state here. This
+          module renders one project's stored columns; if the project did not
+          exist the endpoint returned 404 and the error branch above has it.
+          An individual field with no value renders an em dash, which the
+          shared field grid does — "not recorded" is an answer.
+        -->
+        @for (s of sections(); track s.id) {
+          <epm-section [title]="s.title">
+            <epm-field-grid [fields]="s.fields" />
+          </epm-section>
+        }
+      }
+    </div>
+  </div>
+</div>

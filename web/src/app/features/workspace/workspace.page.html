@@ -1,0 +1,97 @@
+<!--
+  The project workspace shell — SCR-W1…SCR-W15's frame.
+  Ported from DProjectDetail, ../epm@design/system-revamp
+  app/desktop-workspace.jsx:126.
+
+  .d-detail-layout = .d-modnav (the grouped module rail) + .d-detail-main
+  (Z2 identity bar, then the module's own frame through <router-outlet>).
+
+  Every id and date is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-detail-layout">
+
+  <nav class="d-modnav" [attr.aria-label]="lang.isAr() ? 'وحدات المشروع' : 'Project modules'">
+    <!-- Overview sits above the groups, ungrouped, as in the reference. -->
+    <button type="button" class="d-modnav-item"
+            [class.on]="moduleId() === overview.id"
+            [attr.aria-current]="moduleId() === overview.id ? 'page' : null"
+            (click)="open(overview)">
+      <epm-icon [name]="overview.icon" [size]="17" />
+      <span class="ml">{{ lang.t(overview.key) }}</span>
+    </button>
+
+    @for (g of groups; track g.key) {
+      <div class="d-modnav-group">
+        <span class="gl">{{ lang.t(g.key) }}</span>
+        @for (m of g.modules; track m.id) {
+          @if (m.built) {
+            <!-- The title carries the label for the ≤1200px collapsed rail,
+                 where the sheet hides `.ml` and only the icon is left. -->
+            <button type="button" class="d-modnav-item"
+                    [class.on]="moduleId() === m.id"
+                    [title]="lang.t(m.key)"
+                    [attr.aria-current]="moduleId() === m.id ? 'page' : null"
+                    (click)="open(m)">
+              <epm-icon [name]="m.icon" [size]="17" />
+              <span class="ml">{{ lang.t(m.key) }}</span>
+            </button>
+          } @else {
+            <!--
+              NOT A LINK. A disabled <button> keeps it in the rail — the rail is
+              how the workspace states what a project consists of — while making
+              it unreachable. The phase is printed on the row rather than left
+              in a title attribute, which touch cannot reach and a screen reader
+              does not announce.
+            -->
+            <button type="button" class="d-modnav-item locked" disabled
+                    [title]="lang.t(m.key) + ' — ' + notBuilt(m)"
+                    [attr.aria-disabled]="true">
+              <epm-icon name="lock" [size]="17" />
+              <span class="ml">{{ lang.t(m.key) }}</span>
+              <span class="epm-mod-phase"><bdi>{{ notBuilt(m) }}</bdi></span>
+            </button>
+          }
+        }
+      </div>
+    }
+  </nav>
+
+  <div class="d-detail-main">
+
+    <!-- Z2 — the identity bar. One per page (05 v1.1 §08). -->
+    <div class="d-pz2">
+      <nav class="z2-crumbs" [attr.aria-label]="lang.isAr() ? 'مسار التنقل' : 'Breadcrumb'">
+        <button type="button" (click)="backToProjects()">{{ lang.t('nav_projects') }}</button>
+        <span class="sep">{{ lang.isAr() ? '‹' : '›' }}</span>
+        @if (moduleId() === 'overview') {
+          <span class="cur" aria-current="page">{{ projectName() }}</span>
+        } @else {
+          <button type="button" (click)="open(overview)">{{ projectName() }}</button>
+          <span class="sep">{{ lang.isAr() ? '‹' : '›' }}</span>
+          <span class="cur" aria-current="page">{{ moduleTitle(activeModule()) }}</span>
+        }
+      </nav>
+
+      <div class="z2-title">
+        <h2>{{ projectName() }}</h2>
+        @if (project(); as p) {
+          <epm-status-pill kind="project-status" [code]="p.status" />
+        }
+        <!-- The object number rides here as a copyable chip, as in the
+             reference — it is what every other record refers to. -->
+        <button type="button" class="rev"
+                [title]="lang.isAr() ? 'نسخ الرقم' : 'Copy number'"
+                (click)="copyId()">
+          <bdi>{{ projectId() }}</bdi>
+        </button>
+        <span class="sp"></span>
+      </div>
+    </div>
+
+    <!--
+      The module renders its own frame (Z6 toolbar, Z7 scrolling body), so the
+      assembly never varies between modules and this shell never lays one out.
+    -->
+    <router-outlet />
+  </div>
+</div>

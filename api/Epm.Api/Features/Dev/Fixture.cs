@@ -303,6 +303,25 @@ public static class Fixture
                 Acknowledged = true, AcknowledgedByUserId = "user.senior-mgmt" }
         );
 
+        // ── PHASE 3 · SCR-W1 Overview — the beneficiaries (01 §2.1) ──────
+        // Every code already referenced by Projects.BeneficiaryCodes above, and
+        // no others: an unreferenced beneficiary would be a row no screen can
+        // reach. The tree is real — a faculty's ParentCode is its university,
+        // which is how the overview can say "كلية الهندسة — جامعة بغداد" without
+        // storing the university on the faculty.
+        db.Beneficiaries.AddRange(
+            new Beneficiary { Code = "BEN-UOB", NameAr = "جامعة بغداد", NameEn = "University of Baghdad",
+                Type = "university" },
+            new Beneficiary { Code = "BEN-UOB-ENG", NameAr = "كلية الهندسة", NameEn = "College of Engineering",
+                Type = "department", ParentCode = "BEN-UOB" },
+            new Beneficiary { Code = "BEN-UOB-MED", NameAr = "كلية الطب", NameEn = "College of Medicine",
+                Type = "department", ParentCode = "BEN-UOB" },
+            new Beneficiary { Code = "BEN-UON", NameAr = "جامعة نينوى", NameEn = "University of Nineveh",
+                Type = "university" },
+            new Beneficiary { Code = "BEN-UOT", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar",
+                Type = "university" }
+        );
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();

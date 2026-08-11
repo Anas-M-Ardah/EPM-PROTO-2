@@ -6,6 +6,8 @@ import { LangService, StrKey } from '../core/lang';
 import { PersonaService } from '../core/persona';
 import { ThemeService } from '../core/theme';
 import { WorkspacesService } from '../core/workspaces';
+import { ProjectScopeService } from '../core/project-scope';
+import { StatusPillComponent } from '../shared/status-pill.component';
 import { ToastService } from '../shared/toast.service';
 import { ToastComponent } from '../shared/toast.component';
 import { PopoverComponent } from '../shared/popover.component';
@@ -44,7 +46,7 @@ interface NavItem {
   selector: 'epm-shell',
   standalone: true,
   imports: [
-    RouterOutlet, RouterLink, RouterLinkActive, IconComponent,
+    RouterOutlet, RouterLink, RouterLinkActive, IconComponent, StatusPillComponent,
     ToastComponent, PopoverComponent, CommandPaletteComponent, AppFooterComponent,
   ],
   encapsulation: ViewEncapsulation.None,
@@ -55,6 +57,7 @@ export class ShellComponent {
   persona = inject(PersonaService);
   theme = inject(ThemeService);
   workspaces = inject(WorkspacesService);
+  projects = inject(ProjectScopeService);
   toast = inject(ToastService);
   private router = inject(Router);
 
@@ -68,6 +71,25 @@ export class ShellComponent {
 
   /** `?ws=` off the current URL — the single source of truth for scope. */
   wsCode = signal<string>(read(this.router.url));
+
+  /**
+   * The open project's id, off `/projects/:id`, or '' outside the workspace.
+   * Same principle as `wsCode`: the URL is the state, the chrome reacts.
+   */
+  projectId = signal<string>(readProject(this.router.url));
+
+  /**
+   * True on a route that renders its own full-height layout. The workspace is
+   * `.d-detail-layout` — a rail beside a scrolling pane — and cannot live
+   * inside `.d-canvas`, which pads and centres its content. The reference
+   * makes the same split: DWorkspace returns `.d-main > .d-three` with no
+   * canvas at all, while every enterprise screen returns `.d-canvas`.
+   */
+  bare = signal(false);
+
+  /** The project picker menu in the topbar (v1.1 `.d-projpick`). */
+  pickerOpen = signal(false);
+  pickerQuery = signal('');
 
   readonly nav: { group: StrKey; items: NavItem[] }[] = [
     {
@@ -190,11 +212,65 @@ export class ShellComponent {
   constructor() {
     this.persona.load();
     this.workspaces.ensureLoaded().subscribe();
+    this.projects.ensureLoaded().subscribe();
+
+    this.syncChrome(this.router.url);
 
     // Keep `?ws=` in sync on every navigation, including back/forward.
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(e => this.wsCode.set(read(e.urlAfterRedirects)));
+      .subscribe(e => {
+        this.wsCode.set(read(e.urlAfterRedirects));
+        this.syncChrome(e.urlAfterRedirects);
+      });
+  }
+
+  /**
+   * The project in scope, and whether the content area gives up its canvas.
+   * Both come off the URL — there is no navigation the chrome can miss, and a
+   * pasted link lands in the same state as a click.
+   */
+  private syncChrome(url: string) {
+    const id = readProject(url);
+    this.projectId.set(id);
+    this.bare.set(!!id);
+    this.pickerOpen.set(false);
+    this.pickerQuery.set('');
+  }
+
+  /** The open project's row, for the picker button. */
+  currentProject = computed(() => this.projects.byId(this.projectId() || null));
+
+  /** Projects the picker offers, filtered by its own search box. */
+  pickerRows = computed(() => {
+    const q = this.pickerQuery().trim().toLowerCase();
+    const ws = this.wsCode();
+    return this.projects.list()
+      .filter(p => !ws || p.workspaceCode === ws)
+      .filter(p => !q
+        || p.id.toLowerCase().includes(q)
+        || p.nameAr.toLowerCase().includes(q)
+        || p.nameEn.toLowerCase().includes(q));
+  });
+
+  togglePicker() {
+    const open = !this.pickerOpen();
+    this.closeOverlays();
+    this.pickerOpen.set(open);
+    if (!open) this.pickerQuery.set('');
+  }
+
+  /**
+   * Switching project keeps the module you were reading. A user comparing the
+   * Information of two projects should not be thrown back to Overview between
+   * them — and the module exists for every project, so it cannot 404.
+   */
+  pickProject(id: string) {
+    const mod = this.router.url.split('?')[0].split('/')[3] ?? 'overview';
+    this.pickerOpen.set(false);
+    this.pickerQuery.set('');
+    const ws = this.wsCode();
+    this.router.navigate(['/projects', id, mod], { queryParams: ws ? { ws } : {} });
   }
 
   /** ⌘K / Ctrl-K anywhere. */
@@ -255,4 +331,14 @@ function read(url: string): string {
   const q = url.indexOf('?');
   if (q < 0) return '';
   return new URLSearchParams(url.slice(q + 1)).get('ws') ?? '';
+}
+
+/**
+ * The project id out of `/projects/:id[/:module]`, or '' anywhere else.
+ * `/projects` alone is the enterprise register and has no project in scope.
+ */
+function readProject(url: string): string {
+  const path = url.split('?')[0];
+  const m = /^\/projects\/([^/]+)/.exec(path);
+  return m ? decodeURIComponent(m[1]) : '';
 }

@@ -11,6 +11,7 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Alerts | SCR-E6 Alerts Center | `EP-ALR-01` · `EP-ALR-02` | [alerts.md](alerts.md) |
 | Schedule Control | SCR-E5 Schedule Control | `EP-SCT-01` | [schedule-control.md](schedule-control.md) |
 | Reports | SCR-E7 Reports & Analytics | `EP-RPT-01` | [reports.md](reports.md) |
+| Workspace shell | SCR-W1 Overview · SCR-W2 Information | `EP-OVW-01` · `EP-INF-01` | [workspace-shell.md](workspace-shell.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
