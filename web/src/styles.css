@@ -565,3 +565,68 @@ epm-app-footer { display: contents; }
    uses currentColor. The chip stays white — it is the ministry's — and the
    mark takes the brand colour. */
 .d-ctx-emblem.ent { color: var(--primary); }
+
+/* ══ CANVAS PAGE RHYTHM ═══════════════════════════════════════════════════
+   A page that stacks more than one block had NO space between them: the KPI
+   strip, the message bar, the two-panel row and the panel below it all sat
+   flush, so the whole page read as one continuous slab instead of four
+   things. Measured on SCR-E1: gaps of 24 · 0 · 0 · 0.
+
+   16px is the house value, not a new one — `.d-sevcards` already carries
+   `margin-bottom: 16px` on the Alerts Center (desktop.css) and the reference's
+   own DWorkspaceOverview sets `style={{ marginBottom: 16 }}` on its stat band.
+   This applies that rhythm at the page level instead of asking each block to
+   remember it, which is how three of them came to forget.
+
+   Flex rather than sibling margins because the component hosts
+   (<epm-page-head>, <epm-summary-strip>) are `display: inline` — an inline box
+   ignores vertical margin, which is the other half of why the markup's
+   intent never showed up on screen. Flex blockifies them.
+
+   Listed explicitly rather than applied to every page: the single-block pages
+   need nothing, and Alerts already spaces itself. */
+epm-portfolio-page,
+epm-workspaces-page,
+epm-schedule-control-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* The identity bar keeps the 24px of air it has today — 8px of its own plus
+   the 16px gap — so the header stays more separated than the blocks are from
+   each other, and nothing above the fold moves. */
+epm-portfolio-page > epm-page-head .d-page-head,
+epm-workspaces-page > epm-page-head .d-page-head,
+epm-schedule-control-page > epm-page-head .d-page-head {
+  margin-block-end: var(--space-8);
+}
+
+/* ══ PANEL INTERIORS ══════════════════════════════════════════════════════
+   `.d-panel` carries no padding of its own — the sheet expects a
+   `.d-panel-body` wrapper (desktop.css:286) that these pages never used, so
+   the donut, the entity bars and the unavailable tiles all touched the panel
+   border on all four sides. Measured: 1px of inset, which is the border.
+
+   Padding the three body types by name rather than every non-header child of
+   a panel: a register table and the `.d-mini` rows on SCR-E8 are deliberately
+   full-bleed, because their hover state has to span the whole row. */
+.d-panel > .epm-donut-row,
+.d-panel > .epm-bars,
+.d-panel > .d-grid.stats { padding: var(--space-16); }
+
+/* The two-panel row inherits `.d-grid`'s 12px gap, which reads as a seam next
+   to the 16px rhythm above and below it. Matching them makes the horizontal
+   and vertical spacing one system instead of two values 4px apart.
+
+   `align-items: stretch` pairs the heights: a donut is naturally taller than
+   three bars, and left to itself the row ends ragged. The sheet already has
+   `.eqrows` for exactly this — same declaration, applied here so the markup
+   does not have to carry a class to say "these two belong together". */
+epm-portfolio-page > .d-grid.c2,
+epm-workspaces-page > .d-grid.c2 {
+  gap: var(--space-16);
+  align-items: stretch;
+}
+epm-portfolio-page > .d-grid.c2 > .d-panel,
+epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
