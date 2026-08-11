@@ -119,6 +119,18 @@ export const routes: Routes = [
             loadComponent: () => import('./features/boq/boq.page').then(m => m.BoqPage),
           },
 
+          // SCR-W5 · features/schedule · Features/Schedule · [EP-SCD-01] [EP-SCD-02]
+          // Gated on a contract for the same reason as the BOQ tab: an activity
+          // belongs to exactly one contract (01 §1).
+          {
+            path: 'schedule',
+            loadComponent: () => import('./features/schedule/schedule.page').then(m => m.SchedulePage),
+          },
+          {
+            path: 'schedule/:contractId',
+            loadComponent: () => import('./features/schedule/schedule.page').then(m => m.SchedulePage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

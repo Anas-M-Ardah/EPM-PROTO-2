@@ -1,0 +1,524 @@
+<!--
+  SCR-W5 Schedule — v1.1 module skeleton.
+  Ported from the v1.1 schedule module: ../epm@design/system-revamp
+  app/schedule-module.jsx — DGantt :80 · DSchedTable :257 · DModSchedule :437.
+
+  Z6 carries the title, the contract, the two views and the four controls the
+  chart obeys (critical filter · WBS level · basis · columns). Z7 scrolls.
+
+  THE CHART'S FOUR MARKS, each named in the legend (04 §5):
+    baseline   a thin `--outline-variant` rail — the CONTRACTUAL reference
+    current    a bar filled by STATUS, with the progress shaded inside it
+    critical   a 2px `--on-surface` RING on that bar — never a colour
+    data date  a dashed `--viz-base` line at the project data date (D-06)
+
+  Every date, duration, percentage and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_schedule') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="8" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_schedule') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else if (contracts().length === 0) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_schedule') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+        <b>{{ lang.t('ovw_no_contracts_t') }}</b>
+        <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+      </div>
+    </div></div>
+
+  } @else if (gated()) {
+    <!-- ══ THE CONTRACT GATE ═════════════════════════════════════════════
+         An activity belongs to one contract (01 §1), so a programme spanning
+         two of them is a schedule for no contract at all. -->
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_schedule') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="boq-editor-empty">
+        <div class="tile"><epm-icon name="calendar_month" [size]="27" /></div>
+        <b>{{ lang.t('scd_gate_t') }}</b>
+        <span>{{ lang.t('scd_gate_b') }}</span>
+        <div class="acts">
+          @for (c of contracts(); track c.id) {
+            <button type="button" class="d-btn" (click)="chooseContract(c.id)">
+              <bdi class="mono">{{ c.id }}</bdi> — {{ lang.pick(c.nameAr, c.nameEn) }}
+              <span class="n"><bdi>{{ c.activityCount }}</bdi></span>
+            </button>
+          }
+        </div>
+      </div>
+    </div></div>
+
+  } @else {
+    <!-- ══ Z6 ════════════════════════════════════════════════════════════ -->
+    <div class="d-pz6">
+      @if (!singleContract()) {
+        <button type="button" class="d-btn sm ghost" (click)="backToGate()"
+                [attr.aria-label]="lang.t('boq_change_contract')">
+          <epm-icon name="chevron_right" [size]="16" />
+        </button>
+      }
+      <span class="z6-t">
+        {{ lang.t('mod_schedule') }}
+        <em><bdi>{{ contract()?.id }}</bdi> · {{ contractLabel() }}</em>
+      </span>
+
+      <div class="grp">
+        <button type="button" class="d-fchip" [class.on]="view() === 'gantt'" (click)="view.set('gantt')">
+          {{ lang.t('scd_tab_gantt') }}
+        </button>
+        <button type="button" class="d-fchip" [class.on]="view() === 'table'" (click)="view.set('table')">
+          {{ lang.t('scd_tab_table') }}
+        </button>
+      </div>
+
+      <span class="sp"></span>
+
+      @if (data(); as d) {
+        <!-- The critical-path filter. The dot is the reference's; the chart's
+             own criticality mark is the ring, named in the legend. -->
+        <button type="button" class="d-fchip" [class.on]="criticalOnly()"
+                [attr.aria-pressed]="criticalOnly()" (click)="criticalOnly.set(!criticalOnly())">
+          <span class="dot crit"></span>{{ lang.t('scd_critical') }}
+          <span class="n"><bdi>{{ d.summary.critical }}</bdi></span>
+        </button>
+
+        @if (view() === 'gantt') {
+          <label class="boq-ctxsel">
+            <span>{{ lang.t('scd_level') }}</span>
+            <select [attr.aria-label]="lang.t('scd_level')"
+                    (change)="setLevel(+$any($event.target).value)">
+              @for (l of [1, 2, 3, 4]; track l) {
+                <option [value]="l" [selected]="l === wbsLevel()">{{ l }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <!-- 02 §2 — the basis is chosen at import; the toggle only appears
+             when every activity actually carries man-hours to divide by. -->
+        @if (d.summary.manHoursAvailable) {
+          <span class="boq-basis">
+            <span class="lbl">{{ lang.t('scd_basis') }}</span>
+            <span class="seg">
+              <button type="button" [class.on]="basis() === 'cost'"
+                      (click)="setBasis('cost')">{{ lang.t('scd_cost') }}</button>
+              <button type="button" [class.on]="basis() === 'mh'"
+                      (click)="setBasis('mh')">{{ lang.t('scd_mh') }}</button>
+            </span>
+          </span>
+        }
+
+        @if (!singleContract()) {
+          <label class="boq-ctxsel">
+            <span>{{ lang.t('boq_contract') }}</span>
+            <select [attr.aria-label]="lang.t('boq_contract')"
+                    (change)="chooseContract($any($event.target).value)">
+              @for (c of contracts(); track c.id) {
+                <option [value]="c.id" [selected]="c.id === contract()?.id">
+                  {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
+                </option>
+              }
+            </select>
+          </label>
+        }
+      }
+    </div>
+
+    <div class="d-pbody" [class.no-aside]="!selectedRow()">
+      <div class="d-pz7">
+
+        @if (data(); as d) {
+          @if (d.rows.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="calendar_month" [size]="30" /></span>
+              <b>{{ lang.t('scd_empty_t') }}</b>
+              <span>{{ lang.t('scd_empty_b') }}</span>
+            </div>
+          } @else {
+            <epm-summary-strip [stats]="summaryStats()" />
+
+            @if (visible().length === 0) {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+                <b>{{ lang.t('scd_nocrit_t') }}</b>
+                <span>{{ lang.t('scd_nocrit_b') }}</span>
+                <button type="button" class="d-btn primary" (click)="criticalOnly.set(false)">
+                  {{ lang.t('clear_filters') }}
+                </button>
+              </div>
+
+            } @else if (view() === 'gantt') {
+              <!-- ══ THE GANTT ═══════════════════════════════════════════ -->
+              <div class="d-gantt-wrap">
+                <!-- Every mark on the chart is named. A legend is not decoration
+                     when the criticality mark is a RING and nothing else says so. -->
+                <div class="d-gantt-legend">
+                  <span class="li"><i class="bl"></i>{{ lang.t('scd_legend_bl') }}</span>
+                  <span class="li"><i class="cur"></i>{{ lang.t('scd_legend_cur') }}</span>
+                  <span class="li"><i class="crit"></i>{{ lang.t('scd_legend_crit') }}</span>
+                  <span class="li"><i class="ms"></i>{{ lang.t('scd_legend_ms') }}</span>
+                  <span class="li">
+                    <i style="background: var(--viz-base); width: 2px"></i>{{ lang.t('scd_legend_dd') }}
+                  </span>
+                </div>
+
+                <div class="d-gantt" [class.cols-compact]="!allColumns()"
+                     [style.--gantt-name-w.px]="nameWidth()">
+                  <div class="d-gantt-colbar">
+                    <button type="button" class="d-btn sm" (click)="toggleColumns()">
+                      <epm-icon name="view_column" [size]="15" />
+                      {{ allColumns() ? lang.t('scd_cols_few') : lang.t('scd_cols_all') }}
+                    </button>
+                  </div>
+
+                  <div class="d-gantt-scroll">
+                    <div class="d-gantt-inner" [style.width.px]="innerWidth()">
+
+                      <!-- ── header ─────────────────────────────────────── -->
+                      <div class="d-gantt-row head">
+                        <div class="d-gantt-cellname">
+                          {{ lang.t('scd_wbs_activity') }}
+                          <!-- 04 §5's drag handle: floor 160px, default 320px.
+                               Focusable and arrow-key driven — a handle only a
+                               mouse can reach is not an affordance. -->
+                          <button type="button" class="d-gantt-namegrip"
+                                  [attr.aria-label]="lang.t('scd_resize')"
+                                  [attr.aria-valuenow]="nameWidth()" aria-valuemin="160"
+                                  aria-valuemax="560" role="separator" aria-orientation="vertical"
+                                  (pointerdown)="startResize($event)"
+                                  (keydown.arrowleft)="nudge(lang.isAr() ? 20 : -20)"
+                                  (keydown.arrowright)="nudge(lang.isAr() ? -20 : 20)"></button>
+                        </div>
+
+                        <!-- The nine info columns. The grid contract is
+                             `desktop.css`'s, copied verbatim from 04 §5, and the
+                             headers WRAP rather than truncate. -->
+                        <div class="d-gantt-cellinfo">
+                          <span class="c">{{ lang.t('scd_col_dur') }}</span>
+                          <span class="c">{{ lang.t('scd_col_bl_start') }}</span>
+                          <span class="c">{{ lang.t('scd_col_bl_fin') }}</span>
+                          <span class="c">{{ lang.t('scd_col_act_start') }}</span>
+                          <span class="c">{{ lang.t('scd_col_act_fin') }}</span>
+                          <span class="c">{{ lang.t('scd_col_float') }}</span>
+                          <span class="c">{{ lang.t('scd_col_pct') }}</span>
+                          <span class="c">{{ lang.t('scd_col_rel') }}</span>
+                          <span class="c">{{ lang.t('scd_col_abs') }}</span>
+                        </div>
+
+                        <div class="d-gantt-track" [style.width.px]="trackWidth()">
+                          @for (m of months(); track $index) {
+                            <span class="d-gantt-mon" [style.width.px]="monthWidth">
+                              {{ m.label }}<i><bdi>{{ m.year }}</bdi></i>
+                            </span>
+                          }
+                          <span class="d-gantt-dd" [style.inset-inline-start.px]="dataDateLeft()">
+                            <i>{{ lang.t('scd_legend_dd') }}</i>
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- ── rows ───────────────────────────────────────── -->
+                      @for (r of visible(); track r.kind + r.id) {
+                        @if (r.kind === 'wbs') {
+                          <div class="d-gantt-row wbs">
+                            <div class="d-gantt-cellname" [style.padding-inline-start.px]="8 + indent(r.level)">
+                              <button type="button" class="d-gantt-collapse"
+                                      [attr.aria-expanded]="isOpen(r.path)"
+                                      [attr.aria-label]="name(r)" (click)="toggle(r.path)">
+                                <epm-icon
+                                  [name]="isOpen(r.path) ? 'expand_more' : (lang.isAr() ? 'chevron_left' : 'chevron_right')"
+                                  [size]="15" />
+                              </button>
+                              <span class="mono"><bdi>{{ r.path }}</bdi></span>
+                              <span class="nm">{{ name(r) }}</span>
+                              <span class="mono" style="margin-inline-start: auto">
+                                <bdi>{{ fmt.pct(r.progress, 0) }}</bdi>
+                              </span>
+                            </div>
+                            <div class="d-gantt-cellinfo">
+                              <span class="c">—</span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.baselineStart) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.baselineFinish) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.actualStart) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.actualFinish) }}</bdi></span>
+                              <span class="c">—</span>
+                              <span class="c mono"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.pct(r.relativeWeight, 1) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.pct(r.absoluteWeight, 1) }}</bdi></span>
+                            </div>
+                            <div class="d-gantt-track" [style.width.px]="trackWidth()">
+                              <span class="d-gantt-dd-line" [style.inset-inline-start.px]="dataDateLeft()"></span>
+                              <!-- A summary bar: the span of everything beneath. -->
+                              <span class="d-gantt-sum"
+                                    [style.inset-inline-start.px]="left(r.baselineStart)"
+                                    [style.width.px]="width(r.baselineStart, r.forecastFinish)"></span>
+                            </div>
+                          </div>
+
+                        } @else {
+                          <div class="d-gantt-row" [class.on]="selected() === r.id"
+                               (click)="select(r)">
+                            <div class="d-gantt-cellname" [style.padding-inline-start.px]="8 + indent(r.level)">
+                              <epm-icon [name]="r.isMilestone ? 'flag' : 'task_alt'" [size]="14" />
+                              <span class="mono"><bdi>{{ r.id }}</bdi></span>
+                              <span class="nm">{{ name(r) }}</span>
+                              @if (r.isCritical) {
+                                <span class="d-crit-dot" [title]="lang.t('scd_critical')"></span>
+                              }
+                            </div>
+                            <div class="d-gantt-cellinfo">
+                              <span class="c mono">
+                                <bdi>{{ r.isMilestone ? '—' : r.originalDuration }}</bdi>
+                              </span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.baselineStart) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.baselineFinish) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.actualStart) }}</bdi></span>
+                              <span class="c mono"><bdi>{{ fmt.date(r.actualFinish) }}</bdi></span>
+                              <!-- Float 0 IS the critical path, so it is the one
+                                   figure here rendered at full strength. -->
+                              <span class="c mono" [class.d-cell-strong]="r.totalFloat === 0">
+                                <bdi>{{ r.isMilestone ? '—' : fmt.days(r.totalFloat) }}</bdi>
+                              </span>
+                              <span class="c mono"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></span>
+                              <span class="c mono">
+                                <bdi>{{ r.isMilestone ? '—' : fmt.pct(r.relativeWeight, 1) }}</bdi>
+                              </span>
+                              <span class="c mono d-cell-strong">
+                                <bdi>{{ r.isMilestone ? '—' : fmt.pct(r.absoluteWeight, 1) }}</bdi>
+                              </span>
+                            </div>
+                            <div class="d-gantt-track" [style.width.px]="trackWidth()">
+                              <span class="d-gantt-dd-line" [style.inset-inline-start.px]="dataDateLeft()"></span>
+
+                              @if (r.isMilestone) {
+                                <!-- An `--on-surface` diamond (04 §5). -->
+                                <span class="d-gantt-ms" [class.crit]="r.isCritical"
+                                      [style.inset-inline-start.px]="left(barEnd(r)) - 7"
+                                      [title]="fmt.date(barEnd(r))"></span>
+                              } @else {
+                                <!-- The BASELINE rail, under the bar. It never
+                                     moves: an applied change order shifts the
+                                     contractual date in the amendment, not this. -->
+                                <span class="d-gantt-bl"
+                                      [style.inset-inline-start.px]="left(r.baselineStart)"
+                                      [style.width.px]="width(r.baselineStart, r.baselineFinish)"></span>
+                                <!-- Status is the FILL; criticality is the RING
+                                     (04 §5). The fill travels as `--bar-status`
+                                     and the stylesheet applies it, so the rule
+                                     that would have painted a critical bar red
+                                     is genuinely overridden rather than merely
+                                     out-specified by an inline style. -->
+                                <span class="d-gantt-bar" [class.crit]="r.isCritical"
+                                      [style.inset-inline-start.px]="left(barStart(r))"
+                                      [style.width.px]="width(barStart(r), barEnd(r))"
+                                      [style.--bar-status]="barColor(r)">
+                                  <span class="fill" [style.width.%]="r.progress"></span>
+                                </span>
+                              }
+                            </div>
+                          </div>
+                        }
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            } @else {
+              <!-- ══ THE TABLE ═══════════════════════════════════════════ -->
+              <div class="d-tablewrap">
+                <div class="d-vow-tw">
+                  <table class="d-table" style="min-width: 1180px">
+                    <thead>
+                      <tr>
+                        <th>{{ lang.t('scd_col_id') }}</th>
+                        <th>{{ lang.t('scd_col_status') }}</th>
+                        <th>{{ lang.t('scd_wbs_activity') }}</th>
+                        <th class="r">{{ lang.t('scd_col_dur') }}</th>
+                        <th>{{ lang.t('scd_col_bl_start') }}</th>
+                        <th>{{ lang.t('scd_col_bl_fin') }}</th>
+                        <th>{{ lang.t('scd_col_forecast') }}</th>
+                        <th class="r">{{ lang.t('scd_col_slip') }}</th>
+                        <th class="r">{{ lang.t('scd_col_float') }}</th>
+                        <th class="r">{{ lang.t('scd_col_pct') }}</th>
+                        <th class="r">
+                          {{ lang.t('scd_col_cost') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                        </th>
+                        <th class="r">{{ lang.t('scd_col_rel') }}</th>
+                        <th class="r">{{ lang.t('scd_col_abs') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of visible(); track r.kind + r.id) {
+                        @if (r.kind === 'wbs') {
+                          <tr class="lvl1">
+                            <td class="mono d-cell-sub"><bdi>{{ r.path }}</bdi></td>
+                            <td colspan="6" class="d-cell-strong"
+                                [style.padding-inline-start.px]="8 + indent(r.level)">{{ name(r) }}</td>
+                            <td class="r"></td>
+                            <td class="r"></td>
+                            <td class="r mono"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></td>
+                            <td class="r mono"><bdi>{{ fmt.money(r.budgetedCost) }}</bdi></td>
+                            <td class="r mono"><bdi>{{ fmt.pct(r.relativeWeight, 1) }}</bdi></td>
+                            <td class="r mono d-cell-strong"><bdi>{{ fmt.pct(r.absoluteWeight, 1) }}</bdi></td>
+                          </tr>
+                        } @else {
+                          <tr [class.sel]="selected() === r.id" (click)="select(r)" style="cursor: pointer">
+                            <td class="mono">
+                              <bdi>{{ r.id }}</bdi>
+                              @if (r.isCritical) {
+                                <span class="d-crit-dot" style="display: inline-block; margin-inline-start: 6px"
+                                      [title]="lang.t('scd_critical')"></span>
+                              }
+                            </td>
+                            <td><epm-status-pill [code]="r.status" kind="activity-status" /></td>
+                            <td class="d-cell-strong" [style.padding-inline-start.px]="8 + indent(r.level)">
+                              {{ name(r) }}
+                            </td>
+                            <td class="r mono">
+                              <bdi>{{ r.isMilestone ? '—' : r.originalDuration }}</bdi>
+                            </td>
+                            <td class="mono d-cell-sub"><bdi>{{ fmt.date(r.baselineStart) }}</bdi></td>
+                            <td class="mono d-cell-sub"><bdi>{{ fmt.date(r.baselineFinish) }}</bdi></td>
+                            <td class="mono"><bdi>{{ fmt.date(r.forecastFinish) }}</bdi></td>
+                            <!-- SIGNED, and NOT coloured by threshold: a slip is
+                                 a magnitude, and the neutral branch is
+                                 `--on-surface` (CLAUDE.md §6). The sign carries it. -->
+                            <td class="r mono"><bdi>{{ fmt.delta(r.slipDays) }}</bdi></td>
+                            <td class="r mono" [class.d-cell-strong]="r.totalFloat === 0">
+                              <bdi>{{ r.isMilestone ? '—' : fmt.days(r.totalFloat) }}</bdi>
+                            </td>
+                            <td class="r mono"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></td>
+                            <td class="r mono"><bdi>{{ fmt.money(r.budgetedCost) }}</bdi></td>
+                            <td class="r mono">
+                              <bdi>{{ r.isMilestone ? '—' : fmt.pct(r.relativeWeight, 1) }}</bdi>
+                            </td>
+                            <td class="r mono d-cell-strong">
+                              <bdi>{{ r.isMilestone ? '—' : fmt.pct(r.absoluteWeight, 1) }}</bdi>
+                            </td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            <div class="d-pager calcnote">
+              <epm-icon name="functions" [size]="14" />
+              <span>{{ lang.t('scd_weights_note') }}</span>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- ══ Z8 — the activity record ═══════════════════════════════════ -->
+      @if (selectedRow(); as a) {
+        <div class="d-pz8">
+          <div class="d-rpane">
+            <div class="rp-h">
+              <div class="tx">
+                <div class="r1">
+                  <span class="code"><bdi>{{ a.id }}</bdi></span>
+                  @if (a.isCritical) {
+                    <span class="d-crit-dot" [title]="lang.t('scd_critical')"></span>
+                  }
+                </div>
+                <b>{{ name(a) }}</b>
+                <span class="sub">{{ statusLabel(a.status) }}</span>
+              </div>
+              <div class="acts">
+                <button type="button" class="d-icon-btn sm" [attr.aria-label]="lang.t('scd_rec_close')"
+                        (click)="selected.set('')">
+                  <epm-icon name="close" [size]="18" />
+                </button>
+              </div>
+            </div>
+            <div class="rp-b">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_status') }}</span>
+                  <span class="v"><epm-status-pill [code]="a.status" kind="activity-status" /></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_pct') }}</span>
+                  <span class="v num"><bdi>{{ fmt.pct(a.progress, 0) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_bl_start') }}</span>
+                  <span class="v num"><bdi>{{ fmt.date(a.baselineStart) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_bl_fin') }}</span>
+                  <span class="v num"><bdi>{{ fmt.date(a.baselineFinish) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_act_start') }}</span>
+                  <span class="v num"><bdi>{{ fmt.date(a.actualStart) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_forecast') }}</span>
+                  <span class="v num"><bdi>{{ fmt.date(a.forecastFinish) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_rec_dur') }}</span>
+                  <span class="v num">
+                    <bdi>{{ a.originalDuration }}</bdi> / <bdi>{{ a.remainingDuration }}</bdi>
+                    {{ lang.t('scd_days') }}
+                  </span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_float') }}</span>
+                  <span class="v num">
+                    <bdi>{{ a.isMilestone ? '—' : fmt.days(a.totalFloat) }}</bdi>
+                  </span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_slip') }}</span>
+                  <span class="v num">
+                    <bdi>{{ fmt.delta(a.slipDays) }}</bdi>
+                    @if (a.slipDays !== null) {
+                      <span class="d-cell-sub">
+                        {{ a.slipDays > 0 ? lang.t('scd_late')
+                           : a.slipDays < 0 ? lang.t('scd_early') : lang.t('scd_ontime') }}
+                      </span>
+                    }
+                  </span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_rec_wbs') }}</span>
+                  <span class="v"><bdi>{{ a.path }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_rec_calendar') }}</span>
+                  <span class="v">{{ a.calendar || '—' }}</span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_rec_preds') }}</span>
+                  <span class="v num"><bdi>{{ a.predecessors || '—' }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_rel') }}</span>
+                  <span class="v num"><bdi>{{ fmt.pct(a.relativeWeight, 2) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_abs') }}</span>
+                  <span class="v num"><bdi>{{ fmt.pct(a.absoluteWeight, 2) }}</bdi></span></div>
+              </div>
+
+              @if (a.isCritical) {
+                <div class="d-msgbar info">
+                  <epm-icon name="timeline" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('scd_critical') }}</b>
+                    <span>{{ lang.t('scd_crit_note') }}</span>
+                  </div>
+                </div>
+              }
+
+              <!-- Progress is NOT edited here. `02 §4` makes it reflect straight
+                   onto the BOQ, and the screen that does that — with the BOQ
+                   lines visible while you drag — is SCR-W6 (Phase 4.4). An
+                   editor here would move a number whose consequence is off
+                   screen. -->
+              <div class="d-msgbar info">
+                <epm-icon name="functions" [size]="16" />
+                <div><span>{{ lang.t('scd_progress_ro') }}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

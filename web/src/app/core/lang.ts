@@ -491,6 +491,79 @@ const STR = {
   /** The unit a money column is stated in, once in its header — the reference's
    *  own `cur(lang)` (boq-register.jsx:23). D-11: IQD, always an integer. */
   cur_iqd:         { ar: 'د.ع',                            en: 'IQD' },
+
+  // ── SCR-W5 Schedule (04 §5) — chrome only. Activity STATUS labels come
+  // from the `activity-status` lookup (06 §9), like every other enum.
+  scd_gate_t:      { ar: 'اختر عقداً لعرض الجدول الزمني',   en: 'Select a contract to see its schedule' },
+  scd_gate_b:      { ar: 'الأنشطة تنتمي إلى عقد واحد.',     en: 'Activities belong to one contract.' },
+  scd_tab_gantt:   { ar: 'المخطط الزمني',                  en: 'Gantt' },
+  scd_tab_table:   { ar: 'الجدول',                         en: 'Table' },
+  scd_wbs_activity:{ ar: 'هيكل التجزئة / النشاط',          en: 'WBS / Activity' },
+  scd_critical:    { ar: 'المسار الحرج',                   en: 'Critical path' },
+  scd_level:       { ar: 'المستوى',                        en: 'Level' },
+  scd_basis:       { ar: 'أساس الوزن',                     en: 'Weight basis' },
+  scd_cost:        { ar: 'الكلفة',                         en: 'Cost' },
+  scd_mh:          { ar: 'ساعات العمل',                    en: 'Man-hours' },
+  scd_cols_all:    { ar: 'كل الأعمدة (9)',                 en: 'All columns (9)' },
+  scd_cols_few:    { ar: 'أعمدة أساسية (4)',               en: 'Essential columns (4)' },
+  scd_resize:      { ar: 'اسحب لتغيير عرض العمود',         en: 'Drag to resize the column' },
+
+  // the nine info columns (04 §5), headers WRAP rather than truncate
+  scd_col_dur:     { ar: 'المدة',                          en: 'Duration' },
+  scd_col_bl_start:{ ar: 'بداية الأساس',                   en: 'Baseline start' },
+  scd_col_bl_fin:  { ar: 'إنجاز الأساس',                   en: 'Baseline finish' },
+  scd_col_act_start:{ ar: 'البداية الفعلية',               en: 'Actual start' },
+  scd_col_act_fin: { ar: 'الإنجاز الفعلي',                 en: 'Actual finish' },
+  scd_col_float:   { ar: 'العوم الكلي',                    en: 'Total float' },
+  scd_col_pct:     { ar: 'الإنجاز',                        en: '% Complete' },
+  scd_col_rel:     { ar: 'الوزن النسبي',                   en: 'Rel. weight' },
+  scd_col_abs:     { ar: 'الوزن المطلق',                   en: 'Abs. weight' },
+  scd_col_id:      { ar: 'المعرّف',                        en: 'Activity ID' },
+  scd_col_status:  { ar: 'الحالة',                         en: 'Status' },
+  scd_col_cost:    { ar: 'الكلفة',                         en: 'Cost' },
+  scd_col_slip:    { ar: 'الانزياح',                       en: 'Slip' },
+  scd_col_forecast:{ ar: 'الإنجاز المتوقع',                en: 'Forecast finish' },
+
+  // the record pane
+  scd_rec_calendar:{ ar: 'التقويم',                        en: 'Calendar' },
+  scd_rec_preds:   { ar: 'السوابق',                        en: 'Predecessors' },
+  scd_rec_dur:     { ar: 'المدة الأصلية / المتبقية',       en: 'Original / remaining duration' },
+  scd_rec_wbs:     { ar: 'هيكل التجزئة',                   en: 'WBS' },
+  scd_rec_close:   { ar: 'إغلاق',                          en: 'Close' },
+  scd_days:        { ar: 'يوم',                            en: 'd' },
+  scd_early:       { ar: 'مبكّر',                          en: 'early' },
+  scd_late:        { ar: 'متأخر',                          en: 'late' },
+  scd_ontime:      { ar: 'ضمن الأساس',                     en: 'on baseline' },
+  scd_progress_ro: { ar: 'تحديث الإنجاز يتم من شاشة الإنجاز (المرحلة 4.4)، حيث ينعكس مباشرةً على بنود الكميات.',
+                     en: 'Progress is updated on the Progress screen (Phase 4.4), where it reflects straight onto the BOQ.' },
+
+  // the legend — every mark on the chart, named
+  scd_legend_bl:   { ar: 'خط الأساس',                      en: 'Baseline' },
+  scd_legend_cur:  { ar: 'الوضع الحالي (اللون = الحالة)',  en: 'Current (colour = status)' },
+  scd_legend_crit: { ar: 'المسار الحرج (إطار)',            en: 'Critical path (ring)' },
+  scd_legend_ms:   { ar: 'حَدَث فارق',                      en: 'Milestone' },
+  scd_legend_dd:   { ar: 'تاريخ البيانات',                 en: 'Data date' },
+
+  // states
+  scd_empty_t:     { ar: 'لا جدول زمني لهذا العقد',        en: 'No schedule for this contract' },
+  scd_empty_b:     { ar: 'يُستورد الجدول الزمني من Primavera P6. حمّل بيانات العرض للبدء.',
+                     en: 'The schedule is imported from Primavera P6. Load the demo fixture to begin.' },
+  scd_nocrit_t:    { ar: 'لا أنشطة على المسار الحرج',      en: 'No activities on the critical path' },
+  scd_nocrit_b:    { ar: 'ألغِ مرشّح المسار الحرج لعرض الجدول كاملاً.',
+                     en: 'Clear the critical-path filter to see the whole schedule.' },
+
+  // summary strip — the client module spec's own five figures
+  scd_stat_activities:{ ar: 'الأنشطة',                     en: 'Activities' },
+  scd_stat_critical:  { ar: 'حرجة',                        en: 'Critical' },
+  scd_stat_delayed:   { ar: 'متأخرة',                      en: 'Delayed' },
+  scd_stat_progress:  { ar: 'متوسط الإنجاز',               en: 'Avg. progress' },
+  scd_stat_milestones:{ ar: 'أحداث فارقة',                 en: 'Milestones' },
+  /** Stated under the grid, because two weights with two denominators is the
+   *  single thing most likely to be misread on this screen (02 §2). */
+  scd_weights_note:{ ar: 'الوزن النسبي = حصة النشاط داخل بند هيكل التجزئة الذي يتبعه؛ الوزن المطلق = حصته من العقد كاملاً. المطلق هو ما يقود التخصيص والقيمة المكتسبة.',
+                     en: "Relative weight is the activity's share of the WBS node it sits in; absolute weight is its share of the whole contract. Absolute is what drives allocation and earned value." },
+  scd_crit_note:   { ar: 'العوم صفر — أي تأخير في هذا النشاط يؤخّر إنجاز العقد بالكامل. يُعرَض بإطار لا بلون؛ اللون محجوز للحالة.',
+                     en: 'Zero float — any delay here delays the whole contract. Shown as a ring, not a colour; the colour channel belongs to status.' },
 } as const;
 
 export type StrKey = keyof typeof STR;

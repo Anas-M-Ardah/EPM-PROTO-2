@@ -38,13 +38,16 @@ namespace Epm.Api.Features.ScheduleControl;
 /// hop. Null when nothing is late.
 /// </param>
 /// <param name="CriticalActivities">
-/// ALWAYS NULL until Phase 4.3 registers Activities. The reference fabricates
-/// this from a character of the project id; see the endpoint's remarks.
+/// How many of the project's activities sit on the critical path. REAL since
+/// Phase 4.3 — it was null while Activities was unregistered rather than
+/// fabricated from a character of the project id, which is what the reference
+/// does. Still null when the project has no schedule: "none are critical" and
+/// "there is no schedule" are different answers (P-09).
 /// </param>
 /// <param name="ScheduleImported">
-/// Whether a P6 schedule has been imported. Always false today, and that is a
-/// fact rather than a placeholder: the Activities table is not registered, so
-/// no schedule can have been imported for any project.
+/// Whether a P6 schedule has been imported. REAL since Phase 4.3 —
+/// `db.Activities.Any(...)` for the project's contracts, exactly as P-31 said
+/// it would become, with no change to this DTO or to the screen.
 /// </param>
 public record ScheduleRow(
     string ProjectId,
@@ -77,12 +80,19 @@ public record ScheduleRow(
 /// Mean delay across the DELAYED projects only — the reference's own
 /// denominator. Zero when nothing is late.
 /// </param>
+/// <param name="CriticalActivities">
+/// Σ critical activities across the scoped projects — REAL since Phase 4.3.
+/// NULL, not 0, when no project has a schedule at all: "nothing is critical"
+/// and "nothing has been imported to be critical" are different answers, and
+/// P-09 says never render 0 for a missing input.
+/// </param>
 public record ScheduleCounts(
     int Total,
     int Delayed,
     int OnTrack,
     int NoSchedule,
-    int AvgDelayDays);
+    int AvgDelayDays,
+    int? CriticalActivities);
 
 /// <summary>
 /// A headline figure the system cannot yet derive. Same shape and same reason

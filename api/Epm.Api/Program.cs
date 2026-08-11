@@ -12,6 +12,7 @@ using Epm.Api.Features.Portfolio;
 using Epm.Api.Features.Lookups;
 using Epm.Api.Features.Projects;
 using Epm.Api.Features.Reports;
+using Epm.Api.Features.Schedule;
 using Epm.Api.Features.ScheduleControl;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,6 +66,7 @@ app.MapOverviewEndpoints();
 app.MapInformationEndpoints();
 app.MapContractEndpoints();
 app.MapBoqEndpoints();
+app.MapScheduleEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

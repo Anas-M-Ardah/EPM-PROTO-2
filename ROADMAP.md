@@ -556,18 +556,51 @@ Where the value is. **Contract before BOQ; BOQ before everything else.**
 > weights, not from the stated 5.8 / 5.2 — `02 §4` says the same of its own example. The
 > rule's answer is 14,094,000 / 12,636,000 and `AllocationTests` asserts both. See P-15.
 
-### 4.3 Schedule tab — SCR-W5 · `DModSchedule` + `DGantt`
-- [ ] ~~Register `Activity` DbSet~~ — **done by 4.2**, which needed its weight (BR-03) and
-      its progress (BR-04). What remains is restoring the columns 4.2 pruned:
+### 4.3 Schedule tab — SCR-W5 · `DGantt` `schedule-module.jsx:80` + `DSchedTable` `:257` + `DModSchedule` `:437` (v1.1) ✅ COMPLETE
+- [x] ~~Register `Activity` DbSet~~ — **done by 4.2**, which needed its weight (BR-03) and
+      its progress (BR-04). What remained was restoring the columns 4.2 pruned:
       baseline / actual / forecast dates, durations, `TotalFloat`, `IsCritical`,
-      `Calendar`, `Predecessors`. WBS stays a **path string**, not a tree table
-- [ ] Gantt with resizable pinned column block — floor 160px, default 320px (`04 §5`)
-- [ ] Nine info columns with the explicit grid contract; headers **wrap, never truncate**
-- [ ] Status as bar fill; **critical path is a 2px `--on-surface` ring, not a colour** (`04 §5`)
-- [ ] Data-date line in `--viz-base`; milestones as `--on-surface` diamonds
-- [ ] WBS tree showing **both** relative and absolute weight (BR-02)
-- [ ] Below 1280px, column picker defaults to 4 essential columns
-- [ ] `EP-SCD-01..n` · Angular trio · UML · TRACE rows
+      `Calendar`, `Predecessors`. WBS stays a **path string**, not a tree table —
+      the endpoint splits it, materialises each ancestor once and emits **one flat
+      ordered list**, so a collapse cannot desynchronise from the data
+- [x] Contract gate, for the same reason as SCR-W4 (P-46): an activity belongs to
+      exactly one contract, and a project with ONE contract is not asked
+- [x] Gantt with resizable pinned column block — floor 160px, default 320px (`04 §5`),
+      drag **and** arrow keys, direction flipped in RTL
+- [x] Nine info columns with the explicit grid contract; headers **wrap, never truncate**
+- [x] Status as bar fill; **critical path is a 2px `--on-surface` ring, not a colour** (`04 §5`).
+      The reference's own stylesheet paints it `--error` while its own legend draws
+      the ring — recorded as **P-52**, and the override is in the stylesheet, not
+      an inline style
+- [x] Data-date line in `--viz-base` at the **project data date** (D-06); milestones
+      as `--on-surface` diamonds
+- [x] WBS tree showing **both** relative and absolute weight (BR-02) — the first screen
+      where `Relative` has a parent that is not the contract
+- [x] Table view, and an activity record pane. **Progress is read-only here**: `02 §4`
+      reflects it onto the BOQ, and the screen that shows that consequence is SCR-W6
+- [x] Below 1280px, column picker defaults to 4 essential columns
+- [x] **SCR-E5's critical-activities tile and column became real** — the follow-through
+      P-31 promised, with no change to the DTO's shape or the screen's
+- [x] `EP-SCD-01` · `EP-SCD-02` · Angular trio · `docs/uml/schedule.md` · TRACE rows
+
+> **The reference rolls progress up by original DURATION.** `02 §4` says "rolls up
+> by weight", which makes a long cheap activity stop outranking a short expensive
+> one. The written spec owns the arithmetic, so `ProgressReflection.Rollup` is used
+> unchanged and the two give different node percentages. Recorded as **P-51**.
+
+> **Verified live** at 1440 / 1280 / 1024 / 768, AR and EN, light and dark:
+> `CNT-0279` reads A5 **abs 5.80% / rel 16.20%** and A8 **5.20%**, matching `02 §3`;
+> node 2 rolls up to **67%**; A9 shows **−9 days, early** and is the one row that is;
+> the man-hours basis moves A5 to **6.3%**; the critical filter leaves 8 activities
+> and only the nodes above them; level 1 collapses to the four nodes; the critical
+> bars carry a 2px `--on-surface` ring over a **status** fill, never red; `PRJ-0148`
+> skips the gate, shows no back button and renders the no-schedule state. No header
+> truncates and the chart stays inside the pane at all four widths.
+> SCR-E5 now reads **11 critical activities**. `dotnet test` 140/140, `ng build` clean,
+> no console errors.
+
+**Exit:** `CNT-0279` A5 absolute weight 5.80%, relative 16.20%; node 2 progress 67.07%;
+A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable".
 
 ### 4.4 Progress + Financials — SCR-W6 / SCR-W7
 - [ ] Progress: move an activity's progress → BOQ progress, achieved qty and achieved amount update live (BR-04)

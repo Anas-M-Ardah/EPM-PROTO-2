@@ -429,41 +429,95 @@ public static class Fixture
         // Man-hours are NOT proportional to cost, deliberately: on the cost
         // basis BQ-003 splits 52.7 / 47.3, on man-hours 57.9 / 42.1. A toggle
         // that cannot change the answer is not worth having on screen (02 §2).
+        // ── PHASE 4.3 added the schedule half of every row ────────────────
+        // A baseline, a forecast, a float and a critical flag. Three things the
+        // dates have to be true about, or the Gantt argues with the rest of the
+        // system:
+        //
+        //   1. THE CRITICAL PATH IS A REAL CHAIN, not a scatter of flags.
+        //      A1 → A2 → A3 → A4 → A5 → A7 → A10 (with M1 hanging off A5), all
+        //      at float 0. Every non-critical activity carries float > 0.
+        //   2. THE LAST ACTIVITY'S FORECAST FINISH IS THE CONTRACT'S.
+        //      A10 and E4 both forecast 2026-08-30, which is what
+        //      Contracts.ForecastFinish says and what BR-10 charges the penalty
+        //      on. A Gantt that ended somewhere else would make the contract
+        //      tab and the schedule tab disagree about the same project.
+        //   3. ONLY THE CRITICAL CHAIN IS LATE. The float on A6, A8 and A9 is
+        //      what absorbs their own slip, so the project is 16 days late
+        //      rather than every activity being late — which is what makes the
+        //      critical-path filter worth having.
+        //
+        // All five 06 §9 statuses appear: completed ×3, delayed ×3,
+        // inprogress ×1, ahead ×1, notstarted ×3 (one of them the milestone).
         db.Activities.AddRange(
             Act("CNT-0279", "A1", "التهيئة وتسوية الموقع", "Site preparation and levelling",
-                "1", "الأعمال الترابية والأسس", 12_000_000m, 9_600m, 100m, "completed"),
+                "1", "الأعمال الترابية والأسس", 12_000_000m, 9_600m, 100m, "completed",
+                bl: ("2025-03-01", "2025-04-14"), actual: ("2025-03-01", "2025-04-14"),
+                dur: 45, float_: 0, critical: true),
             Act("CNT-0279", "A2", "أعمال الحفر والردم", "Excavation and backfill",
-                "1", "الأعمال الترابية والأسس", 18_000_000m, 16_800m, 100m, "completed"),
+                "1", "الأعمال الترابية والأسس", 18_000_000m, 16_800m, 100m, "completed",
+                bl: ("2025-04-15", "2025-07-13"), actual: ("2025-04-15", "2025-07-13"),
+                dur: 90, float_: 0, critical: true, preds: "A1"),
             Act("CNT-0279", "A3", "خرسانة الأسس المسلحة", "Reinforced foundation concrete",
-                "1", "الأعمال الترابية والأسس", 33_600_000m, 28_000m, 100m, "completed"),
+                "1", "الأعمال الترابية والأسس", 33_600_000m, 28_000m, 100m, "completed",
+                bl: ("2025-07-14", "2025-11-10"), actual: ("2025-07-14", "2025-11-18"),
+                dur: 120, float_: 0, critical: true, preds: "A2"),
             Act("CNT-0279", "A4", "الأعمدة والجسور الخرسانية", "Concrete columns and beams",
-                "2", "الهيكل الإنشائي", 45_600_000m, 38_000m, 82m, "inprogress"),
+                "2", "الهيكل الإنشائي", 45_600_000m, 38_000m, 82m, "delayed",
+                bl: ("2025-11-11", "2026-04-09"), start: "2025-11-19", forecast: "2026-04-25",
+                dur: 150, float_: 0, critical: true, preds: "A3"),
+            // 02 §4's own activity — the one Phase 4.4 drags to 100%.
             Act("CNT-0279", "A5", "الأسقف والسلالم", "Slabs and stairs",
-                "2", "الهيكل الإنشائي", 13_920_000m, 13_200m, 60m, "inprogress"),
+                "2", "الهيكل الإنشائي", 13_920_000m, 13_200m, 60m, "delayed",
+                bl: ("2026-01-10", "2026-05-10"), start: "2026-01-26", forecast: "2026-05-26",
+                dur: 121, float_: 0, critical: true, preds: "A4"),
             Act("CNT-0279", "A6", "الجدران والقواطع", "Walls and partitions",
-                "2", "الهيكل الإنشائي", 26_400_000m, 24_000m, 45m, "inprogress"),
+                "2", "الهيكل الإنشائي", 26_400_000m, 24_000m, 45m, "inprogress",
+                bl: ("2026-02-15", "2026-06-14"), start: "2026-02-20", forecast: "2026-06-14",
+                dur: 120, float_: 12, critical: false, preds: "A4"),
             Act("CNT-0279", "A7", "التبليط والإكساء الداخلي", "Tiling and internal finishes",
-                "3", "الإكساء والتشطيبات", 38_400_000m, 36_000m, 20m, "delayed"),
+                "3", "الإكساء والتشطيبات", 38_400_000m, 36_000m, 20m, "delayed",
+                bl: ("2026-03-01", "2026-06-28"), start: "2026-03-18", forecast: "2026-07-14",
+                dur: 120, float_: 0, critical: true, preds: "A5"),
             Act("CNT-0279", "A8", "أعمال الواجهات", "Facade works",
-                "3", "الإكساء والتشطيبات", 12_480_000m, 9_600m, 0m, "notstarted"),
+                "3", "الإكساء والتشطيبات", 12_480_000m, 9_600m, 0m, "notstarted",
+                bl: ("2026-04-01", "2026-06-29"), forecast: "2026-06-29",
+                dur: 90, float_: 6, critical: false, preds: "A6"),
+            // The one activity running EARLY — 9 days inside its baseline.
             Act("CNT-0279", "A9", "الأعمال الصحية والكهربائية الأولية", "First-fix plumbing and electrical",
-                "3", "الإكساء والتشطيبات", 21_600_000m, 20_400m, 15m, "inprogress"),
+                "3", "الإكساء والتشطيبات", 21_600_000m, 20_400m, 15m, "ahead",
+                bl: ("2026-02-20", "2026-06-19"), start: "2026-02-20", forecast: "2026-06-10",
+                dur: 120, float_: 18, critical: false, preds: "A4"),
             Act("CNT-0279", "A10", "الأعمال الخارجية والتسليم", "External works and handover",
-                "4", "الأعمال الخارجية والتسليم", 18_000_000m, 14_400m, 0m, "notstarted"),
+                "4", "الأعمال الخارجية والتسليم", 18_000_000m, 14_400m, 0m, "notstarted",
+                bl: ("2026-05-01", "2026-06-30"), forecast: "2026-08-30",
+                dur: 60, float_: 0, critical: true, preds: "A7,A8,A9"),
             // Zero cost, zero man-hours, weight 0, excluded from allocation
-            // (02 §2). It exists so the assignment picker has to skip it.
+            // (02 §2). It exists so the assignment picker has to skip it — and
+            // now so the Gantt has a diamond to draw. A milestone has zero
+            // duration, so its baseline start IS its baseline finish.
             Act("CNT-0279", "M1", "تسليم الهيكل الإنشائي", "Structure handover",
-                "2", "الهيكل الإنشائي", 0m, 0m, 0m, "notstarted", milestone: true),
+                "2", "الهيكل الإنشائي", 0m, 0m, 0m, "notstarted", milestone: true,
+                bl: ("2026-06-15", "2026-06-15"), forecast: "2026-07-01",
+                dur: 0, float_: 0, critical: true, preds: "A5,A6"),
 
             // CNT-0279-EM electromechanical: four activities, 100,000,000.
             Act("CNT-0279-EM", "E1", "توريد المولدات ولوحات التوزيع", "Supply generators and distribution boards",
-                "1", "التجهيز والتوريد", 40_000_000m, 21_000m, 55m, "inprogress"),
+                "1", "التجهيز والتوريد", 40_000_000m, 21_000m, 55m, "inprogress",
+                bl: ("2025-06-01", "2025-12-27"), start: "2025-06-10", forecast: "2026-01-10",
+                dur: 210, float_: 0, critical: true),
             Act("CNT-0279-EM", "E2", "توريد كابلات الضغط المتوسط", "Supply medium-voltage cabling",
-                "1", "التجهيز والتوريد", 16_131_000m, 8_400m, 40m, "inprogress"),
+                "1", "التجهيز والتوريد", 16_131_000m, 8_400m, 40m, "delayed",
+                bl: ("2025-09-01", "2026-01-29"), start: "2025-09-20", forecast: "2026-03-01",
+                dur: 151, float_: 25, critical: false, preds: "E1"),
             Act("CNT-0279-EM", "E3", "تركيب منظومة التكييف", "Install the HVAC system",
-                "2", "التركيب والتشغيل", 28_000_000m, 18_000m, 25m, "inprogress"),
+                "2", "التركيب والتشغيل", 28_000_000m, 18_000m, 25m, "inprogress",
+                bl: ("2026-01-01", "2026-05-31"), start: "2026-01-15", forecast: "2026-06-20",
+                dur: 151, float_: 0, critical: true, preds: "E1"),
             Act("CNT-0279-EM", "E4", "الفحص والتشغيل التجريبي", "Testing and trial operation",
-                "2", "التركيب والتشغيل", 15_869_000m, 9_600m, 0m, "notstarted")
+                "2", "التركيب والتشغيل", 15_869_000m, 9_600m, 0m, "notstarted",
+                bl: ("2026-06-01", "2026-06-30"), forecast: "2026-08-30",
+                dur: 30, float_: 0, critical: true, preds: "E2,E3")
         );
 
         // ── BOQ LINES ────────────────────────────────────────────────────
@@ -588,15 +642,45 @@ public static class Fixture
         // therefore reads at its single contract rate, which is the truth.
     }
 
+    /// <param name="bl">Baseline (start, finish). Equal on a milestone — zero duration.</param>
+    /// <param name="actual">
+    /// (start, finish) for a COMPLETE activity. An activity in progress passes
+    /// <paramref name="start"/> instead: an actual FINISH means finished, and
+    /// writing one at 82% would make the register claim work that is not done.
+    /// </param>
+    /// <param name="forecast">Where it is now expected to finish. Drives the bar and the slip.</param>
     private static Activity Act(string contractId, string activityId, string nameAr, string nameEn,
         string wbsPath, string wbsNames, decimal cost, decimal manHours, decimal progress,
-        string status, bool milestone = false) => new()
+        string status, bool milestone = false,
+        (string Start, string Finish)? bl = null,
+        (string Start, string Finish)? actual = null,
+        string? start = null, string? forecast = null,
+        int dur = 0, decimal float_ = 0, bool critical = false, string preds = "") => new()
     {
         ContractId = contractId, ActivityId = activityId, NameAr = nameAr, NameEn = nameEn,
         WbsPath = wbsPath, WbsNames = wbsNames,
         BudgetedCost = cost, BudgetedManHours = manHours,
         ProgressPct = progress, Status = status, IsMilestone = milestone,
+
+        BaselineStart = D(bl?.Start),
+        BaselineFinish = D(bl?.Finish),
+        ActualStart = D(actual?.Start ?? start),
+        ActualFinish = D(actual?.Finish),
+        // A completed activity's forecast IS its actual finish — there is
+        // nothing left to forecast.
+        ForecastFinish = D(forecast ?? actual?.Finish),
+        OriginalDuration = dur,
+        // Remaining follows progress. Stored because P6 exports it, but it is
+        // never allowed to contradict the percentage next to it.
+        RemainingDuration = milestone ? 0 : (int)Math.Round(dur * (1m - progress / 100m)),
+        TotalFloat = float_,
+        IsCritical = critical,
+        // 06 §9 has no calendar list — this is the P6 calendar name as imported.
+        Calendar = milestone ? "—" : "6 أيام/أسبوع",
+        Predecessors = preds,
     };
+
+    private static DateOnly? D(string? iso) => iso is null ? null : DateOnly.Parse(iso);
 
     private static BoqItem Item(string contractId, string code, string descriptionAr, string descriptionEn,
         string unit, decimal qty, decimal rate, string division, string divisionName,
