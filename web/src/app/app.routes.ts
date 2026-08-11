@@ -106,6 +106,19 @@ export const routes: Routes = [
               import('./features/contract-tab/contract.page').then(m => m.ContractPage),
           },
 
+          // SCR-W4 · features/boq · Features/Boq · [EP-BOQ-01…08]
+          // Same two-route shape as the contract tab, for the same reason and
+          // one more: `04 §4` gates this screen behind a contract, so the
+          // contract-less path is not a stub — it IS the gate.
+          {
+            path: 'boq',
+            loadComponent: () => import('./features/boq/boq.page').then(m => m.BoqPage),
+          },
+          {
+            path: 'boq/:contractId',
+            loadComponent: () => import('./features/boq/boq.page').then(m => m.BoqPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

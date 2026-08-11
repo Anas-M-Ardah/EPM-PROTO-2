@@ -32,6 +32,18 @@ public static class Allocation
             .ToList();
     }
 
+    /// <summary>
+    /// 02 §3 — the absolute weight ONE link contributes to the contract: the
+    /// line's own BOQ weight (BR-01) times the share this activity takes of it.
+    ///
+    /// Σ over a line's links equals the line's weight only when coverage is
+    /// full. The gap is the part of the bill that is not linked to any work and
+    /// therefore can never be earned — which is the whole reason the register
+    /// carries this column beside `Weight` rather than instead of it.
+    /// </summary>
+    public static decimal AbsoluteWeight(decimal itemWeight, decimal sharePct)
+        => itemWeight * sharePct / 100m;
+
     /// <summary>06 §11 coverage from Σ shares. Tolerance 0.5 per 02 §3.</summary>
     public static string CoverageStatus(IReadOnlyList<decimal> shares)
     {

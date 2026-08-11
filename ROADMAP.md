@@ -106,7 +106,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | SCR-W1 | Overview | `DModOverview` — `project-modules.jsx:1461` |
 | SCR-W2 | Project Information | `DModInformation` — `project-modules.jsx:157` |
 | SCR-W3 | Contract | `DModContractNew` — `project-modules.jsx:194` · `DContractAmendments` — `contract-amendments.jsx:301` |
-| SCR-W4 | BOQ | `DModBOQ` — `project-modules.jsx:801` · contract-scoped wrapper `DModBOQ` — `contract-context.jsx:269` · `DBOQAssignment` — `project-modules.jsx:980` · `DBoqDistDrawer` — `contract-context.jsx:101` |
+| SCR-W4 | BOQ | *(v1.1 moved this module into its own files, sibling repo)* `DBoqWorkspace` — `boq-workspace.jsx:16` · `DBoqRegister` — `boq-register.jsx:435` · `DBoqAssign` — `boq-assign.jsx:11` · `DBoqDistDrawer` — `contract-context.jsx:101` |
 | SCR-W5 | Schedule | `DModSchedule` — `schedule-module.jsx:432` · `DGantt` — `:81` · `DSchedTable` — `:252` |
 | SCR-W6 | Progress | `DModProgress` — `project-modules.jsx:668` |
 | SCR-W7 | Financials | `DModFinancialNew` — `project-modules.jsx:485` · `DPaymentWizard` — `:416` |
@@ -518,15 +518,36 @@ Where the value is. **Contract before BOQ; BOQ before everything else.**
 > above; payments show certified and paid dates separately. `dotnet test` 131/131,
 > `ng build` clean.
 
-### 4.2 BOQ tab — SCR-W4 · the densest screen in the system
-- [ ] Contract selector gate — nothing renders until a contract is chosen ("اختر عقداً للبدء")
-- [ ] Register `BoqItem`, `BoqRateBand`, `BoqDistribution`, `BoqActivityLink` DbSets
-- [ ] **Register view** — weights summing to exactly 100.00% via BR-01, progress bar, distribution status
-- [ ] Inline row edit with live amount; delete confirms in-row and clears that item's distribution
-- [ ] **Distribution drawer** (`DBoqDistDrawer`) — inputs **capped** at the remaining quantity with an inline explanation (`02 §8`)
-- [ ] **Activity-assignment view** (`DBOQAssignment`) — cost/man-hours toggle, coverage counters, manual override + reset
-- [ ] Switching contracts re-scopes everything; **no BOQ row exposes project or WBS** (`01 §2.4`)
-- [ ] `EP-BOQ-01..n` · Angular trio · UML · TRACE rows
+### 4.2 BOQ tab — SCR-W4 · the densest screen in the system · `DBoqRegister` `boq-register.jsx:435` + `DBoqAssign` `boq-assign.jsx:11` (v1.1) ✅ COMPLETE
+- [x] Contract selector gate — nothing renders until a contract is chosen ("اختر عقداً للبدء").
+      A project with ONE contract is not asked; the v1.1 component never gates at
+      all, and the divergence is recorded as **P-46**
+- [x] Register `BoqItem`, `BoqRateBand`, `BoqDistribution`, `BoqActivityLink` DbSets —
+      **and `Activity`**, which 4.3 was to own: BR-03 reads its weight and BR-04
+      its progress, so the BOQ tab cannot be built without it. Columns pruned to
+      what SCR-W4 shows; 4.3 restores the schedule ones
+- [x] **Register view** — weights summing to exactly 100.00% via BR-01, expandable
+      division → item hierarchy, progress bar, distribution status, column menu,
+      frozen code + description, Z10 status strip
+- [x] Inline row edit with live amount; delete confirms in-row and clears that item's
+      distribution, links and bands. A **banded** line refuses the edit (`02 §5`) and a
+      decrease that would strand a distribution refuses it too (`02 §8`)
+- [x] **Distribution drawer** — inputs **capped** at the remaining quantity with an inline
+      explanation (`02 §8`), the cap re-derived as the other rows move, gates 2 and 4
+      checked in `EP-BOQ-06`, and only the project's own beneficiaries offered
+- [x] **Activity-assignment view** — cost/man-hours toggle, coverage counters, manual
+      override + reset, auto-distribute, over-allocation blocks the save
+- [x] Switching contracts re-scopes everything (it is a navigation, and the contract is in
+      the URL); **no BOQ row exposes project or WBS** (`01 §2.4`)
+- [x] `EP-BOQ-01` … `EP-BOQ-08` · Angular trio · `docs/uml/boq-tab.md` · TRACE rows
+
+> **Verified live** at 1440 and 1024, AR and EN: `CNT-0279-EM` reads **56.13 / 43.87**
+> with the footer at exactly **100.00**; `BQ-003` shows A5 5.80% / A8 5.20% →
+> **52.7 / 47.3** → **14,094,000 / 12,636,000**, coverage **full**; the man-hours basis
+> moves the same line to 57.9 / 42.1; `PRJ-0148` skips the gate and shows the
+> empty-bill state; editing BQ-012's rate re-derived every weight and the column still
+> summed to 100.00; the distribution cap held at 540 and the save round-tripped.
+> `dotnet test` 138/138, `ng build` clean, no console errors.
 
 **Exit:** `CNT-0279-EM` reads 56.13% / 43.87%, footer sum exactly 100.00%.
 `BQ-003` linked to A5/A8 gives shares 52.7% / 47.3%, assigned **14,094,000 / 12,636,000**, status **full**.
@@ -536,7 +557,10 @@ Where the value is. **Contract before BOQ; BOQ before everything else.**
 > rule's answer is 14,094,000 / 12,636,000 and `AllocationTests` asserts both. See P-15.
 
 ### 4.3 Schedule tab — SCR-W5 · `DModSchedule` + `DGantt`
-- [ ] Register `Activity` DbSet — WBS is a **path string**, not a tree table
+- [ ] ~~Register `Activity` DbSet~~ — **done by 4.2**, which needed its weight (BR-03) and
+      its progress (BR-04). What remains is restoring the columns 4.2 pruned:
+      baseline / actual / forecast dates, durations, `TotalFloat`, `IsCritical`,
+      `Calendar`, `Predecessors`. WBS stays a **path string**, not a tree table
 - [ ] Gantt with resizable pinned column block — floor 160px, default 320px (`04 §5`)
 - [ ] Nine info columns with the explicit grid contract; headers **wrap, never truncate**
 - [ ] Status as bar fill; **critical path is a 2px `--on-surface` ring, not a colour** (`04 §5`)

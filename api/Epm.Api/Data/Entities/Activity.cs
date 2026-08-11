@@ -13,14 +13,22 @@ namespace Epm.Api.Data.Entities;
 /// Basis is chosen at schedule import; the UI keeps a toggle.
 /// Milestones (zero duration, zero cost) get weight 0 and are EXCLUDED from allocation.
 ///
-/// IsCritical is a PATH PROPERTY, not a status (01 §2.5). It renders as a 2px
-/// ring, never as a colour (04 §5) — the colour channel belongs to status.
+/// ── REGISTERED BY PHASE 4.2, NOT 4.3 ─────────────────────────────────────
+/// The BOQ tab needs activities before the Schedule tab exists: BR-03 drives
+/// the allocation share off the activity's ABSOLUTE WEIGHT, and BR-04 reads its
+/// PROGRESS to give a BOQ line its executed %. So the columns below are the
+/// ones SCR-W4 reads, and no more.
+///
+/// PRUNED, restored by Phase 4.3 when the Gantt reads them: BaselineStart /
+/// BaselineFinish / ActualStart / ActualFinish / ForecastFinish, OriginalDuration,
+/// RemainingDuration, TotalFloat, IsCritical (a PATH property — rendered as a
+/// 2px ring, never a colour, 04 §5), Calendar, and Predecessors.
 /// </summary>
 public class Activity
 {
     public int Id { get; set; }
 
-    /// <summary>The Primavera ID, e.g. "A1050". Unique within the contract (checked in code, not indexed).</summary>
+    /// <summary>The Primavera ID, e.g. "A5". Unique within the contract (checked in code, not indexed).</summary>
     public string ActivityId { get; set; } = "";
 
     /// <summary>→ Contract.Id. REQUIRED. Contract scoping is an invariant (01 §1).</summary>
@@ -35,15 +43,7 @@ public class Activity
     /// <summary>Slash-separated node names matching WbsPath, for rendering the tree without a lookup.</summary>
     public string WbsNames { get; set; } = "";
 
-    public DateOnly? BaselineStart { get; set; }
-    public DateOnly? BaselineFinish { get; set; }
-    public DateOnly? ActualStart { get; set; }
-    public DateOnly? ActualFinish { get; set; }
-    public DateOnly? ForecastFinish { get; set; }
-
-    public int OriginalDuration { get; set; }
-    public int RemainingDuration { get; set; }
-
+    /// <summary>Reported against the activity. BR-04 reflects it onto the BOQ line.</summary>
     public decimal ProgressPct { get; set; }
 
     // ---- THE WEIGHT BASIS — imported from P6 (01 §2.5) ----
@@ -51,17 +51,8 @@ public class Activity
     /// <summary>May be absent in the P6 file; the basis toggle then falls back to cost.</summary>
     public decimal? BudgetedManHours { get; set; }
 
-    public decimal TotalFloat { get; set; }
-    /// <summary>A path property. Rendered as a ring, never a colour (04 §5).</summary>
-    public bool IsCritical { get; set; }
-
-    public string Calendar { get; set; } = "";
-
     /// <summary>Lookup "activity-status": notstarted · inprogress · ahead · delayed · completed (06 §9).</summary>
     public string Status { get; set; } = "notstarted";
-
-    /// <summary>Comma-separated P6 predecessor activity IDs. Prototype-grade; not a relation table.</summary>
-    public string Predecessors { get; set; } = "";
 
     /// <summary>True for zero-duration milestones — excluded from allocation (02 §2).</summary>
     public bool IsMilestone { get; set; }

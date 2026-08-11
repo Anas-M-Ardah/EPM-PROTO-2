@@ -7,7 +7,17 @@ namespace Epm.Api.Data.Entities;
 /// the portion up to 20% of the ORIGINAL quantity keeps the original rate, and
 /// only the excess carries the new rate fixed by لجنة تثبيت الأسعار.
 ///
-/// blendedRate = Σ(bandQty × bandRate) / Σ(bandQty)
+/// blendedRate = Σ(bandQty × bandRate) / Σ(bandQty)  —  Domain/TierSplit.BlendedRate
+///
+/// PHASE 4.2 reads this table to derive a banded line's effective quantity, rate
+/// and amount — because `01 §3` says those are derived, not stored, and a line
+/// with bands has no single stored rate to show. It is EMPTY until Phase 5
+/// applies an order that re-prices, which is the only thing that creates a band.
+///
+/// PRUNED for 4.2 (the register shows neither): `SourceChangeOrderId` — the
+/// applied order that produced the band — and `IsExcessBand` — true for the
+/// re-priced portion beyond the 20% threshold. Phase 5.4 restores both when
+/// applying an order is what writes here.
 /// </summary>
 public class BoqRateBand
 {
@@ -20,10 +30,4 @@ public class BoqRateBand
 
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
-
-    /// <summary>The applied change order that produced this band. Null for the original band.</summary>
-    public int? SourceChangeOrderId { get; set; }
-
-    /// <summary>True when this band is the re-priced excess beyond the 20% threshold.</summary>
-    public bool IsExcessBand { get; set; }
 }
