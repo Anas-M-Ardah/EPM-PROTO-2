@@ -58,7 +58,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     key: 'mod_group_definition',
     modules: [
       { id: 'information',  icon: 'badge',          key: 'mod_information',  built: true,  phase: '3' },
-      { id: 'contract',     icon: 'description',    key: 'mod_contract',     built: false, phase: '4.1' },
+      { id: 'contract',     icon: 'description',    key: 'mod_contract',     built: true,  phase: '4.1' },
       { id: 'boq',          icon: 'list_alt',       key: 'mod_boq',          built: false, phase: '4.2' },
       { id: 'financial',    icon: 'payments',       key: 'mod_financials',   built: false, phase: '4.4' },
     ],

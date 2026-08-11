@@ -483,13 +483,40 @@ Gates every tab. One agent, no parallelism.
 
 Where the value is. **Contract before BOQ; BOQ before everything else.**
 
-### 4.1 Contract tab — SCR-W3 · `DModContractNew` + `DContractAmendments`
-- [ ] Identity / dictionary section, cost breakdown
-- [ ] **Amendments** — version chain original → n, each with source order, delta value, delta days, state pill
-- [ ] Approved-but-unapplied shown **separately as a projection**, never folded into effective figures (`02 §9`)
-- [ ] **Penalties before / after + waived amount** — `Domain/Penalty.cs` BR-10
-- [ ] Register `Payment` DbSet; payments section
-- [ ] `EP-CON-01..n` · Angular trio · UML · TRACE rows
+### 4.1 Contract tab — SCR-W3 · `DModContractNew` `project-modules.jsx:363` + `DContractAmendments` `contract-amendments.jsx:301` (v1.1) ✅ COMPLETE
+- [x] Contract **register** for the project — the reconciliation strip
+      *original + addenda impact = effective*, with the middle term visible.
+      Skipped entirely when the project has one contract, as in the reference
+- [x] Contract **record** with four sub-tabs: overview · details · payments · amendments
+- [x] Identity / dates section, cost breakdown (award · reserve · supervision)
+- [x] **Amendments** — version chain original → n, each with its delta value, delta
+      days, running value/finish and state pill. Row 0 stays «العقد الأصلي»
+      however many follow it (P-16)
+- [x] **Approved-but-unapplied is a SEPARATE TABLE**, headed *"approving changes
+      nothing — these figures are in none of the totals above"*, with its columns
+      labelled *value if applied*. Not a row in the chain, not a summand anywhere (`02 §9`)
+- [x] **Penalties before / after + waived** — `Domain/Penalty.Compare` (BR-10).
+      `CNT-0279`: 61 days / 14,640,000 before, 16 days / 4,000,000 after,
+      **10,640,000 waived** — what the 45-day extension bought.
+      `CNT-0207`: 135 days, pinned at the 10% cap, nothing waived
+- [x] Register `Payment` DbSet + `FinanceLetterNo`/`Date`; payments section
+- [x] **Disbursed counts `paid` only**, never `certified` — the gap between the two
+      is where a delayed project's money sits. `payment-kind` / `payment-status`
+      added to the LookupCatalog addendum §A5 (P-26's rule)
+- [x] Contract scoping enforced in the endpoint: a contract of another project 404s
+- [x] `EP-CON-01` · `EP-CON-02` · Angular trio · `docs/uml/contract-tab.md` · TRACE rows
+
+> **The reference's penalty formula is not the specification's.** v1.1 computes
+> `value × rate / duration` per day with a 10–25% band, citing Regs 2/2014;
+> `02 §10` and D-02 say 0.1%/day capped at 10%. The written spec owns the
+> arithmetic, so `Domain/Penalty.cs` is unchanged — but the two give materially
+> different money on `CNT-0279`. Recorded as **P-45, CONFIRM**.
+
+> **Verified live** at 1440 and 1024, AR and EN, light and dark: the register
+> reconciles 340,000,000 + 10,000,000 = 350,000,000; `PRJ-0148` skips the register
+> and shows no back button; the chain, the pending table and the penalty read as
+> above; payments show certified and paid dates separately. `dotnet test` 131/131,
+> `ng build` clean.
 
 ### 4.2 BOQ tab — SCR-W4 · the densest screen in the system
 - [ ] Contract selector gate — nothing renders until a contract is chosen ("اختر عقداً للبدء")

@@ -13,6 +13,16 @@ public class Payment
     /// <summary>Sequential certificate number.</summary>
     public int No { get; set; }
 
+    /// <summary>
+    /// The official finance letter that released the money, and its date.
+    /// The reference's payments table leads with this rather than the internal
+    /// certificate number, because it is what the ministry's correspondence
+    /// files are indexed by — the same reason Contract carries IncomingNo
+    /// (03 §3: things are recorded against an official letter).
+    /// </summary>
+    public string FinanceLetterNo { get; set; } = "";
+    public DateOnly? FinanceLetterDate { get; set; }
+
     /// <summary>interim · advance · final · retention-release</summary>
     public string Kind { get; set; } = "interim";
 

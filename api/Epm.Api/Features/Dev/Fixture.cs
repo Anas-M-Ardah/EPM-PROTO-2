@@ -322,6 +322,71 @@ public static class Fixture
                 Type = "university" }
         );
 
+        // ── PHASE 4.1 · SCR-W3 Contract tab — payments ───────────────────
+        // Certificates against the fixture's contracts. Every date is on or
+        // before the project data date 2026-08-02 (P-28 — a demo must not pay
+        // an invoice in the future), and every finance letter number follows
+        // the ministry's own form: <serial>/<year>.
+        //
+        // The net is deliberately NOT gross − retention − advance for every
+        // row on its own: retention is withheld and advance recovery is
+        // deducted, so net = gross − retention − advanceRecovery, and the rows
+        // below satisfy that exactly. A row that does not is a data error the
+        // Financials screen (Phase 4.4) will need to surface.
+        db.Payments.AddRange(
+            // CNT-0279 — the civil works, three certificates, one still certified
+            // but unpaid so the "certified ≠ paid" branch is exercised.
+            new Payment { ContractId = "CNT-0279", No = 1, Kind = "advance",
+                GrossAmount = 24_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
+                NetAmount = 24_000_000m,
+                FinanceLetterNo = "1420/2025", FinanceLetterDate = new DateOnly(2025, 4, 10),
+                CertifiedDate = new DateOnly(2025, 4, 6), PaidDate = new DateOnly(2025, 4, 21),
+                Status = "paid", Note = "سلفة تشغيلية 10% من مبلغ الإحالة" },
+            new Payment { ContractId = "CNT-0279", No = 2, Kind = "interim",
+                GrossAmount = 62_000_000m, RetentionAmount = 3_100_000m, AdvanceRecovery = 6_200_000m,
+                NetAmount = 52_700_000m,
+                FinanceLetterNo = "2107/2025", FinanceLetterDate = new DateOnly(2025, 11, 3),
+                CertifiedDate = new DateOnly(2025, 10, 28), PaidDate = new DateOnly(2025, 11, 19),
+                Status = "paid", Note = "المستخلص الأول — أعمال الأسس والهيكل" },
+            new Payment { ContractId = "CNT-0279", No = 3, Kind = "interim",
+                GrossAmount = 48_500_000m, RetentionAmount = 2_425_000m, AdvanceRecovery = 4_850_000m,
+                NetAmount = 41_225_000m,
+                FinanceLetterNo = "0931/2026", FinanceLetterDate = new DateOnly(2026, 7, 12),
+                CertifiedDate = new DateOnly(2026, 7, 9), PaidDate = null,
+                Status = "certified", Note = "مصادق عليه — بانتظار التخصيص المالي" },
+
+            // CNT-0279-EM — electromechanical, one certificate only.
+            new Payment { ContractId = "CNT-0279-EM", No = 1, Kind = "advance",
+                GrossAmount = 10_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
+                NetAmount = 10_000_000m,
+                FinanceLetterNo = "1655/2025", FinanceLetterDate = new DateOnly(2025, 7, 8),
+                CertifiedDate = new DateOnly(2025, 7, 2), PaidDate = new DateOnly(2025, 7, 20),
+                Status = "paid", Note = "سلفة تشغيلية" },
+
+            // CNT-0148 — the library, furthest along.
+            new Payment { ContractId = "CNT-0148", No = 1, Kind = "interim",
+                GrossAmount = 21_000_000m, RetentionAmount = 1_050_000m, AdvanceRecovery = 0m,
+                NetAmount = 19_950_000m,
+                FinanceLetterNo = "0788/2025", FinanceLetterDate = new DateOnly(2025, 3, 17),
+                CertifiedDate = new DateOnly(2025, 3, 12), PaidDate = new DateOnly(2025, 3, 30),
+                Status = "paid", Note = "المستخلص الأول" },
+            new Payment { ContractId = "CNT-0148", No = 2, Kind = "interim",
+                GrossAmount = 26_400_000m, RetentionAmount = 1_320_000m, AdvanceRecovery = 0m,
+                NetAmount = 25_080_000m,
+                FinanceLetterNo = "0402/2026", FinanceLetterDate = new DateOnly(2026, 2, 24),
+                CertifiedDate = new DateOnly(2026, 2, 18), PaidDate = new DateOnly(2026, 3, 9),
+                Status = "paid", Note = "المستخلص الثاني — الإكساء" },
+
+            // CNT-0207 — delayed, and it shows: one certificate pending since
+            // May with nothing paid against it.
+            new Payment { ContractId = "CNT-0207", No = 1, Kind = "interim",
+                GrossAmount = 7_800_000m, RetentionAmount = 390_000m, AdvanceRecovery = 0m,
+                NetAmount = 7_410_000m,
+                FinanceLetterNo = "0555/2026", FinanceLetterDate = new DateOnly(2026, 5, 14),
+                CertifiedDate = null, PaidDate = null,
+                Status = "pending", Note = "قيد التدقيق لدى الرقابة المالية" }
+        );
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();

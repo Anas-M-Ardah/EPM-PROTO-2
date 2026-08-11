@@ -276,5 +276,26 @@ public static class LookupCatalog
         sort = 0;
         yield return L("schedule-import-status", "published", "منشور",   "Published");
         yield return L("schedule-import-status", "pending",   "بانتظار", "Pending");
+
+        // ── ADDENDUM §A5 — payment kind and status (SCR-W3, Phase 4.1) ────
+        // `Payments.Kind` and `Payments.Status` are STORED codes with no list
+        // in 06, which is P-26's exact case: one mechanism labels every enum,
+        // and a per-screen map would be a second one reachable by no grep.
+        // The vocabularies are the Payment entity's own.
+        //
+        // The three statuses are a sequence, not a set — a certificate is
+        // audited, then certified, then paid — and the gap between the last two
+        // is where a delayed project's money actually sits. `EP-CON-01` counts
+        // only `paid` as disbursed for exactly that reason.
+        sort = 0;
+        yield return L("payment-kind", "interim",           "مستخلص جارٍ",        "Interim");
+        yield return L("payment-kind", "advance",           "سلفة تشغيلية",       "Advance");
+        yield return L("payment-kind", "final",             "المستخلص النهائي",   "Final");
+        yield return L("payment-kind", "retention-release", "إطلاق الضمان",       "Retention release");
+
+        sort = 0;
+        yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
+        yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
+        yield return L("payment-status", "paid",      "مصروف",       "Paid");
     }
 }

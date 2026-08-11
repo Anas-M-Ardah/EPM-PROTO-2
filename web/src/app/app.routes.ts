@@ -90,6 +90,22 @@ export const routes: Routes = [
               import('./features/information/information.page').then(m => m.InformationPage),
           },
 
+          // SCR-W3 · features/contract-tab · Features/ContractTab · [EP-CON-01] [EP-CON-02]
+          // The selected contract is a URL segment, not component state: a
+          // contract is a record and a link to one has to survive being pasted.
+          // The FEATURE is `contract-tab` because a .NET namespace `Contract`
+          // shadows the entity type of the same name — see P-43.
+          {
+            path: 'contract',
+            loadComponent: () =>
+              import('./features/contract-tab/contract.page').then(m => m.ContractPage),
+          },
+          {
+            path: 'contract/:contractId',
+            loadComponent: () =>
+              import('./features/contract-tab/contract.page').then(m => m.ContractPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

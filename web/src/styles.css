@@ -297,3 +297,27 @@ epm-app-footer { display: contents; }
 @media (max-width: 1200px) {
   .epm-mod-phase { display: none; }
 }
+
+/* ── Contract tab (Phase 4.1) ────────────────────────────────────────────
+   One rule. The reconciliation strip (.d-recon), the sub-tab bar (.d-pz5),
+   the pills and the tables were all already in the copied sheets. */
+
+/* A standalone part-to-whole rail. `.track` is defined only INSIDE
+   .d-csum-bars / .d-verdict / .d-stagebar in desktop.css, each with its own
+   width and context; this is the same bar used on its own under a figure that
+   has already been printed in words. Geometry, never the only carrier of the
+   number — 05 §8. */
+.epm-track {
+  display: block;
+  block-size: 8px;
+  border-radius: var(--r-pill);
+  background: var(--viz-track);
+  overflow: hidden;
+  margin-block: var(--space-8) var(--space-4);
+}
+.epm-track > i {
+  display: block;
+  block-size: 100%;
+  border-radius: var(--r-pill);
+  background: var(--viz-1);
+}

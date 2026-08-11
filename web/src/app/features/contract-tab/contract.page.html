@@ -1,0 +1,509 @@
+<!--
+  SCR-W3 Contract — v1.1 module skeleton.
+  Ported from DModContractNew + DContractAmendments,
+  ../epm@design/system-revamp app/project-modules.jsx:363 · contract-amendments.jsx:301.
+
+  Two views in one module, as in the reference: the project's contract REGISTER
+  (skipped when there is only one contract) and one contract's RECORD with four
+  sub-tabs. Z6 carries the title, the back button and the sub-tabs; Z7 scrolls.
+
+  THE THREE VALUES NEVER MIX. Original · effective · projection each has its own
+  place and its own label, everywhere they appear (02 §9).
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_contract') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="4" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_contract') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else if (rows().length === 0) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_contract') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <!-- No contract is a real state, not a loading gap: a project is
+           registered before it is awarded (04 §9). -->
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+        <b>{{ lang.t('ovw_no_contracts_t') }}</b>
+        <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+      </div>
+    </div></div>
+
+  } @else if (showRegister()) {
+    <!-- ══ THE REGISTER ══════════════════════════════════════════════════ -->
+    <div class="d-pz6">
+      <span class="z6-t">{{ lang.t('con_register') }}<em><bdi>{{ rows().length }}</bdi></em></span>
+      <span class="sp"></span>
+      <button type="button" class="d-btn sm" (click)="toast.demo('تصدير', 'Export')">
+        <epm-icon name="download" [size]="15" />{{ lang.t('export') }}
+      </button>
+      <button type="button" class="d-btn sm primary" (click)="toast.demo('إضافة عقد', 'Add contract')">
+        <epm-icon name="add" [size]="15" />{{ lang.t('con_add') }}
+      </button>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+        @if (totals(); as t) {
+          <!--
+            THE RECONCILIATION. Original + addenda impact = effective, with the
+            middle term visible. One flat list of three money figures would let
+            a reader take the biggest and be wrong; the operators say which is
+            which.
+          -->
+          <section class="d-recon">
+            <div class="tm">
+              <span class="k">{{ lang.t('con_original_value') }}</span>
+              <b class="num"><bdi>{{ fmt.money(t.originalValue) }}</bdi></b>
+            </div>
+            <span class="op" aria-hidden="true">{{ t.addendaImpact < 0 ? '−' : '+' }}</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('con_addenda_impact') }}</span>
+              <b class="num"><bdi>{{ fmt.money(t.addendaImpact < 0 ? -t.addendaImpact : t.addendaImpact) }}</bdi></b>
+              <span class="n">
+                <bdi>{{ t.addenda }}</bdi> {{ lang.t('con_addenda') }}@if (t.pending) {<span> · <bdi>{{ t.pending }}</bdi> {{ lang.t('con_pending_short') }}</span>}
+              </span>
+            </div>
+            <span class="op" aria-hidden="true">=</span>
+            <div class="tm strong">
+              <span class="k">{{ lang.t('con_effective_value') }}</span>
+              <b class="num"><bdi>{{ fmt.money(t.effectiveValue) }}</bdi></b>
+            </div>
+          </section>
+
+          @if (t.pending > 0) {
+            <div class="d-scopebar">
+              <epm-icon name="info" [size]="15" />
+              <span>{{ lang.t('ovw_projection') }}
+                <b><bdi>{{ fmt.money(t.projectionValue) }}</bdi></b>
+                — {{ lang.t('ovw_projection_note') }}</span>
+            </div>
+          }
+
+          <epm-section [title]="lang.t('con_position')" [sub]="lang.t('con_position_sub')">
+            <ul class="epm-ben-list">
+              <li>
+                <span class="n">{{ lang.t('con_disbursed') }}</span>
+                <span class="num"><bdi>{{ fmt.money(t.disbursed) }}</bdi></span>
+              </li>
+              <li>
+                <span class="n">{{ lang.t('con_certified') }}</span>
+                <span class="num"><bdi>{{ fmt.money(t.certified) }}</bdi></span>
+              </li>
+              <li>
+                <span class="n">{{ lang.t('con_period') }}</span>
+                <span class="num"><bdi>{{ fmt.date(t.periodStart) }} → {{ fmt.date(t.periodFinish) }}</bdi></span>
+              </li>
+            </ul>
+            <!-- Geometry only: both numbers are printed above, and the bar is
+                 not labelled "financial %" — 02 §4 does not fix that
+                 denominator. See the endpoint's `financial-pct` note. -->
+            <span class="track epm-track"><i [style.width.%]="spentPct()"></i></span>
+            <p class="d-cell-sub">
+              <bdi>{{ spentPct() }}%</bdi> {{ lang.t('con_of_effective') }}
+            </p>
+          </epm-section>
+        }
+
+        <div class="d-tablewrap">
+          <table class="d-table">
+            <thead>
+              <tr>
+                <th>{{ lang.t('col_contract') }}</th>
+                <th style="width:118px">{{ lang.t('col_status') }}</th>
+                <th style="width:150px">{{ lang.t('col_effective_value') }}</th>
+                <th style="width:110px">{{ lang.t('col_start') }}</th>
+                <th style="width:130px">{{ lang.t('col_baseline_finish') }}</th>
+                <th style="width:110px">{{ lang.t('con_addenda') }}</th>
+                <th style="width:140px">{{ lang.t('con_disbursed') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.id) {
+                <tr style="cursor:pointer" (click)="open(r)">
+                  <td class="d-cell-strong">
+                    {{ lang.pick(r.nameAr, r.nameEn) }}
+                    <div class="d-cell-sub mono"><bdi>{{ r.id }}</bdi></div>
+                    <div class="d-cell-sub">{{ r.contractor }}</div>
+                  </td>
+                  <td><epm-status-pill kind="contract-status" [code]="r.status" /></td>
+                  <td class="num">
+                    <bdi>{{ fmt.money(r.effectiveValue) }}</bdi>
+                    @if (r.effectiveValue !== r.originalValue) {
+                      <div class="d-cell-sub">
+                        {{ lang.t('ovw_awarded') }} <bdi>{{ fmt.money(r.originalValue) }}</bdi>
+                      </div>
+                    }
+                  </td>
+                  <td class="num d-cell-sub"><bdi>{{ fmt.date(r.start) }}</bdi></td>
+                  <td class="num">
+                    <bdi>{{ fmt.date(r.effectiveFinish) }}</bdi>
+                    @if (r.effectiveFinish !== r.originalFinish) {
+                      <div class="d-cell-sub">
+                        {{ lang.t('ovw_was') }} <bdi>{{ fmt.date(r.originalFinish) }}</bdi>
+                      </div>
+                    }
+                  </td>
+                  <td class="num">
+                    <bdi>{{ r.addenda }}</bdi>
+                    @if (r.pending) {
+                      <div class="d-cell-sub">
+                        {{ lang.t('ovw_pending') }} <bdi>{{ r.pending }}</bdi>
+                      </div>
+                    }
+                  </td>
+                  <td class="num"><bdi>{{ fmt.money(r.disbursed) }}</bdi></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  } @else {
+    @if (contract(); as c) {
+    <!-- ══ ONE CONTRACT ══════════════════════════════════════════════════ -->
+    <div class="d-pz6">
+      @if (!singleContract()) {
+        <button type="button" class="d-btn sm ghost" (click)="backToRegister()">
+          <epm-icon [name]="lang.isAr() ? 'arrow_forward' : 'arrow_back'" [size]="15" />
+          {{ lang.t('con_register') }}
+        </button>
+      }
+      <span class="z6-t">{{ lang.pick(c.nameAr, c.nameEn) }}<em><bdi>{{ c.id }}</bdi></em></span>
+      <span class="sp"></span>
+      <button type="button" class="d-btn sm" (click)="toast.demo('تصدير', 'Export')">
+        <epm-icon name="download" [size]="15" />{{ lang.t('export') }}
+      </button>
+    </div>
+
+    <div class="d-pz5">
+      <button type="button" [class.on]="tab() === 'overview'" (click)="tab.set('overview')">
+        {{ lang.t('con_tab_overview') }}
+      </button>
+      <button type="button" [class.on]="tab() === 'details'" (click)="tab.set('details')">
+        {{ lang.t('con_tab_details') }}
+      </button>
+      <button type="button" [class.on]="tab() === 'payments'" (click)="tab.set('payments')">
+        {{ lang.t('con_tab_payments') }}<span class="n"><bdi>{{ payments().length }}</bdi></span>
+      </button>
+      <button type="button" [class.on]="tab() === 'amend'" (click)="tab.set('amend')">
+        {{ lang.t('con_tab_amend') }}<span class="n"><bdi>{{ versions().length - 1 + pending().length }}</bdi></span>
+      </button>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        @if (tab() === 'overview') {
+          <dl class="d-meta">
+            <div class="d-meta-i"><dt>{{ lang.t('col_status') }}</dt>
+              <dd><epm-status-pill kind="contract-status" [code]="c.status" /></dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('col_contractor') }}</dt><dd>{{ c.contractor }}</dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('con_consultant') }}</dt><dd>{{ c.consultant }}</dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('col_start') }}</dt>
+              <dd class="num"><bdi>{{ fmt.date(c.start) }}</bdi></dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('col_baseline_finish') }}</dt>
+              <dd class="num"><bdi>{{ fmt.date(c.effectiveFinish) }}</bdi></dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('con_incoming') }}</dt>
+              <dd class="num"><bdi>{{ c.incomingNo }}</bdi></dd></div>
+          </dl>
+
+          <section class="d-recon">
+            <div class="tm">
+              <span class="k">{{ lang.t('con_original_value') }}</span>
+              <b class="num"><bdi>{{ fmt.money(c.originalValue) }}</bdi></b>
+              <span class="n"><bdi>{{ c.originalDurationDays }}</bdi> {{ lang.t('con_days') }}</span>
+            </div>
+            <span class="op" aria-hidden="true">{{ c.effectiveValue < c.originalValue ? '−' : '+' }}</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('con_addenda_impact') }}</span>
+              <b class="num"><bdi>{{ fmt.money(c.effectiveValue < c.originalValue ? c.originalValue - c.effectiveValue : c.effectiveValue - c.originalValue) }}</bdi></b>
+              <span class="n">
+                <bdi>{{ c.effectiveDurationDays - c.originalDurationDays }}</bdi> {{ lang.t('con_days') }}
+              </span>
+            </div>
+            <span class="op" aria-hidden="true">=</span>
+            <div class="tm strong">
+              <span class="k">{{ lang.t('con_effective_value') }}</span>
+              <b class="num"><bdi>{{ fmt.money(c.effectiveValue) }}</bdi></b>
+              <span class="n"><bdi>{{ c.effectiveDurationDays }}</bdi> {{ lang.t('con_days') }}</span>
+            </div>
+          </section>
+
+          @if (hasProjection()) {
+            <div class="d-scopebar">
+              <epm-icon name="info" [size]="15" />
+              <span>{{ lang.t('ovw_projection') }}
+                <b><bdi>{{ fmt.money(c.projectionValue) }}</bdi></b>
+                — {{ lang.t('ovw_projection_note') }}
+                (<bdi>{{ pending().length }}</bdi>)</span>
+            </div>
+          }
+
+          @if (money(); as m) {
+            <epm-section [title]="lang.t('con_position')" [sub]="lang.t('con_position_sub')">
+              <ul class="epm-ben-list">
+                <li><span class="n">{{ lang.t('con_disbursed') }}</span>
+                  <span class="num"><bdi>{{ fmt.money(m.disbursed) }}</bdi></span></li>
+                <li><span class="n">{{ lang.t('con_certified') }}</span>
+                  <span class="num"><bdi>{{ fmt.money(m.certified) }}</bdi></span></li>
+                <li><span class="n">{{ lang.t('con_retention') }}</span>
+                  <span class="num"><bdi>{{ fmt.money(m.retention) }}</bdi></span></li>
+                <li><span class="n">{{ lang.t('con_advance_recovery') }}</span>
+                  <span class="num"><bdi>{{ fmt.money(m.advanceRecovery) }}</bdi></span></li>
+                <li><span class="n">{{ lang.t('con_remaining') }}</span>
+                  <span class="num"><bdi>{{ fmt.money(m.remaining) }}</bdi></span></li>
+              </ul>
+              <span class="track epm-track"><i [style.width.%]="detailSpentPct()"></i></span>
+              <p class="d-cell-sub"><bdi>{{ detailSpentPct() }}%</bdi> {{ lang.t('con_of_effective') }}</p>
+            </epm-section>
+
+            <epm-section [title]="lang.t('con_cost_breakdown')" [sub]="lang.t('con_cost_breakdown_sub')">
+              <ul class="epm-ben-list">
+                @for (l of m.costLines; track l.key) {
+                  <li>
+                    <span class="n">{{ lang.t($any('con_cost_' + l.key)) }}</span>
+                    <span class="num"><bdi>{{ fmt.money(l.amount) }}</bdi></span>
+                  </li>
+                }
+              </ul>
+              <!-- Spend is NOT split across the three items. Saying why beats
+                   showing three plausible numbers nobody authorised (P-09). -->
+              <p class="d-cell-sub epm-rpt-needs">
+                <epm-icon name="lock" [size]="13" />{{ need('cost-line-spend') }}
+              </p>
+            </epm-section>
+          }
+        }
+
+        @if (tab() === 'details') {
+          <epm-section [title]="lang.t('con_identity')">
+            <ul class="epm-ben-list">
+              <li><span class="n">{{ lang.t('inf_id') }}</span>
+                <span class="num"><bdi>{{ c.id }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('inf_nameAr') }}</span><span class="num">{{ c.nameAr }}</span></li>
+              <li><span class="n">{{ lang.t('inf_nameEn') }}</span><span class="num">{{ c.nameEn }}</span></li>
+              <li><span class="n">{{ lang.t('col_contractor') }}</span><span class="num">{{ c.contractor }}</span></li>
+              <li><span class="n">{{ lang.t('con_consultant') }}</span><span class="num">{{ c.consultant }}</span></li>
+            </ul>
+          </epm-section>
+
+          <epm-section [title]="lang.t('con_dates')" [sub]="lang.t('con_dates_sub')">
+            <ul class="epm-ben-list">
+              <li><span class="n">{{ lang.t('col_start') }}</span>
+                <span class="num"><bdi>{{ fmt.date(c.start) }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('con_original_finish') }}</span>
+                <span class="num"><bdi>{{ fmt.date(c.originalFinish) }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('col_baseline_finish') }}</span>
+                <span class="num"><bdi>{{ fmt.date(c.effectiveFinish) }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('col_forecast_finish') }}</span>
+                <span class="num"><bdi>{{ fmt.date(c.forecastFinish) }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('col_delay') }}</span>
+                <span class="num"><bdi>{{ c.delayDays === null ? '—' : c.delayDays }}</bdi></span></li>
+              <li><span class="n">{{ lang.t('con_incoming') }}</span>
+                <span class="num"><bdi>{{ c.incomingNo }} · {{ fmt.date(c.incomingDate) }}</bdi></span></li>
+            </ul>
+          </epm-section>
+        }
+
+        @if (tab() === 'payments') {
+          @if (payments().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
+              <b>{{ lang.t('con_no_payments_t') }}</b>
+              <span>{{ lang.t('con_no_payments_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-tablewrap">
+              <table class="d-table">
+                <thead>
+                  <tr>
+                    <th style="width:70px">{{ lang.t('con_pay_no') }}</th>
+                    <th style="width:130px">{{ lang.t('con_pay_kind') }}</th>
+                    <th>{{ lang.t('con_finance_letter') }}</th>
+                    <th style="width:120px">{{ lang.t('col_status') }}</th>
+                    <th style="width:130px">{{ lang.t('con_gross') }}</th>
+                    <th style="width:120px">{{ lang.t('con_retention') }}</th>
+                    <th style="width:130px">{{ lang.t('con_net') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of payments(); track p.no) {
+                    <tr>
+                      <td class="num d-cell-sub"><bdi>{{ p.no }}</bdi></td>
+                      <td class="d-cell-sub">{{ lookups.label('payment-kind', p.kind) }}</td>
+                      <td class="d-cell-strong">
+                        <bdi>{{ p.financeLetterNo }}</bdi>
+                        <div class="d-cell-sub num"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></div>
+                        @if (p.note) { <div class="d-cell-sub">{{ p.note }}</div> }
+                      </td>
+                      <td>
+                        <epm-status-pill kind="payment-status" [code]="p.status" />
+                        <!-- Certified and paid are different facts and the gap
+                             between them is where a delayed project's money
+                             sits, so both dates are shown. -->
+                        <div class="d-cell-sub num">
+                          <bdi>{{ p.status === 'paid' ? fmt.date(p.paidDate) : fmt.date(p.certifiedDate) }}</bdi>
+                        </div>
+                      </td>
+                      <td class="num"><bdi>{{ fmt.money(p.grossAmount) }}</bdi></td>
+                      <td class="num d-cell-sub"><bdi>{{ fmt.money(p.retentionAmount) }}</bdi></td>
+                      <td class="num"><bdi>{{ fmt.money(p.netAmount) }}</bdi></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+        @if (tab() === 'amend') {
+          <!--
+            THE VERSION CHAIN. Row 0 is the original contract and stays labelled
+            «العقد الأصلي» however many amendments follow it — `original` is the
+            row's identity, not a claim about which version is in force (P-16).
+          -->
+          <epm-section [title]="lang.t('con_chain')" [sub]="lang.t('con_chain_sub')">
+            <div class="d-tablewrap">
+              <table class="d-table">
+                <thead>
+                  <tr>
+                    <th>{{ lang.t('con_version') }}</th>
+                    <th style="width:180px">{{ lang.t('col_status') }}</th>
+                    <th style="width:110px">{{ lang.t('con_source') }}</th>
+                    <th style="width:140px">{{ lang.t('con_delta_value') }}</th>
+                    <th style="width:90px">{{ lang.t('con_delta_days') }}</th>
+                    <th style="width:150px">{{ lang.t('con_value_after') }}</th>
+                    <th style="width:120px">{{ lang.t('con_finish_after') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (v of versions(); track v.no) {
+                    <tr>
+                      <td class="d-cell-strong">
+                        {{ versionLabel(v) }}
+                        @if (v.date) {
+                          <div class="d-cell-sub num"><bdi>{{ fmt.date(v.date) }}</bdi></div>
+                        }
+                      </td>
+                      <td><span class="d-pill {{ stateClass(v) }}">{{ stateLabel(v) }}</span></td>
+                      <td class="d-cell-sub mono"><bdi>{{ v.sourceChangeOrderId ?? '—' }}</bdi></td>
+                      <td class="num"><bdi>{{ v.no === 0 ? '—' : fmt.delta(v.deltaValue) }}</bdi></td>
+                      <td class="num"><bdi>{{ v.no === 0 ? '—' : fmt.delta(v.deltaDays) }}</bdi></td>
+                      <td class="num"><bdi>{{ fmt.money(v.value) }}</bdi></td>
+                      <td class="num"><bdi>{{ fmt.date(v.finish) }}</bdi></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <!-- The source column is an em dash on every row, and that is a
+                 statement rather than a gap: nothing can link an amendment to
+                 its order until the change-order register exists (P-09). -->
+            <p class="d-cell-sub epm-rpt-needs">
+              <epm-icon name="lock" [size]="13" />{{ need('amendment-source') }}
+            </p>
+          </epm-section>
+
+          @if (pending().length) {
+            <!--
+              A SEPARATE TABLE, NOT MORE ROWS IN THE CHAIN ABOVE. Approving
+              changes nothing; only applying moves the contract (02 §9). These
+              rows show what the contract WOULD become, and their figures are in
+              none of the effective totals anywhere on this screen.
+            -->
+            <epm-section [title]="lang.t('con_pending_title')" [sub]="lang.t('con_pending_sub')"
+                         [n]="pending().length">
+              <div class="d-tablewrap">
+                <table class="d-table">
+                  <thead>
+                    <tr>
+                      <th>{{ lang.t('con_version') }}</th>
+                      <th style="width:180px">{{ lang.t('col_status') }}</th>
+                      <th style="width:110px">{{ lang.t('con_source') }}</th>
+                      <th style="width:140px">{{ lang.t('con_delta_value') }}</th>
+                      <th style="width:90px">{{ lang.t('con_delta_days') }}</th>
+                      <th style="width:150px">{{ lang.t('con_would_be') }}</th>
+                      <th style="width:120px">{{ lang.t('con_finish_would') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (v of pending(); track v.no) {
+                      <tr>
+                        <td class="d-cell-strong">{{ versionLabel(v) }}</td>
+                        <td><span class="d-pill {{ stateClass(v) }}">{{ stateLabel(v) }}</span></td>
+                        <td class="d-cell-sub mono"><bdi>{{ v.sourceChangeOrderId ?? '—' }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(v.deltaValue) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(v.deltaDays) }}</bdi></td>
+                        <td class="num d-cell-sub"><bdi>{{ fmt.money(v.value) }}</bdi></td>
+                        <td class="num d-cell-sub"><bdi>{{ fmt.date(v.finish) }}</bdi></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </epm-section>
+          }
+
+          @if (penalty(); as pen) {
+            <epm-section [title]="lang.t('con_penalty')" [sub]="lang.t('con_penalty_sub')">
+              @if (pen.unavailable) {
+                <p class="d-cell-sub epm-rpt-needs">
+                  <epm-icon name="lock" [size]="13" />{{ lang.t('con_penalty_na') }}
+                </p>
+              } @else {
+                <!--
+                  BEFORE vs AFTER, and what the extension BOUGHT. An applied
+                  amendment moves both terms of BR-10 — the value raises the
+                  per-day charge and the cap, the finish cuts the days — so a
+                  single current figure would hide the most consequential thing
+                  the amendment did.
+                -->
+                <ul class="epm-ben-list">
+                  <li>
+                    <span class="n">{{ lang.t('con_penalty_before') }}</span>
+                    <span class="d-cell-sub"><bdi>{{ pen.daysBefore }}</bdi> {{ lang.t('con_days') }}</span>
+                    <span class="num"><bdi>{{ fmt.money(pen.amountBefore) }}</bdi></span>
+                  </li>
+                  <li>
+                    <span class="n">{{ lang.t('con_penalty_after') }}</span>
+                    <span class="d-cell-sub"><bdi>{{ pen.daysAfter }}</bdi> {{ lang.t('con_days') }}</span>
+                    <span class="num"><bdi>{{ fmt.money(pen.amountAfter) }}</bdi></span>
+                  </li>
+                  <li>
+                    <span class="n">{{ lang.t('con_penalty_waived') }}</span>
+                    <span class="d-cell-sub">{{ lang.t('con_penalty_waived_sub') }}</span>
+                    <span class="num"><bdi>{{ fmt.money(pen.waived) }}</bdi></span>
+                  </li>
+                </ul>
+                <p class="d-cell-sub">
+                  {{ lang.t('con_penalty_rule') }}
+                  <bdi>{{ ratePct(pen.perDayPct) }}</bdi> / {{ lang.t('con_day') }},
+                  {{ lang.t('con_capped_at') }} <bdi>{{ ratePct(pen.capPct) }}</bdi>
+                  (<bdi>{{ fmt.money(pen.capAfter) }}</bdi>) — D-02
+                </p>
+              }
+            </epm-section>
+          }
+        }
+      </div>
+    </div>
+    }
+  }
+</div>
