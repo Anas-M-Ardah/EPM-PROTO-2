@@ -202,3 +202,29 @@ epm-app-footer { display: contents; }
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Reports & Analytics (SCR-E7) ────────────────────────────────────────
+   Two rules. Everything else on the screen — .d-cat, .d-fmts, .d-scopebar,
+   .d-rowact — was already in the copied sheets (desktop.css:1238–1254),
+   waiting for the register that uses them. */
+
+/* The scope dropdown sits in a toolbar, not a form, so it must not take the
+   .d-form-input full width. The reference does this with an inline style;
+   inline styles beating stylesheets is a named defect class in 05 §8. */
+.epm-rpt-proj {
+  inline-size: auto;
+  max-inline-size: 240px;
+}
+
+/* Why a catalog row cannot be run yet — an explicit note in the row, in the
+   same secondary colour as the description above it. --on-surface-variant and
+   NOT --error, for the same reason .epm-stat-na is: a figure the system has
+   not built yet is absent, not wrong. */
+.epm-rpt-needs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-block-start: 3px;
+  color: var(--on-surface-variant);
+}
+.epm-rpt-needs svg { flex: none; }

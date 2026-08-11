@@ -1,0 +1,194 @@
+<!--
+  SCR-E7 Reports & Analytics — v1.1 page skeleton.
+  Ported from DReports, ../epm@design/system-revamp
+  app/desktop-reports.jsx:58.
+
+  Layout follows the reference: page head → one bordered card containing
+  toolbar strip → optional scope bar → table → pager strip. No KPI band: the
+  v1.1 screen carries its headline figures in the sub line, and the charts the
+  pre-v1.1 component had live on SCR-E1.
+
+  Column order follows the reference: report · category · scope · format ·
+  frequency · last run · row action.
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="lang.t('nav_reports')"
+  [sub]="sub()">
+  <!-- Z4 action cluster, verbatim from DReports. Both are demo stubs there and
+       here: scheduling and custom report building are in no phase of this build. -->
+  <button actions type="button" class="d-btn" (click)="toast.demo('التقارير المجدولة', 'Scheduled reports')">
+    <epm-icon name="schedule" [size]="16" />{{ lang.t('rpt_scheduled') }}
+  </button>
+  <button actions type="button" class="d-btn primary" (click)="toast.demo('تقرير مخصّص', 'Custom report')">
+    <epm-icon name="add" [size]="16" />{{ lang.t('rpt_custom') }}
+  </button>
+</epm-page-head>
+
+@if (loading()) {
+  <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else {
+
+  <!--
+    THERE IS NO "EMPTY BECAUSE THE DATABASE IS EMPTY" STATE FOR THIS TABLE.
+    The catalog is the system's own definition of what it can report on
+    (Features/Reports/ReportCatalog.cs), not rows in a table, so it is twelve
+    long on a database that has never been loaded. What an empty database does
+    change is the scope dropdown — there is no project to scope to — and that
+    is stated in the dropdown itself rather than left as an empty list.
+  -->
+  <div class="d-tablewrap">
+
+    <div class="d-toolbar">
+      <div class="d-field">
+        <epm-icon name="search" [size]="16" />
+        <input
+          type="search"
+          class="epm-bare-input"
+          [placeholder]="lang.t('search_reports')"
+          [value]="q()"
+          (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <!-- Selection is carried on each <option>, not by [value] on the
+           <select>: the options are rendered by @for AFTER the select's value
+           is bound, so the binding lands on an empty list and the control
+           silently falls back to its first option while the page is scoped
+           elsewhere. Measured — see P-39. -->
+      <select class="d-form-input epm-rpt-proj"
+              [disabled]="projects().length === 0"
+              [attr.aria-label]="lang.t('rpt_scope_to')"
+              (change)="setProject($any($event.target).value)">
+        @if (projects().length === 0) {
+          <option value="">{{ lang.t('rpt_no_projects') }}</option>
+        } @else {
+          <option value="" [selected]="!projectId()">{{ lang.t('rpt_all_projects') }}</option>
+          @for (p of projects(); track p.id) {
+            <option [value]="p.id" [selected]="p.id === projectId()">{{ lang.pick(p.nameAr, p.nameEn) }}</option>
+          }
+        }
+      </select>
+
+      <div class="grp">
+        <button class="d-fchip" [class.on]="!category()" (click)="setCategory('')">
+          {{ lang.t('all') }}<span class="n"><bdi>{{ counts().total }}</bdi></span>
+        </button>
+        @for (c of categories(); track c.code) {
+          <button class="d-fchip" [class.on]="category() === c.code" (click)="setCategory(c.code)">
+            {{ lang.pick(c.nameAr, c.nameEn) }}<span class="n"><bdi>{{ c.count }}</bdi></span>
+          </button>
+        }
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!isUnfiltered()) {
+        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      }
+      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+    </div>
+
+    <!-- Choosing a project narrows the catalog to the reports that run at
+         project level. Stated, because a filter that silently removes rows the
+         user did not filter on reads as a bug. -->
+    @if (selectedProject(); as p) {
+      <div class="d-scopebar">
+        <epm-icon name="info" [size]="15" />
+        <span>{{ lang.t('rpt_scoped_to') }}
+          <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b> — {{ lang.t('rpt_scoped_note') }}</span>
+      </div>
+    }
+
+    @if (rows().length === 0) {
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+        <b>{{ lang.t('empty_reports_t') }}</b>
+        <span>{{ lang.t('empty_reports_b') }}</span>
+        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+      </div>
+    } @else {
+      <table class="d-table">
+        <thead>
+          <tr>
+            <th>{{ lang.t('col_report') }}</th>
+            <th style="width:132px">{{ lang.t('col_category') }}</th>
+            <th style="width:100px">{{ lang.t('col_scope') }}</th>
+            <th style="width:108px">{{ lang.t('col_format') }}</th>
+            <th style="width:116px">{{ lang.t('col_frequency') }}</th>
+            <th style="width:112px">{{ lang.t('col_last_run') }}</th>
+            <th style="width:132px"><span class="epm-sr-only">{{ lang.t('col_action') }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of pageRows(); track r.id) {
+            <tr>
+              <td class="d-cell-strong">
+                {{ lang.pick(r.titleAr, r.titleEn) }}
+                <div class="d-cell-sub">
+                  <bdi>{{ r.id }}</bdi> — {{ lang.pick(r.descriptionAr, r.descriptionEn) }}
+                </div>
+                <!-- WHY IT CANNOT RUN, in words. Same "unavailable + reason"
+                     contract SCR-E1 and SCR-E5 apply to a KPI tile, applied to
+                     a row (P-38). -->
+                @if (!r.available) {
+                  <div class="d-cell-sub epm-rpt-needs">
+                    <epm-icon name="lock" [size]="13" />{{ needs(r) }}
+                  </div>
+                }
+              </td>
+              <td><span class="d-cat {{ r.category }}">{{ categoryLabel(r.category) }}</span></td>
+              <td class="d-cell-sub">{{ scopeLabel(r.scope) }}</td>
+              <td>
+                <span class="d-fmts">
+                  @for (f of r.formats; track f) {
+                    <span class="fmt"><bdi>{{ f }}</bdi></span>
+                  }
+                </span>
+              </td>
+              <td>
+                @if (isScheduled(r)) {
+                  <span class="d-pill completed">{{ frequencyLabel(r.frequency) }}</span>
+                } @else {
+                  <span class="d-cell-sub">{{ frequencyLabel(r.frequency) }}</span>
+                }
+              </td>
+              <!-- Always an em dash: no report has ever been run and there is
+                   nowhere to record that it had been. Never a fabricated date. -->
+              <td class="num d-cell-sub">
+                <bdi>{{ r.lastRunAt ?? '—' }}</bdi>
+              </td>
+              <td class="d-rowact">
+                @if (r.available) {
+                  <button type="button" class="d-btn sm" (click)="run(r)">
+                    <epm-icon name="bolt" [size]="14" />{{ lang.t('rpt_run') }}
+                  </button>
+                } @else {
+                  <!-- An explicit note, never a bare disabled button. The
+                       reason itself is in the report cell, where there is room
+                       to read it. -->
+                  <span class="d-cell-sub">{{ lang.t('rpt_unavailable') }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <epm-pager
+        [page]="page()"
+        [total]="rows().length"
+        [pageSize]="pageSize()"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="setPageSize($event)" />
+    }
+  </div>
+}

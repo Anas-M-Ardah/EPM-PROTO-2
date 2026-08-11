@@ -88,7 +88,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | SCR-E4 | Entities / Beneficiaries | `DSpaces` — `desktop-views.jsx:255` |
 | SCR-E5 | Schedule Control | `DScheduleControl` — `enterprise-areas.jsx:8` |
 | SCR-E6 | Alerts Center | `DAlertsCenter` — `enterprise-areas.jsx:106` *(v1.1, sibling repo)* |
-| SCR-E7 | Reports & Analytics | `DReports` — `desktop-reports.jsx:39` |
+| SCR-E7 | Reports & Analytics | `DReports` — `desktop-reports.jsx:58` *(v1.1, sibling repo — the pre-v1.1 component of the same name is a different screen entirely; see P-37)* |
 
 ### Workspace shell
 
@@ -386,9 +386,42 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 > dark: same page head, same KPI band order and labels, same eight columns, same
 > delay format, same pager. Both empty states checked separately.
 
-### 2.6 Reports & Analytics — SCR-E7 · `DReports` `desktop-reports.jsx:39`
-- [ ] Trend · by-status · by-workspace · by-branch · period + export
-- [ ] `EP-RPT-01` · Angular trio · UML · TRACE row
+### 2.6 Reports & Analytics — SCR-E7 · `DReports` `desktop-reports.jsx:58` (v1.1) ✅ COMPLETE
+
+> ~~Trend · by-status · by-workspace · by-branch · period + export~~ — that is the
+> **pre-v1.1** screen, and `04 §2`'s one-liner still describes it. v1.1 replaced the
+> chart board with a **catalog of the twelve reports a user can actually run**, the
+> same substitution the Alerts Center went through at 2.4. The charts are not lost:
+> SCR-E1 is the chart board and already carries trend, status split and entity
+> ranking. See P-37.
+
+- [x] The twelve definitions as code — `Features/Reports/ReportCatalog.cs`, AR wording
+      verbatim from the reference. Not a table: no row stores `RPT-01` (P-11's test,
+      applied the other way)
+- [x] Register — report · category · scope · format · frequency · last run · action;
+      search · project scope · five category chips · pager
+- [x] **Nine of the twelve cannot be produced yet, and each says which table it is
+      waiting for and the phase that builds it.** Availability is computed from the
+      tables actually registered in `EpmDb`, read off the EF model — so a later phase
+      registering a DbSet flips its rows with no edit here (P-38)
+- [x] A blocked row gets **no bare disabled button** — an explicit note in the row
+      and «غير متاح» in the action cell
+- [x] **Last run is twelve em dashes.** Nothing has ever run a report and there is
+      nowhere to record that it had been; the reference hard-codes a date per row (P-09)
+- [x] Chip counts move with the project scope (12 → 9) and hold still under search
+      and category, so the chips and the rows can never disagree
+- [x] Selection carried on `<option [selected]>`, not `[value]` on the `<select>` (P-39)
+- [x] `EP-RPT-01` · Angular trio · `docs/uml/reports.md` · TRACE row
+
+> **Verified live** at 1440 and 1024, AR and EN, light and dark: 12 rows / 7 scheduled
+> / 3 runnable; scoping to `PRJ-0148` narrows to 9 rows with the scope bar shown and
+> the chips recounted; Run toasts «تشغيل: … — تجريبي» carrying the scoped project, with
+> `role=status` + `aria-live=polite`; filtered-empty state and its Clear button both
+> reached; no horizontal overflow at 1024. `dotnet test` 131/131, `ng build` clean.
+
+> **This is the last enterprise screen.** Every destination the reference's enterprise
+> nav offers now exists — the ⌘K palette is built from that same list, so it gained
+> the entry for free.
 
 ---
 

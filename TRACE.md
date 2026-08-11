@@ -15,7 +15,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built |
 | SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 *(v1.1)* | `features/schedule-control/schedule-control.page.ts` | `EP-SCT-01` | ✅ built — critical-activities tile renders "unavailable + reason" until Activities exists (Phase 4.3) |
 | SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:106 *(v1.1)* | `features/alerts/alerts.page.ts` | `EP-ALR-01` · `EP-ALR-02` | ✅ built — the first screen that writes; ack persists with the persona |
-| SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:39 | — | `EP-RPT-01` | ⬜ |
+| SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:58 *(v1.1)* | `features/reports/reports.page.ts` | `EP-RPT-01` | ✅ built — a report catalog, not a chart board (P-37); 3 of 12 runnable, the other 9 name their missing source |
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:1461 | — | `EP-OVW-01` | ⬜ |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:157 | — | `EP-INF-01` | ⬜ |
 | SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:194 | — | `EP-CON-01` | ⬜ |
@@ -50,6 +50,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-ALR-01` | `GET /api/alerts` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `list()` | — | Alerts · Projects |
 | `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
 | `EP-SCT-01` | `GET /api/schedule-control` | `Features/ScheduleControl/ScheduleControlEndpoints.cs` | `schedule-control.api.ts` `list()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces |
+| `EP-RPT-01` | `GET /api/reports` | `Features/Reports/ReportsEndpoints.cs` | `reports.api.ts` `list()` | — | Projects *(+ the `EpmDb` model itself, read as data — see P-38)* |
 
 ## Business rules
 
