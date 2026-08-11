@@ -104,6 +104,8 @@ web/src/
 - **No repositories, CQRS, MediatR, AutoMapper or NgRx.** Each adds a hop to trace through.
 - **No foreign keys.** Relationships are `Where()` clauses you can read.
 - **No real P6 / Excel import** (`07 §2`) — the validation gates are implemented, the parsers are not.
+- **No report rendering.** SCR-E7 defines all twelve reports and says, per row, whether the
+  system holds the data to produce it — three do today. Producing the PDF is in no phase.
 - **No BIM viewer** — out of Phase 1 (`07 §8`); the tab is kept and stubbed.
 
 Each of these is recorded with its reasoning in `DECISIONS.md`.

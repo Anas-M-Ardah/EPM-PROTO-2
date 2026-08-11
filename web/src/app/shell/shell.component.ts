@@ -73,7 +73,8 @@ export class ShellComponent {
     {
       // Order follows the reference enterprise nav (desktop-shell.jsx:162):
       // dashboard → spaces → projects → contracts → schedule → alerts →
-      // reports. Reports is not built yet; the gap is not filled with a dead link.
+      // reports. Complete as of Phase 2.6 — every enterprise destination the
+      // reference offers now exists.
       group: 'nav_group_ops',
       items: [
         { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' },
@@ -83,6 +84,7 @@ export class ShellComponent {
         { path: '/contracts', icon: 'description', key: 'nav_contracts_all' },
         { path: '/schedule-control', icon: 'calendar_month', key: 'nav_schedule' },
         { path: '/alerts', icon: 'notifications', key: 'nav_alerts' },
+        { path: '/reports', icon: 'insights', key: 'nav_reports' },
       ],
     },
   ];

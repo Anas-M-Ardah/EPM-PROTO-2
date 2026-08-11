@@ -54,6 +54,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/alerts/alerts.page').then(m => m.AlertsPage),
       },
 
+      // SCR-E7 · features/reports · Features/Reports · [EP-RPT-01]
+      {
+        path: 'reports',
+        loadComponent: () => import('./features/reports/reports.page').then(m => m.ReportsPage),
+      },
+
       // ── next pages append their route here ────────────────────────────
     ],
   },

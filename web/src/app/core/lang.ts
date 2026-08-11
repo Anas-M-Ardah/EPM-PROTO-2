@@ -161,6 +161,32 @@ const STR = {
   empty_schedule_t:{ ar: 'لا توجد مشاريع بعد',              en: 'No projects yet' },
   empty_schedule_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
 
+  // reports & analytics — ported from DReports (v1.1, desktop-reports.jsx:58).
+  // The report TITLES, descriptions, categories, scopes and frequencies are NOT
+  // here: they are the catalog's own definition and ship with the row from
+  // Features/Reports/ReportCatalog.cs. Only the chrome around them is here.
+  rpt_scheduled:   { ar: 'المجدولة',                        en: 'Scheduled' },
+  rpt_custom:      { ar: 'تقرير مخصّص',                     en: 'Custom report' },
+  search_reports:  { ar: 'بحث في التقارير…',                en: 'Search reports…' },
+  rpt_all_projects:{ ar: 'كل المشاريع',                     en: 'All projects' },
+  /** The empty-database state of the scope dropdown — stated, not a blank list. */
+  rpt_no_projects: { ar: 'لا مشاريع بعد',                   en: 'No projects yet' },
+  rpt_scope_to:    { ar: 'تحديد نطاق المشروع',              en: 'Scope to project' },
+  rpt_scoped_to:   { ar: 'النطاق:',                         en: 'Scoped to:' },
+  rpt_scoped_note: { ar: 'تُعرض التقارير القابلة للتشغيل على مستوى المشروع.', en: 'showing reports that run at project level.' },
+  rpt_run:         { ar: 'تشغيل',                           en: 'Run' },
+  /** The row-action cell of a report the system cannot produce yet. The reason
+   *  itself ships from the server beside the catalog that owns it. */
+  rpt_unavailable: { ar: 'غير متاح',                        en: 'Unavailable' },
+  col_report:      { ar: 'التقرير',                         en: 'Report' },
+  col_category:    { ar: 'التصنيف',                         en: 'Category' },
+  col_scope:       { ar: 'النطاق',                          en: 'Scope' },
+  col_format:      { ar: 'الصيغة',                          en: 'Format' },
+  col_frequency:   { ar: 'الدورية',                         en: 'Frequency' },
+  col_last_run:    { ar: 'آخر تشغيل',                       en: 'Last run' },
+  empty_reports_t: { ar: 'لا تقارير مطابقة',                en: 'No matching reports' },
+  empty_reports_b: { ar: 'جرّب تصنيفاً أو كلمة بحث أخرى.',   en: 'Try another category or search term.' },
+
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
   empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },
