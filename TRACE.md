@@ -19,7 +19,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:2512 *(v1.1)* | `features/overview/overview.page.ts` | `EP-OVW-01` | ✅ built — value is Σ effective (BR-00 over BR-09); the projection sits beside it, never in it |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:280 *(v1.1)* | `features/information/information.page.ts` | `EP-INF-01` | ✅ built — every value is a stored column; the field GROUPING is the endpoint's, the labels are chrome |
 | SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:363 · `DContractAmendments` contract-amendments.jsx:301 *(v1.1)* | `features/contract-tab/contract.page.ts` | `EP-CON-01` · `EP-CON-02` | ✅ built — the amendment chain, and the approved-but-unapplied kept out of every total |
-| SCR-W4 BOQ | 04 §4 | `DModBOQ` project-modules.jsx:801 | — | `EP-BOQ-01` | ⬜ |
+| SCR-W4 BOQ | 04 §4 | `DBoqRegister` boq-register.jsx:435 · `DBoqAssign` boq-assign.jsx:11 *(v1.1)* | `features/boq/boq.page.ts` | `EP-BOQ-01` … `EP-BOQ-08` | ✅ built — weights sum to exactly 100.00; the first screen that writes four different things |
 | SCR-W5 Schedule | 04 §5 | `DModSchedule` schedule-module.jsx:432 | — | `EP-SCD-01` | ⬜ |
 | SCR-W6 Progress | 04 §3 | `DModProgress` project-modules.jsx:668 | — | `EP-PRG-01` | ⬜ |
 | SCR-W7 Financials | 04 §3 | `DModFinancialNew` project-modules.jsx:485 | — | `EP-FIN-01` | ⬜ |
@@ -55,6 +55,14 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-INF-01` | `GET /api/projects/{id}/information` | `Features/Information/InformationEndpoints.cs` | `information.api.ts` `get()` | — | Projects · Workspaces |
 | `EP-CON-01` | `GET /api/projects/{id}/contracts` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `register()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Payments |
 | `EP-CON-02` | `GET /api/projects/{id}/contracts/{contractId}` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `detail()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Payments |
+| `EP-BOQ-01` | `GET /api/projects/{id}/boq` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `gate()` | — | Projects · Contracts · BoqItems |
+| `EP-BOQ-02` | `GET /api/projects/{id}/boq/{contractId}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `register()` | BR-00 · BR-01 · BR-03 · BR-04 · BR-05 · BR-08 | Projects · Contracts · BoqItems · BoqRateBands · BoqActivityLinks · BoqDistributions · Activities |
+| `EP-BOQ-03` | `PUT …/boq/{contractId}/items/{code}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveItem()` | BR-05 · BR-08 | BoqItems · BoqRateBands · BoqDistributions |
+| `EP-BOQ-04` | `DELETE …/boq/{contractId}/items/{code}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `deleteItem()` | BR-01 | BoqItems · BoqDistributions · BoqActivityLinks · BoqRateBands |
+| `EP-BOQ-05` | `GET …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `distribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Beneficiaries |
+| `EP-BOQ-06` | `PUT …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveDistribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Beneficiaries |
+| `EP-BOQ-07` | `GET …/boq/{contractId}/assignment` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `assignment()` | BR-02 · BR-03 | Contracts · BoqItems · BoqRateBands · BoqActivityLinks · Activities |
+| `EP-BOQ-08` | `PUT …/items/{code}/allocation` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveAllocation()` | BR-03 | BoqItems · BoqActivityLinks · Activities |
 
 ## Business rules
 
@@ -63,14 +71,14 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | ID | Rule | Spec | File | Tests | Status |
 |---|---|---|---|---|---|
 | BR-00 | Project value = Σ contract values | 01 §3 | `Domain/ProjectValue.cs` | `ProjectValueTests` | ✅ **now receives EFFECTIVE values** (Phase 2.1) |
-| BR-01 | BOQ weight, largest-remainder to 100.00% | 02 §1 | `Domain/BoqWeights.cs` | `BoqWeightsTests` | ✅ |
-| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | `ScheduleWeightsTests` | ✅ |
-| BR-03 | BOQ↔Activity allocation share | 02 §3 | `Domain/Allocation.cs` | `AllocationTests` | ✅ (see P-15) |
-| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | `ProgressReflectionTests` | ✅ |
-| BR-05 | **The 20% rule** | 02 §5 | `Domain/TierSplit.cs` | `TierSplitTests` | ✅ |
+| BR-01 | BOQ weight, largest-remainder to 100.00% | 02 §1 | `Domain/BoqWeights.cs` | `BoqWeightsTests` | ✅ **on screen** (Phase 4.2) — SCR-W4's weight column |
+| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | `ScheduleWeightsTests` | ✅ **on screen** (Phase 4.2) — the cost / man-hours basis |
+| BR-03 | BOQ↔Activity allocation share | 02 §3 | `Domain/Allocation.cs` | `AllocationTests` | ✅ (see P-15) · **`AbsoluteWeight()` added** (Phase 4.2) |
+| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | `ProgressReflectionTests` | ✅ **`Rollup()` added** (Phase 4.2) — the contract/division total |
+| BR-05 | **The 20% rule** | 02 §5 | `Domain/TierSplit.cs` | `TierSplitTests` | ✅ **`Effective()` added** (Phase 4.2) — what a banded line IS |
 | BR-06 | Two proposals, one approved value | 02 §6 | `Domain/Proposals.cs` | `ProposalsTests` | ✅ |
 | BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | `ChangeOrderGatesTests` | ✅ |
-| BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ (import checks: Phase 4.2) |
+| BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ **on screen** (Phase 4.2) — the drawer caps every input; gates 2 and 4 checked in `EP-BOQ-06` |
 | BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
 | BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ **`DelayDays()` exposed** (Phase 2.5) — SCR-E5 shows the same days the penalty is charged on |
 | BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ |
@@ -93,3 +101,8 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `Alerts` | Phase 2.4 | `EP-ALR-01` · `EP-ALR-02` *(the only table a screen writes so far)* |
 | `Beneficiaries` | Phase 3 | `EP-OVW-01` — resolves the `Projects.BeneficiaryCodes` CSV (01 §2.1) |
 | `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` — the first table that can say what was actually paid |
+| `BoqItems` | Phase 4.2 | `EP-BOQ-01` … `EP-BOQ-08` — **written** by `EP-BOQ-03` / `EP-BOQ-04` |
+| `BoqRateBands` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-03` · `EP-BOQ-05` — read only; Phase 5.4 writes a band |
+| `BoqDistributions` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-05` — **written** by `EP-BOQ-06` |
+| `BoqActivityLinks` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — **written** by `EP-BOQ-08` |
+| `Activities` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — registered here, not 4.3: BR-03 and BR-04 both read it |

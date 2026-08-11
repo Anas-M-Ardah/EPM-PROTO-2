@@ -74,4 +74,31 @@ public static class TierSplit
         var qty = bands.Sum(b => b.Qty);
         return qty <= 0m ? 0m : bands.Sum(b => b.Qty * b.Rate) / qty;
     }
+
+    /// <summary>
+    /// 01 §3 + 02 §5 — what a BOQ line IS, once its bands are taken into account.
+    ///
+    /// A line with no bands is its contracted quantity at its contracted rate.
+    /// A line WITH bands is the sum of them: the quantity is Σ band quantities,
+    /// the rate is the blend, and the amount is what was actually agreed band by
+    /// band — not qty × blendedRate, which is the same number only because the
+    /// blend is defined to make it so, and stops being the same number the
+    /// moment a band is added with a different quantity.
+    ///
+    /// The ORIGINAL quantity and rate are untouched by this (non-negotiable #6);
+    /// they persist on the line and are what D-01 measures the 20% against.
+    /// </summary>
+    public record Line(decimal Qty, decimal Rate, decimal Amount, bool Banded);
+
+    public static Line Effective(decimal originalQty, decimal originalRate, IReadOnlyList<Band> bands)
+    {
+        if (bands.Count == 0)
+            return new Line(originalQty, originalRate, originalQty * originalRate, false);
+
+        return new Line(
+            bands.Sum(b => b.Qty),
+            BlendedRate(bands),
+            bands.Sum(b => b.Qty * b.Rate),
+            true);
+    }
 }

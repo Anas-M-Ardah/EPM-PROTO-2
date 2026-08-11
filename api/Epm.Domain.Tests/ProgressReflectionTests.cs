@@ -52,4 +52,16 @@ public class ProgressReflectionTests
         Assert.Equal(0m, r.Progress);
         Assert.Equal(26_730_000m, r.RemainingValue);
     }
+
+    [Fact]
+    public void The_contract_rollup_is_value_weighted_not_a_mean_of_percentages()
+    {
+        // Two lines: 90,000,000 at 0% and 10,000,000 at 100%. The mean of the
+        // two percentages is 50%. The contract is 10% done.
+        Assert.Equal(10m, ProgressReflection.Rollup(100_000_000m, 10_000_000m));
+    }
+
+    [Fact]
+    public void A_contract_with_no_value_rolls_up_to_zero_rather_than_dividing()
+        => Assert.Equal(0m, ProgressReflection.Rollup(0m, 0m));
 }

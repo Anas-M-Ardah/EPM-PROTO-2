@@ -1,0 +1,896 @@
+<!--
+  SCR-W4 BOQ — v1.1 module skeleton.
+  Ported from the v1.1 BOQ module: ../epm@design/system-revamp
+  app/boq-workspace.jsx:16 · app/boq-register.jsx:435 · app/boq-assign.jsx:11.
+
+  Z6 carries the title, the contract chip and the two view tabs; Z7 scrolls;
+  Z10 is the status strip. Two views, one drawer:
+
+    السجل            the register grid — division → item, inline edit, delete
+    الربط بالأنشطة    the allocation matrix — queue on one side, editor on the other
+    (drawer)          quantity distribution to beneficiaries, capped as it types
+
+  NO BOQ ROW EXPOSES ITS PROJECT OR ITS WBS (01 §2.4). The project comes from
+  the contract; WBS belongs to the activity and appears only inside the
+  assignment editor, where an activity is the subject.
+
+  Every number, quantity, percentage, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="6" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else if (contracts().length === 0) {
+    <!-- A project with no contract has no bill of quantities to show, and that
+         is a real state: a project is registered before it is awarded. -->
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+        <b>{{ lang.t('ovw_no_contracts_t') }}</b>
+        <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+      </div>
+    </div></div>
+
+  } @else if (gated()) {
+    <!-- ══ THE CONTRACT GATE (04 §4) ═════════════════════════════════════
+         Nothing renders until a contract is chosen. Each option carries its
+         own item count, so the choice is not blind. -->
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="boq-editor-empty">
+        <div class="tile"><epm-icon name="description" [size]="27" /></div>
+        <b>{{ lang.t('boq_gate_t') }}</b>
+        <span>{{ lang.t('boq_gate_b') }}</span>
+        <div class="acts">
+          @for (c of contracts(); track c.id) {
+            <button type="button" class="d-btn" (click)="chooseContract(c.id)">
+              <bdi class="mono">{{ c.id }}</bdi> — {{ lang.pick(c.nameAr, c.nameEn) }}
+              <span class="n"><bdi>{{ c.itemCount }}</bdi></span>
+            </button>
+          }
+        </div>
+      </div>
+    </div></div>
+
+  } @else {
+    <!-- ══ Z6 — title · contract · views ═════════════════════════════════ -->
+    <div class="d-pz6">
+      @if (!singleContract()) {
+        <button type="button" class="d-btn sm ghost" (click)="backToGate()"
+                [attr.aria-label]="lang.t('boq_change_contract')">
+          <epm-icon name="chevron_right" [size]="16" />
+        </button>
+      }
+      <span class="z6-t">
+        {{ lang.t('mod_boq') }}
+        <em><bdi>{{ contract()?.id }}</bdi> · {{ contractLabel() }}</em>
+      </span>
+
+      <div class="grp">
+        <button type="button" class="d-fchip" [class.on]="view() === 'register'"
+                (click)="setView('register')">
+          {{ lang.t('boq_tab_register') }}
+          <span class="n"><bdi>{{ reg()?.totals?.itemCount ?? 0 }}</bdi></span>
+        </button>
+        <button type="button" class="d-fchip" [class.on]="view() === 'assign'"
+                (click)="setView('assign')">
+          {{ lang.t('boq_tab_assign') }}
+          @if (coverageCount('over')) {
+            <span class="n"><bdi>{{ coverageCount('over') }}</bdi></span>
+          }
+        </button>
+      </div>
+
+      <span class="sp"></span>
+
+      @if (!singleContract()) {
+        <!-- The selector stays reachable from inside the module, so switching
+             contract is one control and not a trip back through the gate.
+             P-39: the selection rides on each <option>, never on [value]. -->
+        <label class="boq-ctxsel">
+          <span>{{ lang.t('boq_contract') }}</span>
+          <select [attr.aria-label]="lang.t('boq_contract')"
+                  (change)="chooseContract($any($event.target).value)">
+            @for (c of contracts(); track c.id) {
+              <option [value]="c.id" [selected]="c.id === contract()?.id">
+                {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        @if (view() === 'register') {
+          <!-- ══ THE REGISTER ═══════════════════════════════════════════ -->
+          @if (rows().length === 0) {
+            <!-- empty BECAUSE THIS CONTRACT HAS NO BILL — a different state,
+                 with a different message, from "the filter excluded everything"
+                 below (04 §9). -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="inbox" [size]="30" /></span>
+              <b>{{ lang.t('boq_empty_t') }}</b>
+              <span>{{ lang.t('boq_empty_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-tablewrap">
+
+              <div class="d-toolbar">
+                <div class="d-field">
+                  <epm-icon name="search" [size]="16" />
+                  <input type="search" class="epm-bare-input"
+                         [placeholder]="lang.t('boq_search')"
+                         [value]="q()" (input)="q.set($any($event.target).value)" />
+                </div>
+
+                <!-- 06 §11 coverage, straight from the Lookups (EP-LKP-01).
+                     Every chip carries its label — status is never colour
+                     alone (CLAUDE.md §6). -->
+                <div class="grp">
+                  <button type="button" class="d-fchip" [class.on]="coverage() === ''"
+                          (click)="coverage.set('')">
+                    {{ lang.t('all') }}
+                    <span class="n"><bdi>{{ reg()?.totals?.itemCount ?? 0 }}</bdi></span>
+                  </button>
+                  @for (k of coverageKeys; track k) {
+                    <button type="button" class="d-fchip" [class.on]="coverage() === k"
+                            (click)="coverage.set(k)">
+                      <span class="dot" [class]="k === 'unassigned' ? 'none' : k"></span>
+                      {{ coverageLabel(k) }}
+                      <span class="n"><bdi>{{ coverageCount(k) }}</bdi></span>
+                    </button>
+                  }
+                </div>
+
+                <span class="sp"></span>
+
+                @if (!isUnfiltered()) {
+                  <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                    <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+                  </button>
+                }
+
+                <div class="boq-colmenu-wrap">
+                  <button type="button" class="d-btn sm ghost" aria-haspopup="true"
+                          [attr.aria-expanded]="colMenu()" (click)="colMenu.set(!colMenu())">
+                    <epm-icon name="view_column" [size]="15" />{{ lang.t('boq_columns') }}
+                  </button>
+                  @if (colMenu()) {
+                    <div class="boq-menu-scrim" (click)="colMenu.set(false)"></div>
+                    <div class="boq-colmenu" role="menu">
+                      @for (c of columns; track c.k) {
+                        <label class="row">
+                          <input type="checkbox" [checked]="shown(c.k)" (change)="toggleCol(c.k)" />
+                          <span>{{ lang.t(c.label) }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="d-vow-tw">
+                <table class="d-line-table d-boqgrid">
+                  <thead>
+                    <tr>
+                      <th class="freeze" style="width: 96px">{{ lang.t('boq_col_code') }}</th>
+                      <th class="freeze nm" style="min-width: 240px">{{ lang.t('boq_col_desc') }}</th>
+                      @if (shown('unit')) { <th style="width: 80px">{{ lang.t('boq_col_unit') }}</th> }
+                      @if (shown('qty')) { <th class="r" style="width: 104px">{{ lang.t('boq_col_qty') }}</th> }
+                      @if (shown('rate')) {
+                        <th class="r" style="width: 120px">
+                          {{ lang.t('boq_col_rate') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                        </th>
+                      }
+                      @if (shown('amount')) {
+                        <th class="r" style="width: 136px">
+                          {{ lang.t('boq_col_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                        </th>
+                      }
+                      @if (shown('weight')) { <th class="r" style="width: 92px">{{ lang.t('boq_col_weight') }}</th> }
+                      @if (shown('links')) { <th class="r" style="width: 80px">{{ lang.t('boq_col_links') }}</th> }
+                      @if (shown('assignedWeight')) { <th class="r" style="width: 110px">{{ lang.t('boq_col_assigned_wt') }}</th> }
+                      @if (shown('progress')) { <th style="width: 136px">{{ lang.t('boq_col_progress') }}</th> }
+                      @if (shown('distribution')) { <th style="width: 140px">{{ lang.t('boq_col_distribution') }}</th> }
+                      @if (shown('coverage')) { <th style="width: 140px">{{ lang.t('boq_col_coverage') }}</th> }
+                      <th style="width: 44px" [attr.aria-label]="lang.t('boq_col_actions')"></th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    @if (filtered().length === 0) {
+                      <!-- empty BECAUSE THE FILTER EXCLUDED EVERYTHING (04 §9) -->
+                      <tr><td class="empty" [attr.colspan]="spanCount()">
+                        <div class="d-empty">
+                          <span class="d-empty-ico"><epm-icon name="search" [size]="26" /></span>
+                          <b>{{ lang.t('boq_nofilter_t') }}</b>
+                          <span>{{ lang.t('boq_nofilter_b') }}</span>
+                          <div class="acts">
+                            <button type="button" class="d-btn sm primary" (click)="clearFilters()">
+                              {{ lang.t('clear_filters') }}
+                            </button>
+                          </div>
+                        </div>
+                      </td></tr>
+                    }
+
+                    @for (g of groups(); track g.division.key) {
+                      <!-- A DIVISION IS A LABEL ON ITS LINES, not a record. Its
+                           figures are sums of the rows under it. -->
+                      <tr class="lvl1" (click)="toggleDivision(g.division.key)" style="cursor: pointer">
+                        <td class="freeze">
+                          <epm-icon class="tw"
+                                    [name]="isOpen(g.division.key) ? 'expand_more' : (lang.isAr() ? 'chevron_left' : 'chevron_right')"
+                                    [size]="15" />
+                        </td>
+                        <td class="freeze nm"><b>{{ divisionName(g.division) }}</b></td>
+                        @if (shown('unit')) { <td class="d-cell-sub">—</td> }
+                        @if (shown('qty')) { <td class="r d-cell-sub">—</td> }
+                        @if (shown('rate')) { <td class="r d-cell-sub">—</td> }
+                        @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(g.division.amount) }}</bdi></td> }
+                        @if (shown('weight')) { <td class="r num"><bdi>{{ g.division.weight.toFixed(2) }}</bdi></td> }
+                        @if (shown('links')) { <td class="r num"><bdi>{{ g.division.links || '—' }}</bdi></td> }
+                        @if (shown('assignedWeight')) { <td class="r d-cell-sub">—</td> }
+                        @if (shown('progress')) {
+                          <td><span class="d-mini-bar">
+                            <span class="t"><span [style.width.%]="g.division.progress"></span></span>
+                            <span class="pc"><bdi>{{ fmt.pct(g.division.progress, 0) }}</bdi></span>
+                          </span></td>
+                        }
+                        @if (shown('distribution')) { <td class="d-cell-sub">—</td> }
+                        @if (shown('coverage')) {
+                          <td>
+                            @if (g.division.hasOver) {
+                              <span class="d-pill delayed">{{ coverageLabel('over') }}</span>
+                            } @else { <span class="d-cell-sub">—</span> }
+                          </td>
+                        }
+                        <td></td>
+                      </tr>
+
+                      @if (isOpen(g.division.key)) {
+                        @for (r of g.rows; track r.code) {
+                          <ng-container
+                            *ngTemplateOutlet="line; context: { $implicit: r }"></ng-container>
+                        }
+                      }
+                    }
+
+                    @for (r of ungrouped(); track r.code) {
+                      <ng-container *ngTemplateOutlet="line; context: { $implicit: r }"></ng-container>
+                    }
+                  </tbody>
+
+                  @if (reg(); as d) {
+                    @if (filtered().length > 0) {
+                      <tfoot>
+                        <tr>
+                          <td class="freeze"></td>
+                          <td class="freeze nm">{{ lang.t('boq_totals') }}</td>
+                          @if (shown('unit')) { <td></td> }
+                          @if (shown('qty')) { <td></td> }
+                          @if (shown('rate')) { <td></td> }
+                          @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(d.totals.amount) }}</bdi></td> }
+                          <!-- BR-01's whole promise, printed: exactly 100.00. -->
+                          @if (shown('weight')) { <td class="r num"><bdi>{{ d.totals.weight.toFixed(2) }}</bdi></td> }
+                          @if (shown('links')) { <td class="r num"><bdi>{{ d.totals.links }}</bdi></td> }
+                          @if (shown('assignedWeight')) { <td></td> }
+                          @if (shown('progress')) {
+                            <td><span class="d-mini-bar">
+                              <span class="t"><span [style.width.%]="d.totals.progress"></span></span>
+                              <span class="pc"><bdi>{{ fmt.pct(d.totals.progress, 0) }}</bdi></span>
+                            </span></td>
+                          }
+                          @if (shown('distribution')) { <td></td> }
+                          @if (shown('coverage')) { <td></td> }
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    }
+                  }
+                </table>
+              </div>
+
+              <div class="d-pager calcnote">
+                <epm-icon name="functions" [size]="14" />
+                <span>{{ lang.t('boq_calc_note') }}</span>
+              </div>
+            </div>
+          }
+
+        } @else {
+          <!-- ══ THE ACTIVITY-ASSIGNMENT VIEW (02 §3) ═══════════════════ -->
+          @if (!asn()) {
+            <epm-table-skeleton [cols]="6" [rows]="5" [loadingLabel]="lang.t('loading')" />
+          } @else if (asn()!.activities.length === 0) {
+            <!-- No activities is not an error and not an empty grid: the P6
+                 schedule is imported by Phase 4.3, and saying so is the honest
+                 answer (P-09's rule, applied to a whole view). -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="account_tree" [size]="30" /></span>
+              <b>{{ lang.t('boq_asn_none_t') }}</b>
+              <span>{{ lang.t('boq_asn_no_acts') }}</span>
+            </div>
+          } @else {
+            <div class="boq-assign-row">
+
+              <!-- the source list -->
+              <div class="d-tablewrap">
+                <div class="d-toolbar">
+                  <span class="d-cell-sub">{{ lang.t('boq_asn_queue') }}</span>
+                  <span class="sp"></span>
+                  <span class="d-cell-sub">
+                    <bdi>{{ queue().length }}</bdi> / <bdi>{{ asn()!.items.length }}</bdi>
+                  </span>
+                </div>
+
+                <div class="d-facets" role="group" [attr.aria-label]="lang.t('boq_col_coverage')">
+                  <button type="button" [class.on]="queueFilter() === ''"
+                          [attr.aria-pressed]="queueFilter() === ''" (click)="queueFilter.set('')">
+                    <span class="dot all"></span>
+                    <span class="lb">{{ lang.t('all') }}</span>
+                    <span class="n"><bdi>{{ asn()!.items.length }}</bdi></span>
+                  </button>
+                  @for (k of coverageKeys; track k) {
+                    <button type="button" [class.on]="queueFilter() === k"
+                            [attr.aria-pressed]="queueFilter() === k"
+                            [disabled]="!coverageCount(k)" (click)="queueFilter.set(k)">
+                      <span class="dot" [class]="k === 'unassigned' ? 'none' : k"></span>
+                      <span class="lb">{{ coverageLabel(k) }}</span>
+                      <span class="n"><bdi>{{ coverageCount(k) }}</bdi></span>
+                    </button>
+                  }
+                </div>
+
+                <div class="boq-queue-b">
+                  @for (i of queue(); track i.code) {
+                    <button type="button" class="boq-qcard" [class.on]="activeCode() === i.code"
+                            (click)="selectItem(i.code)">
+                      <div class="l1">
+                        <span class="mono code"><bdi>{{ i.code }}</bdi></span>
+                        <span class="sp"></span>
+                        <span class="d-pill" [class]="coverageClass(i.coverage)">
+                          {{ coverageLabel(i.coverage) }}
+                        </span>
+                      </div>
+                      <div class="l2">{{ description(i) }}</div>
+                      <div class="l3">
+                        <span class="d-mini-bar">
+                          <span class="t">
+                            <span [class]="i.coverage === 'unassigned' ? 'none' : i.coverage"
+                                  [style.width.%]="i.sharesTotal > 100 ? 100 : i.sharesTotal"></span>
+                          </span>
+                          <span class="pc"><bdi>{{ fmt.pct(i.sharesTotal, 0) }}</bdi></span>
+                        </span>
+                      </div>
+                    </button>
+                  }
+                  @if (queue().length === 0) {
+                    <span class="d-cell-sub pad">{{ lang.t('boq_nofilter_t') }}</span>
+                  }
+                </div>
+              </div>
+
+              <!-- the editor -->
+              @if (active(); as a) {
+                <div class="d-tablewrap">
+                  <div class="d-toolbar">
+                    <span class="d-cell-sub">
+                      <bdi class="mono">{{ a.code }}</bdi> · {{ description(a) }}
+                    </span>
+                    <span class="sp"></span>
+                    <span class="boq-remchip"
+                          [class]="draftOver() ? 'over' : (draftTotal() >= 99.5 ? 'full' : 'partial')">
+                      <em>{{ lang.t('boq_asn_remaining') }}</em>
+                      <b class="num"><bdi>{{ (100 - draftTotal()).toFixed(1) }}%</bdi></b>
+                    </span>
+                  </div>
+
+                  @if (a.isManual) {
+                    <div class="d-msgbar warning">
+                      <epm-icon name="edit" [size]="16" />
+                      <div>
+                        <b>{{ lang.t('boq_asn_manual') }}</b>
+                        <span>{{ lang.t('boq_asn_method') }}</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="d-msgbar info">
+                      <epm-icon name="functions" [size]="16" />
+                      <div><span>{{ lang.t('boq_asn_method') }}</span></div>
+                    </div>
+                  }
+
+                  @if (basis() === 'mh') {
+                    <div class="d-msgbar info">
+                      <epm-icon name="schedule" [size]="16" />
+                      <div><span>{{ lang.t('boq_asn_whatif') }}</span></div>
+                    </div>
+                  }
+
+                  @if (draftOver()) {
+                    <div class="d-msgbar danger">
+                      <epm-icon name="warning" [size]="16" />
+                      <div><span>{{ lang.t('boq_asn_over_b') }}</span></div>
+                    </div>
+                  }
+
+                  <div class="d-toolbar">
+                    <span class="d-cell-sub">{{ lang.t('boq_asn_target') }}</span>
+                    <span class="sp"></span>
+
+                    @if (asn()!.manHoursAvailable) {
+                      <span class="boq-basis">
+                        <span class="lbl">{{ lang.t('boq_asn_basis') }}</span>
+                        <span class="seg">
+                          <button type="button" [class.on]="basis() === 'cost'"
+                                  (click)="setBasis('cost')">{{ lang.t('boq_asn_cost') }}</button>
+                          <button type="button" [class.on]="basis() === 'mh'"
+                                  (click)="setBasis('mh')">{{ lang.t('boq_asn_mh') }}</button>
+                        </span>
+                      </span>
+                    }
+
+                    <button type="button" class="d-btn sm" [disabled]="activeRows().length === 0"
+                            (click)="autoDistribute()">
+                      <epm-icon name="auto_fix_high" [size]="15" />{{ lang.t('boq_asn_auto') }}
+                    </button>
+
+                    <div class="boq-colmenu-wrap">
+                      <button type="button" class="d-btn sm primary" aria-haspopup="true"
+                              [attr.aria-expanded]="picker()"
+                              [disabled]="pickable().length === 0" (click)="picker.set(!picker())">
+                        <epm-icon name="add" [size]="15" />{{ lang.t('boq_asn_add') }}
+                      </button>
+                      @if (picker()) {
+                        <div class="boq-menu-scrim" (click)="picker.set(false)"></div>
+                        <div class="boq-colmenu" role="menu" style="width: 320px">
+                          @for (act of pickable(); track act.activityId) {
+                            <button type="button" class="row" role="menuitem"
+                                    (click)="addShare(act.activityId)">
+                              <span class="mono"><bdi>{{ act.activityId }}</bdi></span>
+                              <span>{{ lang.pick(act.nameAr, act.nameEn) }}</span>
+                              <span class="sp"></span>
+                              <span class="mono"><bdi>{{ fmt.pct(activityWeight(act.activityId)) }}</bdi></span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  @if (activeRows().length === 0) {
+                    <div class="d-empty">
+                      <span class="d-empty-ico"><epm-icon name="account_tree" [size]="26" /></span>
+                      <b>{{ lang.t('boq_asn_none_t') }}</b>
+                      <span>{{ lang.t('boq_asn_none_b') }}</span>
+                    </div>
+                  } @else {
+                    <div class="d-vow-tw">
+                      <table class="d-line-table">
+                        <thead><tr>
+                          <th style="width: 104px">{{ lang.t('boq_asn_activity') }}</th>
+                          <th style="min-width: 180px">{{ lang.t('boq_col_desc') }}</th>
+                          <th class="r" style="width: 96px">{{ lang.t('boq_asn_its_wt') }}</th>
+                          <th class="r" style="width: 96px">{{ lang.t('boq_col_progress') }}</th>
+                          <th class="r" style="width: 128px">{{ lang.t('boq_asn_share') }}</th>
+                          <th class="r" style="width: 140px">
+                            {{ lang.t('boq_asn_assigned') }}
+                            <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                          </th>
+                          <th style="width: 44px" [attr.aria-label]="lang.t('boq_col_actions')"></th>
+                        </tr></thead>
+                        <tbody>
+                          @for (r of activeRows(); track $index) {
+                            <tr>
+                              <td class="mono"><bdi>{{ r.activityId }}</bdi></td>
+                              <td class="wrap">
+                                {{ activityName(r.activityId) }}
+                                @if (serverRow(r.activityId)?.isDuplicate) {
+                                  <span class="d-proposed">{{ lang.t('boq_asn_dup') }}</span>
+                                }
+                              </td>
+                              <td class="r num"><bdi>{{ fmt.pct(activityWeight(r.activityId)) }}</bdi></td>
+                              <td class="r"><span class="d-mini-bar">
+                                <span class="t"><span [style.width.%]="activityProgress(r.activityId)"></span></span>
+                                <span class="pc"><bdi>{{ fmt.pct(activityProgress(r.activityId), 0) }}</bdi></span>
+                              </span></td>
+                              <td class="r">
+                                <span class="boq-shareinp">
+                                  <input class="mono" inputmode="decimal"
+                                         [attr.aria-label]="lang.t('boq_asn_share')"
+                                         [value]="r.pct"
+                                         (input)="setShare($index, $any($event.target).value, $any($event.target))" />
+                                  <i>%</i>
+                                </span>
+                                <div class="d-cell-sub">
+                                  {{ lang.t('boq_asn_abs_wt') }}
+                                  <bdi>{{ absWeightFor($index).toFixed(3) }}%</bdi>
+                                </div>
+                              </td>
+                              <!-- The server's figure until the user types. See
+                                   `assignedFor` — recomputing it here from a
+                                   share rounded for display puts BQ-003 seven
+                                   dinars off the rule's own answer. -->
+                              <td class="r num"><bdi>{{ fmt.money(assignedFor($index)) }}</bdi></td>
+                              <td class="r">
+                                <button type="button" class="d-icon-btn sm"
+                                        [attr.aria-label]="lang.t('boq_dist_remove')"
+                                        (click)="removeShare($index)">
+                                  <epm-icon name="delete" [size]="16" />
+                                </button>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot><tr>
+                          <td colspan="4">{{ lang.t('boq_asn_total') }}</td>
+                          <td class="r num"><bdi>{{ draftTotal().toFixed(1) }}%</bdi></td>
+                          <td class="r num"><bdi>{{ fmt.money(assignedTotal()) }}</bdi></td>
+                          <td></td>
+                        </tr></tfoot>
+                      </table>
+                    </div>
+                  }
+
+                  <div class="d-toolbar">
+                    @if (a.isManual) {
+                      <button type="button" class="d-btn sm" [disabled]="saving()" (click)="resetShares()">
+                        <epm-icon name="restart_alt" [size]="15" />{{ lang.t('boq_asn_reset') }}
+                      </button>
+                    }
+                    <span class="sp"></span>
+                    <button type="button" class="d-btn sm" [disabled]="!draftDirty() || saving()"
+                            (click)="revertShares()">{{ lang.t('boq_cancel') }}</button>
+                    <button type="button" class="d-btn sm primary"
+                            [disabled]="!draftDirty() || draftOver() || saving()"
+                            (click)="saveShares()">
+                      <epm-icon name="check" [size]="15" />{{ lang.t('boq_save') }}
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="d-empty">
+                  <span class="d-empty-ico"><epm-icon name="touch_app" [size]="26" /></span>
+                  <b>{{ lang.t('boq_asn_pick') }}</b>
+                  <span>{{ lang.t('boq_asn_pick_b') }}</span>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- ══ Z10 — the status strip ═══════════════════════════════════════ -->
+    @if (reg(); as d) {
+      <div class="d-pz10">
+        <span class="st">
+          <span>{{ lang.t('boq_stat_items') }}</span>
+          <b><bdi>{{ filtered().length }} / {{ d.totals.itemCount }}</bdi></b>
+        </span>
+        <span class="st">
+          <span>{{ lang.t('boq_stat_contract') }}</span>
+          <b><bdi>{{ fmt.money(d.totals.amount) }}</bdi></b>
+        </span>
+        <span class="st">
+          <span>{{ lang.t('boq_stat_project') }}</span>
+          <b><bdi>{{ fmt.money(d.totals.projectAmount) }}</bdi></b>
+        </span>
+        @if (view() === 'assign' && asn()) {
+          <span class="st">
+            <span>{{ lang.t('boq_stat_acts') }}</span>
+            <b><bdi>{{ asn()!.activities.length }}</bdi></b>
+          </span>
+          <span class="st">
+            <span>{{ lang.t('boq_stat_balanced') }}</span>
+            <b><bdi>{{ coverageCount('full') }} / {{ d.totals.itemCount }}</bdi></b>
+          </span>
+        }
+        <span class="sp"></span>
+        <span class="asof">{{ lang.t('boq_asof') }} <bdi>{{ fmt.date(d.asOf) }}</bdi></span>
+      </div>
+    }
+  }
+</div>
+
+<!-- ══ THE DISTRIBUTION DRAWER (02 §8) ═══════════════════════════════════
+     Secondary detail goes in a drawer, not an in-place expander: an expander
+     pushes the register down and loses the row you were comparing against
+     (CLAUDE.md §6). -->
+@if (distCode()) {
+  <epm-drawer [title]="lang.t('boq_dist_title')" [sub]="distCode()" [hasFooter]="true"
+              [closeLabel]="lang.t('boq_cancel')" (closed)="closeDistribution()">
+
+    @if (dist(); as d) {
+      <div class="d-form-grid">
+        <div class="d-form-i"><span class="k">{{ lang.t('boq_col_desc') }}</span>
+          <span class="v">{{ description(d) }}</span></div>
+        <div class="d-form-i"><span class="k">{{ lang.t('boq_col_unit') }}</span>
+          <span class="v"><bdi>{{ d.unit }}</bdi></span></div>
+        <div class="d-form-i"><span class="k">{{ lang.t('boq_dist_total') }}</span>
+          <span class="v num"><bdi>{{ fmt.qty(d.qty) }}</bdi></span></div>
+        <div class="d-form-i"><span class="k">{{ lang.t('boq_col_distribution') }}</span>
+          <span class="v">
+            <span class="d-pill" [class]="distributionClass(distState())">
+              {{ distributionLabel(distState()) }}
+            </span>
+          </span></div>
+      </div>
+
+      @if (distExcess() > 0) {
+        <div class="d-msgbar danger">
+          <epm-icon name="warning" [size]="16" />
+          <div>
+            <b>{{ lang.t('boq_dist_over_b') }}</b>
+            <span>{{ lang.t('boq_dist_over') }}:
+              <bdi class="num">{{ fmt.qty(distExcess()) }}</bdi> <bdi>{{ d.unit }}</bdi></span>
+          </div>
+        </div>
+      } @else {
+        <!-- 02 §8 — PREVENT rather than flag, and SAY SO. A cap the user cannot
+             see is a field that appears broken. -->
+        <div class="d-msgbar info">
+          <epm-icon name="info" [size]="16" />
+          <div><span>{{ lang.t('boq_dist_cap_note') }}</span></div>
+        </div>
+      }
+
+      @if (d.beneficiaries.length === 0) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="apartment" [size]="26" /></span>
+          <b>{{ lang.t('boq_dist_no_ben') }}</b>
+        </div>
+      } @else if (distDraft().length === 0) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="apartment" [size]="26" /></span>
+          <b>{{ lang.t('boq_dist_none_t') }}</b>
+          <span>{{ lang.t('boq_dist_none_b') }}</span>
+        </div>
+      } @else {
+        <table class="d-line-table d-editgrid">
+          <thead><tr>
+            <th>{{ lang.t('boq_dist_ben') }}</th>
+            <th style="width: 120px">{{ lang.t('boq_dist_site') }}</th>
+            <th class="r" style="width: 110px">{{ lang.t('boq_dist_qty') }}</th>
+            <th style="width: 34px"></th>
+          </tr></thead>
+          <tbody>
+            @for (r of distDraft(); track r.beneficiaryCode) {
+              <tr>
+                <td>{{ lang.pick(
+                      (d.rows[$index] && d.rows[$index].beneficiaryCode === r.beneficiaryCode
+                        ? d.rows[$index].beneficiaryNameAr : '') || r.beneficiaryCode,
+                      (d.rows[$index] && d.rows[$index].beneficiaryCode === r.beneficiaryCode
+                        ? d.rows[$index].beneficiaryNameEn : '') || r.beneficiaryCode) }}</td>
+                <td>
+                  <input class="d-cellinput" [attr.aria-label]="lang.t('boq_dist_site')"
+                         [value]="r.siteCode"
+                         (input)="setDistSite($index, $any($event.target).value)" />
+                </td>
+                <td class="r"><span class="d-cellnum">
+                  <input class="d-cellinput num" inputmode="decimal"
+                         [attr.aria-label]="lang.t('boq_dist_qty')"
+                         [value]="r.qty"
+                         (input)="setDistQty($index, $any($event.target).value, $any($event.target))" />
+                  <i><bdi>{{ d.unit }}</bdi></i>
+                </span></td>
+                <td>
+                  <button type="button" class="d-icon-btn sm"
+                          [attr.aria-label]="lang.t('boq_dist_remove')"
+                          (click)="removeDistRow($index)">
+                    <epm-icon name="close" [size]="15" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2">{{ lang.t('boq_dist_done') }}</td>
+              <td class="r num"><bdi>{{ fmt.qty(distDistributed()) }}</bdi></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td colspan="2">{{ distExcess() > 0 ? lang.t('boq_dist_over') : lang.t('boq_dist_left') }}</td>
+              <td class="r num">
+                <bdi>{{ fmt.qty(distExcess() > 0 ? distExcess() : distRemaining()) }}</bdi>
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+
+      @if (addableBeneficiaries().length > 0) {
+        <div class="d-rowacts">
+          <!-- One row per beneficiary (02 §8, gate 4): an entity already on a
+               row is not offered again. -->
+          <label class="boq-ctxsel">
+            <span>{{ lang.t('boq_dist_add') }}</span>
+            <select [attr.aria-label]="lang.t('boq_dist_add')"
+                    (change)="addDistRow($any($event.target).value); $any($event.target).value = ''">
+              <option value="" selected>—</option>
+              @for (b of addableBeneficiaries(); track b.code) {
+                <option [value]="b.code">{{ lang.pick(b.nameAr, b.nameEn) }}</option>
+              }
+            </select>
+          </label>
+        </div>
+      }
+    } @else {
+      <epm-table-skeleton [cols]="3" [rows]="3" [loadingLabel]="lang.t('loading')" />
+    }
+
+    <ng-container footer>
+      <span class="sp"></span>
+      <button type="button" class="d-btn" (click)="closeDistribution()">{{ lang.t('boq_cancel') }}</button>
+      <button type="button" class="d-btn primary"
+              [disabled]="!dist() || distExcess() > 0 || saving()" (click)="saveDistribution()">
+        <epm-icon name="check" [size]="15" />{{ lang.t('boq_save') }}
+      </button>
+    </ng-container>
+  </epm-drawer>
+}
+
+<!-- ══ ONE BOQ LINE ══════════════════════════════════════════════════════
+     Three states in one template: reading, being edited inline (04 §4 — with
+     the amount live as the figures are typed), and confirming its deletion
+     in-row rather than in a modal that hides the row being deleted. -->
+<ng-template #line let-r>
+  @if (editing() === r.code) {
+    <tr class="sel">
+      <td class="mono d-cell-sub freeze"><bdi>{{ r.code }}</bdi></td>
+      <td class="freeze nm">
+        <input class="d-cellinput" [attr.aria-label]="lang.t('boq_col_desc')"
+               [value]="lang.isAr() ? editDescriptionAr() : editDescriptionEn()"
+               (input)="lang.isAr()
+                          ? editDescriptionAr.set($any($event.target).value)
+                          : editDescriptionEn.set($any($event.target).value)" />
+      </td>
+      @if (shown('unit')) {
+        <td><input class="d-cellinput" [attr.aria-label]="lang.t('boq_col_unit')"
+                   [value]="editUnit()" (input)="editUnit.set($any($event.target).value)" /></td>
+      }
+      @if (shown('qty')) {
+        <td class="r"><input class="d-cellinput num" inputmode="decimal"
+                             [attr.aria-label]="lang.t('boq_col_qty')"
+                             [value]="editQty()"
+                             (input)="setEditQty($any($event.target).value, $any($event.target))" /></td>
+      }
+      @if (shown('rate')) {
+        <td class="r"><input class="d-cellinput num" inputmode="decimal"
+                             [attr.aria-label]="lang.t('boq_col_rate')"
+                             [value]="editRate()"
+                             (input)="setEditRate($any($event.target).value, $any($event.target))" /></td>
+      }
+      @if (shown('amount')) {
+        <!-- THE LIVE AMOUNT. It is a preview of what is about to be sent; the
+             binding figure comes back from EP-BOQ-03 with every weight in the
+             contract recomputed around it. -->
+        <td class="r num"><bdi>{{ fmt.money(previewAmount()) }}</bdi><span class="d-proposed">calc</span></td>
+      }
+      <!-- The derived columns are blank while editing, and say so: weight,
+           coverage and progress all move when the amount does, and the answer
+           is EP-BOQ-03's, not this row's. -->
+      <td class="r" [attr.colspan]="editTailSpan()">
+        <!-- The controls sit immediately after the fields they commit, not at
+             the far end of a 1,320px row where they would need a horizontal
+             scroll to reach. Measured at 1440: pushed to the end they land
+             off-screen. -->
+        <div class="d-rowacts">
+          <button type="button" class="d-btn sm primary" [disabled]="!editValid() || saving()"
+                  (click)="saveEdit()">{{ lang.t('boq_save') }}</button>
+          <button type="button" class="d-btn sm" (click)="cancelEdit()">{{ lang.t('boq_cancel') }}</button>
+          <span class="d-cell-sub">{{ lang.t('boq_calc_note') }}</span>
+        </div>
+      </td>
+    </tr>
+
+  } @else if (deleting() === r.code) {
+    <tr class="sel">
+      <td class="mono d-cell-sub freeze"><bdi>{{ r.code }}</bdi></td>
+      <td class="freeze nm">{{ description(r) }}</td>
+      <!-- The confirmation is IN THE ROW (04 §4), not in a modal that covers
+           the very line being deleted. -->
+      <td [attr.colspan]="spanCount() - 2">
+        <div class="d-rowacts">
+          <epm-icon name="warning" [size]="16" />
+          <span class="d-cell-sub">{{ lang.t('boq_delete_q') }}</span>
+          <button type="button" class="d-btn sm primary" [disabled]="saving()"
+                  (click)="confirmDelete()">{{ lang.t('boq_delete') }}</button>
+          <button type="button" class="d-btn sm" (click)="cancelDelete()">{{ lang.t('boq_cancel') }}</button>
+        </div>
+      </td>
+    </tr>
+
+  } @else {
+    <tr>
+      <td class="mono d-cell-sub freeze"><bdi>{{ r.code }}</bdi></td>
+      <td class="d-cell-strong freeze nm">
+        <span class="nmx" [title]="description(r)">{{ description(r) }}</span>
+        @if (r.source === 'manual') { <span class="d-proposed">{{ lang.t('boq_manual') }}</span> }
+        @if (r.banded) { <span class="d-proposed">{{ lang.t('boq_banded') }}</span> }
+      </td>
+      @if (shown('unit')) { <td class="d-cell-sub"><bdi>{{ r.unit }}</bdi></td> }
+      @if (shown('qty')) { <td class="r num"><bdi>{{ fmt.qty(r.qty) }}</bdi></td> }
+      @if (shown('rate')) { <td class="r num"><bdi>{{ fmt.money(r.rate) }}</bdi></td> }
+      @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(r.amount) }}</bdi></td> }
+      @if (shown('weight')) { <td class="r num"><bdi>{{ r.weight.toFixed(2) }}</bdi></td> }
+      @if (shown('links')) { <td class="r num"><bdi>{{ r.links || '—' }}</bdi></td> }
+      @if (shown('assignedWeight')) {
+        <td class="r num boq-aw" [class]="'r num boq-aw ' + (r.coverage === 'unassigned' ? 'none' : r.coverage)">
+          <bdi>{{ r.assignedWeight.toFixed(2) }}</bdi>
+        </td>
+      }
+      @if (shown('progress')) {
+        <td><span class="d-mini-bar">
+          <span class="t"><span [style.width.%]="r.progress"></span></span>
+          <span class="pc"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></span>
+        </span></td>
+      }
+      @if (shown('distribution')) {
+        <td>
+          <span class="d-pill" [class]="distributionClass(r.distributionState)">
+            {{ distributionLabel(r.distributionState) }}
+          </span>
+        </td>
+      }
+      @if (shown('coverage')) {
+        <td>
+          <span class="d-pill" [class]="coverageClass(r.coverage)">{{ coverageLabel(r.coverage) }}</span>
+        </td>
+      }
+      <!-- ONE overflow button, not four (boq-register.jsx:522). Four icon
+           buttons in a cell of a dense grid cost a 40px-tall stack each and
+           push the row to 173px — measured. The menu keeps the row at its
+           height and the column at 44px. -->
+      <td class="ovc">
+        <button type="button" class="d-icon-btn sm" [attr.aria-label]="lang.t('boq_col_actions')"
+                aria-haspopup="menu" [attr.aria-expanded]="rowMenu() === r.code"
+                (click)="rowMenu.set(rowMenu() === r.code ? '' : r.code)">
+          <epm-icon name="more_horizontal" [size]="17" />
+        </button>
+        @if (rowMenu() === r.code) {
+          <div class="boq-menu-scrim" (click)="rowMenu.set('')"></div>
+          <div class="boq-ovmenu" role="menu">
+            <button type="button" role="menuitem"
+                    (click)="rowMenu.set(''); openDistribution(r.code)">
+              <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_distribute') }}
+            </button>
+            <button type="button" role="menuitem"
+                    (click)="rowMenu.set(''); activeCode.set(r.code); setView('assign')">
+              <epm-icon name="account_tree" [size]="15" />{{ lang.t('boq_assign_row') }}
+            </button>
+            <button type="button" role="menuitem" (click)="rowMenu.set(''); startEdit(r)">
+              <epm-icon name="edit" [size]="15" />{{ lang.t('boq_edit') }}
+            </button>
+            <button type="button" role="menuitem" class="danger"
+                    (click)="rowMenu.set(''); startDelete(r.code)">
+              <epm-icon name="delete" [size]="15" />{{ lang.t('boq_delete') }}
+            </button>
+          </div>
+        }
+      </td>
+    </tr>
+  }
+</ng-template>

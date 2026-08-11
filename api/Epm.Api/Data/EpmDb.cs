@@ -65,6 +65,25 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // four rows of the SCR-E7 catalog were unavailable.
     public DbSet<Payment> Payments => Set<Payment>();
 
+    // ── PHASE 4.2 BOQ tab — SCR-W4 ───────────────────────────────────────
+    // The densest screen in the system, and the first one where five tables
+    // have to agree. BoqItems carries the contracted line; BoqRateBands is the
+    // 20%-rule's answer to "a line legitimately has more than one rate" and
+    // stays empty until Phase 5 applies one; BoqDistributions splits a quantity
+    // across beneficiaries (never a column on the line — 01 §1); and
+    // BoqActivityLinks is the many-to-many that lets BR-03 turn an activity's
+    // weight into a share and BR-04 turn its progress into a BOQ progress.
+    //
+    // Activities lands here rather than in Phase 4.3 for exactly that reason:
+    // the allocation share and the executed % are both READ OFF the activity,
+    // so the BOQ tab cannot be built without it. 4.3 restores the schedule
+    // columns this phase pruned.
+    public DbSet<BoqItem> BoqItems => Set<BoqItem>();
+    public DbSet<BoqRateBand> BoqRateBands => Set<BoqRateBand>();
+    public DbSet<BoqDistribution> BoqDistributions => Set<BoqDistribution>();
+    public DbSet<BoqActivityLink> BoqActivityLinks => Set<BoqActivityLink>();
+    public DbSet<Activity> Activities => Set<Activity>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -89,6 +108,17 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // (ContractId, No) is the real identity and is checked in the endpoint,
         // not here (P-01 — invariants live where they can be read).
         b.Entity<Payment>().HasKey(x => x.Id);
+
+        // The five BOQ tables all carry surrogate keys. Their real identities —
+        // (ContractId, Code) on an item, (BoqItemId, BeneficiaryCode) on a
+        // distribution row, (BoqItemId, ActivityId) on a link, (ContractId,
+        // ActivityId) on an activity — are compared in BoqEndpoints, where the
+        // rule can be read next to the message it produces (P-01).
+        b.Entity<BoqItem>().HasKey(x => x.Id);
+        b.Entity<BoqRateBand>().HasKey(x => x.Id);
+        b.Entity<BoqDistribution>().HasKey(x => x.Id);
+        b.Entity<BoqActivityLink>().HasKey(x => x.Id);
+        b.Entity<Activity>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

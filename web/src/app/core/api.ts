@@ -27,6 +27,21 @@ export class Api {
     return this.http.post<T>(url, body ?? {}, { headers: this.headers() });
   }
 
+  /**
+   * Replaces a record that already exists — a BOQ line's figures, its
+   * distribution, its allocation. PUT rather than POST because every one of
+   * them sends the WHOLE new state of the thing and is safe to repeat: the
+   * distribution drawer sends every row, not a delta, so a retried save cannot
+   * add a beneficiary twice.
+   */
+  put<T>(url: string, body?: unknown): Observable<T> {
+    return this.http.put<T>(url, body ?? {}, { headers: this.headers() });
+  }
+
+  delete<T>(url: string): Observable<T> {
+    return this.http.delete<T>(url, { headers: this.headers() });
+  }
+
   private headers(): Record<string, string> {
     return { 'X-Epm-User': this.persona.currentId() };
   }

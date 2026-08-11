@@ -387,8 +387,230 @@ public static class Fixture
                 Status = "pending", Note = "قيد التدقيق لدى الرقابة المالية" }
         );
 
+        // ── PHASE 4.2 · SCR-W4 BOQ tab ───────────────────────────────────
+        // Five tables that have to agree, and two worked examples from
+        // 02-BUSINESS-RULES.md reproduced EXACTLY so the screen can be checked
+        // against the spec rather than against itself:
+        //
+        //   02 §1  CNT-0279-EM has two items, 56,131,000 and 43,869,000 on a
+        //          100,000,000 contract → weights 56.13% / 43.87%, sum 100.00%.
+        //   02 §3  BQ-003 «الأسقف والسلالم» is 26,730,000 and is linked to A5
+        //          (absolute weight 5.8%) and A8 (5.2%) → shares 52.7% / 47.3%,
+        //          assigned 14,094,000 / 12,636,000, coverage full.
+        //
+        // Both fall out of the DATA, not out of a special case: A5's budgeted
+        // cost is 13,920,000 of a 240,000,000 contract, which IS 5.8%.
+        //
+        // Σ(BOQ amounts) equals the contract's original value on both contracts.
+        // That is the invariant a bill of quantities is FOR, and a fixture that
+        // broke it would make every weight on screen quietly wrong.
+        Boq(db);
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();
     }
+
+    /// <summary>
+    /// PHASE 4.2 — activities, BOQ lines, their links and their distribution.
+    ///
+    /// Its own method because it needs the generated keys: BoqActivityLink and
+    /// BoqDistribution point at BoqItems.Id and Activities.Id, so the parents
+    /// are saved first and the children are built from the ids that came back.
+    /// Everything else in this file can be added in one batch.
+    /// </summary>
+    private static void Boq(EpmDb db)
+    {
+        // ── ACTIVITIES ───────────────────────────────────────────────────
+        // CNT-0279 civil: ten activities and one milestone, budgeted costs
+        // summing to the contract's 240,000,000. A5 = 13,920,000 = 5.80% and
+        // A8 = 12,480,000 = 5.20% — 02 §3's two activities, by construction.
+        //
+        // Man-hours are NOT proportional to cost, deliberately: on the cost
+        // basis BQ-003 splits 52.7 / 47.3, on man-hours 57.9 / 42.1. A toggle
+        // that cannot change the answer is not worth having on screen (02 §2).
+        db.Activities.AddRange(
+            Act("CNT-0279", "A1", "التهيئة وتسوية الموقع", "Site preparation and levelling",
+                "1", "الأعمال الترابية والأسس", 12_000_000m, 9_600m, 100m, "completed"),
+            Act("CNT-0279", "A2", "أعمال الحفر والردم", "Excavation and backfill",
+                "1", "الأعمال الترابية والأسس", 18_000_000m, 16_800m, 100m, "completed"),
+            Act("CNT-0279", "A3", "خرسانة الأسس المسلحة", "Reinforced foundation concrete",
+                "1", "الأعمال الترابية والأسس", 33_600_000m, 28_000m, 100m, "completed"),
+            Act("CNT-0279", "A4", "الأعمدة والجسور الخرسانية", "Concrete columns and beams",
+                "2", "الهيكل الإنشائي", 45_600_000m, 38_000m, 82m, "inprogress"),
+            Act("CNT-0279", "A5", "الأسقف والسلالم", "Slabs and stairs",
+                "2", "الهيكل الإنشائي", 13_920_000m, 13_200m, 60m, "inprogress"),
+            Act("CNT-0279", "A6", "الجدران والقواطع", "Walls and partitions",
+                "2", "الهيكل الإنشائي", 26_400_000m, 24_000m, 45m, "inprogress"),
+            Act("CNT-0279", "A7", "التبليط والإكساء الداخلي", "Tiling and internal finishes",
+                "3", "الإكساء والتشطيبات", 38_400_000m, 36_000m, 20m, "delayed"),
+            Act("CNT-0279", "A8", "أعمال الواجهات", "Facade works",
+                "3", "الإكساء والتشطيبات", 12_480_000m, 9_600m, 0m, "notstarted"),
+            Act("CNT-0279", "A9", "الأعمال الصحية والكهربائية الأولية", "First-fix plumbing and electrical",
+                "3", "الإكساء والتشطيبات", 21_600_000m, 20_400m, 15m, "inprogress"),
+            Act("CNT-0279", "A10", "الأعمال الخارجية والتسليم", "External works and handover",
+                "4", "الأعمال الخارجية والتسليم", 18_000_000m, 14_400m, 0m, "notstarted"),
+            // Zero cost, zero man-hours, weight 0, excluded from allocation
+            // (02 §2). It exists so the assignment picker has to skip it.
+            Act("CNT-0279", "M1", "تسليم الهيكل الإنشائي", "Structure handover",
+                "2", "الهيكل الإنشائي", 0m, 0m, 0m, "notstarted", milestone: true),
+
+            // CNT-0279-EM electromechanical: four activities, 100,000,000.
+            Act("CNT-0279-EM", "E1", "توريد المولدات ولوحات التوزيع", "Supply generators and distribution boards",
+                "1", "التجهيز والتوريد", 40_000_000m, 21_000m, 55m, "inprogress"),
+            Act("CNT-0279-EM", "E2", "توريد كابلات الضغط المتوسط", "Supply medium-voltage cabling",
+                "1", "التجهيز والتوريد", 16_131_000m, 8_400m, 40m, "inprogress"),
+            Act("CNT-0279-EM", "E3", "تركيب منظومة التكييف", "Install the HVAC system",
+                "2", "التركيب والتشغيل", 28_000_000m, 18_000m, 25m, "inprogress"),
+            Act("CNT-0279-EM", "E4", "الفحص والتشغيل التجريبي", "Testing and trial operation",
+                "2", "التركيب والتشغيل", 15_869_000m, 9_600m, 0m, "notstarted")
+        );
+
+        // ── BOQ LINES ────────────────────────────────────────────────────
+        // A code is unique WITHIN ITS CONTRACT and not globally (BoqItem.Code)
+        // — which is why CNT-0279 carries BQ-003 while CNT-0279-EM carries
+        // BQ-002 and BQ-004, exactly as 02 §1 and 02 §3 name them. It reads
+        // strangely on purpose: it is the rule, visible in the data.
+        db.BoqItems.AddRange(
+            // CNT-0279 — civil, Σ 240,000,000
+            Item("CNT-0279", "BQ-001", "أعمال الحفر والردم للأسس", "Excavation and backfill for foundations",
+                "م³", 18_000m, 1_250m, "D1", "الأعمال الترابية والأسس"),
+            Item("CNT-0279", "BQ-005", "تسوية الموقع وتهيئته", "Site levelling and preparation",
+                "م²", 6_000m, 1_500m, "D1", "الأعمال الترابية والأسس"),
+            Item("CNT-0279", "BQ-006", "خرسانة الأسس المسلحة", "Reinforced foundation concrete",
+                "م³", 1_400m, 24_000m, "D1", "الأعمال الترابية والأسس"),
+            Item("CNT-0279", "BQ-007", "الأعمدة والجسور الخرسانية", "Concrete columns and beams",
+                "م³", 1_900m, 24_000m, "D2", "الهيكل الإنشائي"),
+            // 02 §3's line: 990 × 27,000 = 26,730,000.
+            Item("CNT-0279", "BQ-003", "الأسقف والسلالم", "Slabs and stairs",
+                "م³", 990m, 27_000m, "D2", "الهيكل الإنشائي"),
+            Item("CNT-0279", "BQ-008", "الجدران والقواطع", "Walls and partitions",
+                "م²", 8_800m, 3_000m, "D2", "الهيكل الإنشائي"),
+            Item("CNT-0279", "BQ-009", "التبليط والإكساء الداخلي", "Tiling and internal finishes",
+                "م²", 12_800m, 3_000m, "D3", "الإكساء والتشطيبات"),
+            Item("CNT-0279", "BQ-010", "أعمال الواجهات", "Facade works",
+                "م²", 3_900m, 3_200m, "D3", "الإكساء والتشطيبات"),
+            Item("CNT-0279", "BQ-011", "الأعمال الصحية والكهربائية الأولية", "First-fix plumbing and electrical",
+                "مقطوعية", 1m, 21_600_000m, "D3", "الإكساء والتشطيبات"),
+            // The one line entered on site rather than imported, so the register
+            // has a `manual` badge to render.
+            Item("CNT-0279", "BQ-012", "أعمال الساحات والمناسيب الخارجية", "Yards and external levels",
+                "م²", 2_460m, 1_500m, "D4", "الأعمال الخارجية والتسليم", source: "manual"),
+
+            // CNT-0279-EM — electromechanical, Σ 100,000,000. 02 §1's example.
+            Item("CNT-0279-EM", "BQ-002", "توريد وتركيب مجاميع التوليد ولوحات التزامن",
+                "Supply and install generator sets and synchronisation panels",
+                "عدد", 4m, 14_032_750m, "E1", "التجهيزات الكهربائية"),
+            Item("CNT-0279-EM", "BQ-004", "توريد وتركيب وحدات التكييف والتهوية",
+                "Supply and install HVAC units",
+                "عدد", 6m, 7_311_500m, "E2", "التجهيزات الميكانيكية")
+        );
+
+        // The children below point at generated keys, so the parents commit
+        // first. Nothing else in Fixture.Load needs this.
+        db.SaveChanges();
+
+        var act = db.Activities.ToDictionary(a => a.ContractId + "|" + a.ActivityId, a => a.Id);
+        var item = db.BoqItems.ToDictionary(i => i.ContractId + "|" + i.Code, i => i.Id);
+
+        int A(string c, string a) => act[c + "|" + a];
+        int I(string c, string code) => item[c + "|" + code];
+
+        // ── BOQ ↔ ACTIVITY LINKS (BR-03) ─────────────────────────────────
+        // SharePct on a COMPUTED link is a cache — Domain/Allocation recomputes
+        // it from the activity's absolute weight on every read, and the stored
+        // number is here only so the table reads correctly in SQL. On a MANUAL
+        // link it is the answer: `IsManual` says a person overrode the rule, and
+        // that override is what makes `partial` and `over` reachable at all,
+        // because a computed set always sums to exactly 100.
+        db.BoqActivityLinks.AddRange(
+            // — full: one activity, the whole line —
+            Link(I("CNT-0279", "BQ-001"), A("CNT-0279", "A2"), 100m),
+            Link(I("CNT-0279", "BQ-005"), A("CNT-0279", "A1"), 100m),
+            Link(I("CNT-0279", "BQ-006"), A("CNT-0279", "A3"), 100m),
+            Link(I("CNT-0279", "BQ-007"), A("CNT-0279", "A4"), 100m),
+            Link(I("CNT-0279", "BQ-010"), A("CNT-0279", "A8"), 100m),
+            Link(I("CNT-0279", "BQ-011"), A("CNT-0279", "A9"), 100m),
+
+            // — 02 §3's worked example. Two links, computed: 5.8 / (5.8 + 5.2)
+            //   = 52.7% and 47.3%, assigned 14,094,000 and 12,636,000. —
+            Link(I("CNT-0279", "BQ-003"), A("CNT-0279", "A5"), 52.7m),
+            Link(I("CNT-0279", "BQ-003"), A("CNT-0279", "A8"), 47.3m),
+
+            // — partial: someone allocated 85% and left the rest. The missing
+            //   15% of this line's value is never earned (02 §3). —
+            Link(I("CNT-0279", "BQ-008"), A("CNT-0279", "A6"), 60m, manual: true),
+            Link(I("CNT-0279", "BQ-008"), A("CNT-0279", "A4"), 25m, manual: true),
+
+            // — over: 115%, carried in from the previous system's assignment
+            //   sheet. `EP-BOQ-08` refuses to SAVE an over-allocation, so this
+            //   is a state the screen can only ever surface and never create —
+            //   which is exactly what the assignment screen is for. —
+            Link(I("CNT-0279", "BQ-009"), A("CNT-0279", "A7"), 70m, manual: true),
+            Link(I("CNT-0279", "BQ-009"), A("CNT-0279", "A10"), 45m, manual: true),
+
+            // — BQ-012 has no links at all: `unassigned`. —
+
+            Link(I("CNT-0279-EM", "BQ-002"), A("CNT-0279-EM", "E1"), 71.3m),
+            Link(I("CNT-0279-EM", "BQ-002"), A("CNT-0279-EM", "E2"), 28.7m),
+            Link(I("CNT-0279-EM", "BQ-004"), A("CNT-0279-EM", "E3"), 63.8m),
+            Link(I("CNT-0279-EM", "BQ-004"), A("CNT-0279-EM", "E4"), 36.2m)
+        );
+
+        // ── DISTRIBUTION TO BENEFICIARIES (BR-08) ────────────────────────
+        // PRJ-0279's beneficiaries are BEN-UOB and BEN-UOB-MED (01 §2.1), and
+        // no row may name any other — the drawer offers only the project's own.
+        // All four states are represented, and the `over` row is an IMPORTED
+        // one: 02 §8 says a user cannot type their way into `over`, because
+        // every input is capped, so the only honest source of that state is
+        // legacy data.
+        db.BoqDistributions.AddRange(
+            // full — 540 + 450 = 990, the whole line
+            Dist(I("CNT-0279", "BQ-003"), "BEN-UOB", 540m, "المبنى الرئيسي"),
+            Dist(I("CNT-0279", "BQ-003"), "BEN-UOB-MED", 450m, "مبنى كلية الطب"),
+            // partial — 10,000 of 18,000
+            Dist(I("CNT-0279", "BQ-001"), "BEN-UOB", 10_000m, "الموقع العام"),
+            // over — 9,200 imported against a line of 8,800
+            Dist(I("CNT-0279", "BQ-008"), "BEN-UOB", 5_000m, "المبنى الرئيسي"),
+            Dist(I("CNT-0279", "BQ-008"), "BEN-UOB-MED", 4_200m, "مبنى كلية الطب"),
+            // full — 2.5 + 1.5 = 4 generator sets
+            Dist(I("CNT-0279-EM", "BQ-002"), "BEN-UOB", 2.5m, "غرفة المولدات"),
+            Dist(I("CNT-0279-EM", "BQ-002"), "BEN-UOB-MED", 1.5m, "غرفة المولدات — الطب"),
+            // partial — 4 of 6 units
+            Dist(I("CNT-0279-EM", "BQ-004"), "BEN-UOB", 4m, "المبنى الرئيسي")
+            // BQ-005 / BQ-006 / BQ-007 / BQ-009 / BQ-010 / BQ-011 / BQ-012 —
+            // `none`, which is the state a freshly imported sheet is in.
+        );
+
+        // BoqRateBands stays EMPTY. A band is created by APPLYING a change
+        // order that re-prices beyond the 20% threshold (02 §5), and no such
+        // order has been applied — Phase 5.4 is what writes here. Every line
+        // therefore reads at its single contract rate, which is the truth.
+    }
+
+    private static Activity Act(string contractId, string activityId, string nameAr, string nameEn,
+        string wbsPath, string wbsNames, decimal cost, decimal manHours, decimal progress,
+        string status, bool milestone = false) => new()
+    {
+        ContractId = contractId, ActivityId = activityId, NameAr = nameAr, NameEn = nameEn,
+        WbsPath = wbsPath, WbsNames = wbsNames,
+        BudgetedCost = cost, BudgetedManHours = manHours,
+        ProgressPct = progress, Status = status, IsMilestone = milestone,
+    };
+
+    private static BoqItem Item(string contractId, string code, string descriptionAr, string descriptionEn,
+        string unit, decimal qty, decimal rate, string division, string divisionName,
+        string source = "imported") => new()
+    {
+        ContractId = contractId, Code = code,
+        DescriptionAr = descriptionAr, DescriptionEn = descriptionEn,
+        Unit = unit, OriginalQty = qty, UnitRate = rate,
+        Division = division, DivisionName = divisionName, Source = source,
+    };
+
+    private static BoqActivityLink Link(int boqItemId, int activityId, decimal sharePct, bool manual = false)
+        => new() { BoqItemId = boqItemId, ActivityId = activityId, SharePct = sharePct, IsManual = manual };
+
+    private static BoqDistribution Dist(int boqItemId, string beneficiaryCode, decimal qty, string? site)
+        => new() { BoqItemId = boqItemId, BeneficiaryCode = beneficiaryCode, Qty = qty, SiteCode = site };
 }

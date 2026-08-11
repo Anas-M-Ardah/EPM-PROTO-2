@@ -75,4 +75,20 @@ public class AllocationTests
         var s = Allocation.Shares([0m, 0m], 26_730_000m);
         Assert.All(s, x => Assert.Equal(0m, x.Assigned));
     }
+
+    [Fact]
+    public void One_links_absolute_weight_is_the_lines_weight_times_its_share()
+    {
+        // BQ-003 is 11.14% of CNT-0279 and A5 takes 52.7% of it, so A5 carries
+        // 5.871% of the whole contract through this one link.
+        Assert.Equal(5.871m, Math.Round(Allocation.AbsoluteWeight(11.14m, 52.7m), 3));
+    }
+
+    [Fact]
+    public void A_partially_covered_line_assigns_less_weight_than_it_carries()
+    {
+        // The gap is the point of the column: 85% coverage on an 11.00% line
+        // leaves 1.65% of the contract linked to no work, and never earned.
+        Assert.Equal(9.35m, Math.Round(Allocation.AbsoluteWeight(11.00m, 85m), 2));
+    }
 }

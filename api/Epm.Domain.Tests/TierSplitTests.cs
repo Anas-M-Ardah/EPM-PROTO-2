@@ -91,4 +91,42 @@ public class TierSplitTests
     [Fact]
     public void Blended_rate_of_no_bands_is_zero_rather_than_a_divide_by_zero()
         => Assert.Equal(0m, TierSplit.BlendedRate([]));
+
+    [Fact]
+    public void An_unbanded_line_is_its_contracted_quantity_at_its_contracted_rate()
+    {
+        // 02 §3's line: BQ-003, 990 m³ at 27,000 = 26,730,000.
+        var line = TierSplit.Effective(990m, 27_000m, []);
+
+        Assert.Equal(990m, line.Qty);
+        Assert.Equal(27_000m, line.Rate);
+        Assert.Equal(26_730_000m, line.Amount);
+        Assert.False(line.Banded);
+    }
+
+    [Fact]
+    public void A_banded_line_is_the_sum_of_its_bands_and_its_rate_is_the_blend()
+    {
+        // The worked increase, applied: 120 kept at the original 1,000 and 10
+        // re-priced at 1,200. The amount is what was agreed BAND BY BAND —
+        // 132,000 — and the rate on screen is the blend that produces it.
+        var line = TierSplit.Effective(100m, 1000m, [new(120m, 1000m), new(10m, 1200m)]);
+
+        Assert.Equal(130m, line.Qty);
+        Assert.Equal(132_000m, line.Amount);
+        Assert.Equal(1015.38m, Math.Round(line.Rate, 2));
+        Assert.True(line.Banded);
+    }
+
+    [Fact]
+    public void Banding_reads_the_original_quantity_and_never_replaces_it()
+    {
+        // D-01 and non-negotiable #6: the 20% is measured against the ORIGINAL
+        // quantity, so the original has to survive being banded.
+        var original = 100m;
+        var line = TierSplit.Effective(original, 1000m, [new(120m, 1000m), new(10m, 1200m)]);
+
+        Assert.Equal(100m, original);
+        Assert.Equal(130m, line.Qty);
+    }
 }

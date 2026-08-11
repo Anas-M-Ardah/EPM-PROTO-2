@@ -40,9 +40,20 @@ public class BoqItem
     public string DescriptionEn { get; set; } = "";
     public string Unit { get; set; } = "";
 
-    /// <summary>Optional grouping only — not a scoping key.</summary>
+    /// <summary>
+    /// Optional grouping only — not a scoping key. The register groups rows
+    /// into an expandable division → item hierarchy when it is present.
+    /// </summary>
     public string Division { get; set; } = "";
-    public string Category { get; set; } = "";
+
+    /// <summary>The division's own label, so rendering the group needs no lookup.</summary>
+    public string DivisionName { get; set; } = "";
+
+    /// <summary>
+    /// "imported" (from a BOQ sheet) | "manual" (entered on site). The register
+    /// badges a manual row — where a figure came from is part of the record.
+    /// </summary>
+    public string Source { get; set; } = "imported";
 
     /// <summary>As contracted. NEVER overwritten. (Handoff non-negotiable #6)</summary>
     public decimal OriginalQty { get; set; }
@@ -50,6 +61,10 @@ public class BoqItem
     /// <summary>The original contract rate. NEVER overwritten — re-pricing creates a rate band.</summary>
     public decimal UnitRate { get; set; }
 
-    /// <summary>From progress reporting. Used by the decrease-exceeds-remaining gate (02 §7).</summary>
-    public decimal ExecutedQty { get; set; }
+    // PRUNED for 4.2: `ExecutedQty`, from progress reporting, feeding the
+    // decrease-exceeds-remaining gate (02 §7) — Phase 5.3 restores it with the
+    // wizard that needs it. The register's «نسبة التنفيذ» is NOT this column:
+    // BR-04 derives it from the linked activities, and storing a second answer
+    // to the same question is how the two start disagreeing.
+    // Also pruned: `Category`, which no view groups by — `Division` does.
 }

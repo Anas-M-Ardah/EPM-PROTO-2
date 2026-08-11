@@ -29,4 +29,16 @@ public static class ProgressReflection
 
         return new Result(progress, achieved, effectiveQty * progress / 100m, amount - achieved);
     }
+
+    /// <summary>
+    /// 02 §4's rollup — "contract executed value = Σ achievedAmount of its BOQ
+    /// items", and the percentage that goes with it.
+    ///
+    /// It is VALUE-weighted, not a mean of the line percentages: ten small lines
+    /// at 100% and one large one at 0% is not 91% of the contract. The same
+    /// function serves a division sub-total, which is the same question asked of
+    /// fewer lines.
+    /// </summary>
+    public static decimal Rollup(decimal totalAmount, decimal totalAchieved)
+        => totalAmount <= 0m ? 0m : totalAchieved / totalAmount * 100m;
 }
