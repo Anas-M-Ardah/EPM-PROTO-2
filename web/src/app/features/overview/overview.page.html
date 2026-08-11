@@ -1,0 +1,187 @@
+<!--
+  SCR-W1 Overview — v1.1 module skeleton.
+  Ported from DModOverview, ../epm@design/system-revamp
+  app/project-modules.jsx:2512.
+
+  Renders its own module frame: Z6 title bar → Z7 scrolling body. The workspace
+  shell supplies Z2 above it and never lays this out.
+
+  Order follows the reference: the project's attributes (.d-meta), then the
+  headline figures, then the registers. Every number, date and ID is
+  <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+  <div class="d-pz6">
+    <span class="z6-t">{{ lang.t('mod_overview') }}</span>
+    <span class="sp"></span>
+  </div>
+
+  <div class="d-pbody no-aside">
+    <div class="d-pz7">
+
+      @if (loading()) {
+        <epm-table-skeleton [cols]="colCount" [rows]="4" [loadingLabel]="lang.t('loading')" />
+      } @else if (error()) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+          <b>{{ lang.t('error_t') }}</b>
+          <span><bdi>{{ error() }}</bdi></span>
+          <button class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
+        </div>
+      } @else if (project()) {
+
+        <!-- The project's attributes. Never repeats what Z2 already shows. -->
+        <dl class="d-meta">
+          @for (m of meta(); track m.k) {
+            <div class="d-meta-i">
+              <dt>{{ m.k }}</dt>
+              <dd [class.num]="m.num"><bdi>{{ m.v }}</bdi></dd>
+            </div>
+          }
+        </dl>
+
+        <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
+
+        <!--
+          THE PROJECTION IS ITS OWN LINE, NEVER PART OF THE VALUE ABOVE.
+          Approving a change order changes nothing; only applying it moves the
+          contract (02 §9, non-negotiable #2). Folding an approved-but-unapplied
+          amendment into the project value is the single most consequential
+          mistake this screen could make, so the two figures never share a tile.
+        -->
+        @if (hasProjection()) {
+          @if (totals(); as t) {
+          <div class="d-scopebar">
+            <epm-icon name="info" [size]="15" />
+            <span>
+              {{ lang.t('ovw_projection') }}
+              <b><bdi>{{ fmt.money(t.projectionValue) }}</bdi></b>
+              — {{ lang.t('ovw_projection_note') }}
+              (<bdi>{{ t.pendingAmendments }}</bdi>)
+            </span>
+          </div>
+          }
+        }
+
+        <epm-section [title]="lang.t('ovw_contracts')"
+                     [sub]="lang.t('ovw_contracts_sub')"
+                     [n]="contracts().length">
+          @if (contracts().length === 0) {
+            <!-- Empty because this project has no contract — which is a real
+                 state, not a loading gap: a project is registered before it is
+                 awarded, and until then it has no contractual value at all. -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+              <b>{{ lang.t('ovw_no_contracts_t') }}</b>
+              <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+            </div>
+          } @else {
+            <table class="d-table">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('col_contract') }}</th>
+                  <th style="width:120px">{{ lang.t('col_status') }}</th>
+                  <th style="width:150px">{{ lang.t('col_effective_value') }}</th>
+                  <th style="width:120px">{{ lang.t('col_start') }}</th>
+                  <th style="width:140px">{{ lang.t('col_baseline_finish') }}</th>
+                  <th style="width:120px">{{ lang.t('col_forecast_finish') }}</th>
+                  <th style="width:96px">{{ lang.t('col_delay') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of contracts(); track c.id) {
+                  <tr>
+                    <td class="d-cell-strong">
+                      {{ lang.pick(c.nameAr, c.nameEn) }}
+                      <div class="d-cell-sub mono"><bdi>{{ c.id }}</bdi></div>
+                      <div class="d-cell-sub">{{ c.contractor }}</div>
+                    </td>
+                    <td><epm-status-pill kind="contract-status" [code]="c.status" /></td>
+                    <td class="num">
+                      <bdi>{{ fmt.money(c.effectiveValue) }}</bdi>
+                      <!-- The original is shown BESIDE the effective value, never
+                           struck through (04 §6): it is still the awarded figure
+                           and it never stops being true. -->
+                      @if (valueMoved(c)) {
+                        <div class="d-cell-sub">
+                          {{ lang.t('ovw_awarded') }} <bdi>{{ fmt.money(c.originalValue) }}</bdi>
+                        </div>
+                      }
+                      @if (c.pendingAmendments > 0) {
+                        <div class="d-cell-sub">
+                          {{ lang.t('ovw_pending') }} <bdi>{{ c.pendingAmendments }}</bdi>
+                        </div>
+                      }
+                    </td>
+                    <td class="num d-cell-sub"><bdi>{{ fmt.date(c.start) }}</bdi></td>
+                    <td class="num">
+                      <bdi>{{ fmt.date(c.effectiveFinish) }}</bdi>
+                      @if (finishMoved(c)) {
+                        <div class="d-cell-sub">
+                          {{ lang.t('ovw_was') }} <bdi>{{ fmt.date(c.originalFinish) }}</bdi>
+                        </div>
+                      }
+                    </td>
+                    <td class="num d-cell-sub"><bdi>{{ fmt.date(c.forecastFinish) }}</bdi></td>
+                    <!-- A magnitude, not a state: no threshold colouring here
+                         (05 §7.9). The sign and the label carry it. -->
+                    <td class="num"><bdi>{{ delayLabel(c) }}</bdi></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </epm-section>
+
+        <epm-section [title]="lang.t('ovw_beneficiaries')"
+                     [sub]="lang.t('ovw_beneficiaries_sub')"
+                     [n]="beneficiaries().length">
+          @if (beneficiaries().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="apartment" [size]="30" /></span>
+              <b>{{ lang.t('ovw_no_beneficiaries_t') }}</b>
+              <span>{{ lang.t('ovw_no_beneficiaries_b') }}</span>
+            </div>
+          } @else {
+            <ul class="epm-ben-list">
+              @for (b of beneficiaries(); track b.code) {
+                <li>
+                  <span class="n">{{ beneficiaryLine(b) }}</span>
+                  <span class="d-cell-sub mono"><bdi>{{ b.code }}</bdi></span>
+                  <span class="d-cell-sub">{{ lookups.label('beneficiary-type', b.type) }}</span>
+                  <!-- 01 §2.1 — an inactive beneficiary may not receive new
+                       quantity. A project still assigned to one is a finding,
+                       so it is stated rather than left to the BOQ screen. -->
+                  @if (!b.active) {
+                    <span class="d-pill suspended">{{ lang.t('ovw_inactive') }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </epm-section>
+
+        <epm-section [title]="lang.t('ovw_alerts')" [sub]="lang.t('ovw_alerts_sub')">
+          @if (alerts().open === 0) {
+            <p class="d-cell-sub">{{ lang.t('ovw_no_alerts') }}</p>
+          } @else {
+            <ul class="epm-ben-list">
+              <li>
+                <span class="n">{{ lang.t('sev_critical') }}</span>
+                <span class="num"><bdi>{{ alerts().critical }}</bdi></span>
+              </li>
+              <li>
+                <span class="n">{{ lang.t('sev_warning') }}</span>
+                <span class="num"><bdi>{{ alerts().warning }}</bdi></span>
+              </li>
+              <li>
+                <span class="n">{{ lang.t('sev_info') }}</span>
+                <span class="num"><bdi>{{ alerts().info }}</bdi></span>
+              </li>
+            </ul>
+          }
+        </epm-section>
+      }
+    </div>
+  </div>
+</div>

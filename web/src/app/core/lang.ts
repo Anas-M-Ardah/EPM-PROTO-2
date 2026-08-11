@@ -187,6 +187,80 @@ const STR = {
   empty_reports_t: { ar: 'لا تقارير مطابقة',                en: 'No matching reports' },
   empty_reports_b: { ar: 'جرّب تصنيفاً أو كلمة بحث أخرى.',   en: 'Try another category or search term.' },
 
+  // ── PHASE 3 · the project workspace ────────────────────────────────────
+  // Module rail labels and groups — ported from PROJECT_MODULES + MOD_GROUPS,
+  // ../epm@design/system-revamp app/data.jsx:445, app/desktop-workspace.jsx:112.
+  mod_overview:    { ar: 'نظرة عامة',                      en: 'Overview' },
+  mod_information: { ar: 'معلومات المشروع',                en: 'Project Information' },
+  mod_contract:    { ar: 'العقود و الملاحق',               en: 'Contracts & Addendums' },
+  mod_boq:         { ar: 'جدول الكميات',                   en: 'BOQ' },
+  mod_financials:  { ar: 'الموقف المالي',                  en: 'Financials' },
+  mod_schedule:    { ar: 'الجدول الزمني',                  en: 'Schedule' },
+  mod_progress:    { ar: 'الإنجاز',                        en: 'Progress' },
+  mod_changeorders:{ ar: 'الأوامر التغييرية',              en: 'Change Orders' },
+  mod_risk:        { ar: 'المخاطر',                        en: 'Risk' },
+  mod_model:       { ar: 'المجسم ثلاثي الأبعاد',           en: '3D Model' },
+  mod_meetings:    { ar: 'الاجتماعات و الإجراءات',         en: 'Meetings & Actions' },
+  mod_documents:   { ar: 'الوثائق و المخططات',             en: 'Documents & Drawings' },
+  mod_alerts:      { ar: 'التنبيهات',                      en: 'Alerts' },
+  mod_reports:     { ar: 'التقارير',                       en: 'Reports' },
+  mod_audit:       { ar: 'سجل التدقيق',                    en: 'Audit History' },
+  mod_group_definition: { ar: 'التعريف',                   en: 'Definition' },
+  mod_group_execution:  { ar: 'التنفيذ و المتابعة',        en: 'Execution' },
+  mod_group_records:    { ar: 'السجلات و الوثائق',         en: 'Records' },
+  mod_group_oversight:  { ar: 'الرقابة',                   en: 'Oversight' },
+  select_project:  { ar: 'اختر مشروعاً',                   en: 'Select a project' },
+
+  // SCR-W1 Overview — ported from DModOverview (project-modules.jsx:2512)
+  ovw_contracts:   { ar: 'عقود المشروع',                   en: 'Project contracts' },
+  ovw_contracts_sub:{ ar: 'قيمة المشروع هي مجموع القيم النافذة لعقوده', en: 'Project value is the sum of its contracts\' effective values' },
+  /** SCR-E3's `col_value` is the awarded figure; this column is the one in
+   *  force (BR-09), and calling them the same thing would hide the difference
+   *  this screen exists to show. */
+  col_effective_value:{ ar: 'القيمة النافذة',              en: 'Effective value' },
+  col_delay:       { ar: 'التأخر',                         en: 'Delay' },
+  /** The awarded figure, shown BESIDE the effective one — never struck through. */
+  ovw_awarded:     { ar: 'المحالة',                        en: 'awarded' },
+  ovw_was:         { ar: 'كانت',                           en: 'was' },
+  ovw_pending:     { ar: 'ملاحق معتمدة غير مطبَّقة:',       en: 'approved, not applied:' },
+  ovw_projection:  { ar: 'إسقاط القيمة عند التطبيق:',       en: 'Value if applied:' },
+  ovw_projection_note:{ ar: 'ملاحق معتمدة لم تُطبَّق بعد — غير مضافة إلى القيمة النافذة', en: 'approved amendments not yet applied — not included in the effective value' },
+  ovw_no_contracts_t:{ ar: 'لا يوجد عقد لهذا المشروع',      en: 'This project has no contract' },
+  ovw_no_contracts_b:{ ar: 'يُسجَّل المشروع قبل الإحالة؛ لا قيمة تعاقدية له حتى ذلك الحين.', en: 'A project is registered before it is awarded; until then it has no contractual value.' },
+  ovw_beneficiaries:{ ar: 'الجهات المستفيدة',              en: 'Beneficiaries' },
+  ovw_beneficiaries_sub:{ ar: 'الجهات المخوّلة باستلام الكميات', en: 'The bodies entitled to receive quantity' },
+  ovw_no_beneficiaries_t:{ ar: 'لا جهات مستفيدة مسجَّلة',   en: 'No beneficiaries recorded' },
+  ovw_no_beneficiaries_b:{ ar: 'لا يمكن توزيع الكميات حتى تُسجَّل جهة مستفيدة واحدة على الأقل.', en: 'Quantity cannot be distributed until at least one is recorded.' },
+  ovw_inactive:    { ar: 'غير نشطة',                       en: 'Inactive' },
+  ovw_alerts:      { ar: 'التنبيهات المفتوحة',             en: 'Open alerts' },
+  ovw_alerts_sub:  { ar: 'التنبيهات غير المُقَرّة لهذا المشروع', en: 'Unacknowledged alerts on this project' },
+  ovw_no_alerts:   { ar: 'لا توجد تنبيهات مفتوحة.',        en: 'No open alerts.' },
+
+  // SCR-W2 Information — field labels. The GROUPING is the endpoint's; only
+  // the labels are here, because a label is chrome (see information.page.ts).
+  inf_group_identity: { ar: 'هوية المشروع',                en: 'Project identity' },
+  inf_group_location: { ar: 'الموقع',                      en: 'Location' },
+  inf_group_funding:  { ar: 'التمويل و الأولوية',          en: 'Funding & priority' },
+  inf_group_parties:  { ar: 'الأطراف',                     en: 'Parties' },
+  inf_id:          { ar: 'رقم المشروع',                    en: 'Project number' },
+  inf_nameAr:      { ar: 'الاسم بالعربية',                 en: 'Name (Arabic)' },
+  inf_nameEn:      { ar: 'الاسم بالإنجليزية',              en: 'Name (English)' },
+  inf_type:        { ar: 'نوع المشروع',                    en: 'Project type' },
+  inf_status:      { ar: 'الحالة',                         en: 'Status' },
+  inf_executionStage:{ ar: 'مرحلة التنفيذ',                en: 'Execution stage' },
+  inf_updatedAt:   { ar: 'آخر تحديث',                      en: 'Last updated' },
+  inf_workspaceCode:{ ar: 'مساحة العمل',                   en: 'Workspace' },
+  inf_region:      { ar: 'المنطقة',                        en: 'Region' },
+  inf_branch:      { ar: 'الفرع',                          en: 'Branch' },
+  inf_fundingType: { ar: 'نوع التمويل',                    en: 'Funding type' },
+  inf_priority:    { ar: 'الأولوية',                       en: 'Priority' },
+  /** D-06 — the project's own "now". Every date on its screens is measured
+   *  against it, and this is the only screen that states what it is. */
+  inf_dataDate:    { ar: 'تاريخ البيانات',                 en: 'Data date' },
+  inf_executor:    { ar: 'الجهة المنفّذة',                 en: 'Executor' },
+  inf_designerParty:{ ar: 'الجهة المصمِّمة',               en: 'Designer' },
+  inf_consultantParty:{ ar: 'المكتب الاستشاري',            en: 'Consultant' },
+
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
   empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },

@@ -118,6 +118,66 @@
           }
         </div>
 
+        <!--
+          The project picker. v1.1 collapsed the workspace's queue PANE into
+          this menu (desktop-workspace.jsx:62) — the topbar sheet styles
+          `.d-topbar .d-projpick-btn` for exactly this slot. It renders only
+          inside a project, because outside one there is nothing to pick from.
+        -->
+        @if (projectId()) {
+          <div class="d-projpick">
+            <button type="button" class="d-projpick-btn"
+                    [attr.aria-expanded]="pickerOpen()"
+                    [attr.aria-label]="lang.t('select_project')"
+                    (click)="togglePicker()">
+              @if (currentProject(); as p) {
+                <span class="d-projpick-tx">
+                  <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
+                  <span class="mono"><bdi>{{ p.id }}</bdi></span>
+                </span>
+              } @else {
+                <span class="d-projpick-tx"><b>{{ lang.t('select_project') }}</b></span>
+              }
+              <epm-icon name="expand_more" [size]="18" />
+            </button>
+
+            @if (pickerOpen()) {
+              <div class="d-projpick-scrim" (click)="togglePicker()"></div>
+              <div class="d-projpick-menu">
+                <div class="d-pane-head">
+                  <div class="d-field">
+                    <epm-icon name="search" [size]="16" />
+                    <input type="search" class="epm-bare-input"
+                           [placeholder]="lang.t('search_projects')"
+                           [value]="pickerQuery()"
+                           (input)="pickerQuery.set($any($event.target).value)" />
+                  </div>
+                </div>
+                <div class="d-projpick-list">
+                  @for (p of pickerRows(); track p.id) {
+                    <button type="button" class="d-qrow" [class.on]="p.id === projectId()"
+                            (click)="pickProject(p.id)">
+                      <span class="d-qrow-main">
+                        <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
+                        <span class="d-qrow-sub">
+                          <span class="mono"><bdi>{{ p.id }}</bdi></span>
+                          <span class="dot"></span>{{ p.branch }}
+                        </span>
+                      </span>
+                      <epm-status-pill kind="project-status" [code]="p.status" />
+                    </button>
+                  } @empty {
+                    <div class="d-empty">
+                      <span class="d-empty-ico"><epm-icon name="search_off" [size]="26" /></span>
+                      <b>{{ lang.t('empty_filter_t') }}</b>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
         <span class="sp"></span>
 
         <button type="button" class="d-search" (click)="paletteOpen.set(true)">
@@ -127,13 +187,23 @@
         </button>
       </header>
 
-      <div class="d-canvas">
-        <div class="d-canvas-pad">
-          <div class="d-canvas-wrap">
-            <router-outlet />
+      <!--
+        A bare route lays out its own full height (`.d-detail-layout` is a rail
+        beside a scrolling pane). Every other page is content inside the padded,
+        width-capped canvas. The reference draws the same line: DWorkspace
+        returns `.d-main` with no `.d-canvas` in it at all.
+      -->
+      @if (bare()) {
+        <router-outlet />
+      } @else {
+        <div class="d-canvas">
+          <div class="d-canvas-pad">
+            <div class="d-canvas-wrap">
+              <router-outlet />
+            </div>
           </div>
         </div>
-      </div>
+      }
 
     </main>
 

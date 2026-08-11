@@ -228,3 +228,72 @@ epm-app-footer { display: contents; }
   color: var(--on-surface-variant);
 }
 .epm-rpt-needs svg { flex: none; }
+
+/* ── Project workspace (Phase 3) ─────────────────────────────────────────
+   Three rules. The rail, the identity bar, the module frame and the meta list
+   were all already in the copied sheets (desktop.css:860–874, :2299–2398,
+   :2537) — this is unbuilt markup, not missing design, the same finding the
+   shell parity pass made at Phase 2.9. */
+
+/* The phase a disabled rail entry is waiting for. Sits where the reference
+   puts its readiness dot (`.d-modnav-item .d-tab-ready` takes the same
+   margin), because that slot is free: the dots are not ported (P-09). */
+.epm-mod-phase {
+  margin-inline-start: auto;
+  flex: none;
+  font-size: var(--fs-100);
+  color: var(--on-surface-variant);
+}
+
+/* Beneficiaries and the alert breakdown — a list of named rows, each with its
+   codes and marks trailing. Not a table: two of the three columns are absent
+   on most rows, and a table would rule empty cells. */
+.epm-ben-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.epm-ben-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: 9px 0;
+  border-block-end: 1px solid var(--outline-variant);
+  font-size: var(--fs-200);
+}
+.epm-ben-list li:last-child { border-block-end: none; }
+.epm-ben-list .n { color: var(--on-surface); font-weight: var(--fw-medium); }
+.epm-ben-list .num { margin-inline-start: auto; font-family: var(--font-mono); }
+
+/* LETTER-SPACING BREAKS ARABIC SHAPING — desktop.css:865 puts .6px on the
+   rail's group labels, and CLAUDE.md §6 forbids it in as many words: Arabic is
+   cursive and spacing the glyphs severs the joins. Same class of defect as the
+   missing <bdi> isolation, which Phase 2.9 did NOT revert because it is a
+   correctness bug in Arabic rather than a contrast one. text-transform is left
+   alone — Arabic has no case, so it is a no-op there and the English labels
+   keep the reference's look. See P-41. */
+.d-modnav-group .gl { letter-spacing: normal; }
+
+/* The KPI band inside a workspace module pane. The rail takes 216px, so the
+   pane is ~230px narrower than an enterprise canvas and six tiles came out at
+   143px each — measured: a 9-digit IQD figure needs 149px at the sheet's 28px
+   and clipped inside a 111px box. Raising the auto-fit FLOOR wraps the band to
+   3 + 3 and each tile gets ~290px.
+
+   Still `repeat(auto-fit, minmax(...))` — 05 §8 forbids pinning the column
+   count, not choosing the floor, and the floor is what makes auto-fit reflow
+   at the right width instead of at 120px. */
+.d-pz7 .d-grid.stats.fit {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+/* Below 1200px the sheet collapses the rail to 60px and hides `.ml` and `.gl`
+   (desktop.css:875). The phase note has to go with them — measured at 1024 it
+   was the only text left in a 59px rail, so the entry read "Phase 4.1" with no
+   module name. The label and the phase both survive as the button's title,
+   which is how the reference's own collapsed rail works. */
+@media (max-width: 1200px) {
+  .epm-mod-phase { display: none; }
+}

@@ -425,18 +425,57 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 
 ---
 
-## Phase 3 — Workspace shell
+## Phase 3 — Workspace shell ✅ COMPLETE
 
 Gates every tab. One agent, no parallelism.
 
-- [ ] 3-pane layout from `DWorkspace` — queue · detail · context (`04 §3`)
-- [ ] Project queue pane, project detail with the 15-tab bar (`DProjectDetail`)
-- [ ] Context pane: contextual actions, parties, per-tab edit history (`DProjectContext`)
-- [ ] Route `/projects/:id` and `/projects/:id/:tab`
-- [ ] **Only tabs that exist appear** — a tab leading to a blank pane is worse than no tab
-- [ ] SCR-W1 Overview — project value = Σ contracts, contracts table, beneficiaries
-- [ ] SCR-W2 Project Information — full field grid
-- [ ] `docs/uml/workspace-shell.md` · TRACE rows
+> ~~3-pane layout — queue · detail · context~~ — that is the **pre-v1.1** workspace,
+> and `04 §3` still describes it. v1.1 collapsed it: the queue became the **topbar
+> project picker**, the detail pane grew a **grouped module rail**, and
+> `DProjectContext` — the third pane — is still exported by the reference and
+> rendered by nothing (`.d-three` carries `data-ctx="off"`, and the comment beside
+> it reads *"actions now live in the page header, no side pane"*). The per-module
+> actions it used to hold moved into Z6. See P-40.
+
+- [x] Picker · detail · module rail from `DWorkspace` + `DProjectDetail` (v1.1)
+- [x] Project picker in the topbar with search and status pills, scoped by `?ws=`;
+      switching project **keeps the module you were reading**
+- [x] Grouped module rail — overview + 4 groups (التعريف · التنفيذ · السجلات · الرقابة)
+- [x] Z2 identity bar: breadcrumb → title → status pill → copyable project number
+- [x] Routes `/projects/:id` and `/projects/:id/:module`, child-routed so the rail
+      and the header survive a module change
+- [x] The shell drops `.d-canvas` for a bare route — the workspace lays out its own
+      full height, exactly as `DWorkspace` does
+- [x] **All fifteen modules appear; the thirteen unbuilt ones are disabled and each
+      names the phase that builds it.** ROADMAP said "only tabs that exist appear";
+      followed literally that leaves a rail of two entries and four empty groups,
+      which is not the screen. Nothing is a dead link — `built: false` is not
+      routable and has no route entry (client decision, P-40)
+- [x] **No readiness dots** — the reference derives them from `rng(p.id.charCodeAt(6))`
+- [x] SCR-W1 Overview — `.d-meta` attributes, KPI band, contracts table, beneficiaries,
+      open alerts. Project value = Σ **effective** contract values (BR-00 over BR-09);
+      **the approved-but-unapplied projection is its own line, never inside it** (`02 §9`)
+- [x] Delay is `Penalty.DelayDays` (BR-10) — the same 61 days SCR-E5 shows for
+      `PRJ-0279`, driven by `CNT-0279-EM`, not the 16 a project-level subtraction gives
+- [x] Physical % · financial % · SPI · CPI render **"unavailable + reason"**; the
+      reference's S-curve is absent rather than faked, because a chart cannot be
+      labelled unavailable
+- [x] SCR-W2 Project Information — four semantic field groups. The **grouping is the
+      endpoint's** (the reference matched a regex against each field's *English*
+      label, so it silently did nothing in Arabic); the **labels are chrome**
+- [x] Register `Beneficiary` DbSet + the five fixture rows the projects already reference
+- [x] `EP-OVW-01` · `EP-INF-01` · Angular trios · `docs/uml/workspace-shell.md` · TRACE rows
+
+> **Three defects found by measuring**, all fixed: a leaked `route.parent` subscription
+> that re-fetched a module after leaving it (P-42), the KPI band clipping a 9-digit
+> figure in the narrower workspace pane, and the phase note surviving into the ≤1200px
+> collapsed rail where the module name does not.
+
+> **Verified live** at 1440 and 1024, AR and EN, light and dark: rail 2 routable /
+> 13 disabled; picker re-scopes and keeps the module; `PRJ-0279` reads 350,000,000
+> with 353,000,000 stated separately; `PRJ-0277` reaches the no-contract branch with
+> the value tile unavailable rather than zero; no horizontal overflow at 1024; no
+> console errors. `dotnet test` 131/131, `ng build` clean.
 
 ---
 
