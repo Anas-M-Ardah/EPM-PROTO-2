@@ -59,6 +59,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // faculty its university.
     public DbSet<Beneficiary> Beneficiaries => Set<Beneficiary>();
 
+    // ── PHASE 4.1 Contract tab — SCR-W3 ──────────────────────────────────
+    // What has actually been paid against a contract. Nothing in the system
+    // could answer that until now, which is why SCR-E1's financial tiles and
+    // four rows of the SCR-E7 catalog were unavailable.
+    public DbSet<Payment> Payments => Set<Payment>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -79,6 +85,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
 
         // The code IS the identity — it is what Projects.BeneficiaryCodes stores.
         b.Entity<Beneficiary>().HasKey(x => x.Code);
+
+        // (ContractId, No) is the real identity and is checked in the endpoint,
+        // not here (P-01 — invariants live where they can be read).
+        b.Entity<Payment>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

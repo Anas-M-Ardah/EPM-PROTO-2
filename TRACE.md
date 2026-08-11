@@ -18,7 +18,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:58 *(v1.1)* | `features/reports/reports.page.ts` | `EP-RPT-01` | ✅ built — a report catalog, not a chart board (P-37); 3 of 12 runnable, the other 9 name their missing source |
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:2512 *(v1.1)* | `features/overview/overview.page.ts` | `EP-OVW-01` | ✅ built — value is Σ effective (BR-00 over BR-09); the projection sits beside it, never in it |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:280 *(v1.1)* | `features/information/information.page.ts` | `EP-INF-01` | ✅ built — every value is a stored column; the field GROUPING is the endpoint's, the labels are chrome |
-| SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:194 | — | `EP-CON-01` | ⬜ |
+| SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:363 · `DContractAmendments` contract-amendments.jsx:301 *(v1.1)* | `features/contract-tab/contract.page.ts` | `EP-CON-01` · `EP-CON-02` | ✅ built — the amendment chain, and the approved-but-unapplied kept out of every total |
 | SCR-W4 BOQ | 04 §4 | `DModBOQ` project-modules.jsx:801 | — | `EP-BOQ-01` | ⬜ |
 | SCR-W5 Schedule | 04 §5 | `DModSchedule` schedule-module.jsx:432 | — | `EP-SCD-01` | ⬜ |
 | SCR-W6 Progress | 04 §3 | `DModProgress` project-modules.jsx:668 | — | `EP-PRG-01` | ⬜ |
@@ -53,6 +53,8 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-RPT-01` | `GET /api/reports` | `Features/Reports/ReportsEndpoints.cs` | `reports.api.ts` `list()` | — | Projects *(+ the `EpmDb` model itself, read as data — see P-38)* |
 | `EP-OVW-01` | `GET /api/projects/{id}/overview` | `Features/Overview/OverviewEndpoints.cs` | `overview.api.ts` `get()` | BR-00 · BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces · Beneficiaries · Alerts |
 | `EP-INF-01` | `GET /api/projects/{id}/information` | `Features/Information/InformationEndpoints.cs` | `information.api.ts` `get()` | — | Projects · Workspaces |
+| `EP-CON-01` | `GET /api/projects/{id}/contracts` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `register()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Payments |
+| `EP-CON-02` | `GET /api/projects/{id}/contracts/{contractId}` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `detail()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Payments |
 
 ## Business rules
 
@@ -90,3 +92,4 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `ContractAmendments` | PAGE-02 | `EP-CNT-01` · `EP-PRJ-01` |
 | `Alerts` | Phase 2.4 | `EP-ALR-01` · `EP-ALR-02` *(the only table a screen writes so far)* |
 | `Beneficiaries` | Phase 3 | `EP-OVW-01` — resolves the `Projects.BeneficiaryCodes` CSV (01 §2.1) |
+| `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` — the first table that can say what was actually paid |
