@@ -57,6 +57,8 @@ export class ScheduleControlPage {
   onTrack = signal(0);
   noSchedule = signal(0);
   avgDelayDays = signal(0);
+  /** Null when no project has a schedule — the tile then says "unavailable". */
+  criticalActivities = signal<number | null>(null);
   unavailable = signal<ScheduleUnavailable[]>([]);
 
   loading = signal(true);
@@ -115,15 +117,17 @@ export class ScheduleControlPage {
         deltaDir: this.delayed() ? 'down' : 'up',
         foot: `${this.pct(this.delayed())}${ar ? '% من المحفظة' : '% of portfolio'}`,
       },
-      // Third, where the reference puts it. The tile is underivable, not
-      // unimportant — moving it to the end would quietly demote a figure the
-      // screen is supposed to lead with once Phase 4.3 lands.
+      // Third, where the reference puts it. REAL since Phase 4.3 — the server
+      // sends null instead of a count when nothing has been imported anywhere,
+      // and only then does the tile fall back to "unavailable + reason".
       {
         label: this.lang.t('sc_critical'),
-        value: 0,
-        unavailable: critical
-          ? this.lang.pick(critical.needsAr, critical.needsEn)
-          : this.lang.t('sc_critical_needs'),
+        value: this.criticalActivities() ?? 0,
+        unavailable: this.criticalActivities() !== null
+          ? undefined
+          : critical
+            ? this.lang.pick(critical.needsAr, critical.needsEn)
+            : this.lang.t('sc_critical_needs'),
       },
       {
         label: this.lang.t('sc_ontrack'),
@@ -167,6 +171,7 @@ export class ScheduleControlPage {
         this.onTrack.set(res.counts.onTrack);
         this.noSchedule.set(res.counts.noSchedule);
         this.avgDelayDays.set(res.counts.avgDelayDays);
+        this.criticalActivities.set(res.counts.criticalActivities);
         this.unavailable.set(res.unavailable);
         this.page.set(1);
         this.loading.set(false);

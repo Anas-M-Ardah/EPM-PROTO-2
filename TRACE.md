@@ -13,14 +13,14 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 *(v1.1)* | `features/portfolio/portfolio.page.ts` | `EP-PRT-01` | ✅ built — progress/EVM tiles render "unavailable + reason" until BR-04 and payments exist |
 | SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:299 *(v1.1)* | `features/contracts/contracts.page.ts` | `EP-CNT-01` | ✅ built |
 | SCR-E4 Entities | 04 §2 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built |
-| SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 *(v1.1)* | `features/schedule-control/schedule-control.page.ts` | `EP-SCT-01` | ✅ built — critical-activities tile renders "unavailable + reason" until Activities exists (Phase 4.3) |
+| SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 *(v1.1)* | `features/schedule-control/schedule-control.page.ts` | `EP-SCT-01` | ✅ built — critical-activities tile and column became **real** in Phase 4.3; they fall back to "unavailable + reason" only when no project has a schedule |
 | SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:106 *(v1.1)* | `features/alerts/alerts.page.ts` | `EP-ALR-01` · `EP-ALR-02` | ✅ built — the first screen that writes; ack persists with the persona |
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:58 *(v1.1)* | `features/reports/reports.page.ts` | `EP-RPT-01` | ✅ built — a report catalog, not a chart board (P-37); 3 of 12 runnable, the other 9 name their missing source |
 | SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:2512 *(v1.1)* | `features/overview/overview.page.ts` | `EP-OVW-01` | ✅ built — value is Σ effective (BR-00 over BR-09); the projection sits beside it, never in it |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:280 *(v1.1)* | `features/information/information.page.ts` | `EP-INF-01` | ✅ built — every value is a stored column; the field GROUPING is the endpoint's, the labels are chrome |
 | SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:363 · `DContractAmendments` contract-amendments.jsx:301 *(v1.1)* | `features/contract-tab/contract.page.ts` | `EP-CON-01` · `EP-CON-02` | ✅ built — the amendment chain, and the approved-but-unapplied kept out of every total |
 | SCR-W4 BOQ | 04 §4 | `DBoqRegister` boq-register.jsx:435 · `DBoqAssign` boq-assign.jsx:11 *(v1.1)* | `features/boq/boq.page.ts` | `EP-BOQ-01` … `EP-BOQ-08` | ✅ built — weights sum to exactly 100.00; the first screen that writes four different things |
-| SCR-W5 Schedule | 04 §5 | `DModSchedule` schedule-module.jsx:432 | — | `EP-SCD-01` | ⬜ |
+| SCR-W5 Schedule | 04 §5 | `DGantt` schedule-module.jsx:80 · `DSchedTable` :257 · `DModSchedule` :437 *(v1.1)* | `features/schedule/schedule.page.ts` | `EP-SCD-01` · `EP-SCD-02` | ✅ built — the WBS is a path string and the tree is built in the endpoint; criticality is a ring, never a colour |
 | SCR-W6 Progress | 04 §3 | `DModProgress` project-modules.jsx:668 | — | `EP-PRG-01` | ⬜ |
 | SCR-W7 Financials | 04 §3 | `DModFinancialNew` project-modules.jsx:485 | — | `EP-FIN-01` | ⬜ |
 | SCR-W8 Change Orders | 03 §9–10 | `DModVO` project-modules.jsx:1142 | — | `EP-CHG-01` | ⬜ |
@@ -63,6 +63,8 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-BOQ-06` | `PUT …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveDistribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Beneficiaries |
 | `EP-BOQ-07` | `GET …/boq/{contractId}/assignment` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `assignment()` | BR-02 · BR-03 | Contracts · BoqItems · BoqRateBands · BoqActivityLinks · Activities |
 | `EP-BOQ-08` | `PUT …/items/{code}/allocation` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveAllocation()` | BR-03 | BoqItems · BoqActivityLinks · Activities |
+| `EP-SCD-01` | `GET /api/projects/{id}/schedule` | `Features/Schedule/ScheduleEndpoints.cs` | `schedule.api.ts` `gate()` | — | Projects · Contracts · Activities |
+| `EP-SCD-02` | `GET /api/projects/{id}/schedule/{contractId}` | `Features/Schedule/ScheduleEndpoints.cs` | `schedule.api.ts` `get()` | BR-02 · BR-04 | Projects · Contracts · Activities |
 
 ## Business rules
 
@@ -72,9 +74,9 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 |---|---|---|---|---|---|
 | BR-00 | Project value = Σ contract values | 01 §3 | `Domain/ProjectValue.cs` | `ProjectValueTests` | ✅ **now receives EFFECTIVE values** (Phase 2.1) |
 | BR-01 | BOQ weight, largest-remainder to 100.00% | 02 §1 | `Domain/BoqWeights.cs` | `BoqWeightsTests` | ✅ **on screen** (Phase 4.2) — SCR-W4's weight column |
-| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | `ScheduleWeightsTests` | ✅ **on screen** (Phase 4.2) — the cost / man-hours basis |
+| BR-02 | Schedule weights, absolute + relative | 02 §2 | `Domain/ScheduleWeights.cs` | `ScheduleWeightsTests` | ✅ **on screen** (Phase 4.2) — the cost / man-hours basis · **both weights on screen** (Phase 4.3): SCR-W5's WBS tree is the first place `Relative` has a parent that is not the contract |
 | BR-03 | BOQ↔Activity allocation share | 02 §3 | `Domain/Allocation.cs` | `AllocationTests` | ✅ (see P-15) · **`AbsoluteWeight()` added** (Phase 4.2) |
-| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | `ProgressReflectionTests` | ✅ **`Rollup()` added** (Phase 4.2) — the contract/division total |
+| BR-04 | Progress reflection, schedule → BOQ | 02 §4 | `Domain/ProgressReflection.cs` | `ProgressReflectionTests` | ✅ **`Rollup()` added** (Phase 4.2) — the contract/division total · **rolls up the WBS tree** (Phase 4.3), by weight and not by duration (P-51) |
 | BR-05 | **The 20% rule** | 02 §5 | `Domain/TierSplit.cs` | `TierSplitTests` | ✅ **`Effective()` added** (Phase 4.2) — what a banded line IS |
 | BR-06 | Two proposals, one approved value | 02 §6 | `Domain/Proposals.cs` | `ProposalsTests` | ✅ |
 | BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | `ChangeOrderGatesTests` | ✅ |
@@ -105,4 +107,4 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `BoqRateBands` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-03` · `EP-BOQ-05` — read only; Phase 5.4 writes a band |
 | `BoqDistributions` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-05` — **written** by `EP-BOQ-06` |
 | `BoqActivityLinks` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — **written** by `EP-BOQ-08` |
-| `Activities` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — registered here, not 4.3: BR-03 and BR-04 both read it |
+| `Activities` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` · `EP-SCD-01` · `EP-SCD-02` · `EP-SCT-01` — registered in 4.2 because BR-03 and BR-04 both read it; **4.3 restored the columns 4.2 pruned** (baseline / actual / forecast dates, durations, float, `IsCritical`, calendar, predecessors) |

@@ -9,18 +9,27 @@ namespace Epm.Api.Features.ScheduleControl;
 /// PORTED from DScheduleControl (v1.1), ../epm@design/system-revamp
 /// app/enterprise-areas.jsx:8.
 ///
-/// ── WHAT THIS SCREEN DELIBERATELY DOES NOT SHOW ──────────────────────────
+/// ── THE CRITICAL-ACTIVITIES FIGURE, AND WHERE IT CAME FROM ───────────────
 /// The reference has a **critical activities** KPI and column. It derives them
 /// like this:
 ///
 ///     const critical = p.status === 'stalled' ? 3 + (p.id.charCodeAt(6) % 3)
 ///                    : p.status === 'suspended' ? 2 : (p.id.charCodeAt(6) % 2);
 ///
-/// That is a character of the project ID. It is fine in a clickable prototype
-/// and unusable here. A critical path needs Activities and their dependencies,
-/// which arrive in Phase 4.3. So the figure is returned as null, the KPI tile
-/// renders "unavailable + reason", and the column renders an em dash — the same
-/// treatment SCR-E1 gives physical %, SPI and CPI (P-09).
+/// That is a character of the project ID. It was fine in a clickable prototype
+/// and unusable here, so until Phase 4.3 the figure was returned as NULL and
+/// the tile said "unavailable + reason" — the treatment SCR-E1 gives physical
+/// %, SPI and CPI (P-09).
+///
+/// **Phase 4.3 registered Activities and it is now a query**: `IsCritical` over
+/// the project's contracts. It stays null — never 0 — for a project with no
+/// schedule, and the KPI tile falls back to "unavailable" only when NO project
+/// has one, which is the state an empty database is in.
+///
+/// `ScheduleRow` was already shaped for this and did not change (P-31 said it
+/// would not). `ScheduleCounts` DID gain a member: the KPI band is counted on
+/// the server, before the filters, so the portfolio total had nowhere else to
+/// come from.
 ///
 /// ── THE BASELINE IS THE EFFECTIVE FINISH ─────────────────────────────────
 /// Delay is measured against the contractual finish IN FORCE — original plus
@@ -74,10 +83,22 @@ public static class ScheduleControlEndpoints
 
             var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
 
+            // PHASE 4.3 — the two columns P-31 promised would become real.
+            // Activities is registered now, so "has a P6 schedule been
+            // imported" and "how many of its activities are critical" are
+            // queries rather than constants. Neither the DTO nor the screen
+            // changed, which is what P-31 said would happen.
+            var activities = await db.Activities.AsNoTracking()
+                .Where(a => contractIds.Contains(a.ContractId))
+                .Select(a => new { a.ContractId, a.IsCritical })
+                .ToListAsync();
+
             var rows = projects.Select(p =>
             {
                 var mine = contracts.Where(c => c.ProjectId == p.Id).ToList();
                 var ws = workspaces.FirstOrDefault(w => w.Code == p.WorkspaceCode);
+                var mineIds = mine.Select(c => c.Id).ToList();
+                var mineActivities = activities.Where(a => mineIds.Contains(a.ContractId)).ToList();
 
                 // Per contract: the finish in force (BR-09) and, when a forecast
                 // has been recorded, how late that contract is (BR-10).
@@ -138,11 +159,11 @@ public static class ScheduleControlEndpoints
                     forecast?.ToString("yyyy-MM-dd"),
                     delay,
                     delay > 0 ? worst!.Id : null,
-                    // Needs Activities and their dependencies — Phase 4.3.
-                    null,
-                    // Not a placeholder: the Activities table is not registered,
-                    // so no schedule has been imported for any project.
-                    false);
+                    // Real since Phase 4.3. Null — not 0 — when the project has
+                    // no schedule at all: "no critical activities" and "no
+                    // schedule to have any" are different answers (P-09).
+                    mineActivities.Count == 0 ? null : mineActivities.Count(a => a.IsCritical),
+                    mineActivities.Count > 0);
             }).ToList();
 
             // Counted BEFORE the search and the state filter, so the KPI band
@@ -151,12 +172,17 @@ public static class ScheduleControlEndpoints
             var onTrack = rows.Where(r => r.DelayDays == 0).ToList();
             var noSchedule = rows.Where(r => r.DelayDays is null).ToList();
 
+            // Null, not 0, when nothing has been imported anywhere — the tile
+            // then keeps saying "unavailable + reason" (P-09).
+            var anySchedule = rows.Any(r => r.ScheduleImported);
+
             var counts = new ScheduleCounts(
                 rows.Count,
                 delayed.Count,
                 onTrack.Count,
                 noSchedule.Count,
-                delayed.Count == 0 ? 0 : (int)Math.Round(delayed.Average(r => r.DelayDays!.Value)));
+                delayed.Count == 0 ? 0 : (int)Math.Round(delayed.Average(r => r.DelayDays!.Value)),
+                anySchedule ? rows.Sum(r => r.CriticalActivities ?? 0) : null);
 
             var filtered = state switch
             {
@@ -182,12 +208,19 @@ public static class ScheduleControlEndpoints
                 .ThenBy(r => r.ProjectId)
                 .ToList();
 
-            var unavailable = new List<ScheduleUnavailable>
-            {
-                new("critical",
-                    "يتطلب جدول الأنشطة وعلاقات التتابع لاحتساب المسار الحرج — يتوفر بعد بناء شاشة الجدول الزمني.",
-                    "Needs the activity schedule and its dependencies to compute the critical path — available once the Schedule screen exists."),
-            };
+            // PHASE 4.3 EMPTIED THIS LIST when a schedule exists. It is kept —
+            // rather than deleted — because "no P6 file has been imported for
+            // any project" is still a real state of this system, and it is the
+            // state an empty database is in. The reason simply changed from
+            // "the screen does not exist yet" to "nothing has been imported".
+            var unavailable = anySchedule
+                ? new List<ScheduleUnavailable>()
+                : new List<ScheduleUnavailable>
+                {
+                    new("critical",
+                        "لم يُستورد أي جدول زمني من Primavera P6 بعد، فلا مسار حرج يمكن احتسابه.",
+                        "No Primavera P6 schedule has been imported yet, so there is no critical path to compute."),
+                };
 
             return Results.Ok(new ScheduleResponse(ordered, ordered.Count, counts, unavailable));
         });

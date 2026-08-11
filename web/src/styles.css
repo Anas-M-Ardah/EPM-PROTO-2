@@ -321,3 +321,46 @@ epm-app-footer { display: contents; }
   border-radius: var(--r-pill);
   background: var(--viz-1);
 }
+
+/* ══ SCR-W5 Schedule (Phase 4.3) ═════════════════════════════════════════
+   Two corrections to the copied `desktop.css` Gantt, both of them binding
+   requirements of `04 §5` that the reference's own stylesheet contradicts. */
+
+/* 1. CRITICALITY IS A RING, NOT A COLOUR.
+   `desktop.css:637` paints a critical bar `--error`. `04 §5` says the
+   critical path is a 2px `--on-surface` ring, `CLAUDE.md §6` repeats it
+   ("the colour channel belongs to status"), and the reference's OWN legend
+   already draws the ring — `desktop.css:605` renders `.d-gantt-legend i.crit`
+   as a 2px inset `--on-surface` box-shadow over a neutral fill. So the chart
+   currently disagrees with its own key. The bar keeps its STATUS fill and
+   wears the ring on top. See P-52.
+
+   The fill is driven by `--bar-status`, which the template sets per row from
+   the 06 §9 status. Doing it through a custom property rather than an inline
+   `background` keeps the STYLESHEET correct on its own: the red rule below is
+   genuinely overridden here, instead of merely being out-specified by an
+   inline style that a later edit could quietly remove. */
+.d-gantt-bar { background: var(--bar-status, var(--status-ongoing)); }
+.d-gantt-bar.crit {
+  background: var(--bar-status, var(--status-ongoing));
+  box-shadow: inset 0 0 0 2px var(--on-surface);
+}
+/* A diamond is too small to hold an inset ring legibly, so it takes the same
+   2px outside — `desktop.css:647` already does this and is left alone. */
+
+/* 2. THE PINNED NAME BLOCK IS RESIZABLE — floor 160px, default 320px.
+   `04 §5` asks for the drag handle on the NAME column ("only the activity-name
+   column is pinned"); the reference resizes the info block instead and pins
+   the name at a fixed 320px. One custom property drives the width and the
+   sticky offset together so the two can never disagree. */
+.d-gantt { --gantt-name-w: 320px; }
+.d-gantt .d-gantt-cellname { width: var(--gantt-name-w); }
+.d-gantt .d-gantt-cellinfo { inset-inline-start: var(--gantt-name-w); }
+.d-gantt-namegrip {
+  position: absolute; inset-inline-end: -3px; top: 0; bottom: 0;
+  width: 6px; cursor: col-resize; z-index: 3; border: 0; background: transparent;
+  padding: 0;
+}
+.d-gantt-namegrip:hover,
+.d-gantt-namegrip:focus-visible { background: color-mix(in srgb, var(--primary) 35%, transparent); }
+.d-gantt .d-gantt-cellname { position: sticky; }

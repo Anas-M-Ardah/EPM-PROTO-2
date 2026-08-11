@@ -177,15 +177,17 @@
               </td>
 
               <td class="num r">
-                <!-- Needs Activities and their dependencies (Phase 4.3). The
-                     reference fabricates this from a character of the project
-                     id; a 0 here would assert there is no critical work. -->
-                <span class="d-cell-sub">—</span>
+                <!-- Real since Phase 4.3. Null is NOT 0: a project with no P6
+                     schedule has no critical path, and printing 0 would assert
+                     there is no critical work in it (P-09). -->
+                @if (r.criticalActivities === null) {
+                  <span class="d-cell-sub">—</span>
+                } @else {
+                  <bdi [class.d-cell-strong]="r.criticalActivities > 0">{{ r.criticalActivities }}</bdi>
+                }
               </td>
 
               <td>
-                <!-- True, not a placeholder: the Activities table is not
-                     registered, so no schedule has been imported for anyone. -->
                 <epm-status-pill
                   kind="schedule-import-status"
                   [code]="r.scheduleImported ? 'published' : 'pending'" />

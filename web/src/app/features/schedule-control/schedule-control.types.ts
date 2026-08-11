@@ -24,7 +24,7 @@ export interface ScheduleRow {
   delayDays: number | null;
   /** The contract that delayDays came from — makes the figure traceable. */
   delayDrivenBy: string | null;
-  /** Always null until Phase 4.3 registers Activities. */
+  /** Real since Phase 4.3. Null — not 0 — when this project has no schedule. */
   criticalActivities: number | null;
   scheduleImported: boolean;
 }
@@ -37,6 +37,8 @@ export interface ScheduleCounts {
   noSchedule: number;
   /** Mean across the delayed projects only. */
   avgDelayDays: number;
+  /** Σ across the portfolio. Null when no project has a schedule at all (P-09). */
+  criticalActivities: number | null;
 }
 
 export interface ScheduleUnavailable {
