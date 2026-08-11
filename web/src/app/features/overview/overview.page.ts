@@ -136,10 +136,43 @@ export class OverviewPage {
           ? (ar ? `أسوأ عقد: ${t.delayDrivenBy}` : `worst contract: ${t.delayDrivenBy}`)
           : (ar ? 'ضمن الخط الأساس' : 'on baseline'),
       },
-      { label: ar ? 'الإنجاز المادي' : 'Physical progress', value: 0, unavailable: this.need('physical') },
-      { label: ar ? 'الإنجاز المالي' : 'Financial progress', value: 0, unavailable: this.need('financial') },
-      { label: 'SPI', value: 0, unavailable: this.need('spi') },
-      { label: 'CPI', value: 0, unavailable: this.need('cpi') },
+      // ── REAL SINCE PHASE 4.4 ────────────────────────────────────────────
+      // The four the reference fabricated and this build refused to. Each
+      // still falls back to "unavailable + reason" when its own input is
+      // genuinely missing, which is the whole point of P-09: the tile says
+      // which of the two it is instead of printing a 0 that means both.
+      {
+        label: ar ? 'الإنجاز المادي' : 'Physical progress',
+        value: t.physical ?? 0,
+        suffix: '%',
+        unavailable: t.physical === null ? this.need('physical') : undefined,
+        foot: ar ? 'مرجّح بأوزان بنود الكميات' : 'weighted by BOQ item weights',
+      },
+      {
+        label: ar ? 'الإنجاز المالي' : 'Financial progress',
+        value: t.financial ?? 0,
+        suffix: '%',
+        unavailable: t.financial === null ? this.need('financial') : undefined,
+        foot: ar ? 'المصروف فعلاً، لا المصادق عليه' : 'what was paid, not what was certified',
+      },
+      // The indices are DIAGNOSTICS (05 §7.9) — `delta`/`deltaDir` would
+      // colour them, so they carry a plain foot line instead.
+      {
+        label: 'SPI',
+        value: t.spi ?? 0,
+        dp: 2,
+        unavailable: t.spi === null ? this.need('spi') : undefined,
+        foot: t.spi === null ? undefined
+          : t.spi < 1 ? (ar ? 'دون الخطة' : 'behind plan') : (ar ? 'على الخطة' : 'on plan'),
+      },
+      {
+        label: 'CPI',
+        value: t.cpi ?? 0,
+        dp: 2,
+        unavailable: t.cpi === null ? this.need('cpi') : undefined,
+        foot: t.cpi === null ? undefined
+          : t.cpi < 1 ? (ar ? 'تجاوز في الكلفة' : 'over cost') : (ar ? 'الكلفة ضمن الحدود' : 'cost within limits'),
+      },
     ];
   });
 

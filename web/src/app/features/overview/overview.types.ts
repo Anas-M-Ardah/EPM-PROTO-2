@@ -70,6 +70,14 @@ export interface OverviewTotals {
   pendingAmendments: number;
   delayDays: number | null;
   delayDrivenBy: string | null;
+  /** REAL since Phase 4.4 (BR-04). Null until a contract has a bill to roll up. */
+  physical: number | null;
+  /** Disbursed ÷ effective value. PAID only, never merely certified (P-26). */
+  financial: number | null;
+  /** BR-11, against the planned figure P-53 derives. Null without a schedule. */
+  spi: number | null;
+  /** BR-11. Null before any money has actually been paid. */
+  cpi: number | null;
 }
 
 export interface OverviewAlerts {

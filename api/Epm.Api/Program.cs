@@ -1,14 +1,17 @@
 using Epm.Api.Data;
 using Epm.Api.Features.Alerts;
 using Epm.Api.Features.Boq;
+using Epm.Api.Features.ChangeOrders;
 using Epm.Api.Features.ContractTab;
 using Epm.Api.Features.Contracts;
 using Epm.Api.Features.Dev;
 using Epm.Api.Features.Docs;
 using Epm.Api.Features.Entities;
+using Epm.Api.Features.Financials;
 using Epm.Api.Features.Information;
 using Epm.Api.Features.Overview;
 using Epm.Api.Features.Portfolio;
+using Epm.Api.Features.Progress;
 using Epm.Api.Features.Lookups;
 using Epm.Api.Features.Projects;
 using Epm.Api.Features.Reports;
@@ -67,6 +70,9 @@ app.MapInformationEndpoints();
 app.MapContractEndpoints();
 app.MapBoqEndpoints();
 app.MapScheduleEndpoints();
+app.MapProgressEndpoints();
+app.MapFinancialsEndpoints();
+app.MapChangeOrdersEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

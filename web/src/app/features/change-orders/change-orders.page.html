@@ -1,0 +1,251 @@
+<!--
+  SCR-W8 Change orders — the register.
+  Ported from the v1.1 change-order module: ../epm@design/system-revamp
+  app/vo-record.jsx — DModVO :454.
+
+  Z6 carries the title and the LIFECYCLE tabs. Z7 scrolls.
+
+  03 §10, taken literally:
+    five compact indicators only — no large cards, no charts
+    per row: number · title · type · cost · time · STATUS · stage · owner
+             · last action · attachment count
+    the status column carries the lifecycle pill PLUS the exception chips
+    PLUS the viewer-relation chip — and the title column repeats none of it
+
+  Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="6" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+    @if (data(); as d) {
+      <!-- ══ Z6 — LIFECYCLE ONLY ═══════════════════════════════════════════
+           Attention is a different axis and lives in the toolbar below. -->
+      <div class="d-pz6">
+        <span class="z6-t">
+          {{ lang.t('mod_changeorders') }}
+          <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
+        </span>
+
+        <div class="grp">
+          <button type="button" class="d-fchip" [class.on]="life() === 'all'" (click)="life.set('all')">
+            {{ lang.t('chg_grp_all') }}
+            <span class="n"><bdi>{{ d.rows.length }}</bdi></span>
+          </button>
+          @for (g of groups(); track g.key) {
+            <button type="button" class="d-fchip" [class.on]="life() === g.key" (click)="life.set(g.key)">
+              {{ groupLabel(g.key) }}
+              <span class="n"><bdi>{{ g.count }}</bdi></span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="d-pbody no-aside">
+        <div class="d-pz7">
+
+          <epm-summary-strip [stats]="summaryStats()"
+                             [unavailableLabel]="lang.t('unavailable')" />
+
+          <!-- ══ WHO IS LOOKING ══════════════════════════════════════════
+               `03 §7` — the relation, and therefore every action gate, is
+               resolved from the identity on the SERVER. The bar names the
+               party so a reader knows whose answer the chips are. -->
+          @if (d.awaitingMe > 0) {
+            <div class="d-msgbar warning">
+              <epm-icon name="pending_actions" [size]="16" />
+              <div>
+                <b>{{ awaitingTitle() }}</b>
+                <span>{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
+              </div>
+            </div>
+          } @else {
+            <div class="d-msgbar info">
+              <epm-icon name="info" [size]="16" />
+              <div>
+                <b>{{ lang.t('chg_awaiting_none_t') }}</b>
+                <span>{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
+              </div>
+            </div>
+          }
+
+          <!-- ══ THE TOOLBAR — THE OTHER THREE AXES ══════════════════════ -->
+          <div class="d-toolbar">
+            <label class="d-field">
+              <epm-icon name="search" [size]="16" />
+              <input type="search" [value]="q()" (input)="q.set($any($event.target).value)"
+                     [attr.aria-label]="lang.t('chg_search')"
+                     [attr.placeholder]="lang.t('chg_search')" />
+            </label>
+
+            <button type="button" class="d-fchip" [class.on]="attn() === 'mine'"
+                    [attr.aria-pressed]="attn() === 'mine'" [disabled]="d.awaitingMe === 0"
+                    (click)="toggleAttn('mine')">
+              <epm-icon name="pending_actions" [size]="13" />{{ lang.t('chg_f_mine') }}
+              <span class="n"><bdi>{{ d.awaitingMe }}</bdi></span>
+            </button>
+            <button type="button" class="d-fchip" [class.on]="attn() === 'sla'"
+                    [attr.aria-pressed]="attn() === 'sla'" [disabled]="slaCount() === 0"
+                    (click)="toggleAttn('sla')">
+              <epm-icon name="warning" [size]="13" />{{ lang.t('chg_f_sla') }}
+              <span class="n"><bdi>{{ slaCount() }}</bdi></span>
+            </button>
+            <button type="button" class="d-fchip" [class.on]="attn() === 'overdue'"
+                    [attr.aria-pressed]="attn() === 'overdue'" [disabled]="overdueCount() === 0"
+                    (click)="toggleAttn('overdue')">
+              <epm-icon name="schedule" [size]="13" />{{ lang.t('chg_f_overdue') }}
+              <span class="n"><bdi>{{ overdueCount() }}</bdi></span>
+            </button>
+
+            <span class="sp"></span>
+
+            @if (filtered()) {
+              <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+              </button>
+            }
+          </div>
+
+          @if (d.rows.length === 0) {
+            <!-- EMPTY DATABASE — not the same state as a filter excluding
+                 everything, and it gets its own message (04 §9). -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="sync_alt" [size]="30" /></span>
+              <b>{{ lang.t('chg_empty_t') }}</b>
+              <span>{{ lang.t('chg_empty_b') }}</span>
+            </div>
+
+          } @else if (shown().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+              <b>{{ lang.t('chg_nomatch_t') }}</b>
+              <span>{{ lang.t('chg_nomatch_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="clearFilters()">
+                {{ lang.t('clear_filters') }}
+              </button>
+            </div>
+
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 1240px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('chg_col_no') }}</th>
+                  <th>{{ lang.t('chg_col_order') }}</th>
+                  <th class="r">{{ lang.t('chg_col_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                  <th class="r">{{ lang.t('chg_col_days') }}</th>
+                  <th>{{ lang.t('chg_col_status') }}</th>
+                  <th>{{ lang.t('chg_col_owner') }}</th>
+                  <th class="r">{{ lang.t('chg_col_files') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of shown(); track r.id) {
+                  <tr>
+                    <td class="mono"><bdi>{{ r.no }}</bdi></td>
+
+                    <!-- The title column carries NO status information (03 §10). -->
+                    <td>
+                      <div>{{ title(r) }}</div>
+                      <div class="d-cell-sub">
+                        {{ typeLabel(r.type) }} · <bdi class="mono">{{ r.incomingNo }}</bdi>
+                        · <bdi class="mono">{{ fmt.date(r.incomingDate) }}</bdi>
+                      </div>
+                    </td>
+
+                    <!-- 02 §6 — which of the two proposals this figure IS. -->
+                    <td class="r mono">
+                      <bdi>{{ fmt.delta(r.value) }}</bdi>
+                      <div class="d-cell-sub">
+                        {{ r.valueIsApproved ? lang.t('chg_approved_fig') : lang.t('chg_proposed_fig') }}
+                      </div>
+                    </td>
+
+                    <td class="r mono"><bdi>{{ r.days === 0 ? '—' : fmt.delta(r.days) }}</bdi></td>
+
+                    <!-- THE STATUS COLUMN: lifecycle pill + exception chips +
+                         the relation chip. Three different questions, all of
+                         them about status, none of them repeated elsewhere. -->
+                    <td>
+                      <div class="d-pillrow">
+                        <epm-status-pill [code]="r.lifecycle" kind="co-lifecycle" />
+                        @for (c of r.exceptions; track c.code) {
+                          <span class="d-pill stalled">{{ chip(c) }}</span>
+                        }
+                        @if (r.relation.key !== 'none') {
+                          <span class="d-pill" [class.ongoing]="r.relation.canAct"
+                                [title]="r.relation.stageNameAr && lang.isAr()
+                                         ? r.relation.stageNameAr : (r.relation.stageNameEn || '')">
+                            {{ relLabel(r.relation.key) }}
+                          </span>
+                        }
+                      </div>
+                      <div class="d-cell-sub">
+                        {{ lang.pick(r.currentStageNameAr || '—', r.currentStageNameEn || '—') }}
+                      </div>
+                    </td>
+
+                    <td>
+                      <div>{{ r.currentOwner || '—' }}</div>
+                      <div class="d-cell-sub mono">
+                        <bdi>{{ fmt.date(r.lastActionDate) }}</bdi>
+                        · <bdi>{{ r.leadDays }}</bdi> {{ lang.t('scd_days') }}
+                      </div>
+                    </td>
+
+                    <td class="r mono"><bdi>{{ r.attachments || '—' }}</bdi></td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td class="mono">{{ lang.t('chg_total') }}</td>
+                  <td class="d-cell-sub">
+                    <bdi>{{ shown().length }}</bdi> {{ lang.t('chg_of') }} <bdi>{{ d.rows.length }}</bdi>
+                  </td>
+                  <td class="r mono"><bdi>{{ fmt.delta(shownValue()) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ shownDays() === 0 ? '—' : fmt.delta(shownDays()) }}</bdi></td>
+                  <td colspan="2" class="d-cell-sub">
+                    {{ lang.t('chg_kpi_net') }} <bdi>{{ fmt.money(d.indicators.netApproved) }}</bdi>
+                  </td>
+                  <td class="r"></td>
+                </tr>
+              </tfoot>
+            </table></div>
+
+            <!-- 02 §9, stated once where the money is. -->
+            <div class="d-pager calcnote">
+              <epm-icon name="functions" [size]="14" />
+              <span>{{ lang.t('chg_approved_note') }}</span>
+            </div>
+          }
+
+          <!-- What this phase does NOT do yet, said plainly rather than left
+               as a dead row click. -->
+          <div class="d-msgbar info">
+            <epm-icon name="info" [size]="16" />
+            <div>
+              <b>{{ lang.t('chg_record_soon_t') }}</b>
+              <span>{{ lang.t('chg_record_soon_b') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

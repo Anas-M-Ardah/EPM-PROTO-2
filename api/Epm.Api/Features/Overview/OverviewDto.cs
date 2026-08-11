@@ -96,6 +96,14 @@ public record OverviewBeneficiary(
 /// <param name="DelayDrivenBy">
 /// The contract DelayDays came from, so the figure is one hop from its source.
 /// </param>
+/// <param name="Physical">
+/// REAL since Phase 4.4 — BR-04's weight-rolled BOQ progress. Null until a
+/// contract has a bill of quantities to roll up, because 0% and "nothing has
+/// been imported" are different claims (P-09).
+/// </param>
+/// <param name="Financial">Disbursed ÷ effective value. PAID only (P-26).</param>
+/// <param name="Spi">BR-11, against the planned figure P-53 derives.</param>
+/// <param name="Cpi">BR-11. Null before any money has actually been paid.</param>
 public record OverviewTotals(
     decimal OriginalValue,
     decimal EffectiveValue,
@@ -104,7 +112,11 @@ public record OverviewTotals(
     int AppliedAmendments,
     int PendingAmendments,
     int? DelayDays,
-    string? DelayDrivenBy);
+    string? DelayDrivenBy,
+    decimal? Physical,
+    decimal? Financial,
+    decimal? Spi,
+    decimal? Cpi);
 
 /// <summary>
 /// Open alerts for this project, by severity. Real rows from the Alerts table —

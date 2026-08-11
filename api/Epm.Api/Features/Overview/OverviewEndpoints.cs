@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Boq;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Overview;
@@ -110,6 +111,49 @@ public static class OverviewEndpoints
                 .OrderByDescending(r => r.DelayDays!.Value)
                 .FirstOrDefault();
 
+            // D-06 — "now" is the project data date, never DateTime.Now.
+            var asOf = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+            // ── PHASE 4.4: the four tiles that were "unavailable + reason" ──
+            // BOQ progress (BR-04), payments (P-26) and the planned figure
+            // (P-53) all exist now, so the four figures below are queries. They
+            // come from the SAME BoqEndpoints.Derive that SCR-W4, SCR-W6 and
+            // SCR-W7 read (P-54), which is what stops the overview's physical %
+            // from disagreeing with the Progress tab's.
+            decimal executed = 0m, billed = 0m;
+            decimal plannedWeighted = 0m, plannedBasis = 0m;
+
+            foreach (var c in contracts)
+            {
+                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+                executed += derived.Sum(x => x.Progress.AchievedAmount);
+                billed += derived.Sum(x => x.Line.Amount);
+
+                var acts = await db.Activities.AsNoTracking()
+                    .Where(a => a.ContractId == c.Id && !a.IsMilestone).ToListAsync();
+                plannedBasis += acts.Sum(a => a.BudgetedCost);
+                plannedWeighted += acts.Sum(a => a.BudgetedCost
+                    * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
+            }
+
+            var paid = await db.Payments.AsNoTracking()
+                .Where(x => contractIds.Contains(x.ContractId) && x.Status == "paid")
+                .SumAsync(x => x.NetAmount);
+
+            // NULL, never 0, for a project with no bill and no payments — the
+            // tile then keeps saying "unavailable + reason" (P-09).
+            decimal? physical = billed > 0m ? ProgressReflection.Rollup(billed, executed) : null;
+            decimal? financial = effectiveTotal > 0m ? ProgressReflection.Rollup(effectiveTotal, paid) : null;
+
+            decimal? spi = null, cpi = null;
+            if (physical is not null && plannedBasis > 0m)
+            {
+                var planned = ProgressReflection.Rollup(plannedBasis, plannedWeighted);
+                var evm = EarnedValue.For(effectiveTotal, planned / 100m, physical.Value / 100m, paid);
+                spi = evm.Spi;
+                cpi = evm.Cpi;
+            }
+
             var totals = new OverviewTotals(
                 originalTotal,
                 effectiveTotal,
@@ -118,7 +162,11 @@ public static class OverviewEndpoints
                 rows.Sum(r => r.AppliedAmendments),
                 rows.Sum(r => r.PendingAmendments),
                 worst?.DelayDays,
-                worst?.DelayDays > 0 ? worst.Id : null);
+                worst?.DelayDays > 0 ? worst.Id : null,
+                physical is null ? null : Math.Round(physical.Value, 4, MidpointRounding.AwayFromZero),
+                financial is null ? null : Math.Round(financial.Value, 4, MidpointRounding.AwayFromZero),
+                spi is null ? null : Math.Round(spi.Value, 2, MidpointRounding.AwayFromZero),
+                cpi is null ? null : Math.Round(cpi.Value, 2, MidpointRounding.AwayFromZero));
 
             // BeneficiaryCodes is a CSV of codes (01 §2.1). Split it here and
             // resolve; the client never parses a stored string.

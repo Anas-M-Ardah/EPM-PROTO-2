@@ -60,15 +60,15 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { id: 'information',  icon: 'badge',          key: 'mod_information',  built: true,  phase: '3' },
       { id: 'contract',     icon: 'description',    key: 'mod_contract',     built: true,  phase: '4.1' },
       { id: 'boq',          icon: 'list_alt',       key: 'mod_boq',          built: true,  phase: '4.2' },
-      { id: 'financial',    icon: 'payments',       key: 'mod_financials',   built: false, phase: '4.4' },
+      { id: 'financial',    icon: 'payments',       key: 'mod_financials',   built: true,  phase: '4.4' },
     ],
   },
   {
     key: 'mod_group_execution',
     modules: [
       { id: 'schedule',     icon: 'calendar_month', key: 'mod_schedule',     built: true,  phase: '4.3' },
-      { id: 'progress',     icon: 'trending_up',    key: 'mod_progress',     built: false, phase: '4.4' },
-      { id: 'changeorders', icon: 'sync_alt',       key: 'mod_changeorders', built: false, phase: '5' },
+      { id: 'progress',     icon: 'trending_up',    key: 'mod_progress',     built: true,  phase: '4.4' },
+      { id: 'changeorders', icon: 'sync_alt',       key: 'mod_changeorders', built: true,  phase: '5.1' },
       { id: 'risk',         icon: 'warning',        key: 'mod_risk',         built: false, phase: '6' },
     ],
   },

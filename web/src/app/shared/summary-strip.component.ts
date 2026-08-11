@@ -8,6 +8,14 @@ export interface Stat {
   value: number;
   /** Unit or qualifier, e.g. '%' or 'يوم'. */
   suffix?: string;
+  /**
+   * Decimal places. Omitted, the figure is a whole number — which is right for
+   * money (D-11) and for a percentage on a KPI band. Set it for a performance
+   * INDEX: SPI 0.49 rounded to a whole number is 0, and a tile reading "0"
+   * where the index is 0.49 is not a rounding artefact, it is a different
+   * claim (BR-11).
+   */
+  dp?: number;
   /** Pre-formatted signed change, e.g. '−22 نقطة'. Display only. */
   delta?: string;
   deltaDir?: 'up' | 'down' | 'flat';
@@ -73,7 +81,7 @@ export interface Stat {
             <span class="d-stat-lbl">{{ s.label }}</span>
             <!-- 05 §5.2 — the figure is bidi-isolated. -->
             <span class="d-stat-val">
-              <bdi class="d-stat-num">{{ fmt.money(s.value) }}</bdi>@if (s.suffix) { <small>{{ s.suffix }}</small> }
+              <bdi class="d-stat-num">{{ figureText(s) }}</bdi>@if (s.suffix) { <small>{{ s.suffix }}</small> }
             </span>
             @if (s.delta) {
               <span class="d-stat-delta {{ s.deltaDir || 'flat' }}"><bdi>{{ s.delta }}</bdi></span>
@@ -109,6 +117,13 @@ export class SummaryStripComponent implements AfterViewInit, OnDestroy {
 
   clamp(v: number) { return Math.max(0, Math.min(100, v)); }
 
+  /** The settled figure. `dp` picks decimals over grouped whole numbers. */
+  figureText(s: Stat) { return this.render(s, s.value); }
+
+  private render(s: Stat, v: number) {
+    return s.dp === undefined ? fmt.money(v) : fmt.index(v, s.dp);
+  }
+
   ngAfterViewInit() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -121,26 +136,47 @@ export class SummaryStripComponent implements AfterViewInit, OnDestroy {
     }
 
     this.tiles().forEach((el, i) => {
-      const num = el.querySelector<HTMLElement>('.d-stat-num');
-      const target = this.stats[i]?.value ?? 0;
+      const num = this.figure(el);
+      const stat = this.stats[i];
+      const target = stat?.value ?? 0;
 
       this.timers.push(setTimeout(() => el.classList.add('in'), 120 + i * 100));
 
-      if (!num) return;
-      num.textContent = '0';   // animated path only
+      if (!num || !stat) return;
+      num.nodeValue = this.render(stat, 0);   // animated path only
 
       this.timers.push(setTimeout(() => {
         let start = 0;
         const tick = (ts: number) => {
           if (!start) start = ts;
           const p = Math.min(1, (ts - start) / 1150);
-          num.textContent = fmt.money(Math.round(target * (1 - Math.pow(1 - p, 3))));
+          num.nodeValue = this.render(stat, target * (1 - Math.pow(1 - p, 3)));
           if (p < 1) this.frames.push(requestAnimationFrame(tick));
-          else num.textContent = fmt.money(target);
+          else num.nodeValue = this.render(stat, target);
         };
         this.frames.push(requestAnimationFrame(tick));
       }, 120 + i * 100));
     });
+  }
+
+  /**
+   * THE TEXT NODE ANGULAR OWNS, never the `<bdi>` around it.
+   *
+   * Setting `element.textContent` DESTROYS the element's existing child text
+   * node and inserts a fresh one. Angular's interpolation holds a reference to
+   * the original node, so after one imperative write every later binding update
+   * lands on an orphan and the figure on screen is frozen forever.
+   *
+   * Measured on SCR-W6, the first screen whose strip figures change after load:
+   * reporting A5 at 100% moved physical completion from 49.28% to 50.94% in the
+   * component's own `stats` input while the tile still read 49. Writing
+   * `nodeValue` on the node itself mutates it in place and leaves the binding
+   * intact — which is also how Angular's own `textInterpolate` writes.
+   */
+  private figure(tile: HTMLElement): Text | null {
+    const bdi = tile.querySelector<HTMLElement>('.d-stat-num');
+    const first = bdi?.firstChild;
+    return first instanceof Text ? first : null;
   }
 
   ngOnDestroy() {
@@ -159,8 +195,9 @@ export class SummaryStripComponent implements AfterViewInit, OnDestroy {
     this.frames = [];
     this.tiles().forEach((el, i) => {
       el.classList.add('in');
-      const num = el.querySelector<HTMLElement>('.d-stat-num');
-      if (num) num.textContent = fmt.money(this.stats[i]?.value ?? 0);
+      const num = this.figure(el);
+      const stat = this.stats[i];
+      if (num && stat) num.nodeValue = this.render(stat, stat.value);
     });
   }
 }

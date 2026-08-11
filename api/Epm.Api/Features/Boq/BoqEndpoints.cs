@@ -595,10 +595,18 @@ public static class BoqEndpoints
     }
 
     // ── ONE derivation, shared by every read above ───────────────────────
+    //
+    // INTERNAL, NOT PRIVATE, SINCE PHASE 4.4 (P-54). SCR-W6 shows a BOQ line's
+    // progress, achieved quantity and achieved amount beside the activity that
+    // moves them, and those are this function's output. Re-deriving them in
+    // ProgressEndpoints would be the second derivation the comment below exists
+    // to forbid — the same trap, one screen further on. This is a projection
+    // helper, not a service class: it holds no state, injects nothing, and the
+    // arithmetic inside it is still entirely Domain/'s.
 
-    private record DerivedLink(Activity Activity, decimal ActivityWeight, decimal SharePct, decimal ComputedPct);
+    internal record DerivedLink(Activity Activity, decimal ActivityWeight, decimal SharePct, decimal ComputedPct);
 
-    private record Derived(
+    internal record Derived(
         BoqItem Item,
         TierSplit.Line Line,
         decimal Weight,
@@ -615,7 +623,7 @@ public static class BoqEndpoints
     /// they are derived by one function. Two of them would be two chances for
     /// the coverage on the grid to disagree with the coverage in the editor.
     /// </summary>
-    private static async Task<List<Derived>> Derive(EpmDb db, string contractId, string basis)
+    internal static async Task<List<Derived>> Derive(EpmDb db, string contractId, string basis)
     {
         var items = await db.BoqItems.AsNoTracking()
             .Where(i => i.ContractId == contractId)

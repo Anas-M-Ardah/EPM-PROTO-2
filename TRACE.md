@@ -16,14 +16,14 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-E5 Schedule Control | 04 §2 | `DScheduleControl` enterprise-areas.jsx:8 *(v1.1)* | `features/schedule-control/schedule-control.page.ts` | `EP-SCT-01` | ✅ built — critical-activities tile and column became **real** in Phase 4.3; they fall back to "unavailable + reason" only when no project has a schedule |
 | SCR-E6 Alerts Center | 04 §2 | `DAlertsCenter` enterprise-areas.jsx:106 *(v1.1)* | `features/alerts/alerts.page.ts` | `EP-ALR-01` · `EP-ALR-02` | ✅ built — the first screen that writes; ack persists with the persona |
 | SCR-E7 Reports | 04 §2 | `DReports` desktop-reports.jsx:58 *(v1.1)* | `features/reports/reports.page.ts` | `EP-RPT-01` | ✅ built — a report catalog, not a chart board (P-37); 3 of 12 runnable, the other 9 name their missing source |
-| SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:2512 *(v1.1)* | `features/overview/overview.page.ts` | `EP-OVW-01` | ✅ built — value is Σ effective (BR-00 over BR-09); the projection sits beside it, never in it |
+| SCR-W1 Overview | 04 §3 | `DModOverview` project-modules.jsx:2512 *(v1.1)* | `features/overview/overview.page.ts` | `EP-OVW-01` | ✅ built — value is Σ effective (BR-00 over BR-09); the projection sits beside it, never in it. **Physical, financial, SPI and CPI became real in Phase 4.4** and fall back to "unavailable" only per project |
 | SCR-W2 Information | 04 §3 | `DModInformation` project-modules.jsx:280 *(v1.1)* | `features/information/information.page.ts` | `EP-INF-01` | ✅ built — every value is a stored column; the field GROUPING is the endpoint's, the labels are chrome |
 | SCR-W3 Contract | 04 §7 | `DModContractNew` project-modules.jsx:363 · `DContractAmendments` contract-amendments.jsx:301 *(v1.1)* | `features/contract-tab/contract.page.ts` | `EP-CON-01` · `EP-CON-02` | ✅ built — the amendment chain, and the approved-but-unapplied kept out of every total |
 | SCR-W4 BOQ | 04 §4 | `DBoqRegister` boq-register.jsx:435 · `DBoqAssign` boq-assign.jsx:11 *(v1.1)* | `features/boq/boq.page.ts` | `EP-BOQ-01` … `EP-BOQ-08` | ✅ built — weights sum to exactly 100.00; the first screen that writes four different things |
 | SCR-W5 Schedule | 04 §5 | `DGantt` schedule-module.jsx:80 · `DSchedTable` :257 · `DModSchedule` :437 *(v1.1)* | `features/schedule/schedule.page.ts` | `EP-SCD-01` · `EP-SCD-02` | ✅ built — the WBS is a path string and the tree is built in the endpoint; criticality is a ring, never a colour |
-| SCR-W6 Progress | 04 §3 | `DModProgress` project-modules.jsx:668 | — | `EP-PRG-01` | ⬜ |
-| SCR-W7 Financials | 04 §3 | `DModFinancialNew` project-modules.jsx:485 | — | `EP-FIN-01` | ⬜ |
-| SCR-W8 Change Orders | 03 §9–10 | `DModVO` project-modules.jsx:1142 | — | `EP-CHG-01` | ⬜ |
+| SCR-W6 Progress | 04 §3 · 02 §4 | `DModProgress` project-modules.jsx:1391 *(v1.1)* | `features/progress/progress.page.ts` | `EP-PRG-01` · `EP-PRG-02` | ✅ built — the only screen that MOVES progress; the reference calls its own a read-only dashboard (P-55) |
+| SCR-W7 Financials | 04 §3 | `DModFinancialNew` project-modules.jsx:907 *(v1.1)* | `features/financials/financials.page.ts` | `EP-FIN-01` | ✅ built — four figures per certificate, and paid ≠ certified everywhere (P-26) |
+| SCR-W8 Change Orders | 03 §9–10 | `DModVO` **vo-record.jsx:454** *(v1.1 — ROADMAP's project-modules.jsx:1142 is pre-v1.1)* | `features/change-orders/change-orders.page.ts` | `EP-CHG-01` | ✅ register built — the first screen whose CONTENT depends on who is looking (BR-14); record + wizard + workflow are 5.2–5.4 |
 | SCR-W8 CO wizard | 03 §8 | `DVOCreateWizard` vo-wizard.jsx:6 | — | `EP-WIZ-01` | ⬜ |
 | SCR-W8 CO workflow | 03 §2–6 | `DVOStageTimeline` project-modules.jsx:1120 | — | `EP-WFL-01` | ⬜ |
 | SCR-W9 Risk | 04 §3 | `DModRisk` project-modules.jsx:1693 | — | `EP-RSK-01` | ⬜ |
@@ -51,7 +51,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
 | `EP-SCT-01` | `GET /api/schedule-control` | `Features/ScheduleControl/ScheduleControlEndpoints.cs` | `schedule-control.api.ts` `list()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces |
 | `EP-RPT-01` | `GET /api/reports` | `Features/Reports/ReportsEndpoints.cs` | `reports.api.ts` `list()` | — | Projects *(+ the `EpmDb` model itself, read as data — see P-38)* |
-| `EP-OVW-01` | `GET /api/projects/{id}/overview` | `Features/Overview/OverviewEndpoints.cs` | `overview.api.ts` `get()` | BR-00 · BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces · Beneficiaries · Alerts |
+| `EP-OVW-01` | `GET /api/projects/{id}/overview` | `Features/Overview/OverviewEndpoints.cs` | `overview.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Workspaces · Beneficiaries · Alerts · BoqItems · Activities · Payments |
 | `EP-INF-01` | `GET /api/projects/{id}/information` | `Features/Information/InformationEndpoints.cs` | `information.api.ts` `get()` | — | Projects · Workspaces |
 | `EP-CON-01` | `GET /api/projects/{id}/contracts` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `register()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Payments |
 | `EP-CON-02` | `GET /api/projects/{id}/contracts/{contractId}` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `detail()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Payments |
@@ -65,6 +65,10 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-BOQ-08` | `PUT …/items/{code}/allocation` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveAllocation()` | BR-03 | BoqItems · BoqActivityLinks · Activities |
 | `EP-SCD-01` | `GET /api/projects/{id}/schedule` | `Features/Schedule/ScheduleEndpoints.cs` | `schedule.api.ts` `gate()` | — | Projects · Contracts · Activities |
 | `EP-SCD-02` | `GET /api/projects/{id}/schedule/{contractId}` | `Features/Schedule/ScheduleEndpoints.cs` | `schedule.api.ts` `get()` | BR-02 · BR-04 | Projects · Contracts · Activities |
+| `EP-PRG-01` | `GET /api/projects/{id}/progress` | `Features/Progress/ProgressEndpoints.cs` | `progress.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Activities · BoqItems · BoqRateBands · BoqActivityLinks · Payments |
+| `EP-PRG-02` | `PUT …/progress/activities/{activityId}` | `Features/Progress/ProgressEndpoints.cs` | `progress.api.ts` `saveProgress()` | BR-04 · P-53 | Activities *(**written**)* |
+| `EP-CHG-01` | `GET /api/projects/{id}/change-orders` | `Features/ChangeOrders/ChangeOrdersEndpoints.cs` | `change-orders.api.ts` `list()` | BR-12 · BR-14 | Projects · Contracts · ChangeOrders · ChangeOrderStages · ChangeOrderAttachments |
+| `EP-FIN-01` | `GET /api/projects/{id}/financials` | `Features/Financials/FinancialsEndpoints.cs` | `financials.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Payments · BoqItems · Activities |
 
 ## Business rules
 
@@ -83,11 +87,12 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ **on screen** (Phase 4.2) — the drawer caps every input; gates 2 and 4 checked in `EP-BOQ-06` |
 | BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
 | BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ **`DelayDays()` exposed** (Phase 2.5) — SCR-E5 shows the same days the penalty is charged on |
-| BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ |
-| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ |
+| BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ **on screen** (Phase 4.4) — SCR-W6, SCR-W7 and SCR-W1, all from ONE call so no two can disagree |
+| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ **on screen** (Phase 5.1) — the register's overdue chip, SLA chip and average-cycle indicator |
 | BR-13 | Six-stage workflow machine | 03 §2,5,6 | `Domain/WorkflowMachine.cs` | `WorkflowMachineTests` | ✅ |
-| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | `ViewerRelationTests` | ✅ |
+| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | `ViewerRelationTests` | ✅ **on screen** (Phase 5.1) — every row carries its relation and `CanAct`, resolved SERVER-side from the persona |
 | D-07 | Largest-remainder rounding | 02 §1 | `Domain/Rounding.cs` | `RoundingTests` | ✅ |
+| P-53 | **Planned progress** — the input BR-11 needs and `02` never defines | — *(assumption)* | `Domain/PlannedProgress.cs` | `PlannedProgressTests` | ✅ **added** (Phase 4.4) — linear across each activity's own baseline; also owns the remaining-duration formula |
 
 ## Tables registered in `EpmDb`
 
@@ -102,9 +107,14 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `ContractAmendments` | PAGE-02 | `EP-CNT-01` · `EP-PRJ-01` |
 | `Alerts` | Phase 2.4 | `EP-ALR-01` · `EP-ALR-02` *(the only table a screen writes so far)* |
 | `Beneficiaries` | Phase 3 | `EP-OVW-01` — resolves the `Projects.BeneficiaryCodes` CSV (01 §2.1) |
-| `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` — the first table that can say what was actually paid |
+| `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` · `EP-FIN-01` · `EP-PRG-01` · `EP-OVW-01` — the first table that can say what was actually paid |
 | `BoqItems` | Phase 4.2 | `EP-BOQ-01` … `EP-BOQ-08` — **written** by `EP-BOQ-03` / `EP-BOQ-04` |
 | `BoqRateBands` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-03` · `EP-BOQ-05` — read only; Phase 5.4 writes a band |
 | `BoqDistributions` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-05` — **written** by `EP-BOQ-06` |
 | `BoqActivityLinks` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — **written** by `EP-BOQ-08` |
-| `Activities` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` · `EP-SCD-01` · `EP-SCD-02` · `EP-SCT-01` — registered in 4.2 because BR-03 and BR-04 both read it; **4.3 restored the columns 4.2 pruned** (baseline / actual / forecast dates, durations, float, `IsCritical`, calendar, predecessors) |
+| `ChangeOrders` | Phase 5.1 | `EP-CHG-01` |
+| `ChangeOrderLines` | Phase 5.1 | — registered with the parent; read by 5.2 |
+| `ChangeOrderActivities` | Phase 5.1 | — registered with the parent; read by 5.2 |
+| `ChangeOrderStages` | Phase 5.1 | `EP-CHG-01` — BR-14 resolves the relation off this chain |
+| `ChangeOrderAttachments` | Phase 5.1 | `EP-CHG-01` — the register's count column |
+| `Activities` | Phase 4.2 | **written** by `EP-PRG-02` (progress + remaining duration) · `EP-BOQ-02` · `EP-BOQ-07` · `EP-SCD-01` · `EP-SCD-02` · `EP-SCT-01` — registered in 4.2 because BR-03 and BR-04 both read it; **4.3 restored the columns 4.2 pruned** (baseline / actual / forecast dates, durations, float, `IsCritical`, calendar, predecessors) |

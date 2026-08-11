@@ -131,6 +131,33 @@ export const routes: Routes = [
             loadComponent: () => import('./features/schedule/schedule.page').then(m => m.SchedulePage),
           },
 
+          // SCR-W6 · features/progress · Features/Progress · [EP-PRG-01] [EP-PRG-02]
+          // NOT gated on a contract, unlike SCR-W4 and SCR-W5: `02 §4` rolls
+          // physical % up across every contract the project has, so a gate here
+          // would hide the project's own headline figure (P-55).
+          {
+            path: 'progress',
+            loadComponent: () => import('./features/progress/progress.page').then(m => m.ProgressPage),
+          },
+
+          // SCR-W7 · features/financials · Features/Financials · [EP-FIN-01]
+          // The route segment is `financial` — the module id the rail uses.
+          {
+            path: 'financial',
+            loadComponent: () =>
+              import('./features/financials/financials.page').then(m => m.FinancialsPage),
+          },
+
+          // SCR-W8 · features/change-orders · Features/ChangeOrders · [EP-CHG-01]
+          // Project-scoped: an order belongs to one contract (`01 §1`) but the
+          // register spans every contract the project has, and each row names
+          // its own.
+          {
+            path: 'changeorders',
+            loadComponent: () =>
+              import('./features/change-orders/change-orders.page').then(m => m.ChangeOrdersPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },
