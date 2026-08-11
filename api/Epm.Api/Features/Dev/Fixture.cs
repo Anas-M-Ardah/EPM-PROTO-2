@@ -34,10 +34,22 @@ public static class Fixture
         // (01 §1) is visible from the very first screen, plus a few neighbours
         // so the list, the search and the status filter have something to do.
 
+        // ── Workspaces (BR-15) ───────────────────────────────────────────
+        // Five entities across all four documented kinds (ملحق الشكل 1), which
+        // is what makes the register's filter chips real. `spd` and `cu` carry
+        // no projects on purpose: a workspace that exists and is empty is a
+        // state the register has to render honestly, and it is the one the
+        // "no projects in this workspace" empty state was written for.
+        //
+        // Features/Dev/Personas.cs assigns these codes to personas. Changing a
+        // code here means changing it there — that pairing IS the assignment
+        // model, and there is deliberately no third place to keep in sync.
         db.Workspaces.AddRange(
-            new Workspace { Code = "ub", NameAr = "جامعة بغداد", NameEn = "University of Baghdad", Kind = "university" },
-            new Workspace { Code = "nu", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Kind = "university" },
-            new Workspace { Code = "tu", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar", Kind = "university" }
+            new Workspace { Code = "ub", NameAr = "جامعة بغداد", NameEn = "University of Baghdad", Kind = "state-university" },
+            new Workspace { Code = "nu", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Kind = "state-university" },
+            new Workspace { Code = "tu", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar", Kind = "state-university" },
+            new Workspace { Code = "spd", NameAr = "المديرية العامة للتجهيز والمشتريات", NameEn = "Supply & Procurement Directorate", Kind = "supply-directorate" },
+            new Workspace { Code = "cu", NameAr = "الوحدة المركزية — مركز الوزارة", NameEn = "Central Unit — Ministry HQ", Kind = "central-unit" }
         );
 
         db.Projects.AddRange(

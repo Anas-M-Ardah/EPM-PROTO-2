@@ -1,0 +1,154 @@
+<!--
+  SCR-E8 Workspace overview — «مساحة العمل › نظرة عامة» (ملحق الشكل 2).
+  Ported from DWorkspaceOverview, ../epm/app/desktop-workspace.jsx:284.
+
+  Layout follows the reference: identity bar → stat band → two-column row
+  (distribution · the entity's projects). The reference's `d-grid stats` cards
+  are the project's own summary strip, so the band matches every other screen
+  and obeys the auto-fit rule (05 §8) the reference itself breaks.
+
+  Every figure is <bdi>-isolated (05 §5.2); status is never colour-only (05 §7.6).
+-->
+<epm-page-head
+  [crumbs]="crumbs()"
+  [title]="name()"
+  [sub]="sub()">
+  <!-- Z4: at most one primary. «عرض المشاريع» is the reference's own action
+       here (desktop-workspace.jsx:292) and it is the documented next step —
+       الشكل 2 → الشكل 3. -->
+  <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
+    <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
+  </button>
+  <button actions type="button" class="d-btn primary" (click)="goProjects()">
+    <epm-icon name="projects" [size]="16" />{{ lang.t('ws_view_projects') }}
+  </button>
+</epm-page-head>
+
+@if (loading()) {
+  <div class="d-grid stats fit epm-stat-wide">
+    @for (i of [1,2,3,4]; track i) {
+      <div class="d-stat">
+        <span class="d-skel" style="width:60%;height:12px;display:block"></span>
+        <span class="d-skel" style="width:80%;height:22px;display:block;margin-top:8px"></span>
+      </div>
+    }
+  </div>
+} @else if (error()) {
+  <div class="d-empty">
+    <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+    <b>{{ lang.t('error_t') }}</b>
+    <span><bdi>{{ error() }}</bdi></span>
+    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+  </div>
+} @else if (data()) {
+  <!-- `as` binds only on a primary @if, so the alias is taken here. -->
+  @if (data(); as d) {
+
+  <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
+
+  <!-- 02 §9 — approved but NOT applied. A projection, stated as one, kept out
+       of the effective value above. Rendered only when it exists. -->
+  @if (hasPending()) {
+    <div class="d-msgbar">
+      <epm-icon name="info" [size]="16" />
+      <span>
+        {{ lang.t('portfolio_pending_note') }}
+        <bdi class="mono">{{ fmt.money(d.pendingValue) }}</bdi>
+        (<bdi>{{ d.pendingAmendmentCount }}</bdi>)
+      </span>
+    </div>
+  }
+
+  @if (d.projectCount === 0) {
+    <!-- The workspace EXISTS and is empty. A different state from "the database
+         is empty", with a different message and a different way out (04 §9). -->
+    <div class="d-empty">
+      <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
+      <b>{{ lang.t('ws_no_projects_t') }}</b>
+      <span>{{ lang.t('ws_no_projects_b') }}</span>
+    </div>
+  } @else {
+
+    <div class="d-grid c2 eqrows">
+
+      <!-- قائمة المتابعة — the reference gives this the centre of the screen,
+           because the point of an entity dashboard is which project needs you. -->
+      <div class="d-panel">
+        <div class="d-panel-head">
+          <b>{{ lang.t('ws_watchlist') }}</b>
+          <button type="button" class="d-link" (click)="goProjects()">
+            {{ lang.t('ws_view_all') }}
+            <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
+          </button>
+        </div>
+
+        @if (d.watchlist.length === 0) {
+          <div class="epm-ws-ok">
+            <epm-icon name="check_circle" [size]="18" />
+            <span>{{ lang.t('ws_watchlist_ok') }}</span>
+          </div>
+        } @else {
+          @for (p of d.watchlist; track p.id) {
+            <button type="button" class="d-mini epm-ws-row" (click)="openProject(p.id)">
+              <span class="d-mini-main">
+                <b>{{ projectName(p) }}</b>
+                <span>
+                  <bdi class="mono">{{ p.id }}</bdi>
+                  @if (p.branch) { <span class="epm-ws-dot"></span>{{ p.branch }} }
+                </span>
+              </span>
+              <span class="epm-ws-val mono"><bdi>{{ fmt.money(p.value) }}</bdi></span>
+              <epm-status-pill kind="project-status" [code]="p.status" />
+              <epm-icon class="epm-ws-go" [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
+            </button>
+          }
+        }
+      </div>
+
+      <!-- Status distribution — the one chart that uses status colour (05 §1),
+           always paired with a labelled legend so it is never colour-only. -->
+      <div class="d-panel">
+        <div class="d-panel-head"><b>{{ lang.t('ws_by_status') }}</b></div>
+        <div class="epm-donut-row">
+          <epm-donut [segments]="statusSegments()" [centerLabel]="lang.t('kpi_projects')" />
+          <ul class="epm-legend">
+            @for (s of statusSegments(); track s.label) {
+              <li>
+                <span class="dot" [style.background]="s.color" aria-hidden="true"></span>
+                <span class="l">{{ s.label }}</span>
+                <span class="v mono"><bdi>{{ s.value }}</bdi></span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- آخر ما جرى تحديثه — the reference's `recent` list. It reads as freshness:
+         a project missing from the top of it has not been touched in a while. -->
+    <div class="d-panel">
+      <div class="d-panel-head">
+        <b>{{ lang.t('ws_recent') }}</b>
+        <button type="button" class="d-link" (click)="goProjects()">
+          {{ lang.t('ws_view_all') }}
+          <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
+        </button>
+      </div>
+      @for (p of d.recent; track p.id) {
+        <button type="button" class="d-mini epm-ws-row" (click)="openProject(p.id)">
+          <span class="d-mini-main">
+            <b>{{ projectName(p) }}</b>
+            <span>
+              <bdi class="mono">{{ p.id }}</bdi>
+              @if (p.branch) { <span class="epm-ws-dot"></span>{{ p.branch }} }
+            </span>
+          </span>
+          <span class="epm-ws-upd mono"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></span>
+          <epm-status-pill kind="project-status" [code]="p.status" />
+          <epm-icon class="epm-ws-go" [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
+        </button>
+      }
+    </div>
+  }
+  }
+}

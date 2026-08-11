@@ -2,6 +2,7 @@ using Epm.Api.Data;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Dev;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.ChangeOrders;
@@ -63,6 +64,8 @@ public static class ChangeOrdersEndpoints
 
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            // BR-15 — the register is workspace-scoped like every other module.
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
 
             // D-06 — never DateTime.Now.
             var asOf = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);

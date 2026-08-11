@@ -31,10 +31,21 @@
     <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (rows().length === 0 && isUnfiltered()) {
+  <!--
+    Two different emptinesses (04 §9). "No workspaces exist" is a database that
+    has not been loaded; "none are assigned to you" is a correct, complete
+    answer about YOUR scope (BR-15) and offers a different way forward. Telling
+    an unassigned user to load the fixture would be the wrong instruction.
+  -->
   <div class="d-empty">
     <span class="d-empty-ico"><epm-icon name="apartment" [size]="30" /></span>
-    <b>{{ lang.t('empty_entities_t') }}</b>
-    <span>{{ lang.t('empty_entities_b') }}</span>
+    @if (assignedNone()) {
+      <b>{{ lang.t('empty_ws_assigned_t') }}</b>
+      <span>{{ lang.t('empty_ws_assigned_b') }}</span>
+    } @else {
+      <b>{{ lang.t('empty_entities_t') }}</b>
+      <span>{{ lang.t('empty_entities_b') }}</span>
+    }
   </div>
 } @else {
   <div class="d-tablewrap">
@@ -78,14 +89,24 @@
         <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
-      <table class="d-table">
+      <!--
+        THE ROW IS THE ENTRY POINT (الشكل 1: «الدخول إلى مساحة عمل»).
+        Ported from the reference row, desktop-views.jsx:301. It is a real
+        control: tabbable, Enter/Space activated, and it says where it goes in
+        the last column rather than relying on a hover the keyboard never sees.
+      -->
+      <table class="d-table epm-ws-table">
         <thead>
           <tr>
-            <th style="width:92px">{{ lang.t('col_code') }}</th>
-            <th class="sortable" (click)="toggleSort('name')">
+            <th style="width:78px">{{ lang.t('col_code') }}</th>
+            <!-- The name is the column that must not wrap: it is the longest
+                 value in the table («المديرية العامة للتجهيز والمشتريات») and
+                 everything else here is a short label or a figure. It takes
+                 the slack; the rest are pinned. -->
+            <th class="sortable epm-ws-name" (click)="toggleSort('name')">
               {{ lang.t('col_entity') }}<epm-icon class="s-ico" [name]="sortIcon('name')" [size]="14" />
             </th>
-            <th>{{ lang.t('col_type') }}</th>
+            <th style="width:128px">{{ lang.t('col_type') }}</th>
             <th class="sortable num" (click)="toggleSort('activeCount')">
               {{ lang.t('col_active') }}<epm-icon class="s-ico" [name]="sortIcon('activeCount')" [size]="14" />
             </th>
@@ -95,13 +116,21 @@
             <th class="sortable num" (click)="toggleSort('value')">
               {{ lang.t('col_value') }}<epm-icon class="s-ico" [name]="sortIcon('value')" [size]="14" />
             </th>
-            <th style="width:190px">{{ lang.t('col_completion') }}</th>
+            <th style="width:150px">{{ lang.t('col_completion') }}</th>
+            <th style="width:92px"><span class="epm-sr-only">{{ lang.t('ws_enter_full') }}</span></th>
           </tr>
         </thead>
         <tbody>
           @for (e of pageRows(); track e.code) {
-            <tr>
-              <td class="mono d-cell-sub"><bdi>{{ e.code }}</bdi></td>
+            <tr class="epm-ws-tr"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="lang.t('ws_enter_full') + ': ' + lang.pick(e.nameAr, e.nameEn)"
+                (click)="open(e.code)"
+                (keydown)="onRowKey($event, e.code)">
+              <td>
+                <span class="epm-ws-emblem"><bdi>{{ e.code }}</bdi></span>
+              </td>
               <td class="d-cell-strong">{{ lang.pick(e.nameAr, e.nameEn) }}</td>
               <td class="d-cell-sub">{{ kindLabel(e.kind) }}</td>
               <td class="num"><bdi>{{ e.activeCount }}</bdi></td>
@@ -119,6 +148,14 @@
                        A 0% bar would assert nothing has been built (P-09). -->
                   <span class="d-cell-sub">—</span>
                 }
+              </td>
+              <td>
+                <!-- tabindex -1: the ROW is the tab stop, so this would be a
+                     second stop onto the same destination. -->
+                <span class="epm-ws-open" tabindex="-1" aria-hidden="true">
+                  {{ lang.t('ws_enter') }}
+                  <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
+                </span>
               </td>
             </tr>
           }

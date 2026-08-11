@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Reports;
@@ -79,14 +80,18 @@ public static class ReportsEndpoints
     {
         // [EP-RPT-01] GET /api/reports?q=&category=&projectId=&workspace=
         // web: reports.api.ts list() → reports.page.ts
-        // spec: 04 §2 | rules: — | tables: Projects (+ the EpmDb model itself)
+        // spec: 04 §2 · ملحق الشكل 49 | rules: BR-15 | tables: Projects · Workspaces (+ the EpmDb model itself)
         app.MapGet("/api/reports", async (
             EpmDb db,
+            HttpContext ctx,
             string? q,
             string? category,
             string? projectId,
             string? workspace) =>
         {
+            // BR-15 — refused before anything is read (see WorkspaceScope).
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
+
             // The tables the system HAS, straight from the EF model. Reading
             // the model rather than keeping a second list here means a later
             // phase registering a DbSet is the whole change — nothing in this
@@ -99,10 +104,17 @@ public static class ReportsEndpoints
 
             // The scope dropdown. `?ws=` narrows which projects are offered —
             // it does NOT narrow the catalog, because a report DEFINITION is
-            // ministry-wide however the viewer is scoped.
-            var projectQuery = db.Projects.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(workspace))
-                projectQuery = projectQuery.Where(p => p.WorkspaceCode == workspace);
+            // ministry-wide however the viewer is scoped. الشكل 49 shows the same
+            // twelve reports at university level, which is this behaviour.
+            //
+            // What the dropdown IS bounded by is BR-15: with no explicit
+            // workspace it offers the user's own workspaces, never every project
+            // in the ministry.
+            var workspaces = await db.Workspaces.AsNoTracking().Select(w => w.Code).ToListAsync();
+            var scope = WorkspaceScope.Effective(ctx, workspaces, workspace).ToList();
+
+            var projectQuery = db.Projects.AsNoTracking()
+                .Where(p => scope.Contains(p.WorkspaceCode));
 
             var projects = await projectQuery
                 .OrderBy(p => p.Id)

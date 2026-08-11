@@ -19,6 +19,20 @@ import { ICONS } from './icons';
   standalone: true,
   template: `<span class="epm-icon" [class.epm-icon-flip]="flip" [style.width.px]="size" [style.height.px]="size" [innerHTML]="svg()"></span>`,
   styles: [`
+    /* ── THE HOST MUST BE THE ICON, NOT A LINE BOX ────────────────────────
+       Without this rule the custom element is a plain inline/block box, so it
+       inherits line-height:normal at the surrounding font-size. Inside a 14px
+       button that box is 26.4px tall, and the 16px span within it sits on the
+       box's BASELINE — which reserves the descender gap underneath and pushes
+       the glyph up. The sheet's align-items:center then centres the 26.4px
+       box rather than the glyph, and the icon floats 2.8px above the text.
+       Measured on every page-head action in the app.
+
+       Making the host an inline-flex box collapses it to the glyph's own
+       size, so every align-items:center in the sheets acts on the icon
+       itself. One rule here rather than a nudge per button: the defect is the
+       host box, and it is the same host box everywhere. */
+    :host { display: inline-flex; align-items: center; justify-content: center; flex: none; }
     .epm-icon { display: inline-grid; place-items: center; line-height: 0; flex: none; }
     .epm-icon svg { display: block; }
     :host-context([dir="rtl"]) .epm-icon-flip svg { transform: scaleX(-1); }

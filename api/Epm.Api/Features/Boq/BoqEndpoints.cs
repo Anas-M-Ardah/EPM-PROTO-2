@@ -1,6 +1,7 @@
 using Epm.Api.Data;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Boq;
@@ -66,10 +67,13 @@ public static class BoqEndpoints
         // THE CONTRACT SELECTOR COMES FIRST (04 §4). Nothing renders until a
         // contract is chosen, because "the BOQ" is not a thing a project has —
         // each of its contracts has one.
-        app.MapGet("/api/projects/{projectId}/boq", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/boq", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            // BR-15. The gate does its own lookup rather than going through
+            // Load() — it has no contract yet — so it needs its own guard.
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var contracts = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).OrderBy(c => c.Id).ToListAsync();
@@ -96,9 +100,9 @@ public static class BoqEndpoints
         // tables: Projects · Contracts · BoqItems · BoqRateBands ·
         //         BoqActivityLinks · BoqDistributions · Activities
         app.MapGet("/api/projects/{projectId}/boq/{contractId}",
-            async (EpmDb db, string projectId, string contractId) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             return ctx.Error ?? Results.Ok(await Register(db, ctx));
         });
 
@@ -110,9 +114,9 @@ public static class BoqEndpoints
         // and the rate — never the code, which is the line's identity, and never
         // the contract, which is its scope.
         app.MapPut("/api/projects/{projectId}/boq/{contractId}/items/{code}",
-            async (EpmDb db, string projectId, string contractId, string code, BoqItemEdit input) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code, BoqItemEdit input) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
 
             var item = await db.BoqItems
@@ -173,9 +177,9 @@ public static class BoqEndpoints
         // Its links and bands go the same way — with no foreign keys they would
         // otherwise survive as rows pointing at a line that no longer exists.
         app.MapDelete("/api/projects/{projectId}/boq/{contractId}/items/{code}",
-            async (EpmDb db, string projectId, string contractId, string code) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
 
             var item = await db.BoqItems
@@ -197,9 +201,9 @@ public static class BoqEndpoints
         // spec: 04 §4, 02 §8 | rules: BR-08
         // tables: Projects · BoqItems · BoqDistributions · Beneficiaries
         app.MapGet("/api/projects/{projectId}/boq/{contractId}/items/{code}/distribution",
-            async (EpmDb db, string projectId, string contractId, string code) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
 
             var item = await db.BoqItems.AsNoTracking()
@@ -215,9 +219,9 @@ public static class BoqEndpoints
         // spec: 04 §4, 02 §8 | rules: BR-08
         // tables: Projects · BoqItems · BoqDistributions · Beneficiaries
         app.MapPut("/api/projects/{projectId}/boq/{contractId}/items/{code}/distribution",
-            async (EpmDb db, string projectId, string contractId, string code, BoqDistributionSave input) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code, BoqDistributionSave input) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
 
             var item = await db.BoqItems.AsNoTracking()
@@ -288,9 +292,9 @@ public static class BoqEndpoints
         // tables: Projects · Contracts · BoqItems · BoqRateBands ·
         //         BoqActivityLinks · Activities
         app.MapGet("/api/projects/{projectId}/boq/{contractId}/assignment",
-            async (EpmDb db, string projectId, string contractId, string? basis) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string? basis) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             return ctx.Error ?? Results.Ok(await Assignment(db, ctx, basis == "mh" ? "mh" : "cost"));
         });
 
@@ -302,9 +306,9 @@ public static class BoqEndpoints
         // THE OVERRIDE IS PER LINE, NOT PER LINK (02 §3, P-47). Either every
         // share on this line is the rule's, or every share is a person's.
         app.MapPut("/api/projects/{projectId}/boq/{contractId}/items/{code}/allocation",
-            async (EpmDb db, string projectId, string contractId, string code, BoqAllocationSave input) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code, BoqAllocationSave input) =>
         {
-            var ctx = await Load(db, projectId, contractId);
+            var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
 
             var item = await db.BoqItems.AsNoTracking()
@@ -391,11 +395,16 @@ public static class BoqEndpoints
         public static Ctx Fail(IResult error) => new(null!, null!, error);
     }
 
-    private static async Task<Ctx> Load(EpmDb db, string projectId, string contractId)
+    private static async Task<Ctx> Load(EpmDb db, HttpContext http, string projectId, string contractId)
     {
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
         if (p is null)
             return Ctx.Fail(Results.NotFound(new { message = $"project {projectId} not found" }));
+
+        // BR-15 — a project inside a workspace this user is not assigned to is
+        // data outside their تشكيل (§7). One check here covers all seven BOQ
+        // endpoints, because all seven already come through this gate.
+        if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return Ctx.Fail(denied);
 
         var c = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == contractId);
         if (c is null || c.ProjectId != projectId)

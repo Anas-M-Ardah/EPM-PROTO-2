@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Features.Dev;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Alerts;
@@ -27,16 +28,20 @@ public static class AlertsEndpoints
     public static void MapAlertsEndpoints(this WebApplication app)
     {
         // [EP-ALR-01] GET /api/alerts?q=&severity=&status=&workspace=&projectId=
-        // web: alerts.api.ts list() → alerts.page.ts | spec: 04 §2 | rules: —
+        // web: alerts.api.ts list() → alerts.page.ts | spec: 04 §2 · ملحق الشكل 48 | rules: BR-15
         // tables: Alerts · Projects
         app.MapGet("/api/alerts", async (
             EpmDb db,
+            HttpContext ctx,
             string? q,
             string? severity,
             string? status,
             string? workspace,
             string? projectId) =>
         {
+            // BR-15 — refused before anything is read (see WorkspaceScope).
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
+
             var alerts = await db.Alerts.AsNoTracking().ToListAsync();
 
             var projects = await db.Projects.AsNoTracking()
@@ -45,11 +50,22 @@ public static class AlertsEndpoints
 
             // Workspace scoping reaches alerts THROUGH their project. An alert
             // with no ProjectId is enterprise-wide and therefore belongs to no
-            // workspace — scoping to one correctly drops it.
+            // workspace — scoping to one correctly drops it (الشكل 48 aggregates
+            // «تنبيهات جميع مشاريع الجامعة», which is exactly this set).
             if (!string.IsNullOrWhiteSpace(workspace))
             {
                 var inWs = projects.Where(p => p.WorkspaceCode == workspace).Select(p => p.Id).ToHashSet();
                 alerts = alerts.Where(a => a.ProjectId != null && inWs.Contains(a.ProjectId)).ToList();
+            }
+            else
+            {
+                // Enterprise scope, still bounded by the user's assignments: an
+                // alert on a project in a workspace they are not assigned to is
+                // data outside their تشكيل (§7). Enterprise-wide alerts (no
+                // project) stay — they belong to no workspace at all.
+                var mine = WorkspaceScope.Visible(ctx, projects.Select(p => p.WorkspaceCode).Distinct());
+                var inScope = projects.Where(p => mine.Contains(p.WorkspaceCode)).Select(p => p.Id).ToHashSet();
+                alerts = alerts.Where(a => a.ProjectId == null || inScope.Contains(a.ProjectId)).ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(projectId))

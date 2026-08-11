@@ -43,12 +43,23 @@
     <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (rows().length === 0 && isUnfiltered()) {
-  <!-- empty BECAUSE THE DATABASE IS EMPTY — the default state (no auto-seed) -->
+  <!--
+    THREE empties, not one (04 §9). A workspace with no projects is not an
+    unloaded database, and telling someone scoped to جامعة ذي قار to "load the
+    demo fixture" is the wrong instruction — the fixture IS loaded, that
+    entity simply has nothing in it. The way out is a different scope.
+  -->
   <div class="d-empty">
     <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
-    <b>{{ lang.t('empty_projects_t') }}</b>
-    <span>{{ lang.t('empty_projects_b') }}</span>
-    <button class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
+    @if (workspace()) {
+      <b>{{ lang.t('empty_ws_projects_t') }}</b>
+      <span>{{ lang.t('empty_ws_projects_b') }}</span>
+      <button class="d-btn" (click)="backToWorkspace()">{{ lang.t('ws_overview') }}</button>
+    } @else {
+      <b>{{ lang.t('empty_projects_t') }}</b>
+      <span>{{ lang.t('empty_projects_b') }}</span>
+      <button class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
+    }
   </div>
 } @else {
   <div class="d-tablewrap">
@@ -96,7 +107,7 @@
         <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
-      <table class="d-table">
+      <table class="d-table epm-ws-table">
         <thead>
           <tr>
             <th>{{ lang.t('col_project') }}</th>
@@ -110,11 +121,24 @@
             <th>{{ lang.t('col_physical') }}</th>
             <th class="num">{{ lang.t('col_cost') }}</th>
             <th>{{ lang.t('col_updated') }}</th>
+            <th style="width:104px"><span class="epm-sr-only">{{ lang.t('open_project') }}</span></th>
           </tr>
         </thead>
         <tbody>
+          <!--
+            THE ROW OPENS THE PROJECT (الشكل 3: «المدخل المعتمد لفتح مشروع
+            بعينه»). The reference passes `onOpenProject` into this register
+            (desktop-shell.jsx:348, :356). Same control shape as the workspace
+            register one level up: tabbable, Enter/Space, and a named action in
+            the last column rather than a hover-only affordance.
+          -->
           @for (p of pageRows(); track p.id) {
-            <tr>
+            <tr class="epm-ws-tr"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="lang.t('open_project') + ': ' + lang.pick(p.nameAr, p.nameEn)"
+                (click)="open(p.id)"
+                (keydown)="onRowKey($event, p.id)">
               <td class="d-cell-strong">
                 {{ lang.pick(p.nameAr, p.nameEn) }}
                 <div class="d-cell-sub mono"><bdi>{{ p.id }}</bdi></div>
@@ -142,6 +166,12 @@
               </td>
               <td class="mono num"><bdi>{{ fmt.money(p.cost) }}</bdi></td>
               <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></td>
+              <td>
+                <span class="epm-ws-open" tabindex="-1" aria-hidden="true">
+                  {{ lang.t('ws_enter') }}
+                  <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
+                </span>
+              </td>
             </tr>
           }
         </tbody>

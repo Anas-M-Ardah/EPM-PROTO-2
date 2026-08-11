@@ -1,11 +1,18 @@
 import { Component, Input, ViewEncapsulation, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { IconComponent } from '../core/icon.component';
 import { LangService } from '../core/lang';
 
 export interface Crumb {
   label: string;
-  /** Omit on the last crumb — the current page is not a link. */
+  /**
+   * Router commands, e.g. `['/entities']`. Omit on the last crumb — the current
+   * page is never a link — and omit it on any crumb that names a scope rather
+   * than a destination (الوزارة is a context, not a page).
+   */
   link?: unknown[];
+  /** Query params to carry, e.g. `{ ws: 'ub' }`. Only meaningful with `link`. */
+  query?: Record<string, string>;
 }
 
 /**
@@ -31,7 +38,7 @@ export interface Crumb {
   selector: 'epm-page-head',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [IconComponent],
+  imports: [IconComponent, RouterLink],
   template: `
     <div class="d-page-head">
       <div class="idtx">
@@ -43,6 +50,11 @@ export interface Crumb {
               }
               @if (last) {
                 <span class="cur" aria-current="page">{{ c.label }}</span>
+              } @else if (c.link) {
+                <!-- A crumb that names a real destination IS the way back up.
+                     Workspace → Projects → Project is three levels deep, and a
+                     trail you cannot click is decoration. -->
+                <a class="epm-crumb-link" [routerLink]="c.link" [queryParams]="c.query || {}">{{ c.label }}</a>
               } @else {
                 <span>{{ c.label }}</span>
               }

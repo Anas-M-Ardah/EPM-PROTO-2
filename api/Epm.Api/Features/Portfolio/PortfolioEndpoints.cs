@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Portfolio;
@@ -26,15 +27,25 @@ public static class PortfolioEndpoints
     public static void MapPortfolioEndpoints(this WebApplication app)
     {
         // [EP-PRT-01] GET /api/portfolio?workspace=
-        // web: portfolio.api.ts get() → portfolio.page.ts | spec: 04 §2 | rules: BR-00, BR-09
+        // web: portfolio.api.ts get() → portfolio.page.ts | spec: 04 §2 | rules: BR-00, BR-09, BR-15
         // tables: Projects · Contracts · ContractAmendments · Workspaces
-        app.MapGet("/api/portfolio", async (EpmDb db, string? workspace) =>
+        app.MapGet("/api/portfolio", async (EpmDb db, HttpContext ctx, string? workspace) =>
         {
-            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
+            // BR-15 — refused before anything is read (see WorkspaceScope).
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
 
-            var projectQuery = db.Projects.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(workspace))
-                projectQuery = projectQuery.Where(p => p.WorkspaceCode == workspace);
+            var all = await db.Workspaces.AsNoTracking().ToListAsync();
+
+            var scope = WorkspaceScope.Effective(ctx, all.Select(w => w.Code), workspace);
+            var scopeCodes = scope.ToList();
+
+            // The ministry band is the ministry's — or, for an assigned user,
+            // the sum of their own workspaces (§7). Never the whole portfolio
+            // for someone who cannot open it.
+            var workspaces = all.Where(w => scope.Contains(w.Code)).ToList();
+
+            var projectQuery = db.Projects.AsNoTracking()
+                .Where(p => scopeCodes.Contains(p.WorkspaceCode));
 
             var projects = await projectQuery
                 .Select(p => new { p.Id, p.WorkspaceCode, p.Status })
@@ -80,7 +91,6 @@ public static class PortfolioEndpoints
                 .ToList();
 
             var valueByEntity = workspaces
-                .Where(w => string.IsNullOrWhiteSpace(workspace) || w.Code == workspace)
                 .Select(w =>
                 {
                     var mine = projects.Where(p => p.WorkspaceCode == w.Code).Select(p => p.Id).ToHashSet();

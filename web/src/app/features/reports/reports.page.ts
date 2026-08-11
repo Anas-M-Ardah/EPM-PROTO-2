@@ -5,6 +5,7 @@ import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
+import { WorkspacesService } from '../../core/workspaces';
 import { ToastService } from '../../shared/toast.service';
 import { ReportsApi } from './reports.api';
 import { ReportRow, ReportCategory, ReportLabel, ReportProject, ReportCounts } from './reports.types';
@@ -44,6 +45,7 @@ export class ReportsPage {
   private api = inject(ReportsApi);
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
+  workspaces = inject(WorkspacesService);
   /** The page-head actions and Run are demo stubs and say so — ToastService.demo(). */
   toast = inject(ToastService);
 
@@ -68,10 +70,32 @@ export class ReportsPage {
   /** Column count for the loading skeleton — must match the real table. */
   readonly colCount = 7;
 
-  crumbs = computed<Crumb[]>(() => [
-    { label: this.lang.t('ministry_short') },
-    { label: this.lang.t('nav_reports') },
-  ]);
+  /**
+   * Z2 breadcrumb. الشكلان 48، 49 breadcrumb this screen «جامعة بغداد › …»
+   * when it is scoped, not «الوزارة › …» — a filtered register that still
+   * calls itself ministry-wide is the one thing a reader cannot recover from.
+   * The workspace crumb links back to its overview.
+   */
+  crumbs = computed<Crumb[]>(() => {
+    const ws = this.workspace();
+    if (!ws) {
+      return [
+        { label: this.lang.t('ministry_short') },
+        { label: this.lang.t('nav_reports') },
+      ];
+    }
+    return [
+      { label: this.lang.t('ministry_short') },
+      { label: this.scopeName(), link: ['/workspace'], query: { ws } },
+      { label: this.lang.t('nav_reports') },
+    ];
+  });
+
+  /** The scoped workspace's name, from the list the switcher already loaded. */
+  scopeName = computed(() => {
+    const ws = this.workspaces.byCode(this.workspace());
+    return ws ? this.lang.pick(ws.nameAr, ws.nameEn) : this.workspace();
+  });
 
   /**
    * The reference's own sub line — "12 defined reports · 5 scheduled

@@ -1,28 +1,43 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Entities;
 
 /// <summary>
-/// SCR-E4 — Entities, the dense sortable master table (04 §2).
+/// SCR-E4 — the WORKSPACE REGISTER (`04 §2`, ملحق الشاشات الشكل 1).
 ///
 /// PORTED from DSpaces (v1.1), desktop-views.jsx:375 — which is the
-/// **workspaces / entities** register: the universities and ministry units that
-/// own projects. It is NOT the beneficiary master list; beneficiaries are the
+/// **workspaces** register: the universities and ministry units that own
+/// projects. It is NOT the beneficiary master list; beneficiaries are the
 /// targets of BOQ quantity distribution (01 §2.1) and arrive with the BOQ page
 /// that needs them (Phase 4.2). See P-24.
+///
+/// ── THIS IS THE ONE LIST OF "MY WORKSPACES" (BR-15) ───────────────────────
+/// The register and the sidebar switcher are the same request. الشكل 1 gives
+/// the switcher the caption «مساحات العمل المتاحة لك» and the register the
+/// benefit «لا يرى المستخدم إلا المساحات المسندة إليه» — one concept, so one
+/// endpoint. Filtering here rather than per-component is what makes it
+/// impossible for the two to disagree.
 /// </summary>
 public static class EntitiesEndpoints
 {
     public static void MapEntitiesEndpoints(this WebApplication app)
     {
         // [EP-ENT-01] GET /api/entities?q=&kind=
-        // web: entities.api.ts list() → entities.page.ts | spec: 04 §2 | rules: BR-00
+        // web: entities.api.ts list() → entities.page.ts + core/workspaces.ts
+        // spec: 04 §2 · ملحق الشكل 1 | rules: BR-00, BR-15
         // tables: Workspaces · Projects · Contracts · ContractAmendments
-        app.MapGet("/api/entities", async (EpmDb db, string? q, string? kind) =>
+        app.MapGet("/api/entities", async (EpmDb db, HttpContext ctx, string? q, string? kind) =>
         {
-            var workspaces = await db.Workspaces.AsNoTracking().OrderBy(w => w.Code).ToListAsync();
+            var everything = await db.Workspaces.AsNoTracking().OrderBy(w => w.Code).ToListAsync();
+
+            // BR-15 — the union of this persona's assignments, before any UI
+            // filter. A workspace the user is not assigned to does not exist as
+            // far as the rest of this endpoint is concerned.
+            var mineCodes = WorkspaceScope.Visible(ctx, everything.Select(w => w.Code)).ToHashSet();
+            var workspaces = everything.Where(w => mineCodes.Contains(w.Code)).ToList();
 
             var projects = await db.Projects.AsNoTracking()
                 .Select(p => new { p.Id, p.WorkspaceCode, p.Status })
@@ -82,7 +97,7 @@ public static class EntitiesEndpoints
                 .GroupBy(w => w.Kind)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            return Results.Ok(new EntitiesResponse(rows, rows.Count, countByKind));
+            return Results.Ok(new EntitiesResponse(rows, rows.Count, countByKind, everything.Count));
         });
     }
 }

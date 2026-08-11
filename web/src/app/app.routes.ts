@@ -36,9 +36,22 @@ export const routes: Routes = [
       },
 
       // SCR-E4 · features/entities · Features/Entities · [EP-ENT-01]
+      // The WORKSPACE REGISTER (ملحق الشكل 1) — where a workspace is entered.
       {
         path: 'entities',
         loadComponent: () => import('./features/entities/entities.page').then(m => m.EntitiesPage),
+      },
+
+      // SCR-E8 · features/workspaces · Features/Workspaces · [EP-WSP-01]
+      // «مساحة العمل › نظرة عامة» (ملحق الشكل 2) — where entering a workspace
+      // LANDS. It requires `?ws=`; without one the page sends you to the
+      // register, because there is no workspace overview without a workspace.
+      //
+      // `workspaces` (plural) is the enterprise workspace. `projects/:id`
+      // below is the PROJECT workspace. Different screens, different scope.
+      {
+        path: 'workspace',
+        loadComponent: () => import('./features/workspaces/workspaces.page').then(m => m.WorkspacesPage),
       },
 
       // SCR-E5 · features/schedule-control · Features/ScheduleControl · [EP-SCT-01]

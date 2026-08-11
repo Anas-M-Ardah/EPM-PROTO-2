@@ -8,7 +8,10 @@ export interface EntityRow {
   code: string;
   nameAr: string;
   nameEn: string;
-  /** university · institute · directorate · other. */
+  /**
+   * A `workspace-kind` lookup code (ملحق الشكل 1's four): state-university ·
+   * technical-university · central-unit · supply-directorate.
+   */
   kind: string;
   active: boolean;
   projectCount: number;
@@ -21,7 +24,13 @@ export interface EntityRow {
 }
 
 export interface EntitiesResponse {
+  /** Only the workspaces assigned to the current persona (BR-15). */
   rows: EntityRow[];
   total: number;
   countByKind: Record<string, number>;
+  /**
+   * Workspaces ministry-wide, before the assignment filter. Lets the screen
+   * tell "database not loaded" apart from "you are assigned to none".
+   */
+  ministryTotal: number;
 }

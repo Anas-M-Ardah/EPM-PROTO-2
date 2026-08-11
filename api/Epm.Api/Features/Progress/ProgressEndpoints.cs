@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Boq;
@@ -43,8 +44,12 @@ public static class ProgressEndpoints
         // spec: 04 §3 · 02 §4 | rules: BR-00, BR-04, BR-09, BR-10, BR-11 + P-53
         // tables: Projects · Contracts · ContractAmendments · Activities
         //         BoqItems · BoqRateBands · BoqActivityLinks · Payments
-        app.MapGet("/api/projects/{projectId}/progress", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/progress", async (EpmDb db, HttpContext http, string projectId) =>
         {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
+
             var model = await Build(db, projectId);
             return model is null
                 ? Results.NotFound(new { message = $"project {projectId} not found" })
@@ -59,10 +64,11 @@ public static class ProgressEndpoints
         // activity's progress, watch BOQ progress, achieved quantity and
         // achieved amount update".
         app.MapPut("/api/projects/{projectId}/progress/activities/{activityId}",
-            async (EpmDb db, string projectId, string activityId, UpdateProgressRequest body) =>
+            async (EpmDb db, HttpContext http, string projectId, string activityId, UpdateProgressRequest body) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var contractIds = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).Select(c => c.Id).ToListAsync();

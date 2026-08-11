@@ -187,5 +187,28 @@ public static class RuleCatalog
                     false);
                 return new { relation = rel, canAct = ViewerRelation.CanAct(rel) };
             }),
+
+        new("SCOPE", "BR-15", "07 §24",
+            "Workspace visibility & access",
+            "A user sees only the workspaces assigned to them, and their scope is the UNION of those " +
+            "assignments — «نطاق رؤية المستخدم هو اتحاد تكليفاته حسب دوره ونطاقه؛ ولا يرى بيانات خارج " +
+            "تشكيله». A ministry-centre user is the one documented exception (§7 «اطلاع شامل»). " +
+            "Requesting a workspace outside the assignment is refused, not silently emptied; requesting " +
+            "no workspace means all of the user's own, never the whole portfolio.",
+            new { all = new[] { "ub", "nu", "tu" }, assigned = new[] { "ub", "tu" }, ministryWide = false },
+            "visible = [ub, tu]; nu is refused",
+            () =>
+            {
+                string[] all = ["ub", "nu", "tu"];
+                string[] assigned = ["ub", "tu"];
+
+                return new
+                {
+                    visible = WorkspaceAccess.Visible(all, assigned, false),
+                    ubAllowed = WorkspaceAccess.Allowed("ub", assigned, false),
+                    nuAllowed = WorkspaceAccess.Allowed("nu", assigned, false),
+                    nuAllowedForMinistry = WorkspaceAccess.Allowed("nu", [], true),
+                };
+            }),
     ];
 }

@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
@@ -9,6 +9,7 @@ import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
+import { WorkspacesService } from '../../core/workspaces';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ProjectsApi } from './projects.api';
@@ -45,8 +46,10 @@ export class ProjectsPage {
   private api = inject(ProjectsApi);
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  workspaces = inject(WorkspacesService);
   /** The page-head actions are demo stubs and say so — ToastService.demo(). */
   toast = inject(ToastService);
   fmt = fmt;
@@ -75,27 +78,70 @@ export class ProjectsPage {
   /** Enterprise view only. Reference: `{!scopeWs && <th>…}` */
   showWorkspaceCol = computed(() => !this.workspace());
 
-  /** Column count for the loading skeleton — follows showWorkspaceCol. */
-  colCount = computed(() => (this.showWorkspaceCol() ? 7 : 6));
+  /**
+   * Column count for the loading skeleton — follows showWorkspaceCol, plus the
+   * open column that is always there.
+   */
+  colCount = computed(() => (this.showWorkspaceCol() ? 8 : 7));
 
-  /** Subtitle is the workspace's own name when scoped; rows carry it. */
+  /**
+   * Workspace → project (الشكل 3 → الشكل 4). `?ws=` rides along so the chrome,
+   * the rail and the breadcrumb stay inside the entity you came from.
+   */
+  open(id: string) {
+    const ws = this.workspace();
+    this.router.navigate(['/projects', id, 'overview'], { queryParams: ws ? { ws } : {} });
+  }
+
+  /** Enter on a focused row does what clicking it does (05 §7.7). */
+  onRowKey(e: KeyboardEvent, id: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.open(id);
+    }
+  }
+
+  /**
+   * The workspace's own name when scoped. Read off the loaded list rather than
+   * off the first row: an entity with no projects has no rows to read it from,
+   * and falling back to the raw code there put `spd` in the breadcrumb of the
+   * very screen that most needs to say which workspace is empty.
+   */
   scopeName = computed(() => {
+    const ws = this.workspaces.byCode(this.workspace());
+    if (ws) return this.lang.pick(ws.nameAr, ws.nameEn);
     const first = this.rows()[0];
-    if (!first) return this.workspace();
-    return this.lang.pick(first.workspaceNameAr, first.workspaceNameEn);
+    return first ? this.lang.pick(first.workspaceNameAr, first.workspaceNameEn) : this.workspace();
   });
+
+  /** Back up one level, to the workspace this register is scoped to. */
+  backToWorkspace() {
+    this.router.navigate(['/workspace'], { queryParams: { ws: this.workspace() } });
+  }
 
   /** True only when the database itself is empty, not when a filter excluded everything. */
   isUnfiltered = computed(() => !this.q() && !this.status());
 
   /**
    * Z2 breadcrumb. The last crumb is the current page and is never a link.
-   * Enterprise scope reads الوزارة › كل المشاريع; a workspace scope names it.
+   * Enterprise scope reads الوزارة › كل المشاريع; a workspace scope names the
+   * entity AND links back to its overview, so the trail is walkable in both
+   * directions (الشكل 2 ⇄ الشكل 3).
    */
-  crumbs = computed<Crumb[]>(() => [
-    { label: this.workspace() ? this.scopeName() : this.lang.t('ministry_short') },
-    { label: this.workspace() ? this.lang.t('nav_projects') : this.lang.t('nav_projects_all') },
-  ]);
+  crumbs = computed<Crumb[]>(() => {
+    const ws = this.workspace();
+    if (!ws) {
+      return [
+        { label: this.lang.t('ministry_short') },
+        { label: this.lang.t('nav_projects_all') },
+      ];
+    }
+    return [
+      { label: this.lang.t('ministry_short') },
+      { label: this.scopeName(), link: ['/workspace'], query: { ws } },
+      { label: this.lang.t('nav_projects') },
+    ];
+  });
 
   // ── Paging (v1.1 data-grid standard) ────────────────────────────────────
   // The API returns the filtered set; the pager slices it client-side. That is

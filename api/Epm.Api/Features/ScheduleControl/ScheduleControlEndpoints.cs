@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.ScheduleControl;
@@ -52,17 +53,23 @@ public static class ScheduleControlEndpoints
     {
         // [EP-SCT-01] GET /api/schedule-control?q=&state=&workspace=
         // web: schedule-control.api.ts list() → schedule-control.page.ts
-        // spec: 04 §2 | rules: BR-09, BR-10
+        // spec: 04 §2 | rules: BR-09, BR-10, BR-15
         // tables: Projects · Contracts · ContractAmendments · Workspaces
         app.MapGet("/api/schedule-control", async (
             EpmDb db,
+            HttpContext ctx,
             string? q,
             string? state,
             string? workspace) =>
         {
-            var projectQuery = db.Projects.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(workspace))
-                projectQuery = projectQuery.Where(p => p.WorkspaceCode == workspace);
+            // BR-15 — refused before anything is read (see WorkspaceScope).
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
+
+            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
+            var scope = WorkspaceScope.Effective(ctx, workspaces.Select(w => w.Code), workspace).ToList();
+
+            var projectQuery = db.Projects.AsNoTracking()
+                .Where(p => scope.Contains(p.WorkspaceCode));
 
             var projects = await projectQuery.OrderBy(p => p.Id).ToListAsync();
             var ids = projects.Select(p => p.Id).ToList();
@@ -80,8 +87,6 @@ public static class ScheduleControlEndpoints
             var amendments = await db.ContractAmendments.AsNoTracking()
                 .Where(a => contractIds.Contains(a.ContractId))
                 .ToListAsync();
-
-            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
 
             // PHASE 4.3 — the two columns P-31 promised would become real.
             // Activities is registered now, so "has a P6 schedule been

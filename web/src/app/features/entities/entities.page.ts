@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
+import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
@@ -14,13 +15,25 @@ import { EntityRow } from './entities.types';
 type SortKey = 'name' | 'projectCount' | 'activeCount' | 'value';
 
 /**
- * SCR-E4 — Entities, the dense sortable master table (04 §2).
+ * SCR-E4 — the WORKSPACE REGISTER (04 §2, ملحق الشاشات الشكل 1).
  *
- * PORTED from DSpaces (v1.1) — docs/spec/reference/app/desktop-views.jsx:375.
- * The reference calls this مساحات العمل: the universities and ministry units
- * that own projects. Columns follow it — code · name · type · active ·
- * projects · completion — with the value column added because the effective
- * figure is derivable now (BR-09) and is the number this table is read for.
+ * PORTED from DSpaces (v1.1) — ../epm/app/desktop-views.jsx:375. The reference
+ * calls this مساحات العمل: the universities and ministry units that own
+ * projects. Columns follow it — code · name · type · active · projects ·
+ * completion — with the value column added because the effective figure is
+ * derivable now (BR-09) and is the number this table is read for.
+ *
+ * ── IT IS AN ENTRY POINT, NOT A READ-ONLY LIST ────────────────────────────
+ * الشكل 1 lists «الدخول إلى مساحة عمل» first among its available actions and
+ * names this screen «نقطة الدخول المؤسسية». The reference row carries
+ * `onClick={() => openWorkspace(w)}` (desktop-views.jsx:301). A row that
+ * displays an entity you cannot open is the inert affordance the whole screen
+ * exists to avoid — so the row enters, and it says so on hover and on focus.
+ *
+ * ── EVERY ROW HERE IS ONE THE USER MAY OPEN (BR-15) ───────────────────────
+ * EP-ENT-01 returns the persona's assignments and nothing else, so this table
+ * and the sidebar switcher are the same set by construction. There is no
+ * client-side filter to keep in sync, and no row that leads to a 403.
  *
  * ── SORTING IS THE POINT ──────────────────────────────────────────────────
  * 04 §2 asks for a *dense sortable* master table, and the reference makes the
@@ -37,6 +50,7 @@ type SortKey = 'name' | 'projectCount' | 'activeCount' | 'value';
 })
 export class EntitiesPage {
   private api = inject(EntitiesApi);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   /** The page-head actions are demo stubs and say so — ToastService.demo(). */
@@ -45,6 +59,8 @@ export class EntitiesPage {
 
   rows = signal<EntityRow[]>([]);
   countByKind = signal<Record<string, number>>({});
+  /** Workspaces ministry-wide, before BR-15 narrowed them. */
+  ministryTotal = signal(0);
   loading = signal(true);
   error = signal<string | null>(null);
 
@@ -63,6 +79,13 @@ export class EntitiesPage {
   ]);
 
   isUnfiltered = computed(() => !this.q() && !this.kind());
+
+  /**
+   * Workspaces exist, but none of them is yours (BR-15). A correct and complete
+   * answer about your scope — and a different problem from an empty database,
+   * with a different way out.
+   */
+  assignedNone = computed(() => this.rows().length === 0 && this.ministryTotal() > 0);
 
   totalCount = computed(() =>
     Object.values(this.countByKind()).reduce((a, b) => a + b, 0));
@@ -99,7 +122,8 @@ export class EntitiesPage {
     return this.lang.isAr() ? `${n} ${this.lang.t('entities_showing')}` : `${n} ${this.lang.t('entities_showing')}`;
   });
 
-  readonly colCount = 6;
+  /** code · name · type · active · projects · value · completion · open */
+  readonly colCount = 8;
 
   constructor() {
     this.load();
@@ -115,6 +139,7 @@ export class EntitiesPage {
       next: ({ res }) => {
         this.rows.set(res.rows);
         this.countByKind.set(res.countByKind);
+        this.ministryTotal.set(res.ministryTotal);
         this.page.set(1);
         this.loading.set(false);
       },
@@ -157,8 +182,30 @@ export class EntitiesPage {
     return this.sortAsc() ? 'expand_less' : 'expand_more';
   }
 
-  /** 06 §6 label for the entity kind, falling back to the raw code. */
+  /**
+   * The workspace kind, from the `workspace-kind` list (ملحق الشكل 1's four
+   * chips). NOT `beneficiary-type` — that is the list of things quantity is
+   * distributed TO (01 §2.1), and reading a workspace's kind out of it left a
+   * directorate rendering as the raw string `directorate`.
+   */
   kindLabel(code: string) {
-    return this.lookups.label('beneficiary-type', code);
+    return this.lookups.label('workspace-kind', code);
+  }
+
+  /**
+   * ENTER the workspace — الشكل 1 → الشكل 2. Scope is `?ws=`, the app's one
+   * mechanism, so this lands on the overview already scoped and every
+   * subsequent nav item inherits it.
+   */
+  open(code: string) {
+    this.router.navigate(['/workspace'], { queryParams: { ws: code } });
+  }
+
+  /** Enter on a focused row does what clicking it does (05 §7.7). */
+  onRowKey(e: KeyboardEvent, code: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.open(code);
+    }
   }
 }

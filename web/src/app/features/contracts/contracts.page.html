@@ -14,7 +14,7 @@
 <epm-page-head
   [crumbs]="crumbs()"
   [title]="lang.t('nav_contracts_all')"
-  [sub]="lang.t('contracts_sub')">
+  [sub]="scopeSub()">
   <!-- Z4 action cluster, verbatim from DContractsAll (v1.1 :331). Demo stubs
        in the reference and here — a contract is created from an award, which
        is not a screen this prototype builds. -->
@@ -36,11 +36,20 @@
     <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (rows().length === 0 && isUnfiltered()) {
-  <!-- empty BECAUSE THE DATABASE IS EMPTY — contracts arrive with the fixture -->
+  <!--
+    Empty because the DATABASE is empty, or because this WORKSPACE has no
+    contracts. Different problems, different sentences (04 §9) — the fixture
+    button would be the wrong advice in the scoped case.
+  -->
   <div class="d-empty">
     <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
-    <b>{{ lang.t('empty_contracts_t') }}</b>
-    <span>{{ lang.t('empty_contracts_b') }}</span>
+    @if (workspace()) {
+      <b>{{ lang.t('empty_ws_contracts_t') }}</b>
+      <span>{{ lang.t('empty_ws_projects_b') }}</span>
+    } @else {
+      <b>{{ lang.t('empty_contracts_t') }}</b>
+      <span>{{ lang.t('empty_contracts_b') }}</span>
+    }
   </div>
 } @else {
   <div class="d-tablewrap">

@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Epm.Api.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,10 +47,11 @@ public static class ContractEndpoints
         // web: contract-tab/contract.api.ts register() → contract.page.ts
         // spec: 04 §7 | rules: BR-00, BR-09
         // tables: Projects · Contracts · ContractAmendments · Payments
-        app.MapGet("/api/projects/{projectId}/contracts", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/contracts", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var contracts = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).OrderBy(c => c.Id).ToListAsync();
@@ -116,10 +118,11 @@ public static class ContractEndpoints
         // spec: 04 §7 | rules: BR-09, BR-10
         // tables: Projects · Contracts · ContractAmendments · Payments
         app.MapGet("/api/projects/{projectId}/contracts/{contractId}",
-            async (EpmDb db, string projectId, string contractId) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var c = await db.Contracts.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == contractId);

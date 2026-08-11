@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Epm.Api.Domain;
 using Epm.Api.Features.Boq;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,7 @@ public static class OverviewEndpoints
         // spec: 04 §3 | rules: BR-00, BR-09, BR-10
         // tables: Projects · Contracts · ContractAmendments · Workspaces
         //       · Beneficiaries · Alerts
-        app.MapGet("/api/projects/{projectId}/overview", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/overview", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == projectId);
@@ -50,6 +51,7 @@ public static class OverviewEndpoints
             // 404 rather than an empty shell: a project id that does not exist
             // is a wrong URL, not an empty state (04 §9 is about empty DATA).
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var ws = await db.Workspaces.AsNoTracking()
                 .FirstOrDefaultAsync(w => w.Code == p.WorkspaceCode);
