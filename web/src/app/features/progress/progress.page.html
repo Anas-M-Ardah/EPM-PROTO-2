@@ -1,0 +1,413 @@
+<!--
+  SCR-W6 Progress — v1.1 module skeleton.
+  Ported from the v1.1 progress module: ../epm@design/system-revamp
+  app/project-modules.jsx — DModProgress :1391.
+
+  Z6 carries the title and the three views. Z7 scrolls.
+
+  THE READING ORDER, and it is the argument the screen makes:
+    headline    physical vs planned vs financial, and the gap between them
+    diagnostics SPI · CPI · EAC · VAC — 13px, muted, NEVER coloured (05 §7.9)
+    activities  where progress is ENTERED, each row naming the BOQ lines it moves
+    boq         where it LANDS — BR-04's reflection, with the arithmetic shown
+
+  Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_progress') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="8" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_progress') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else if (contracts().length === 0) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_progress') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
+        <b>{{ lang.t('ovw_no_contracts_t') }}</b>
+        <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+      </div>
+    </div></div>
+
+  } @else {
+    @if (data(); as d) {
+    <!-- ══ Z6 ══════════════════════════════════════════════════════════════ -->
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_progress') }}
+        <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
+      </span>
+
+      <div class="grp">
+        <button type="button" class="d-fchip" [class.on]="view() === 'summary'"
+                (click)="view.set('summary')">{{ lang.t('prg_tab_summary') }}</button>
+        <button type="button" class="d-fchip" [class.on]="view() === 'activities'"
+                (click)="view.set('activities')">
+          {{ lang.t('prg_tab_activities') }}
+          <span class="n"><bdi>{{ d.activities.length }}</bdi></span>
+        </button>
+        <button type="button" class="d-fchip" [class.on]="view() === 'boq'"
+                (click)="view.set('boq')">
+          {{ lang.t('prg_tab_boq') }}
+          <span class="n"><bdi>{{ d.boqLines.length }}</bdi></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <epm-summary-strip [stats]="summaryStats()" />
+
+        @if (view() === 'summary') {
+          <!-- ══ THE RECONCILIATION ═══════════════════════════════════════
+               Planned − physical = the gap, with the middle term visible.
+               The same shape SCR-W3 uses for contract value, and for the same
+               reason: a total whose parts are hidden cannot be checked. -->
+          <section class="d-recon">
+            <div class="tm">
+              <span class="k">{{ lang.t('prg_planned') }}</span>
+              <b class="num"><bdi>{{ fmt.pct(d.headline.planned, 1) }}</bdi></b>
+              <span class="n">{{ lang.t('prg_planned_note') }}</span>
+            </div>
+            <span class="op" aria-hidden="true">−</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('prg_physical') }}</span>
+              <b class="num"><bdi>{{ fmt.pct(d.headline.physical, 1) }}</bdi></b>
+              <span class="n">{{ lang.t('prg_physical_note') }}</span>
+            </div>
+            <span class="op" aria-hidden="true">=</span>
+            <!-- NOT `bad`/`good`: a gap is a magnitude, and the neutral branch
+                 is --on-surface (CLAUDE.md §6). The sign carries it. -->
+            <div class="tm strong">
+              <span class="k">{{ lang.t('prg_gap') }}</span>
+              <b class="num"><bdi>{{ fmt.delta(gap()) }}</bdi> {{ lang.t('prg_pts') }}</b>
+              <span class="n">{{ lang.t('prg_gap_note') }}</span>
+            </div>
+          </section>
+
+          <!-- ══ THE DIAGNOSTICS (02 §11 · 05 §7.9) ═════════════════════════
+               13px, --on-surface-variant, and NEVER coloured by threshold.
+               Each index carries a WORD instead, which is what lets the colour
+               channel stay out of it. -->
+          <div class="d-sec">
+            <div class="d-sec-h">
+              <span class="n">{{ lang.t('prg_evm') }}</span>
+              <span class="d-cell-sub">{{ lang.t('prg_evm_sub') }}</span>
+            </div>
+            <div class="d-sec-b">
+              <div class="d-form-grid">
+                <div class="d-form-i">
+                  <span class="k">SPI</span>
+                  <span class="v num">
+                    <bdi>{{ fmt.index(d.evm.spi) }}</bdi>
+                    <span class="d-cell-sub">{{ spiNote() }}</span>
+                  </span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">CPI</span>
+                  <span class="v num">
+                    <bdi>{{ fmt.index(d.evm.cpi) }}</bdi>
+                    <span class="d-cell-sub">{{ cpiNote() }}</span>
+                  </span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">EAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ d.evm.eac === null ? '—' : fmt.money(d.evm.eac) }}</bdi></span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">VAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ d.evm.vac === null ? '—' : fmt.money(d.evm.vac) }}</bdi></span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">PV <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ fmt.money(d.evm.pv) }}</bdi></span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">EV <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ fmt.money(d.evm.ev) }}</bdi></span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">AC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ fmt.money(d.evm.ac) }}</bdi></span>
+                </div>
+                <div class="d-form-i">
+                  <span class="k">{{ lang.t('prg_budget') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
+                  <span class="v num"><bdi>{{ fmt.money(d.evm.budget) }}</bdi></span>
+                </div>
+              </div>
+
+              <div class="d-msgbar info">
+                <epm-icon name="functions" [size]="16" />
+                <div><span>{{ lang.t('prg_evm_note') }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ PER CONTRACT ══════════════════════════════════════════════ -->
+          <div class="d-sec">
+            <div class="d-sec-h">
+              <span class="n">{{ lang.t('prg_by_contract') }}</span>
+              <span class="d-cell-sub">{{ lang.t('prg_by_contract_sub') }}</span>
+            </div>
+            <div class="d-sec-b">
+              <div class="d-tablewrap"><table class="d-table">
+                <thead>
+                  <tr>
+                    <th>{{ lang.t('boq_contract') }}</th>
+                    <th>{{ lang.t('scd_col_status') }}</th>
+                    <th class="r">{{ lang.t('con_effective_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                    <th class="r">{{ lang.t('prg_executed') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                    <th class="r">{{ lang.t('prg_physical') }}</th>
+                    <th class="r">{{ lang.t('prg_planned') }}</th>
+                    <th class="r">{{ lang.t('prg_activities') }}</th>
+                    <th class="r">{{ lang.t('prg_boq_lines') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of d.contracts; track c.id) {
+                    <tr>
+                      <td>
+                        <span class="mono d-cell-sub"><bdi>{{ c.id }}</bdi></span>
+                        <div>{{ name(c) }}</div>
+                      </td>
+                      <td><epm-status-pill [code]="c.status" kind="contract-status" /></td>
+                      <td class="r mono"><bdi>{{ fmt.money(c.effectiveValue) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.money(c.executed) }}</bdi></td>
+                      <td class="r">
+                        <div class="d-progress">
+                          <span class="t"><span [style.width.%]="c.physical"></span></span>
+                          <span class="pc"><bdi>{{ fmt.pct(c.physical, 0) }}</bdi></span>
+                        </div>
+                      </td>
+                      <td class="r mono d-cell-sub"><bdi>{{ fmt.pct(c.planned, 0) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ c.activities }}</bdi></td>
+                      <td class="r mono"><bdi>{{ c.boqLines }}</bdi></td>
+                    </tr>
+                  }
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+        } @else if (view() === 'activities') {
+          <!-- ══ THE EDITOR ════════════════════════════════════════════════
+               `07 §M3`: change an activity's progress and watch the BOQ move.
+               Each row names the lines it feeds BEFORE it is touched, so the
+               consequence is known in advance rather than discovered. -->
+          <div class="d-msgbar info">
+            <epm-icon name="functions" [size]="16" />
+            <div>
+              <b>{{ lang.t('prg_edit_t') }}</b>
+              <span>{{ lang.t('prg_edit_b') }}</span>
+            </div>
+          </div>
+
+          <div class="d-tablewrap"><table class="d-table" style="min-width: 1080px">
+            <thead>
+              <tr>
+                <th>{{ lang.t('scd_col_id') }}</th>
+                <th>{{ lang.t('scd_wbs_activity') }}</th>
+                @if (manyContracts()) { <th>{{ lang.t('boq_contract') }}</th> }
+                <th>{{ lang.t('scd_col_status') }}</th>
+                <th class="r">{{ lang.t('scd_col_abs') }}</th>
+                <th class="r">{{ lang.t('prg_planned') }}</th>
+                <th class="r">{{ lang.t('prg_reported') }}</th>
+                <th>{{ lang.t('prg_feeds') }}</th>
+                <th class="r"><span class="epm-sr-only">{{ lang.t('prg_actions') }}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of activities(); track a.contractId + a.activityId) {
+                <tr [class.on]="editing() === a.activityId">
+                  <td class="mono">
+                    <bdi>{{ a.activityId }}</bdi>
+                    @if (a.isCritical) {
+                      <span class="d-crit-dot" style="display: inline-block; margin-inline-start: 6px"
+                            [title]="lang.t('scd_critical')"></span>
+                    }
+                  </td>
+                  <td>{{ name(a) }}</td>
+                  @if (manyContracts()) {
+                    <td class="mono d-cell-sub"><bdi>{{ a.contractId }}</bdi></td>
+                  }
+                  <td><epm-status-pill [code]="a.status" kind="activity-status" /></td>
+                  <td class="r mono d-cell-sub">
+                    <bdi>{{ a.isMilestone ? '—' : fmt.pct(a.absoluteWeight, 1) }}</bdi>
+                  </td>
+                  <td class="r mono d-cell-sub"><bdi>{{ fmt.pct(a.plannedPct, 0) }}</bdi></td>
+
+                  <!-- reported -->
+                  <td class="r">
+                    @if (editing() === a.activityId) {
+                      <input class="prg-input num" type="number" min="0" max="100" step="1"
+                             [attr.aria-label]="lang.t('prg_reported')"
+                             [attr.aria-invalid]="!!draftError()"
+                             [value]="draft()"
+                             (input)="draft.set($any($event.target).value)"
+                             (keydown.enter)="save(a)"
+                             (keydown.escape)="cancelEdit()" />
+                    } @else {
+                      <div class="d-progress">
+                        <span class="t"><span [style.width.%]="a.progressPct"></span></span>
+                        <span class="pc"><bdi>{{ fmt.pct(a.progressPct, 0) }}</bdi></span>
+                      </div>
+                    }
+                  </td>
+
+                  <!-- WHAT IT MOVES. An activity linked to nothing earns
+                       nothing, and the screen says so rather than leaving the
+                       cell blank. -->
+                  <td>
+                    @if (a.boqCodes.length) {
+                      <span class="mono d-cell-sub"><bdi>{{ feeds(a) }}</bdi></span>
+                    } @else {
+                      <span class="d-cell-sub">{{ lang.t('prg_feeds_none') }}</span>
+                    }
+                  </td>
+
+                  <td class="r">
+                    @if (editing() === a.activityId) {
+                      <button type="button" class="d-btn sm primary"
+                              [disabled]="!!draftError() || saving() === a.activityId"
+                              (click)="save(a)">{{ lang.t('boq_save') }}</button>
+                      <button type="button" class="d-btn sm ghost"
+                              (click)="cancelEdit()">{{ lang.t('boq_cancel') }}</button>
+                    } @else {
+                      <button type="button" class="d-btn sm" (click)="startEdit(a)">
+                        {{ lang.t('boq_edit') }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+
+                <!-- The reason a save is refused, in the row that would be
+                     saved (04 §9 — prevent, then explain). -->
+                @if (editing() === a.activityId && draftError()) {
+                  <tr class="d-vow-sub">
+                    <td [attr.colspan]="manyContracts() ? 9 : 8">
+                      <span class="d-inline-err">
+                        <epm-icon name="error" [size]="14" />{{ draftError() }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table></div>
+
+        } @else {
+          <!-- ══ WHERE IT LANDS — BR-04 (02 §4) ════════════════════════════ -->
+          @if (unlinked() > 0) {
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ unlinkedTitle() }}</b>
+                <span>{{ lang.t('prg_unlinked_b') }}</span>
+              </div>
+            </div>
+          }
+
+          <div class="d-tablewrap"><table class="d-table" style="min-width: 1120px">
+            <thead>
+              <tr>
+                <th>{{ lang.t('boq_col_code') }}</th>
+                <th>{{ lang.t('boq_col_desc') }}</th>
+                @if (manyContracts()) { <th>{{ lang.t('boq_contract') }}</th> }
+                <th class="r">{{ lang.t('boq_col_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                <th class="r">{{ lang.t('prg_boq_progress') }}</th>
+                <th class="r">{{ lang.t('prg_achieved_qty') }}</th>
+                <th class="r">{{ lang.t('prg_achieved_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                <th class="r">{{ lang.t('prg_remaining_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (b of boqLines(); track b.contractId + b.code) {
+                <tr (click)="toggleLine(b.code)" style="cursor: pointer"
+                    [class.on]="openLine() === b.code">
+                  <td class="mono"><bdi>{{ b.code }}</bdi></td>
+                  <td>{{ description(b) }}</td>
+                  @if (manyContracts()) {
+                    <td class="mono d-cell-sub"><bdi>{{ b.contractId }}</bdi></td>
+                  }
+                  <td class="r mono"><bdi>{{ fmt.money(b.amount) }}</bdi></td>
+                  <td class="r">
+                    <div class="d-progress">
+                      <span class="t"><span [style.width.%]="b.progress"></span></span>
+                      <span class="pc"><bdi>{{ fmt.pct(b.progress, 0) }}</bdi></span>
+                    </div>
+                  </td>
+                  <td class="r mono">
+                    <bdi>{{ fmt.qty(b.achievedQty) }}</bdi>
+                    <span class="d-cell-sub"> {{ b.unit }}</span>
+                  </td>
+                  <td class="r mono d-cell-strong"><bdi>{{ fmt.money(b.achievedAmount) }}</bdi></td>
+                  <td class="r mono d-cell-sub"><bdi>{{ fmt.money(b.remainingValue) }}</bdi></td>
+                </tr>
+
+                <!-- THE ARITHMETIC, PRINTED. `02 §4` is Σ(share × progress),
+                     and this is the one table whose figure a person is about
+                     to change by hand — so it shows its terms rather than
+                     asserting the answer. -->
+                @if (openLine() === b.code) {
+                  <tr class="d-vow-sub">
+                    <td [attr.colspan]="manyContracts() ? 8 : 7">
+                      @if (b.contributors.length) {
+                        <table class="d-line-table">
+                          <thead>
+                            <tr>
+                              <th>{{ lang.t('scd_col_id') }}</th>
+                              <th>{{ lang.t('scd_wbs_activity') }}</th>
+                              <th class="r">{{ lang.t('boq_asn_share') }}</th>
+                              <th class="r">{{ lang.t('prg_reported') }}</th>
+                              <th class="r">{{ lang.t('prg_contribution') }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (c of b.contributors; track c.activityId) {
+                              <tr>
+                                <td class="mono"><bdi>{{ c.activityId }}</bdi></td>
+                                <td>{{ name(c) }}</td>
+                                <td class="r mono"><bdi>{{ fmt.pct(c.sharePct, 2) }}</bdi></td>
+                                <td class="r mono"><bdi>{{ fmt.pct(c.progressPct, 0) }}</bdi></td>
+                                <td class="r mono">
+                                  <bdi>{{ fmt.pct(c.sharePct * c.progressPct / 100, 2) }}</bdi>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td [attr.colspan]="4">{{ lang.t('prg_boq_progress') }}</td>
+                              <td class="r mono d-cell-strong"><bdi>{{ fmt.pct(b.progress, 2) }}</bdi></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      } @else {
+                        <span class="d-cell-sub">{{ lang.t('prg_no_contributors') }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table></div>
+        }
+      </div>
+    </div>
+    }
+  }
+</div>

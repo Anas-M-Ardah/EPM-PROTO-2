@@ -602,13 +602,63 @@ Where the value is. **Contract before BOQ; BOQ before everything else.**
 **Exit:** `CNT-0279` A5 absolute weight 5.80%, relative 16.20%; node 2 progress 67.07%;
 A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable".
 
-### 4.4 Progress + Financials — SCR-W6 / SCR-W7
-- [ ] Progress: move an activity's progress → BOQ progress, achieved qty and achieved amount update live (BR-04)
-- [ ] Financials: budget / disbursed / advances / retention / due, payments register
-- [ ] EVM (CPI/SPI/EAC/VAC) as **diagnostics** — 13px, `--on-surface-variant`, never colour-by-threshold (`05 §7.9`)
-- [ ] `EP-PRG-01` / `EP-FIN-01` · Angular trios · UML · TRACE rows
+### 4.4 Progress + Financials — SCR-W6 · `DModProgress` `project-modules.jsx:1391` / SCR-W7 · `DModFinancialNew` `:907` (v1.1) ✅ COMPLETE
+- [x] Progress: move an activity's progress → BOQ progress, achieved qty and achieved amount update live (BR-04).
+      The editor names the BOQ lines each row feeds **before** it is touched, and the
+      reflection table prints `share × progress` per contributor rather than asserting
+      the answer
+- [x] **Not gated on a contract**, unlike SCR-W4 and SCR-W5: `02 §4` rolls physical %
+      up across every contract, so a gate would hide the project's own headline (P-55)
+- [x] Refused, not clamped: outside 0–100, or a fractional milestone. Blocked in the
+      row before the request and checked again in the endpoint (`04 §9`)
+- [x] Financials: approved + applied changes = revised − disbursed = balance, per
+      contract, with the payments register beneath it
+- [x] **Four figures per certificate** — gross − retention − advance recovery = net.
+      Retention held and advance outstanding count **paid** certificates only, for the
+      same reason disbursed does (P-26)
+- [x] EVM (CPI/SPI/EAC/VAC) as **diagnostics** — 13px, `--on-surface-variant`, never
+      colour-by-threshold (`05 §7.9`); each index carries a WORD instead of a colour,
+      and renders as a RATIO, never a percentage
+- [x] `Domain/PlannedProgress.cs` — the input BR-11 needs and `02` never defines (P-53)
+- [x] **SCR-W1's four "unavailable" tiles became real** — physical, financial, SPI, CPI.
+      Each still falls back to unavailable when its own input is genuinely missing
+- [x] `EP-PRG-01` · `EP-PRG-02` · `EP-FIN-01` · Angular trios · `docs/uml/progress-financials.md` · TRACE rows
 
-**Exit:** drag A5 to 100% → `BQ-003` progress reads 52.6%, achieved amount ≈ 14,059,980.
+> **The reference's Progress module is a read-only dashboard** — its own header
+> comment says so. `07 §M3` and this phase ask for the opposite in as many words.
+> Both are honoured: the dashboard is the reference's, and the editor sits beneath
+> it with the BOQ lines it moves visible in the same view. Recorded as **P-55**.
+
+> **Two of the reference's six financial tabs have no source here** — the annual
+> allocation and the advance audit SLA. Neither is invented from a payment date;
+> both say so with their reason (**P-56**, the P-09 treatment).
+
+> **Two defects were found and fixed in shared code**, both surfaced by this being
+> the first screen whose figures change after load: the summary strip's count-up
+> wrote `element.textContent`, which destroys the text node Angular's binding
+> holds, so every tile froze at its first value; and `fmt` had no way to render an
+> index, so SPI 0.49 printed as 49.00.
+
+> **Verified live** at 1440 and 1024, AR and EN, light and dark: reporting **A5 at
+> 100%** moves `BQ-003` to **52.73% / 14,094,000 achieved**, the contract roll-up to
+> 55%, the project's physical % from **49.28 → 50.94**, and the gap tile from −51 to
+> −49 — all in one response. 140 is refused in the row with the reason and the save
+> disabled. `PRJ-0279` reconciles **340,000,000 + 10,000,000 = 350,000,000 −
+> 86,700,000 = 263,300,000**, holds **3,100,000** of retention and **27,800,000** of
+> advance, and `CNT-0279`'s third certificate reads certified-and-unpaid with the
+> note that says why it is in neither balance. `PRJ-0148` shows a financial % but
+> "unavailable" for physical and both indices; `PRJ-0159` shows unavailable for all
+> four. `dotnet test` 149/149, `ng build` clean, no console errors.
+
+**Exit:** report A5 at 100% → `BQ-003` progress reads **52.73%**, achieved amount
+**14,094,000**.
+
+> The roadmap's original figures — 52.6% and 14,059,980 — are `02 §4`'s, and come
+> from the rounded share the spec prints rather than the one its own rule produces.
+> This is **P-15 again**, already resolved for `02 §3`: `Domain/Allocation` divides
+> before it multiplies, so A5's share is 52.7272…% and the achieved amount lands on
+> exactly the 14,094,000 the BOQ tab already assigns to A5. The two agree because
+> they are the same derivation (P-54).
 
 ### 4.5 Amendment disclosure — shared by BOQ and Schedule
 - [ ] `DAmdMark` badge — count + three states: all applied · all pending · **mixed** (green with amber dot)

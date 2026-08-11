@@ -42,6 +42,19 @@ export function days(v: number | null | undefined): string {
   return String(v);
 }
 
+/**
+ * A performance INDEX — SPI, CPI (BR-11). A ratio around 1, never a percentage:
+ * `02 §11` prints 0.945 and 0.867, and rendering 0.87 as "87%" would invite it
+ * to be read as a completion figure, which is exactly what an index is not.
+ *
+ * Null is an em dash, never 0 — a 0 here would assert a total failure the data
+ * does not support (P-09).
+ */
+export function index(v: number | null | undefined, dp = 2): string {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(dp);
+}
+
 /** Signed delta, e.g. "+717" / "−240". Uses U+2212 so it aligns with digits. */
 export function delta(v: number | null | undefined): string {
   if (v === null || v === undefined || v === 0) return '—';

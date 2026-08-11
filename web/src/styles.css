@@ -364,3 +364,29 @@ epm-app-footer { display: contents; }
 .d-gantt-namegrip:hover,
 .d-gantt-namegrip:focus-visible { background: color-mix(in srgb, var(--primary) 35%, transparent); }
 .d-gantt .d-gantt-cellname { position: sticky; }
+
+/* ══ SCR-W6 Progress (Phase 4.4) ═════════════════════════════════════════
+   Two classes the copied `desktop.css` has no equivalent of. `.d-cellinput`
+   exists but only inside `.d-editgrid`, which is the BOQ register's own grid
+   and carries a column contract this table does not have. Tokens only, per
+   CLAUDE.md §3.7. */
+
+/* The reported-percentage box. Narrow on purpose: it takes 0–100 and nothing
+   else, and a field sized for more invites more. */
+.prg-input {
+  width: 68px; padding: 4px var(--space-8);
+  border: 1px solid var(--stroke-default); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--on-surface);
+  font-family: var(--font-mono); font-size: var(--fs-200);
+  font-variant-numeric: tabular-nums; text-align: end;
+}
+.prg-input:focus-visible { outline: none; border-color: var(--primary); }
+/* Not colour ALONE — the message below the row carries the reason in words
+   (05 §7). This only draws the eye to which field it is about. */
+.prg-input[aria-invalid="true"] { border-color: var(--error); }
+
+/* The refusal, in the row that would have been saved (04 §9). */
+.d-inline-err {
+  display: inline-flex; align-items: center; gap: var(--space-6);
+  font-size: var(--fs-200); color: var(--error);
+}
