@@ -672,13 +672,50 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 
 The most heavily specified part of the system. Read `03-CHANGE-ORDER-PROCESS.md` end to end first.
 
-### 5.1 Register — SCR-W8 · `DModVO` `project-modules.jsx:1142`
-- [ ] Register `ChangeOrder` + `ChangeOrderLine` + `ChangeOrderActivity` DbSets
-- [ ] Four groups: بحاجة إلى إجراء · قيد الاعتماد · المعتمدة والمغلقة · المرفوضة
-- [ ] **بانتظار إجرائي** filter driven by the viewer relation (BR-14)
-- [ ] Five compact indicators only — no large cards, no charts (`03 §10`)
-- [ ] Status column carries the lifecycle pill **plus** exception chips (متأخر · يحتاج إجراء · فشل التطبيق) **plus** the relation chip
-- [ ] `EP-CHG-01` · Angular trio · UML · TRACE row
+### 5.1 Register — SCR-W8 · `DModVO` `vo-record.jsx:454` (v1.1) ✅ COMPLETE
+- [x] Register `ChangeOrder` + `ChangeOrderLine` + `ChangeOrderActivity` DbSets —
+      **and `ChangeOrderStage` + `ChangeOrderAttachment`**, which 5.4 was to own:
+      `03 §10` puts "current stage · current owner" and the attachment count in the
+      register's own row spec, and BR-14 resolves the relation off the stage chain.
+      The same call 4.2 made about `Activity`
+- [x] Lifecycle groups, **and they are one axis only** — `all` · pending · returned ·
+      approved-applying · closed · rejected, with `draft` shown only when non-empty
+- [x] **بانتظار إجرائي** filter driven by the viewer relation (BR-14), resolved
+      SERVER-side from the persona header — switching persona is a RE-READ, never a
+      client-side re-filter of relations computed for somebody else
+- [x] Five compact indicators only — no large cards, no charts (`03 §10`). The
+      average cycle is over CLOSED orders and renders "unavailable + reason" until
+      one closes (P-09)
+- [x] Status column carries the lifecycle pill **plus** exception chips (متأخر ·
+      تجاوزت السقف · فشل التطبيق · بانتظار تثبيت الأسعار) **plus** the relation chip,
+      and the title column repeats none of it
+- [x] `06 §12`'s six orders seeded in six states, every age derived from the DATA
+      DATE (D-06)
+- [x] `EP-CHG-01` · Angular trio · `docs/uml/change-orders.md` · TRACE row
+
+> **The reference component is `vo-record.jsx:454`, not `project-modules.jsx:1142`.**
+> v1.1 moved the module into its own file and says so at `vo-record.jsx:4`: *"Loaded
+> after project-modules.jsx so this DModVO replaces the earlier one."* The line above
+> is corrected; TRACE carries the same correction.
+
+> **Two indicator pairs are kept apart on purpose.** «قيد الاعتماد» counts the
+> `pending` lifecycle and must agree with the GROUP of the same name, while
+> needs-action and overdue span pending **and** returned — a returned order is back
+> with its originator, and that is an action. Separately, the whole-order overdue
+> ceiling (14 days since the incoming letter) is not the per-stage SLA (BR-12): an
+> order can breach either without the other, which is what VO-02 and VO-06 exist to
+> demonstrate.
+
+> **Verified live** at 1440, AR and EN: six orders in six states; RE department sees
+> **1 awaiting** (VO-03, returned to it) and the committee **3** (VO-06 at its stage,
+> VO-05 and VO-04 as execution owner) — the same six rows, different relations, from
+> one persona switch. VO-02 carries متأخر + تجاوزت السقف + بانتظار تثبيت الأسعار;
+> VO-04 carries فشل التطبيق; VO-06 carries none, which is the control. Indicators
+> read net approved **13,000,000**, pending 2, SLA 2, overdue 2, avg cycle **84.0
+> days**. `dotnet test` 149/149, `ng build` clean, no console errors.
+
+**Exit:** the same order shows a different relation to different personas, and the
+«بانتظار إجرائي» count changes with it.
 
 ### 5.2 Record page — `DModVO` `vo-record.jsx:436` + `DVORecordPanel`
 - [ ] Sticky header per `03 §9` — no project name, no repeated contract detail

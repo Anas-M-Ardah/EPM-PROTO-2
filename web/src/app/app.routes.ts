@@ -148,6 +148,16 @@ export const routes: Routes = [
               import('./features/financials/financials.page').then(m => m.FinancialsPage),
           },
 
+          // SCR-W8 · features/change-orders · Features/ChangeOrders · [EP-CHG-01]
+          // Project-scoped: an order belongs to one contract (`01 §1`) but the
+          // register spans every contract the project has, and each row names
+          // its own.
+          {
+            path: 'changeorders',
+            loadComponent: () =>
+              import('./features/change-orders/change-orders.page').then(m => m.ChangeOrdersPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

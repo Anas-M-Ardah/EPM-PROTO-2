@@ -84,6 +84,19 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<BoqActivityLink> BoqActivityLinks => Set<BoqActivityLink>();
     public DbSet<Activity> Activities => Set<Activity>();
 
+    // ── SCR-W8 the change-order register (Phase 5.1) ─────────────────────
+    // ChangeOrderStage and ChangeOrderAttachment are registered HERE, not in
+    // 5.4, for the reason 4.2 registered Activity ahead of 4.3: `03 §10` puts
+    // "current stage · current owner" and the attachment count in the
+    // register's own row spec, and BR-14 resolves the viewer relation off the
+    // stage chain. The register cannot be built without either. 5.4 adds the
+    // columns and the two tables this phase does not need.
+    public DbSet<ChangeOrder> ChangeOrders => Set<ChangeOrder>();
+    public DbSet<ChangeOrderLine> ChangeOrderLines => Set<ChangeOrderLine>();
+    public DbSet<ChangeOrderActivity> ChangeOrderActivities => Set<ChangeOrderActivity>();
+    public DbSet<ChangeOrderStage> ChangeOrderStages => Set<ChangeOrderStage>();
+    public DbSet<ChangeOrderAttachment> ChangeOrderAttachments => Set<ChangeOrderAttachment>();
+
     // ── next pages append their DbSets here ──────────────────────────────
 
     protected override void OnModelCreating(ModelBuilder b)

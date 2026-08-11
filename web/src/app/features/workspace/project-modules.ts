@@ -68,7 +68,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     modules: [
       { id: 'schedule',     icon: 'calendar_month', key: 'mod_schedule',     built: true,  phase: '4.3' },
       { id: 'progress',     icon: 'trending_up',    key: 'mod_progress',     built: true,  phase: '4.4' },
-      { id: 'changeorders', icon: 'sync_alt',       key: 'mod_changeorders', built: false, phase: '5' },
+      { id: 'changeorders', icon: 'sync_alt',       key: 'mod_changeorders', built: true,  phase: '5.1' },
       { id: 'risk',         icon: 'warning',        key: 'mod_risk',         built: false, phase: '6' },
     ],
   },

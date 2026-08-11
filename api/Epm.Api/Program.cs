@@ -1,6 +1,7 @@
 using Epm.Api.Data;
 using Epm.Api.Features.Alerts;
 using Epm.Api.Features.Boq;
+using Epm.Api.Features.ChangeOrders;
 using Epm.Api.Features.ContractTab;
 using Epm.Api.Features.Contracts;
 using Epm.Api.Features.Dev;
@@ -71,6 +72,7 @@ app.MapBoqEndpoints();
 app.MapScheduleEndpoints();
 app.MapProgressEndpoints();
 app.MapFinancialsEndpoints();
+app.MapChangeOrdersEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

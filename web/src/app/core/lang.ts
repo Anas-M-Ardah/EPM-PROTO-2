@@ -683,6 +683,66 @@ const STR = {
                            en: 'beside the contract value, not inside it' },
   fin_expense_items_note: { ar: 'قيمة العقد هي مبلغ الإحالة نفسه (01 §2.3)، فالاحتياط والإشراف مخصصان إضافيان لا جزءان منها — ولذلك لا تُجمَع هذه البنود مع صف العقد. الأمر التغييري المنفَّذ يحرّك الإحالة وحدها.',
                             en: 'The contract value IS the award amount (01 §2.3), so the reserve and the supervision allowance sit beside it rather than inside it — which is why these do not add up to the contract row. An applied change order moves the award alone.' },
+  // ── SCR-W8 Change orders — the register (Phase 5.1) ────────────────────
+  chg_grp_all:     { ar: 'الكل',                            en: 'All' },
+  chg_grp_draft:   { ar: 'مسودة',                           en: 'Draft' },
+  chg_grp_pending: { ar: 'قيد الاعتماد',                    en: 'In approval' },
+  chg_grp_returned: { ar: 'معاد للتعديل',                   en: 'Returned' },
+  chg_grp_applying: { ar: 'معتمد — بانتظار التطبيق',        en: 'Approved — applying' },
+  chg_grp_closed:  { ar: 'مطبَّق ومغلق',                     en: 'Applied & closed' },
+  chg_grp_rejected: { ar: 'مرفوض',                          en: 'Rejected' },
+
+  // BR-14's five relations (03 §7).
+  chg_rel_awaiting: { ar: 'بانتظار إجرائك',                 en: 'Awaiting you' },
+  chg_rel_recorder: { ar: 'تسجيل نيابة عن جهة خارجية',      en: 'Record for an external party' },
+  chg_rel_acted:   { ar: 'تم إجراؤك',                       en: 'You have acted' },
+  chg_rel_upcoming: { ar: 'سيصلك لاحقاً',                   en: 'Reaches you later' },
+  chg_rel_none:    { ar: 'للاطلاع',                         en: 'For information' },
+
+  chg_kpi_net:     { ar: 'صافي المعتمد',                    en: 'Net approved' },
+  chg_kpi_net_foot: { ar: 'المعتمد وحده — لا المقترح',      en: 'approved only, never proposed' },
+  chg_kpi_pending: { ar: 'قيد الاعتماد',                    en: 'In approval' },
+  chg_kpi_needs:   { ar: 'تجاوزت السقف الزمني',             en: 'SLA exceeded' },
+  chg_kpi_overdue: { ar: 'متأخرة',                          en: 'Overdue' },
+  chg_kpi_cycle:   { ar: 'متوسط دورة الاعتماد',             en: 'Avg approval cycle' },
+
+  chg_search:      { ar: 'بحث بالرقم أو السبب أو رقم الوارد…',
+                     en: 'Search by number, reason or letter…' },
+  chg_f_mine:      { ar: 'بانتظار إجرائي',                  en: 'Awaiting me' },
+  chg_f_sla:       { ar: 'تجاوزت السقف',                    en: 'SLA exceeded' },
+  chg_f_overdue:   { ar: 'متأخرة',                          en: 'Overdue' },
+
+  chg_awaiting_t:  { ar: '{n} من الأوامر بانتظار إجرائك',    en: '{n} order(s) await your action' },
+  chg_awaiting_b:  { ar: 'بصفة',                            en: 'as' },
+  chg_awaiting_none_t: { ar: 'لا أوامر بانتظار إجرائك',      en: 'No orders await your action' },
+
+  chg_col_no:      { ar: 'الرمز',                           en: 'Code' },
+  chg_col_order:   { ar: 'الأمر التغييري',                  en: 'Change order' },
+  chg_col_value:   { ar: 'القيمة',                          en: 'Value' },
+  chg_col_days:    { ar: 'المدة',                           en: 'Time' },
+  chg_col_status:  { ar: 'الحالة والمرحلة',                 en: 'Status & stage' },
+  chg_col_owner:   { ar: 'الجهة المسؤولة',                  en: 'Owner' },
+  chg_col_files:   { ar: 'مرفقات',                          en: 'Files' },
+  chg_total:       { ar: 'الإجمالي',                        en: 'Total' },
+  chg_of:          { ar: 'من',                              en: 'of' },
+
+  chg_approved_fig: { ar: 'معتمد',                          en: 'approved' },
+  chg_proposed_fig: { ar: 'مقترح',                          en: 'proposed' },
+  chg_approved_note: { ar: 'صافي المعتمد يجمع الأوامر المعتمدة وحدها. الاعتماد لا يغيّر شيئاً في قيمة العقد — التطبيق هو ما ينشئ الملحق ويحرّك الأرقام (02 §9).',
+                       en: 'Net approved sums approved orders only. Approving changes nothing in the contract value — applying is what creates the amendment and moves the figures (02 §9).' },
+
+  chg_empty_t:     { ar: 'لا أوامر تغييرية على هذا المشروع',  en: 'No change orders on this project' },
+  chg_empty_b:     { ar: 'يُنشأ أمر الغيار بعد ورود طلب الجهة المنفِّذة ورأي الجهة الفنية.',
+                     en: 'A change order is raised once the executing party requests it and the technical party has given its opinion.' },
+  chg_nomatch_t:   { ar: 'لا أوامر مطابقة للفلاتر',          en: 'No orders match the filters' },
+  chg_nomatch_b:   { ar: 'غيّر الحالة أو الصفة، أو امسح الفلاتر لعرض كل الأوامر.',
+                     en: 'Change the status or the relation, or clear the filters to see every order.' },
+
+  chg_record_soon_t: { ar: 'صفحة الأمر التغييري تُبنى في المرحلة 5.2',
+                       en: 'The order record is built in Phase 5.2' },
+  chg_record_soon_b: { ar: 'هذا السجل للعرض والتصفية فقط في هذه المرحلة؛ القرارات والمسار والمرفقات تأتي مع صفحة الأمر ومحرّك المراحل.',
+                       en: 'This register lists and filters only for now; decisions, the workflow and the attachments arrive with the record page and the stage machine.' },
+
   fin_alloc_t:     { ar: 'التخصيص السنوي غير متوفر',         en: 'The annual allocation is unavailable' },
   fin_sla_t:       { ar: 'مهل التدقيق غير متوفرة',           en: 'The audit SLA is unavailable' },
 } as const;

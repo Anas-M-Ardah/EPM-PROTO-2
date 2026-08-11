@@ -23,7 +23,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | SCR-W5 Schedule | 04 §5 | `DGantt` schedule-module.jsx:80 · `DSchedTable` :257 · `DModSchedule` :437 *(v1.1)* | `features/schedule/schedule.page.ts` | `EP-SCD-01` · `EP-SCD-02` | ✅ built — the WBS is a path string and the tree is built in the endpoint; criticality is a ring, never a colour |
 | SCR-W6 Progress | 04 §3 · 02 §4 | `DModProgress` project-modules.jsx:1391 *(v1.1)* | `features/progress/progress.page.ts` | `EP-PRG-01` · `EP-PRG-02` | ✅ built — the only screen that MOVES progress; the reference calls its own a read-only dashboard (P-55) |
 | SCR-W7 Financials | 04 §3 | `DModFinancialNew` project-modules.jsx:907 *(v1.1)* | `features/financials/financials.page.ts` | `EP-FIN-01` | ✅ built — four figures per certificate, and paid ≠ certified everywhere (P-26) |
-| SCR-W8 Change Orders | 03 §9–10 | `DModVO` project-modules.jsx:1142 | — | `EP-CHG-01` | ⬜ |
+| SCR-W8 Change Orders | 03 §9–10 | `DModVO` **vo-record.jsx:454** *(v1.1 — ROADMAP's project-modules.jsx:1142 is pre-v1.1)* | `features/change-orders/change-orders.page.ts` | `EP-CHG-01` | ✅ register built — the first screen whose CONTENT depends on who is looking (BR-14); record + wizard + workflow are 5.2–5.4 |
 | SCR-W8 CO wizard | 03 §8 | `DVOCreateWizard` vo-wizard.jsx:6 | — | `EP-WIZ-01` | ⬜ |
 | SCR-W8 CO workflow | 03 §2–6 | `DVOStageTimeline` project-modules.jsx:1120 | — | `EP-WFL-01` | ⬜ |
 | SCR-W9 Risk | 04 §3 | `DModRisk` project-modules.jsx:1693 | — | `EP-RSK-01` | ⬜ |
@@ -67,6 +67,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | `EP-SCD-02` | `GET /api/projects/{id}/schedule/{contractId}` | `Features/Schedule/ScheduleEndpoints.cs` | `schedule.api.ts` `get()` | BR-02 · BR-04 | Projects · Contracts · Activities |
 | `EP-PRG-01` | `GET /api/projects/{id}/progress` | `Features/Progress/ProgressEndpoints.cs` | `progress.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Activities · BoqItems · BoqRateBands · BoqActivityLinks · Payments |
 | `EP-PRG-02` | `PUT …/progress/activities/{activityId}` | `Features/Progress/ProgressEndpoints.cs` | `progress.api.ts` `saveProgress()` | BR-04 · P-53 | Activities *(**written**)* |
+| `EP-CHG-01` | `GET /api/projects/{id}/change-orders` | `Features/ChangeOrders/ChangeOrdersEndpoints.cs` | `change-orders.api.ts` `list()` | BR-12 · BR-14 | Projects · Contracts · ChangeOrders · ChangeOrderStages · ChangeOrderAttachments |
 | `EP-FIN-01` | `GET /api/projects/{id}/financials` | `Features/Financials/FinancialsEndpoints.cs` | `financials.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Payments · BoqItems · Activities |
 
 ## Business rules
@@ -87,9 +88,9 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
 | BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ **`DelayDays()` exposed** (Phase 2.5) — SCR-E5 shows the same days the penalty is charged on |
 | BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ **on screen** (Phase 4.4) — SCR-W6, SCR-W7 and SCR-W1, all from ONE call so no two can disagree |
-| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ |
+| BR-12 | Lead time + SLA | 02 §12 | `Domain/SlaLeadTime.cs` | `SlaLeadTimeTests` | ✅ **on screen** (Phase 5.1) — the register's overdue chip, SLA chip and average-cycle indicator |
 | BR-13 | Six-stage workflow machine | 03 §2,5,6 | `Domain/WorkflowMachine.cs` | `WorkflowMachineTests` | ✅ |
-| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | `ViewerRelationTests` | ✅ |
+| BR-14 | Viewer relation + action gating | 03 §7 | `Domain/ViewerRelation.cs` | `ViewerRelationTests` | ✅ **on screen** (Phase 5.1) — every row carries its relation and `CanAct`, resolved SERVER-side from the persona |
 | D-07 | Largest-remainder rounding | 02 §1 | `Domain/Rounding.cs` | `RoundingTests` | ✅ |
 | P-53 | **Planned progress** — the input BR-11 needs and `02` never defines | — *(assumption)* | `Domain/PlannedProgress.cs` | `PlannedProgressTests` | ✅ **added** (Phase 4.4) — linear across each activity's own baseline; also owns the remaining-duration formula |
 
@@ -111,4 +112,9 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `BoqRateBands` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-03` · `EP-BOQ-05` — read only; Phase 5.4 writes a band |
 | `BoqDistributions` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-05` — **written** by `EP-BOQ-06` |
 | `BoqActivityLinks` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — **written** by `EP-BOQ-08` |
+| `ChangeOrders` | Phase 5.1 | `EP-CHG-01` |
+| `ChangeOrderLines` | Phase 5.1 | — registered with the parent; read by 5.2 |
+| `ChangeOrderActivities` | Phase 5.1 | — registered with the parent; read by 5.2 |
+| `ChangeOrderStages` | Phase 5.1 | `EP-CHG-01` — BR-14 resolves the relation off this chain |
+| `ChangeOrderAttachments` | Phase 5.1 | `EP-CHG-01` — the register's count column |
 | `Activities` | Phase 4.2 | **written** by `EP-PRG-02` (progress + remaining duration) · `EP-BOQ-02` · `EP-BOQ-07` · `EP-SCD-01` · `EP-SCD-02` · `EP-SCT-01` — registered in 4.2 because BR-03 and BR-04 both read it; **4.3 restored the columns 4.2 pruned** (baseline / actual / forecast dates, durations, float, `IsCritical`, calendar, predecessors) |

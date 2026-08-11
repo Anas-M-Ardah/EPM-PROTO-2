@@ -406,6 +406,9 @@ public static class Fixture
         // broke it would make every weight on screen quietly wrong.
         Boq(db);
 
+        // PHASE 5.1 — the six change orders 06 §12 asks for, in six states.
+        ChangeOrders(db);
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();
@@ -697,4 +700,250 @@ public static class Fixture
 
     private static BoqDistribution Dist(int boqItemId, string beneficiaryCode, decimal qty, string? site)
         => new() { BoqItemId = boqItemId, BeneficiaryCode = beneficiaryCode, Qty = qty, SiteCode = site };
+
+    /// <summary>
+    /// PHASE 5.1 — `06 §12`'s six change orders, in six deliberately different
+    /// states. Its own method for the same reason `Boq` is: the stages and the
+    /// attachments point at ChangeOrders.Id, so the parents are saved first and
+    /// the children are built from the ids that came back.
+    ///
+    /// ── EVERY AGE IS MEASURED BACK FROM THE DATA DATE ────────────────────
+    /// `06 §12` is explicit: *"All ages are measured back from the project's
+    /// data date, never from wall-clock time. A hard-coded 'today' made every
+    /// order look years late once the dates became contract-relative."* So the
+    /// table below states an AGE IN DAYS and the date is derived (D-06).
+    ///
+    /// ── THE TWO PAIRS THAT HAVE TO STAY DIFFERENT ────────────────────────
+    ///   VO-02 (22 days) vs VO-06 (5 days) — both pending, and only one is
+    ///   overdue. If they ever collapsed into the same set, the register's
+    ///   «متأخر» chip would be a synonym for «قيد الاعتماد» and worth nothing.
+    ///
+    ///   VO-05 (approved, untouched) vs VO-01 (approved AND applied, closed) —
+    ///   `02 §9`'s whole point: approving changes nothing. VO-05's value must
+    ///   appear in no contract total anywhere in the system, and VO-01's must
+    ///   appear in all of them, through amendment no. 1.
+    ///
+    /// VO-04 sits in `applied_partial` with `WeightRecalcState = "failed"`,
+    /// which is what raises فشل التطبيق on the register — an EXCEPTION beside
+    /// the lifecycle pill, never a lifecycle of its own.
+    /// </summary>
+    private static void ChangeOrders(EpmDb db)
+    {
+        var dataDate = new DateOnly(2026, 8, 2);
+        DateOnly Ago(int days) => dataDate.AddDays(-days);
+
+        // The two committees that own the conditional stages (03 §2).
+        const string ReDept = "دائرة المهندس المقيم";
+        const string CoCommittee = "لجنة أوامر الغيار";
+        const string RateCommittee = "لجنة تثبيت الأسعار";
+        const string Endorsement = "لجنة المراجعة المصادقة";
+        const string SeniorMgmt = "المستوى الإداري الأعلى";
+
+        var orders = new List<ChangeOrder>
+        {
+            // VO-01 — 180 days: the full path, applied, closed. Amendment no. 1
+            // on CNT-0279 is ITS amendment: 10,000,000 and 45 days, the figures
+            // SCR-W3's chain and every effective value already show.
+            new()
+            {
+                No = "VO-01", ContractId = "CNT-0279", Type = "engineering",
+                TitleAr = "تعديل كميات الأسس ومنح تمديد",
+                TitleEn = "Foundation quantity revision with an extension",
+                Justification = "زيادة كميات الحفر والخرسانة بعد الكشف الموقعي على طبيعة التربة.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "3312/2025", IncomingDate = Ago(180),
+                Lifecycle = "closed",
+                RequestedValue = 12_400_000m, RequestedDays = 60,
+                ApprovedValue = 10_000_000m, ApprovedDays = 45,
+                AppliedValue = 10_000_000m, AppliedDays = 45,
+                DecisionDate = Ago(96), ApprovingAuthority = SeniorMgmt,
+                DecisionReason = "اعتُمد بقيمة أقل من المطلوب بعد مراجعة الأسعار.",
+                WeightRecalcState = "done",
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-02 — 22 days: pending and PAST the SLA. Sitting at the
+            // rate-fixing committee, so it also carries بانتظار تثبيت الأسعار.
+            new()
+            {
+                No = "VO-02", ContractId = "CNT-0279", Type = "engineering",
+                TitleAr = "زيادة كميات الإكساء الداخلي",
+                TitleEn = "Increase in internal finishes quantities",
+                Justification = "تغيير مواصفة الإكساء بطلب الجهة المستفيدة.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "0455/2026", IncomingDate = Ago(22),
+                Lifecycle = "pending",
+                RequestedValue = 8_600_000m, RequestedDays = 0,
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-03 — 60 days: RETURNED for revision, history retained. Its
+            // extension exceeds a quarter of the contract duration, so the
+            // endorsement committee is in the chain (03 §2).
+            new()
+            {
+                No = "VO-03", ContractId = "CNT-0279", Type = "engineering",
+                TitleAr = "تمديد مدة العقد لأعمال الواجهات",
+                TitleEn = "Contract extension for the facade works",
+                Justification = "تأخر توريد مواد الواجهة من المنشأ.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "0219/2026", IncomingDate = Ago(60),
+                Lifecycle = "returned",
+                RequestedValue = 0m, RequestedDays = 120,
+                DecisionReason = "أُعيد للتعديل: المدة المطلوبة تتجاوز ما يبرره التحليل الزمني المرفق.",
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-04 — 120 days: approved, APPLYING, and the weight step failed.
+            // Approved ≠ applied ≠ closed, made visible.
+            new()
+            {
+                No = "VO-04", ContractId = "CNT-0279", Type = "engineering",
+                TitleAr = "إعادة توزيع كميات الأعمال الصحية",
+                TitleEn = "Redistribution of the plumbing quantities",
+                Justification = "إعادة توزيع الكميات بين الطوابق دون تغيير القيمة الكلية.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "3901/2025", IncomingDate = Ago(120),
+                Lifecycle = "applied_partial",
+                RequestedValue = 0m, RequestedDays = 0,
+                ApprovedValue = 0m, ApprovedDays = 0,
+                DecisionDate = Ago(74), ApprovingAuthority = CoCommittee,
+                // What raises فشل التطبيق on the register.
+                WeightRecalcState = "failed",
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-05 — 9 days: approved and NOT applied. Its 3,000,000 is the
+            // projection SCR-W3, SCR-W1 and SCR-W7 already show BESIDE their
+            // totals and inside none of them (02 §9).
+            new()
+            {
+                No = "VO-05", ContractId = "CNT-0279", Type = "engineering",
+                TitleAr = "أعمال إضافية في الساحات الخارجية",
+                TitleEn = "Additional works in the external yards",
+                Justification = "إضافة أعمال تبليط وإنارة للساحات بطلب الجهة المستفيدة.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "0712/2026", IncomingDate = Ago(9),
+                Lifecycle = "approved",
+                RequestedValue = 3_400_000m, RequestedDays = 15,
+                ApprovedValue = 3_000_000m, ApprovedDays = 0,
+                DecisionDate = Ago(2), ApprovingAuthority = CoCommittee,
+                WeightRecalcState = "none",
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-06 — 5 days: pending and INSIDE the SLA. The control that
+            // proves «قيد الاعتماد» and «متأخر» are different sets. On the
+            // electromechanical contract, so the register spans both.
+            new()
+            {
+                No = "VO-06", ContractId = "CNT-0279-EM", Type = "supply",
+                TitleAr = "تغيير مواصفة لوحات التوزيع",
+                TitleEn = "Change of the distribution board specification",
+                Justification = "عدم توفر المواصفة المتعاقد عليها لدى المجهّز.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "0748/2026", IncomingDate = Ago(5),
+                Lifecycle = "pending",
+                RequestedValue = 1_250_000m, RequestedDays = 0,
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+        };
+
+        db.ChangeOrders.AddRange(orders);
+        db.SaveChanges();
+
+        var byNo = orders.ToDictionary(o => o.No, o => o.Id);
+
+        // ── THE STAGE CHAINS ─────────────────────────────────────────────
+        // Six stages (BR-13), two of them CONDITIONAL (03 §2): rate fixing only
+        // when a line trips the 20% rule, endorsement only when the extension
+        // exceeds a quarter of the contract duration. A stage that does not
+        // apply is kept with its REASON rather than dropped — 5.4 renders that
+        // list, and this phase already stores it.
+        ChangeOrderStage St(string no, int n, string ar, string en, string owner,
+            string status, int? sentAgo = null, int? actionedAgo = null,
+            bool applicable = true, string? skip = null, string? decision = null) => new()
+        {
+            ChangeOrderId = byNo[no], StageNo = n, NameAr = ar, NameEn = en,
+            OwnerParty = owner, Status = status, Applicable = applicable, SkipReason = skip,
+            SentAt = sentAgo is null ? null : Ago(sentAgo.Value),
+            ActionedAt = actionedAgo is null ? null : Ago(actionedAgo.Value),
+            Decision = decision,
+        };
+
+        db.ChangeOrderStages.AddRange(
+            // VO-01 — every applicable stage done, in order.
+            St("VO-01", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 180, 172, decision: "approve"),
+            St("VO-01", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 172, 160, decision: "approve"),
+            St("VO-01", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "done", 160, 140, decision: "approve"),
+            St("VO-01", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "done", 140, 120, decision: "approve"),
+            St("VO-01", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "done", 120, 96, decision: "approve"),
+
+            // VO-02 — sitting at rate fixing, and that stage is past its SLA.
+            St("VO-02", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 22, 18, decision: "approve"),
+            St("VO-02", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 18, 14, decision: "approve"),
+            St("VO-02", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "active", 14),
+            St("VO-02", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "pending",
+                applicable: false, skip: "التمديد المطلوب صفر، فلا تنطبق مراجعة المصادقة."),
+            St("VO-02", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending"),
+
+            // VO-03 — RETURNED by the endorsement committee, and now back with
+            // the RE department to revise. Stage 1 is ACTIVE AGAIN: a returned
+            // order is not parked, it is somebody's work — which is what makes
+            // it the order that exercises «بانتظار إجرائي» for the default
+            // persona. Stage 4 keeps its `returned` decision as HISTORY rather
+            // than being reset, because `03 §5` requires the return to stay on
+            // the record.
+            St("VO-03", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "active", 30),
+            St("VO-03", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 55, 44, decision: "approve"),
+            St("VO-03", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
+                applicable: false, skip: "لا تغيير في الكميات يتجاوز 20%، فلا تنطبق مرحلة تثبيت الأسعار."),
+            St("VO-03", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "returned", 44, 30, decision: "return"),
+            St("VO-03", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending"),
+
+            // VO-04 — chain complete; the application is what failed.
+            St("VO-04", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 120, 114, decision: "approve"),
+            St("VO-04", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 114, 74, decision: "approve"),
+            St("VO-04", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
+                applicable: false, skip: "إعادة توزيع دون تغيير في القيمة، فلا تنطبق مرحلة تثبيت الأسعار."),
+            St("VO-04", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "pending",
+                applicable: false, skip: "لا تمديد مطلوب، فلا تنطبق مراجعة المصادقة."),
+
+            // VO-05 — approved two days ago, nothing applied.
+            St("VO-05", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 9, 7, decision: "approve"),
+            St("VO-05", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 7, 2, decision: "approve"),
+            St("VO-05", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
+                applicable: false, skip: "لا تغيير في الكميات يتجاوز 20%، فلا تنطبق مرحلة تثبيت الأسعار."),
+
+            // VO-06 — five days old, still with the change-order committee and
+            // comfortably inside its SLA.
+            St("VO-06", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 5, 3, decision: "approve"),
+            St("VO-06", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "active", 3),
+            St("VO-06", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending"),
+            St("VO-06", 4, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending")
+        );
+
+        // A few attachments so the register's count column has something real
+        // to say. `03 §9`'s six categories and the version chain are 5.2's.
+        db.ChangeOrderAttachments.AddRange(
+            Att("VO-01", byNo, "كتاب دائرة المهندس المقيم 3312.pdf", "letter", 1),
+            Att("VO-01", byNo, "جدول الكميات المعدل.xlsx", "boq", 1),
+            Att("VO-01", byNo, "قرار اللجنة.pdf", "decision", 1),
+            Att("VO-02", byNo, "كتاب الجهة المستفيدة 0455.pdf", "letter", 1),
+            Att("VO-02", byNo, "تحليل الأسعار.xlsx", "pricing", 1),
+            Att("VO-03", byNo, "التحليل الزمني.pdf", "schedule", 1),
+            Att("VO-04", byNo, "جدول إعادة التوزيع.xlsx", "boq", 1),
+            Att("VO-05", byNo, "كتاب الوارد 0712.pdf", "letter", 1)
+        );
+
+        db.SaveChanges();
+    }
+
+    private static ChangeOrderAttachment Att(
+        string no, Dictionary<string, int> byNo, string file, string category, int version) => new()
+    {
+        ChangeOrderId = byNo[no], FileName = file, Category = category,
+        Version = version, SizeBytes = 240_000, UploadedByUserId = "user.re-dept",
+        UploadedAt = DateTime.UtcNow,
+    };
 }
