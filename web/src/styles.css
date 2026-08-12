@@ -668,16 +668,9 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-ws-f > small { font-size: 11px; color: var(--on-surface-variant); }
 .epm-ws-f2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
 
-.epm-ws-swatches { display: flex; flex-wrap: wrap; gap: var(--space-8); }
-.epm-ws-swatch {
-  inline-size: 30px; block-size: 30px; border-radius: 8px; cursor: pointer;
-  border: 2px solid transparent; padding: 0;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
-}
-/* Selection is a ring AND an outline offset, never colour alone — the swatch
-   IS a colour, so colour cannot also be its state (05 §7.6). */
-.epm-ws-swatch.on { border-color: var(--on-surface); outline: 2px solid var(--surface-container-lowest); outline-offset: -4px; }
-.epm-ws-swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* REMOVED: .epm-ws-swatches / .epm-ws-swatch. The create drawer no longer asks
+   for an emblem colour — it derives one from the entity's code. The preview
+   below is the only thing that shows it. */
 
 /* What the row will look like before it exists. */
 .epm-ws-preview {

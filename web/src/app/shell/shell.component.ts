@@ -177,19 +177,25 @@ export class ShellComponent {
   });
 
   /**
-   * The line under the workspace name in the switcher button. The reference
-   * shows `kind · N active` (desktop-shell.jsx:424). The kind is a lookup
-   * label, not a chrome string — the same `workspace-kind` list the register
+   * The line under the workspace name in the switcher BUTTON. The reference is
+   * one expression (desktop-shell.jsx:241):
+   *
+   *     {scope === 'workspace' ? ws.kind[lang] : t('enterprise_ctx')}
+   *
+   * — the kind on its own inside a workspace, «الوزارة» outside one. Both
+   * branches here used to say something else: «N مساحة مسندة إليك» at ministry
+   * scope, which is a figure the reference never puts in this slot, and
+   * `kind · N نشط` inside a workspace, which is the POPOVER ROW's format
+   * (`wsSub` below) borrowed into the button.
+   *
+   * The kind is a lookup label, not a chrome string — the same `workspace-kind` list the register
    * filters by, so the two can never drift.
    */
   scopeSub = computed(() => {
     const ws = this.currentWs();
-    if (!ws) {
-      const n = this.workspaces.count();
-      return n ? `${n} ${this.lang.t('ws_assigned_count')}` : this.lang.t('enterprise_ctx');
-    }
-    const kind = this.lookups.label('workspace-kind', ws.kind);
-    return `${kind} · ${ws.activeCount} ${this.lang.t('ws_active_short')}`;
+    return ws
+      ? this.lookups.label('workspace-kind', ws.kind)
+      : this.lang.t('enterprise_ctx');
   });
 
   /** The switcher rows' own subtitle — same shape, per workspace. */

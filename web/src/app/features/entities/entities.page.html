@@ -28,7 +28,7 @@
 </epm-page-head>
 
 @if (createOpen()) {
-  <epm-drawer [title]="lang.t('new_workspace')"
+  <epm-drawer [title]="lang.t('ws_create_title')"
               [sub]="lang.t('ws_create_sub')"
               [hasFooter]="true"
               [closeLabel]="lang.t('cancel')"
@@ -74,19 +74,16 @@
         </select>
       </label>
 
-      <div class="epm-ws-f">
-        <span>{{ lang.t('ws_create_colour') }}</span>
-        <!-- A swatch row, not a colour picker: the emblem palette is the
-             ministry's, and an arbitrary hex would let a new workspace land
-             in a colour that reads as another one's. -->
-        <div class="epm-ws-swatches">
-          @for (c of palette; track c) {
-            <button type="button" class="epm-ws-swatch" [class.on]="fColor() === c"
-                    [style.background]="c" (click)="fColor.set(c)"
-                    [attr.aria-label]="c" [attr.aria-pressed]="fColor() === c"></button>
-          }
-        </div>
-      </div>
+      <!--
+        The colour swatch row is GONE. Defining an entity should not require
+        choosing its emblem colour, and this screen no longer shows the
+        consequence of the choice anyway — the register's code column is plain
+        mono text now, the way DSpaces has it.
+
+        The colour is still assigned, derived from the code, because the
+        switcher popover does paint it. The preview below is where you see
+        which one the entity landed on.
+      -->
 
       <!-- The MARK this workspace will carry, before it exists. It previews the
            sidebar switcher and the switcher popover, which is where the emblem

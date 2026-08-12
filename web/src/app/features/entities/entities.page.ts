@@ -205,11 +205,34 @@ export class EntitiesPage {
 
   /**
    * The emblem palette, verbatim from the reference's own five workspaces
-   * (data.jsx WORKSPACES). Offering a swatch row rather than a free colour
-   * input keeps a new entity inside the ministry's palette — an arbitrary hex
-   * would let it land close enough to an existing emblem to be misread.
+   * (data.jsx WORKSPACES).
+   *
+   * ── IT IS NO LONGER ASKED FOR ─────────────────────────────────────────────
+   * The create drawer used to offer this as a swatch row. It does not any more:
+   * the colour is not a decision the person defining an entity should have to
+   * make, and it is not one this screen shows them the consequence of — the
+   * register's emblem is gone (DSpaces' code column is plain mono text), so the
+   * only place it lands is the switcher.
+   *
+   * It is still ASSIGNED, because the switcher popover does paint it — the
+   * reference's DSwitcherPop sets `background: w.color` on every row, and the
+   * five existing workspaces each have their own. Sending nothing would take
+   * the server's `#1d3c6e` fallback (WorkspacesEndpoints.cs:92) and every new
+   * entity would share one navy chip.
+   *
+   * So it is picked from the palette by the entity's own code — stable for a
+   * given code, spread across the six, and never a hex from outside the set.
    */
   readonly palette = ['#0e6b47', '#1d4e89', '#7d611d', '#8c2f3a', '#2f5d8c', '#1d3c6e'];
+
+  private paletteColor(code: string) {
+    let h = 0;
+    for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return this.palette[h % this.palette.length];
+  }
+
+  /** The colour the entity being defined will carry — derived, not chosen. */
+  fColor = computed(() => this.paletteColor(this.fCode().trim() || this.fDisplayCode().trim()));
 
   createOpen = signal(false);
   saving = signal(false);
@@ -220,7 +243,6 @@ export class EntitiesPage {
   fNameAr = signal('');
   fNameEn = signal('');
   fKind = signal('state-university');
-  fColor = signal('#0e6b47');
 
   /** §24 — defining a workspace is a ministry-centre permission (BR-15). */
   canCreate = computed(() => this.persona.current()?.ministryWide === true);
@@ -234,7 +256,6 @@ export class EntitiesPage {
     this.fNameAr.set('');
     this.fNameEn.set('');
     this.fKind.set(this.kindOptions()[0]?.code ?? 'state-university');
-    this.fColor.set(this.palette[0]);
     this.createOpen.set(true);
   }
 

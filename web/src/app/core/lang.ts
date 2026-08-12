@@ -122,7 +122,6 @@ const STR = {
   ws_create_badge: { ar: 'رمز الشارة',                     en: 'Badge code' },
   ws_create_badge_hint:{ ar: 'حرفان إلى خمسة — يظهر على الشارة الملوّنة.', en: 'Two to five letters — shown on the coloured emblem.' },
   ws_create_code_hint:{ ar: 'يظهر في الرابط. أحرف لاتينية وأرقام.', en: 'Appears in the URL. Latin letters and digits.' },
-  ws_create_colour:{ ar: 'لون الشارة',                     en: 'Emblem colour' },
   ws_create_submit:{ ar: 'إضافة مساحة العمل',              en: 'Add workspace' },
   cancel:          { ar: 'إلغاء',                          en: 'Cancel' },
   saving:          { ar: 'جارٍ الحفظ…',                    en: 'Saving…' },
@@ -462,8 +461,6 @@ const STR = {
   enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
   your_workspaces: { ar: 'مساحات العمل المتاحة لك',        en: 'Your workspaces' },
   ws_active_short: { ar: 'نشط',                            en: 'active' },
-  /** The switcher's own line under "All workspaces" — how many you may enter. */
-  ws_assigned_count:{ ar: 'مساحة مسندة إليك',              en: 'assigned to you' },
   ws_current:      { ar: 'مساحة العمل الحالية',            en: 'Current workspace' },
   ws_back_to_ministry:{ ar: 'العودة إلى المركز',           en: 'Back to the ministry' },
   //
@@ -483,7 +480,13 @@ const STR = {
   new_contract:    { ar: 'عقد جديد',                       en: 'New contract' },
   import_p6:       { ar: 'استيراد P6',                     en: 'Import P6' },
   alert_rules:     { ar: 'قواعد التنبيه',                  en: 'Alert rules' },
-  new_workspace:   { ar: 'مساحة عمل جديدة',                en: 'New workspace' },
+  /** The page-head ACTION. VERBATIM from the live DSpaces
+   *  (desktop-views.jsx:419): «مساحة عمل» / «Workspace» — the `add` icon beside
+   *  it already says "new", so the word was doing the icon's job twice. */
+  new_workspace:   { ar: 'مساحة عمل',                      en: 'Workspace' },
+  /** The DRAWER's title, where there is no icon and the sentence has to stand
+   *  on its own. The reference has no such drawer to copy. */
+  ws_create_title: { ar: 'إنشاء مساحة عمل',                en: 'Create a workspace' },
 
   // ── SCR-W4 BOQ (04 §4) — chrome only. Coverage and distribution STATE
   // labels are not here: they are 06 §10 and §11 value lists and come from
