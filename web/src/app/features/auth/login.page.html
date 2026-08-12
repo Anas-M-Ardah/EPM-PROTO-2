@@ -1,125 +1,142 @@
 <!--
-  SCR-P1 sign-in. Ported from the design-revamp prototype's Login screen.
+  SCR-P1 sign-in. PORTED VERBATIM from the design-revamp prototype's `Login`
+  (app/screens-public.jsx, the desktop branch) — class for class.
 
-  Two panes: the form on the inline-start side, the institutional hero on the
-  other with the blueprint scene behind it. In RTL the hero sits on the left,
-  which is what the scene's own comment says it is composed for.
+  ── THE STYLESHEETS ARE COPIED, NOT RE-DERIVED (P-07) ───────────────────
+  `public.css` and `app-public.css` are now in src/styles/ alongside the four
+  that were already there, in the reference's own load order. Every class
+  below — .lp, .lp-nav, .lp-hero, .lp-access, .au-field, .au-submit — comes
+  from them. The first attempt at this screen hand-authored an `au-*` set by
+  eye and got the direction, the type scale and three mark sizes wrong; the
+  reference's own sheet has none of those problems because it IS the design.
+
+  The mobile branch of the reference is not ported: this app has no mobile
+  shell, and `.mlp` belongs to one.
 -->
-<div class="au-page">
+<div class="lp">
 
-  <header class="au-nav">
-    <div class="au-brand">
-      <img src="brand/epm-icon.svg" alt="" width="38" height="38" />
-      <div>
-        <b>{{ lang.t('app_name') }}</b>
-        <span>{{ lang.t('app_tagline') }}</span>
+  <header class="lp-nav">
+    <div class="lp-wrap">
+      <div class="lp-brand">
+        <span class="lp-brand-logo" style="background:none;box-shadow:none">
+          <img src="brand/epm-icon.svg" alt="" width="38" height="38" />
+        </span>
+        <div>
+          <b>{{ lang.t('app_name') }}</b>
+          <span>{{ lang.t('app_tagline') }}</span>
+        </div>
       </div>
-    </div>
-    <div class="au-nav-actions">
-      <button type="button" class="au-ghost" (click)="lang.toggle()">
-        <epm-icon name="translate" [size]="16" />{{ lang.isAr() ? 'EN' : 'ع' }}
-      </button>
-      <button type="button" class="au-ghost icon"
-              [attr.aria-label]="lang.isAr() ? 'المظهر' : 'Appearance'"
-              (click)="theme.toggle()">
-        <epm-icon [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="17" />
-      </button>
+
+      <div class="lp-nav-actions">
+        <button type="button" class="lp-ghost-btn" (click)="lang.toggle()">
+          <epm-icon name="translate" [size]="17" />{{ lang.isAr() ? 'EN' : 'ع' }}
+        </button>
+        <button type="button" class="lp-ghost-btn" style="width:40px;padding:0;justify-content:center"
+                [attr.aria-label]="lang.isAr() ? 'المظهر' : 'Appearance'"
+                (click)="theme.toggle()">
+          <epm-icon [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="18" />
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="au-body">
+  <!-- HERO — the reference reuses the landing layout here; the access panel
+       hosts the form. -->
+  <section class="lp-hero">
+    <div class="lp-hero-bg"><div class="lp-grid-tex"></div></div>
+    <div class="lp-scene" aria-hidden="true"><img src="brand/blueprint-scene.svg" alt="" /></div>
 
-    <!-- ── the form ──────────────────────────────────────────────────── -->
-    <form class="au-card" (submit)="submit($event)">
-      <div class="au-card-head">
-        <span class="au-card-ico"><epm-icon name="login" [size]="20" /></span>
-        <div>
-          <b>{{ lang.t('signin') }}</b>
-          <span>{{ lang.t('signin_sub') }}</span>
-        </div>
-      </div>
-
-      <div class="au-card-body">
-        <div class="au-field">
-          <label for="au-u">{{ lang.t('username') }}</label>
-          <div class="au-input">
-            <epm-icon name="person" [size]="18" />
-            <input id="au-u" dir="ltr" autocomplete="username"
-                   [value]="username()"
-                   (input)="username.set($any($event.target).value)" />
-          </div>
-          <!--
-            Which persona this signs you in as. The reference has no such line
-            because its user is fixed; here the username selects the identity
-            that BR-15 hangs workspace assignment off, so saying who you are
-            about to become is the difference between a demo and a guess.
-          -->
-          @if (matchedPersona(); as p) {
-            <small class="au-hint">
-              <epm-icon name="check_circle" [size]="13" />
-              {{ lang.pick(p.nameAr, p.nameEn) }} · {{ lang.pick(p.roleAr, p.roleEn) }}
-            </small>
-          } @else {
-            <small class="au-hint muted">{{ lang.t('signin_any') }}</small>
-          }
-        </div>
-
-        <div class="au-field">
-          <label for="au-p">{{ lang.t('password') }}</label>
-          <div class="au-input">
-            <epm-icon name="lock" [size]="18" />
-            <input id="au-p" dir="ltr" autocomplete="current-password"
-                   [type]="showPassword() ? 'text' : 'password'"
-                   [value]="password()"
-                   (input)="password.set($any($event.target).value)" />
-            <button type="button" class="au-eye"
-                    [attr.aria-label]="showPassword() ? lang.t('hide_password') : lang.t('show_password')"
-                    (click)="showPassword.set(!showPassword())">
-              <epm-icon [name]="showPassword() ? 'visibility_off' : 'visibility'" [size]="18" />
-            </button>
-          </div>
-        </div>
-
-        <div class="au-row">
-          <label class="au-check">
-            <input type="checkbox" [checked]="remember()"
-                   (change)="remember.set($any($event.target).checked)" />
-            <span>{{ lang.t('remember') }}</span>
-          </label>
-          <button type="button" class="au-link" (click)="$event.preventDefault()">
-            {{ lang.t('forgot') }}
-          </button>
-        </div>
-
-        <button type="submit" class="au-submit" [disabled]="busy()">
-          @if (busy()) {
-            <span class="au-spin" aria-hidden="true"></span>{{ lang.t('verifying') }}
-          } @else {
-            {{ lang.t('enter') }}
-            <epm-icon [name]="lang.isAr() ? 'arrow_back' : 'arrow_forward'" [size]="18" />
-          }
-        </button>
-
-        <p class="au-secure">
-          <epm-icon name="verified_user" [size]="15" />{{ lang.t('login_note') }}
-        </p>
-      </div>
-    </form>
-
-    <!-- ── the institutional hero ────────────────────────────────────── -->
-    <section class="au-hero" aria-hidden="true">
-      <img class="au-scene" src="brand/blueprint-scene.svg" alt="" />
-      <div class="au-hero-tx">
-        <div class="au-ministry">
+    <div class="lp-wrap">
+      <div class="lp-hero-text">
+        <div class="lp-lockup" style="margin-bottom:var(--sp-5)">
           <img src="brand/ministry-logo.svg" alt="" width="52" height="52" />
           <span>{{ lang.t('ministry') }}</span>
         </div>
-        <span class="au-badge">
-          <epm-icon name="verified_user" [size]="13" />{{ lang.t('signin_portal') }}
+
+        <span class="lp-eyebrow lp-rise">
+          <span class="dot"></span>{{ lang.t('signin_portal') }}
         </span>
-        <h1>{{ lang.t('app_title') }}</h1>
-        <p>{{ lang.t('signin_blurb') }}</p>
+
+        <h1 class="lp-rise d1">{{ lang.t('app_title') }}</h1>
+
+        <span class="lp-dim" aria-hidden="true"><i></i><i></i></span>
+
+        <p class="lp-hero-sub lp-rise d2">{{ lang.t('signin_blurb') }}</p>
       </div>
-    </section>
-  </main>
+
+      <form class="lp-access lp-rise d3" (submit)="submit($event)">
+        <div class="lp-access-head">
+          <span class="mk"><epm-icon name="login" [size]="20" /></span>
+          <div>
+            <b>{{ lang.t('signin') }}</b>
+            <span>{{ lang.t('signin_sub') }}</span>
+          </div>
+        </div>
+
+        <div class="lp-access-body">
+          <div class="au-field">
+            <label for="au-u">{{ lang.t('username') }}</label>
+            <div class="au-input">
+              <epm-icon name="person" [size]="19" />
+              <input id="au-u" dir="ltr" autocomplete="username"
+                     [value]="username()"
+                     (input)="username.set($any($event.target).value)" />
+            </div>
+            <!--
+              Not in the reference, because its user is fixed. Here the username
+              selects the persona that BR-15 hangs workspace assignment off, so
+              naming who you are about to become is the difference between a
+              demonstration and a guess.
+            -->
+            @if (matchedPersona(); as p) {
+              <small class="au-hint">
+                <epm-icon name="check_circle" [size]="13" />
+                {{ lang.pick(p.nameAr, p.nameEn) }} · {{ lang.pick(p.roleAr, p.roleEn) }}
+              </small>
+            } @else {
+              <small class="au-hint muted">{{ lang.t('signin_any') }}</small>
+            }
+          </div>
+
+          <div class="au-field">
+            <label for="au-p">{{ lang.t('password') }}</label>
+            <div class="au-input">
+              <epm-icon name="lock" [size]="19" />
+              <input id="au-p" dir="ltr" autocomplete="current-password"
+                     [type]="showPassword() ? 'text' : 'password'"
+                     [value]="password()"
+                     (input)="password.set($any($event.target).value)" />
+              <button type="button" class="toggle"
+                      [attr.aria-label]="showPassword() ? lang.t('hide_password') : lang.t('show_password')"
+                      (click)="showPassword.set(!showPassword())">
+                <epm-icon [name]="showPassword() ? 'visibility_off' : 'visibility'" [size]="20" />
+              </button>
+            </div>
+          </div>
+
+          <div class="au-row">
+            <label class="au-check">
+              <input type="checkbox" [checked]="remember()"
+                     (change)="remember.set($any($event.target).checked)" />
+              <span>{{ lang.t('remember') }}</span>
+            </label>
+            <a href="#" (click)="$event.preventDefault()">{{ lang.t('forgot') }}</a>
+          </div>
+
+          <button class="au-submit" type="submit" [disabled]="busy()">
+            @if (busy()) {
+              <span class="au-spin" aria-hidden="true"></span>{{ lang.t('verifying') }}
+            } @else {
+              {{ lang.t('enter') }}
+              <epm-icon [name]="lang.isAr() ? 'arrow_back' : 'arrow_forward'" [size]="19" />
+            }
+          </button>
+
+          <div class="au-secure">
+            <epm-icon name="verified_user" [size]="16" />{{ lang.t('login_note') }}
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
 </div>
