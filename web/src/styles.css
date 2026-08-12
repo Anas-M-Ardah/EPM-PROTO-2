@@ -712,13 +712,22 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .au-ghost:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* Form beside hero. The hero is decorative, so it is the one that collapses. */
+/* ── THE FORM SITS ON THE LEFT, THE HERO ON THE RIGHT ────────────────────
+   Measured on the reference at 1440: the inputs start at x=202 and the hero's
+   h1 at x=730. In RTL the FIRST grid column is the rightmost, so putting the
+   form first — which is what tab order wants — placed it on the right and
+   mirrored the whole screen. Explicit column placement keeps the form first in
+   the DOM (and therefore first to focus) while landing it on the left. */
 .au-body {
-  flex: 1; display: grid; grid-template-columns: minmax(360px, 460px) 1fr;
+  flex: 1; display: grid; grid-template-columns: 1fr minmax(360px, 460px);
   align-items: center; gap: var(--space-40); padding: var(--space-40) var(--space-24);
   max-inline-size: 1280px; inline-size: 100%; margin-inline: auto;
 }
+.au-card { grid-column: 2; grid-row: 1; }
+.au-hero { grid-column: 1; grid-row: 1; }
 @media (max-width: 900px) {
   .au-body { grid-template-columns: 1fr; }
+  .au-card { grid-column: 1; }
   .au-hero { display: none; }
 }
 
@@ -809,7 +818,12 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
   color: var(--error); font-size: 11.5px; font-weight: var(--fw-semibold, 600);
   margin-block-end: var(--space-12);
 }
-.au-hero-tx h1 { font-size: 32px; line-height: 1.25; letter-spacing: -.02em; margin: 0 0 var(--space-12); }
+/* 60px, measured off the reference. Above the eight-step scale on purpose:
+   05 §2's scale governs the PRODUCT chrome, and this is the public masthead —
+   the one piece of type on the public route that is doing a poster's job.
+   It steps down on narrow viewports rather than wrapping to four lines. */
+.au-hero-tx h1 { font-size: 60px; line-height: 1.15; letter-spacing: -.02em; margin: 0 0 var(--space-16); }
+@media (max-width: 1200px) { .au-hero-tx h1 { font-size: 44px; } }
 .au-hero-tx p { font-size: 14px; line-height: 1.7; color: var(--on-surface-variant); margin: 0; }
 
 /* Sign-out is the one destructive-looking row in the account menu. */
