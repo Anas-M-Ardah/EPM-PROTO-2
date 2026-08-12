@@ -19,7 +19,9 @@ const STR = {
   ministry:        { ar: 'وزارة التعليم العالي و البحث العلمي', en: 'Ministry of Higher Education & Scientific Research' },
   /** Breadcrumb root (v1.1 Z2). The full ministry name is too long for a crumb. */
   ministry_short:  { ar: 'الوزارة',                          en: 'Ministry' },
-  dept:            { ar: 'دائرة الإعمار و المشاريع',        en: 'Reconstruction & Projects Dept.' },
+  /** VERBATIM (data.jsx:13). The port had shortened it; `MinistryLockup` is
+   *  the only thing that renders it, and it renders the reference's full one. */
+  dept:            { ar: 'دائرة الإعمار و المشاريع — القسم الهندسي', en: 'Dept. of Reconstruction & Projects — Engineering Section' },
 
   // navigation
   nav_portfolio:   { ar: 'النظرة العامة',                  en: 'Portfolio' },
@@ -381,15 +383,37 @@ const STR = {
   error_t:         { ar: 'تعذّر تحميل البيانات',           en: 'Could not load data' },
   retry:           { ar: 'إعادة المحاولة',                 en: 'Retry' },
 
-  // ── SCR-P1 sign-in. Strings marked VERBATIM are the reference's own
-  // (data.jsx STR); the rest name things the reference did not have to.
+  // ── SCR-P0 landing + SCR-P1 sign-in. Strings marked VERBATIM are the
+  // reference's own (data.jsx STR); the rest are lifted from the two screens'
+  // inline `lang === 'ar' ? … : …` ternaries in screens-public.jsx, which is
+  // where the reference keeps most of this copy.
+  /** VERBATIM (data.jsx:11 `app_full`) — the nav brand's second line. */
   app_tagline:     { ar: 'إدارة المشاريع الهندسية',        en: 'Engineering Projects Management' },
+  /** The reference's own h1 on both public screens — «…System» in English,
+   *  which is one word longer than the shell's `app_title`. */
+  app_title_full:  { ar: 'نظام إدارة المشاريع الهندسية',   en: 'Engineering Projects Management System' },
   signin:          { ar: 'تسجيل الدخول',                   en: 'Sign in' },
+  /** The landing's access panel says «الدخول إلى النظام»; the login's says
+   *  «تسجيل الدخول». Two different headings in the reference, kept apart. */
+  signin_access:   { ar: 'الدخول إلى النظام',              en: 'System access' },
   signin_sub:      { ar: 'هوية موحّدة على مستوى الوزارة',   en: 'Unified enterprise identity' },
   signin_portal:   { ar: 'بوابة الدخول المؤسسية',          en: 'Institutional access portal' },
-  signin_blurb:    { ar: 'المنصّة الموحّدة لوزارة التعليم العالي لإدارة المشاريع الهندسية عبر الجامعات و الوحدات.', en: 'The unified platform for managing engineering projects across universities and units.' },
-  /** The username selects the persona — say so rather than let it look decorative. */
-  signin_any:      { ar: 'أي بيانات تُقبل. اكتب اسم مستخدم لتدخل بصفته.', en: 'Any credentials are accepted. Type a username to sign in as them.' },
+  /** screens-public.jsx:199 — the SAME paragraph on the landing and the login
+   *  hero. The port had shortened it, dropping the second sentence, which is
+   *  the one that states the access rule. */
+  signin_blurb:    { ar: 'المنصّة الموحّدة لوزارة التعليم العالي لإدارة المشاريع الهندسية عبر الجامعات و الوحدات. الدخول مخصّص للموظّفين المخوّلين وفق الأدوار و النطاقات.', en: 'The unified platform of the Ministry of Higher Education for managing engineering projects across universities and units. Access is restricted to authorized personnel, by role and scope.' },
+  /** The landing's access panel — the divider and its two notes. */
+  secure_access:   { ar: 'الدخول الآمن',                   en: 'Secure access' },
+  note_network:    { ar: 'متاح داخل شبكة الوزارة فقط',      en: 'Available on the ministry network only' },
+  note_audited:    { ar: 'كل عملية دخول تُسجّل و تُدقّق',     en: 'Every sign-in is logged and audited' },
+  home:            { ar: 'الرئيسية',                       en: 'Home' },
+  /** The landing footer's three claims (screens-public.jsx:221). */
+  lp_integration:  { ar: 'تكامل على مستوى الوزارة',        en: 'Ministry-wide integration' },
+  lp_integration_b:{ ar: 'ربط الجامعات و الوحدات و المشاريع.', en: 'Links universities, units and projects.' },
+  lp_effective:    { ar: 'إدارة فعّالة و شفافة',            en: 'Effective, transparent management' },
+  lp_effective_b:  { ar: 'لمتابعة المشاريع و الموارد و الميزانيات.', en: 'Tracks projects, resources and budgets.' },
+  lp_secure:       { ar: 'نظام آمن و معتمد',               en: 'Secure, accredited system' },
+  lp_secure_b:     { ar: 'وفق معايير الحوكمة و الأمن السيبراني.', en: 'Per governance and cybersecurity standards.' },
   username:        { ar: 'اسم المستخدم',                   en: 'Username' },
   password:        { ar: 'كلمة المرور',                    en: 'Password' },
   show_password:   { ar: 'إظهار كلمة المرور',              en: 'Show password' },
