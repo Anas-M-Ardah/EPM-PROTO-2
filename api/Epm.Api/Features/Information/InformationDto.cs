@@ -32,8 +32,15 @@ namespace Epm.Api.Features.Information;
 /// The `06` value list this code belongs to, for `EP-LKP-01` to label — or null
 /// when the value is free text and already readable.
 /// </param>
-/// <param name="Kind">text · date — how to format and isolate it (05 §5.2).</param>
-public record InfoField(string Key, string? Value, string? LookupKind, string Kind);
+/// <param name="Kind">text · date · money — how to format and isolate it (05 §5.2).</param>
+/// <param name="Proposed">
+/// الشكل 5 — «وسم مقترح على القيم التي يقترحها النظام». True for a value
+/// المسار 1 step 4 derived rather than one the specialist typed, so the card
+/// «تفصل بين ما هو مُدخَل معتمد وما هو مقترح من النظام». The shared field-grid
+/// already renders the tag; this is what turns it on.
+/// </param>
+public record InfoField(
+    string Key, string? Value, string? LookupKind, string Kind, bool Proposed = false);
 
 /// <param name="Id">
 /// identity · location · funding · parties. The client labels the group from

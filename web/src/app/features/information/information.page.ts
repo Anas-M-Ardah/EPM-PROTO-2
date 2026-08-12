@@ -80,13 +80,20 @@ export class InformationPage {
         ? this.lookups.label(f.lookupKind, f.value)
         : f.kind === 'date'
           ? fmt.date(f.value)
-          : f.value;
+          : f.kind === 'money'
+            ? fmt.money(Number(f.value))
+            : f.value;
 
     return {
       label: this.lang.t(('inf_' + f.key) as StrKey),
       value,
-      // IDs, codes and dates get tabular numerals so they align down the column.
-      mono: f.kind === 'date' || f.key === 'id' || f.key === 'workspaceCode',
+      // IDs, codes, money and dates get tabular numerals so they align down
+      // the column.
+      mono: f.kind === 'date' || f.kind === 'money'
+        || f.key === 'id' || f.key === 'code' || f.key === 'workspaceCode',
+      // الشكل 5's «مقترح». The server decides which values are suggestions —
+      // it is the only side that knows what it derived.
+      proposed: f.proposed,
     };
   }
 

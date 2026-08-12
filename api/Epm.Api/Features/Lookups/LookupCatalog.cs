@@ -41,6 +41,19 @@ public static class LookupCatalog
         yield return L("project-status", "suspended", "متوقف",  "Suspended");
         yield return L("project-status", "cancelled", "ملغى",   "Cancelled");
 
+        // ── المسار 1 step 4 — الفئة الإنفاقية ─────────────────────────────
+        // One of the three values the system SUGGESTS at definition
+        // («اشتقاق الرمز والمنطقة والفئة الإنفاقية تلقائيًا»). الشكل 5 shows
+        // «صيانة» on its worked example; the rest follow the expenditure split
+        // the ministry's own budget lines use. NOT enumerated in `06`, so this
+        // list is ours and is flagged as such in the report.
+        sort = 0;
+        yield return L("expenditure-category", "maintenance",  "صيانة",          "Maintenance");
+        yield return L("expenditure-category", "construction", "تشييد",          "Construction");
+        yield return L("expenditure-category", "equipment",    "تجهيز",          "Equipment");
+        yield return L("expenditure-category", "studies",      "دراسات",         "Studies");
+        yield return L("expenditure-category", "operational",  "نفقات تشغيلية",  "Operational");
+
         // ── 06 §2 — execution stages (12) ─────────────────────────────────
         // The construction-progress list the projects carry. NOT the same as
         // data.jsx's PROJECT_STAGES, which is an administrative lifecycle list

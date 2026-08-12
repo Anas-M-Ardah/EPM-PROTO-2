@@ -324,6 +324,49 @@ const STR = {
   inf_designerParty:{ ar: 'الجهة المصمِّمة',               en: 'Designer' },
   inf_consultantParty:{ ar: 'المكتب الاستشاري',            en: 'Consultant' },
 
+  // المسار 1 · الشكل 5 — the rest of the definition card. Same `inf_` prefix as
+  // the labels above ON PURPOSE: SCR-W2 reads these fields and the project form
+  // writes them, and one label set is what stops the two screens calling the
+  // same column different things. Wording is الشكل 5's own.
+  inf_group_description:{ ar: 'الوصف',                     en: 'Description' },
+  inf_group_entity: { ar: 'الجهة',                         en: 'Entity' },
+  inf_group_consultant:{ ar: 'الاستشاري',                  en: 'Consultant' },
+  inf_code:        { ar: 'رمز المشروع',                    en: 'Project code' },
+  inf_registrationYear:{ ar: 'سنة الإدراج',                en: 'Registration year' },
+  inf_plannedCost: { ar: 'الكلفة المقررة',                 en: 'Planned cost' },
+  inf_expenditureCategory:{ ar: 'الفئة الإنفاقية',         en: 'Expenditure category' },
+  inf_budgetApprovalNumber:{ ar: 'رقم اعتماد الموازنة',    en: 'Budget approval no.' },
+  inf_coordinates: { ar: 'إحداثيات الموقع',                en: 'Coordinates' },
+  inf_formation:   { ar: 'التشكيل',                        en: 'Formation' },
+  inf_beneficiaryCodes:{ ar: 'الجهة المستفيدة',            en: 'Beneficiary' },
+  inf_orgStructure:{ ar: 'الهيكل التنظيمي',                en: 'Organisational structure' },
+  inf_description: { ar: 'وصف المشروع',                    en: 'Project description' },
+
+  // The project form (المسار 1). One component serves create and edit, so the
+  // title is the one thing that differs between them.
+  prj_new_title:   { ar: 'تعريف مشروع جديد',               en: 'Define a new project' },
+  prj_edit_title:  { ar: 'تعديل تعريف المشروع',            en: 'Edit project definition' },
+  prj_new_sub:     { ar: 'يُحفظ المشروع ضمن مساحة العمل الحالية.', en: 'The project is saved in the current workspace.' },
+  prj_save:        { ar: 'حفظ المشروع',                    en: 'Save project' },
+  prj_save_changes:{ ar: 'حفظ التعديلات',                  en: 'Save changes' },
+  prj_saved:       { ar: 'حُفظ المشروع',                   en: 'Project saved' },
+  prj_updated:     { ar: 'حُفظت التعديلات',                en: 'Changes saved' },
+  prj_required_note:{ ar: 'الحقول المعلَّمة بنجمة إلزامية.', en: 'Fields marked with a star are required.' },
+  /** الشكل 5 — «وسم مقترح على القيم التي يقترحها النظام». */
+  prj_suggested:   { ar: 'مقترح',                          en: 'Suggested' },
+  prj_suggested_hint:{ ar: 'قيمة اقترحها النظام — يمكن تعديلها.', en: 'Suggested by the system — you may change it.' },
+  prj_fix_errors:  { ar: 'تعذّر الحفظ. راجع الحقول أدناه.', en: 'Could not save. Review the fields below.' },
+  prj_no_workspace:{ ar: 'اختر مساحة عمل قبل تعريف مشروع.', en: 'Choose a workspace before defining a project.' },
+  prj_edit:        { ar: 'تعديل',                          en: 'Edit' },
+  /** سجل النشاط — الشكل 5's second tab. */
+  prj_activity:    { ar: 'سجل النشاط',                     en: 'Activity log' },
+  prj_details:     { ar: 'التفاصيل',                       en: 'Details' },
+  prj_act_created: { ar: 'أنشأ التعريف',                   en: 'created the definition' },
+  prj_act_updated: { ar: 'عدّل التعريف',                   en: 'updated the definition' },
+  prj_no_permission_t:{ ar: 'تعريف المشاريع غير متاح بصفتك الحالية.', en: 'Defining projects is not available in your current capacity.' },
+  prj_no_permission_b:{ ar: '§23 يسند تعريف المشروع إلى المستخدم المختص في الجهة. بدّل «العرض بصفة» للمتابعة.', en: '§23 assigns project definition to the university specialist. Switch «العرض بصفة» to continue.' },
+  inf_coordinates_hint:{ ar: 'خط العرض ثم خط الطول، مفصولين بفاصلة.', en: 'Latitude then longitude, comma separated.' },
+
   // SCR-W3 Contract — ported from DModContractNew + DContractAmendments.
   // The amendment STATE labels are not here: they are stored codes and come
   // from the `amendment-state` lookup, like every other enum (06 §8).

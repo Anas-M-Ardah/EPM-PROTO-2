@@ -78,6 +78,27 @@ export const routes: Routes = [
         loadComponent: () => import('./features/projects/projects.page').then(m => m.ProjectsPage),
       },
 
+      // المسار 1 · features/projects · Features/Projects · [EP-PRJ-02…04]
+      // ONE component for both. `projects/new` and `projects/:id/edit` are the
+      // same six sections over the same twenty fields; the only difference is
+      // whether there is an id to load and which api method saves.
+      //
+      // BOTH MUST PRECEDE `projects/:id` below. That route has a `**` child
+      // that redirects an unknown segment to `overview`, so if it matched
+      // first, `/projects/new` would load the project workspace for a project
+      // called "new" and `/projects/PRJ-0148/edit` would silently become
+      // `/overview` — the exact dead-end the wildcard exists to prevent.
+      {
+        path: 'projects/new',
+        loadComponent: () =>
+          import('./features/projects/project-form.page').then(m => m.ProjectFormPage),
+      },
+      {
+        path: 'projects/:id/edit',
+        loadComponent: () =>
+          import('./features/projects/project-form.page').then(m => m.ProjectFormPage),
+      },
+
       // SCR-E3 · features/contracts · Features/Contracts · [EP-CNT-01]
       {
         path: 'contracts',
