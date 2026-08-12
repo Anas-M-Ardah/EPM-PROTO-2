@@ -19,10 +19,22 @@
     <aside class="d-side">
 
       <div class="d-side-head">
-        <span class="d-side-logo"><epm-icon name="account_balance" [size]="21" /></span>
+        <!--
+          The product's own mark, not the ministry's. The reference draws the
+          EPM tile here (desktop-shell.jsx `.d-side-logo`) and the institutional
+          crest lower down, in the scope switcher — the two say different
+          things: which PRODUCT this is, and whose DATA you are looking at.
+          Using the crest for both, as we were, collapsed that distinction.
+        -->
+        <span class="d-side-logo epm-brand-logo">
+          <img src="brand/epm-icon.svg" alt="" width="26" height="26" />
+        </span>
+        <!-- Title only. The reference's `.d-side-wm` carries no second line
+             (verified against the deployed build's DOM) — the department is
+             already named in the footer, and repeating it here pushed the
+             title into a truncation it did not need. -->
         <span class="d-side-wm">
           <b>{{ lang.t('app_title') }}</b>
-          <span>{{ lang.t('dept') }}</span>
         </span>
         <button type="button" class="d-side-toggle"
                 [title]="collapseLabel()"
@@ -44,11 +56,20 @@
               [attr.aria-haspopup]="'dialog'"
               [attr.aria-expanded]="!!switcherAnchor()"
               (click)="openSwitcher(switchBtn)">
-        <span class="d-ctx-emblem" [class.ent]="!currentWs()">
+        <!--
+          The scope mark. Inside a workspace it is that workspace's own emblem
+          — display code on its own colour; at ministry scope it is the
+          institutional crest, exactly as the reference does
+          (desktop-shell.jsx:240). The crest is a placeholder mark shipped with
+          the prototype, not the official state emblem; swapping the real one
+          in at brand/ministry-logo.svg replaces it everywhere at once.
+        -->
+        <span class="d-ctx-emblem" [class.ent]="!currentWs()"
+              [style.background]="currentWs()?.color || null">
           @if (currentWs()) {
-            <bdi>{{ currentWs()!.code }}</bdi>
+            <bdi>{{ currentWs()!.displayCode }}</bdi>
           } @else {
-            <epm-icon name="account_balance" [size]="16" />
+            <img src="brand/ministry-logo.svg" alt="" width="20" height="20" />
           }
         </span>
         <span class="d-ctx-switch-meta">
@@ -65,21 +86,18 @@
         «مساحات العمل» is gone, because you are standing in one.
       -->
       <nav class="d-nav">
-        @for (g of nav(); track g.group) {
-          <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
-          @for (it of g.items; track it.path) {
-            <a class="d-nav-item"
-               routerLinkActive="on"
-               [routerLink]="it.path"
-               [queryParams]="wsCode() ? { ws: wsCode() } : {}"
-               [title]="collapsed() ? lang.t(it.key) : ''">
-              <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
-              <span class="d-nav-label">{{ lang.t(it.key) }}</span>
-              @if (it.count && it.count() !== null) {
-                <span class="d-nav-count"><bdi>{{ it.count() }}</bdi></span>
-              }
-            </a>
-          }
+        @for (it of nav(); track it.path) {
+          <a class="d-nav-item"
+             routerLinkActive="on"
+             [routerLink]="it.path"
+             [queryParams]="wsCode() ? { ws: wsCode() } : {}"
+             [title]="collapsed() ? lang.t(it.key) : ''">
+            <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
+            <span class="d-nav-label">{{ lang.t(it.key) }}</span>
+            @if (it.count && it.count() !== null) {
+              <span class="d-nav-count"><bdi>{{ it.count() }}</bdi></span>
+            }
+          </a>
         }
 
         <!-- The way back out of a workspace, in the rail rather than only in
@@ -98,8 +116,10 @@
       </nav>
 
       <div class="d-side-foot">
+        <!-- The institutional crest, as the reference footer carries it —
+             a shield glyph said "secure", which is not what this line means. -->
         <div class="d-side-ministry">
-          <epm-icon name="shield" [size]="16" />
+          <img src="brand/ministry-logo.svg" alt="" width="18" height="18" />
           <span class="d-nav-label">{{ lang.t('ministry') }}</span>
         </div>
 
@@ -274,7 +294,7 @@
     }
 
     <button type="button" class="d-pop-row" [class.on]="!currentWs()" (click)="setWorkspace(null)">
-      <span class="d-ctx-emblem ent"><epm-icon name="account_balance" [size]="16" /></span>
+      <span class="d-ctx-emblem ent"><img src="brand/ministry-logo.svg" alt="" width="20" height="20" /></span>
       <span class="d-pop-row-tx">
         <b>{{ lang.t('all_workspaces') }}</b>
         <span>{{ lang.t('enterprise_ctx') }}</span>
@@ -288,7 +308,7 @@
       <button type="button" class="d-pop-row"
               [class.on]="currentWs()?.code === w.code"
               (click)="setWorkspace(w.code)">
-        <span class="d-ctx-emblem"><bdi>{{ w.code }}</bdi></span>
+        <span class="d-ctx-emblem" [style.background]="w.color"><bdi>{{ w.displayCode }}</bdi></span>
         <span class="d-pop-row-tx">
           <b>{{ lang.pick(w.nameAr, w.nameEn) }}</b>
           <span>{{ wsSub(w) }}</span>
@@ -312,7 +332,7 @@
 }
 
 @if (accountAnchor(); as anchor) {
-  <epm-popover [anchor]="anchor" [width]="320"
+  <epm-popover class="epm-acct-pop" [anchor]="anchor" [width]="320"
                [label]="lang.t('persona')"
                (closed)="closeOverlays()">
     <div class="d-pop-row" style="cursor:default">
@@ -332,17 +352,28 @@
       permission model, which is what 03 §7 asks the switcher for.
     -->
     <div class="d-pop-lbl">{{ lang.t('persona') }}</div>
-    @for (p of persona.all(); track p.id) {
-      <button type="button" class="d-pop-row"
-              [class.on]="persona.currentId() === p.id"
-              (click)="onPersona(p.id)">
-        <span class="d-pop-row-tx">
-          <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
-          <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
-        </span>
-        @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
-      </button>
-    }
+    <!--
+      THE LIST SCROLLS, NOT THE MENU. `.d-pop` is capped at 70vh by the
+      reference's own sheet, and the reference's menu never reaches it — it has
+      six rows. Ours has the seven personas on top of them, which overran the
+      cap and pushed SIGN OUT, the last row, below an internal scroll where it
+      could not be found. The furniture around this list is now always visible
+      and only the personas scroll, so the menu's terminal action never leaves
+      the box however many personas 03 §7 grows to.
+    -->
+    <div class="epm-persona-list">
+      @for (p of persona.all(); track p.id) {
+        <button type="button" class="d-pop-row"
+                [class.on]="persona.currentId() === p.id"
+                (click)="onPersona(p.id)">
+          <span class="d-pop-row-tx">
+            <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
+            <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
+          </span>
+          @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
+        </button>
+      }
+    </div>
 
     <hr />
 
@@ -357,6 +388,15 @@
     <button type="button" class="d-pop-row" (click)="lang.toggle()">
       <span class="epm-pop-ico"><epm-icon name="translate" [size]="18" /></span>
       <span class="d-pop-row-tx"><b>{{ lang.t('language') }}</b></span>
+    </button>
+
+    <hr />
+
+    <!-- The reference ends this menu the same way (shell.jsx:188). It returns
+         to the sign-in screen; it does not secure anything (see AuthService). -->
+    <button type="button" class="d-pop-row epm-signout" (click)="signOut()">
+      <span class="epm-pop-ico"><epm-icon name="logout" [size]="18" /></span>
+      <span class="d-pop-row-tx"><b>{{ lang.t('signout') }}</b></span>
     </button>
   </epm-popover>
 }

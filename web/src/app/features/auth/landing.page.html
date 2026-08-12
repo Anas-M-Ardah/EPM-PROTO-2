@@ -1,0 +1,133 @@
+<!--
+  SCR-P0 landing. PORTED VERBATIM from the design-revamp prototype's `Landing`
+  (app/screens-public.jsx:162, the desktop branch) — class for class, in the
+  reference's own order: nav, hero (background · scene · text · access), footer.
+
+  The `.mi` class on every icon is not decoration: the copied sheets colour
+  icons through it (`.lp-access-note .mi`, `.lp-foot-ico` and the rest), the
+  same way the reference's Material Symbols spans do. Without it those rules
+  match nothing — see IconComponent for why applying it is safe here.
+-->
+<div class="lp">
+
+  <header class="lp-nav">
+    <div class="lp-wrap">
+      <div class="lp-brand">
+        <span class="lp-brand-logo" style="background:none;box-shadow:none">
+          <img src="brand/epm-icon.svg" alt="" width="38" height="38" />
+        </span>
+        <div>
+          <b>{{ lang.t('app_name') }}</b>
+          <span>{{ lang.t('app_tagline') }}</span>
+        </div>
+      </div>
+
+      <div class="lp-nav-actions">
+        <button type="button" class="lp-ghost-btn" (click)="lang.toggle()">
+          <epm-icon class="mi" name="translate" [size]="17" />{{ lang.isAr() ? 'EN' : 'ع' }}
+        </button>
+        <button type="button" class="lp-ghost-btn" style="width:40px;padding:0;justify-content:center"
+                [attr.aria-label]="lang.isAr() ? 'المظهر' : 'Appearance'"
+                (click)="theme.toggle()">
+          <epm-icon class="mi" [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="18" />
+        </button>
+        <button type="button" class="btn btn-danger" style="background:var(--crimson-500);color:#fff"
+                (click)="signin()">
+          {{ lang.t('signin') }}
+          <epm-icon class="mi" [name]="lang.isAr() ? 'arrow_back' : 'arrow_forward'" [size]="16" />
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO — institutional identity + access -->
+  <section class="lp-hero">
+    <div class="lp-hero-bg"><div class="lp-grid-tex"></div></div>
+    <div class="lp-scene" epmHeroScene aria-hidden="true"><img src="brand/blueprint-scene.svg" alt="" /></div>
+
+    <div class="lp-wrap">
+      <div class="lp-hero-text">
+        <epm-ministry-lockup [size]="52" style="display:block;margin-bottom:var(--sp-5)" />
+
+        <span class="lp-eyebrow lp-rise">
+          <span class="dot"></span>{{ lang.t('signin_portal') }}
+        </span>
+
+        <h1 class="lp-rise d1">{{ lang.t('app_title_full') }}</h1>
+
+        <span class="lp-dim" aria-hidden="true"><i></i><i></i></span>
+
+        <p class="lp-hero-sub lp-rise d2">{{ lang.t('signin_blurb') }}</p>
+      </div>
+
+      <!-- access panel — entry first -->
+      <div class="lp-access lp-rise d3">
+        <div class="lp-access-head">
+          <span class="mk"><epm-icon class="mi" name="login" [size]="20" /></span>
+          <div>
+            <b>{{ lang.t('signin_access') }}</b>
+            <span>{{ lang.t('signin_sub') }}</span>
+          </div>
+        </div>
+
+        <div class="lp-access-body">
+          <button type="button" class="btn btn-danger"
+                  style="width:100%;height:48px;background:var(--crimson-500);color:#fff"
+                  (click)="signin()">
+            <epm-icon class="mi" name="login" [size]="19" />{{ lang.t('signin') }}
+          </button>
+
+          <div class="lp-access-div">{{ lang.t('secure_access') }}</div>
+
+          <div class="lp-access-notes">
+            <span class="lp-access-note">
+              <epm-icon class="mi" name="lock" [size]="15" />{{ lang.t('note_network') }}
+            </span>
+            <span class="lp-access-note">
+              <epm-icon class="mi" name="history" [size]="15" />{{ lang.t('note_audited') }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    The reference declares a `gateways` grid and a `facts` strip between the
+    hero and the footer and then does not render them — «operational access —
+    module gateways: removed per request». The removal is the design.
+  -->
+
+  <footer class="lp-foot">
+    <div class="lp-wrap">
+      <div class="lp-foot-feat">
+        <div class="lp-foot-i">
+          <span class="lp-foot-ico"><epm-icon class="mi" name="hub" [size]="21" /></span>
+          <div>
+            <b>{{ lang.t('lp_integration') }}</b>
+            <span>{{ lang.t('lp_integration_b') }}</span>
+          </div>
+        </div>
+        <div class="lp-foot-i">
+          <span class="lp-foot-ico"><epm-icon class="mi" name="insights" [size]="21" /></span>
+          <div>
+            <b>{{ lang.t('lp_effective') }}</b>
+            <span>{{ lang.t('lp_effective_b') }}</span>
+          </div>
+        </div>
+        <div class="lp-foot-i">
+          <span class="lp-foot-ico"><epm-icon class="mi" name="verified_user" [size]="21" /></span>
+          <div>
+            <b>{{ lang.t('lp_secure') }}</b>
+            <span>{{ lang.t('lp_secure_b') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lp-foot-copy">
+        <span>© 2026 {{ lang.t('ministry') }}</span>
+        <span class="mono">EPM v1.0</span>
+      </div>
+    </div>
+  </footer>
+</div>

@@ -6,6 +6,10 @@
 
 export interface EntityRow {
   code: string;
+  /** The emblem text — "UOB", not "ub". See Workspace.DisplayCode. */
+  displayCode: string;
+  /** The emblem background. An identity colour, never a status one. */
+  color: string;
   nameAr: string;
   nameEn: string;
   /**

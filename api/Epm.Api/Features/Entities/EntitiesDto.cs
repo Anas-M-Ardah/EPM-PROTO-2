@@ -16,6 +16,10 @@ namespace Epm.Api.Features.Entities;
 /// </param>
 public record EntityRow(
     string Code,
+    /// <summary>The emblem text — "UOB", not "ub". See Workspace.DisplayCode.</summary>
+    string DisplayCode,
+    /// <summary>The emblem background. An identity colour, never a status one.</summary>
+    string Color,
     string NameAr,
     string NameEn,
     string Kind,

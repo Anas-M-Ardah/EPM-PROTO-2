@@ -1,0 +1,147 @@
+<!--
+  SCR-P1 sign-in. PORTED VERBATIM from the design-revamp prototype's `Login`
+  (app/screens-public.jsx, the desktop branch) — class for class.
+
+  ── THE STYLESHEETS ARE COPIED, NOT RE-DERIVED (P-07) ───────────────────
+  `public.css` and `app-public.css` are now in src/styles/ alongside the four
+  that were already there, in the reference's own load order. Every class
+  below — .lp, .lp-nav, .lp-hero, .lp-access, .au-field, .au-submit — comes
+  from them. The first attempt at this screen hand-authored an `au-*` set by
+  eye and got the direction, the type scale and three mark sizes wrong; the
+  reference's own sheet has none of those problems because it IS the design.
+
+  The mobile branch of the reference is not ported: this app has no mobile
+  shell, and `.mlp` belongs to one.
+-->
+<div class="lp">
+
+  <header class="lp-nav">
+    <div class="lp-wrap">
+      <div class="lp-brand">
+        <span class="lp-brand-logo" style="background:none;box-shadow:none">
+          <img src="brand/epm-icon.svg" alt="" width="38" height="38" />
+        </span>
+        <div>
+          <b>{{ lang.t('app_name') }}</b>
+          <span>{{ lang.t('app_tagline') }}</span>
+        </div>
+      </div>
+
+      <div class="lp-nav-actions">
+        <!-- The reference's `onBack`. It was left out of the first port because
+             there was no landing page to go back to; there is one now. -->
+        <button type="button" class="lp-ghost-btn" (click)="home()">
+          <epm-icon class="mi" [name]="lang.isAr() ? 'arrow_forward' : 'arrow_back'" [size]="17" />{{ lang.t('home') }}
+        </button>
+        <button type="button" class="lp-ghost-btn" (click)="lang.toggle()">
+          <epm-icon class="mi" name="translate" [size]="17" />{{ lang.isAr() ? 'EN' : 'ع' }}
+        </button>
+        <button type="button" class="lp-ghost-btn" style="width:40px;padding:0;justify-content:center"
+                [attr.aria-label]="lang.isAr() ? 'المظهر' : 'Appearance'"
+                (click)="theme.toggle()">
+          <epm-icon class="mi" [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="18" />
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO — the reference reuses the landing layout here; the access panel
+       hosts the form. -->
+  <section class="lp-hero">
+    <div class="lp-hero-bg"><div class="lp-grid-tex"></div></div>
+    <div class="lp-scene" epmHeroScene aria-hidden="true"><img src="brand/blueprint-scene.svg" alt="" /></div>
+
+    <div class="lp-wrap">
+      <div class="lp-hero-text">
+        <!-- Was `.lp-lockup`, which is not a class in public.css and never
+             was — the crest rendered on a bare div with no department line
+             under it. The reference's own `MinistryLockup` is the element. -->
+        <epm-ministry-lockup [size]="52" style="display:block;margin-bottom:var(--sp-5)" />
+
+        <span class="lp-eyebrow lp-rise">
+          <span class="dot"></span>{{ lang.t('signin_portal') }}
+        </span>
+
+        <h1 class="lp-rise d1">{{ lang.t('app_title_full') }}</h1>
+
+        <span class="lp-dim" aria-hidden="true"><i></i><i></i></span>
+
+        <p class="lp-hero-sub lp-rise d2">{{ lang.t('signin_blurb') }}</p>
+      </div>
+
+      <form class="lp-access lp-rise d3" (submit)="submit($event)">
+        <div class="lp-access-head">
+          <span class="mk"><epm-icon class="mi" name="login" [size]="20" /></span>
+          <div>
+            <b>{{ lang.t('signin') }}</b>
+            <span>{{ lang.t('signin_sub') }}</span>
+          </div>
+        </div>
+
+        <div class="lp-access-body">
+          <div class="au-field">
+            <label for="au-u">{{ lang.t('username') }}</label>
+            <!--
+              No `dir="ltr"`. The reference's inputs inherit the document's
+              direction, so the caret and the value start at the RIGHT edge of
+              the field in Arabic, under the label. Forcing LTR pinned them to
+              the left, against the icon, which is the one thing on this screen
+              that read as the wrong way round.
+            -->
+            <div class="au-input">
+              <epm-icon class="mi" name="person" [size]="19" />
+              <input id="au-u" autocomplete="username"
+                     [value]="username()"
+                     (input)="username.set($any($event.target).value)" />
+            </div>
+            <!--
+              There was a persona hint here — «د. أحمد فؤاد · مدير عام» under the
+              field, on an `.au-hint` class that is not in public.css and so
+              rendered unstyled. The reference has no such line, and the screen
+              should not announce a role before anyone has signed in. The
+              username still SELECTS the persona; it just no longer says so.
+            -->
+          </div>
+
+          <div class="au-field">
+            <label for="au-p">{{ lang.t('password') }}</label>
+            <div class="au-input">
+              <epm-icon class="mi" name="lock" [size]="19" />
+              <input id="au-p" autocomplete="current-password"
+                     [type]="showPassword() ? 'text' : 'password'"
+                     [value]="password()"
+                     (input)="password.set($any($event.target).value)" />
+              <button type="button" class="toggle"
+                      [attr.aria-label]="showPassword() ? lang.t('hide_password') : lang.t('show_password')"
+                      (click)="showPassword.set(!showPassword())">
+                <epm-icon class="mi" [name]="showPassword() ? 'visibility_off' : 'visibility'" [size]="20" />
+              </button>
+            </div>
+          </div>
+
+          <div class="au-row">
+            <label class="au-check">
+              <input type="checkbox" [checked]="remember()"
+                     (change)="remember.set($any($event.target).checked)" />
+              <span>{{ lang.t('remember') }}</span>
+            </label>
+            <a href="#" (click)="$event.preventDefault()">{{ lang.t('forgot') }}</a>
+          </div>
+
+          <button class="au-submit" type="submit" [disabled]="busy()">
+            @if (busy()) {
+              <span class="au-spin" aria-hidden="true"></span>{{ lang.t('verifying') }}
+            } @else {
+              {{ lang.t('enter') }}
+              <epm-icon class="mi" [name]="lang.isAr() ? 'arrow_back' : 'arrow_forward'" [size]="19" />
+            }
+          </button>
+
+          <div class="au-secure">
+            <epm-icon class="mi" name="verified_user" [size]="16" />{{ lang.t('login_note') }}
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>

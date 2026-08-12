@@ -8,24 +8,34 @@ const TXC = c => c === 'var(--warning)' ? 'var(--status-suspended-tx)'
    a realistic, polished layout — for client field confirmation.
    ============================================================ */
 
-function DField({ f, lang, editMode }) {
+function DField({ f, lang, editMode, scope }) {
   const AR = lang === 'ar';
+  // saved edit (persisted) wins over the generated value, in edit and display
+  const labelEn = f.label && f.label.en;
+  const saved = (scope && window.epmFieldGet) ? window.epmFieldGet(scope, labelEn, undefined) : undefined;
+  const val = saved !== undefined ? saved : f.value;
+  const save = v => { if (scope && window.epmFieldSet) window.epmFieldSet(scope, labelEn, v); };
   let opts = f.options;
-  if (editMode && opts && f.value != null && !opts.includes(f.value)) opts = [f.value, ...opts];
+  if (editMode && opts && val != null && !opts.includes(val)) opts = [val, ...opts];
   const showEdit = editMode && !f.auto;
+  const unitTxt = String(f.unit || '').trim();
+  const isMoney = unitTxt.slice(0, 3).toUpperCase() === 'IQD';
+  const perDay = isMoney && unitTxt.indexOf('/') !== -1;
   return (
     <div className={`d-form-i ${showEdit ? 'editing' : ''}`}>
       <label className="k">{f.label[lang]}{f.required && <span className="req">*</span>}{f.proposed && <span className="d-proposed">{AR ? 'مقترح' : 'Proposed'}</span>}{editMode && f.auto && <span className="d-proposed" style={{ background: 'color-mix(in srgb,var(--on-surface-variant) 14%,transparent)', color: 'var(--on-surface-variant)' }} title={AR ? 'يُحسب تلقائياً ولا يقبل التعديل' : 'System-generated — not editable'}><Icon name="lock" size={10} style={{ verticalAlign: -1, marginInlineEnd: 2 }} />{AR ? 'آلي' : 'Auto'}</span>}</label>
       {showEdit
         ? (opts
-            ? <select className="d-form-input" defaultValue={f.value}>{opts.map((o, i) => <option key={i} value={o}>{o}</option>)}</select>
-            : <input className={`d-form-input ${f.mono ? 'mono' : ''}`} defaultValue={f.value} />)
-        : <span className={`v ${f.mono ? 'mono' : ''}`}>{f.value}{f.unit ? ' ' + f.unit : ''}</span>}
+            ? <select className="d-form-input" defaultValue={val} onChange={e => save(e.target.value)}>{opts.map((o, i) => <option key={i} value={o}>{o}</option>)}</select>
+            : <input className={`d-form-input ${f.mono ? 'mono' : ''}`} defaultValue={val} onChange={e => save(e.target.value)} />)
+        : isMoney
+            ? <span className="v"><DMoney v={val} lang={lang} size="sm" />{perDay && <i className="per">/{AR ? 'يوم' : 'day'}</i>}</span>
+            : <span className={`v ${f.mono ? 'mono' : ''}`}>{val}{f.unit ? ' ' + f.unit : ''}</span>}
     </div>
   );
 }
-function DFieldGrid({ fields, lang, editMode }) {
-  return <div className="d-form-grid">{fields.map((f, i) => <DField key={i} f={f} lang={lang} editMode={editMode} />)}</div>;
+function DFieldGrid({ fields, lang, editMode, scope }) {
+  return <div className="d-form-grid">{fields.map((f, i) => <DField key={i} f={f} lang={lang} editMode={editMode} scope={scope} />)}</div>;
 }
 
 function DEditTimeline({ events, lang }) {
@@ -55,9 +65,10 @@ function DEditTimeline({ events, lang }) {
   );
 }
 
-function DReadiness({ state, lang, sm }) {
+function DReadiness({ state, lang, sm, mod }) {
   const R = window.EPM.READINESS[state] || window.EPM.READINESS.notstarted;
-  return <span className={`d-ready ${R.cls} ${sm ? 'sm' : ''}`}><Icon name={R.icon} size={sm ? 12 : 13} />{R[lang]}</span>;
+  const label = mod && window.EPM.readinessLabel ? window.EPM.readinessLabel(mod, state, lang) : R[lang];
+  return <span className={`d-ready ${R.cls} ${sm ? 'sm' : ''}`} title={label}><Icon name={R.icon} size={sm ? 12 : 13} />{label}</span>;
 }
 
 function DReviewFlow({ lang, current }) {
@@ -82,7 +93,7 @@ function DModProfile({ t, lang, d, editMode }) {
   return (
     <React.Fragment>
       <div className="d-section-title">{t('mod_profile')}</div>
-      <DFieldGrid fields={d.profile.fields} lang={lang} editMode={editMode} />
+      <DFieldGrid fields={d.profile.fields} lang={lang} editMode={editMode} scope="profile" />
       <div className="d-section-title">{lang === 'ar' ? 'الوصف' : 'Description'}</div>
       {editMode
         ? <textarea className="d-form-input" style={{ width: '100%', minHeight: 84, resize: 'vertical', fontFamily: 'inherit' }} defaultValue={d.profile.description}></textarea>
@@ -115,7 +126,7 @@ function DSecNav({ items }) {
   const go = (id) => {
     setActive(id);
     const el = document.getElementById(id);
-    const box = el && el.closest('.d-detail-body');
+    const box = el && (el.closest('.d-pz7') || el.closest('.d-detail-body'));
     if (el && box) box.scrollTo({ top: el.offsetTop - box.offsetTop - 52, behavior: 'smooth' });
   };
   return (
@@ -147,33 +158,197 @@ function DFiles({ files }) {
   );
 }
 
-/* Project Information = identity + entity/beneficiary + consultant (folded per IA) */
-function DModInformation({ t, lang, d, editMode }) {
-  const AR = lang === 'ar';
-  const secs = [
-    { id: 'sec-identity', icon: 'badge', label: AR ? 'هوية المشروع' : 'Project identity' },
-    { id: 'sec-desc', icon: 'description', label: AR ? 'الوصف' : 'Description' },
-    { id: 'sec-entity', icon: 'account_balance', label: t('mod_entity') },
-    { id: 'sec-consultant', icon: 'engineering', label: t('mod_consultant') },
-  ];
+/* ---------- L11 primitives (design standards Part 3 · L11 / L12) ----------
+   Titled collapsible field group — max 7 fields, 3/2/1 responsive columns,
+   long text spans full width. Reused by every record-detail screen. */
+function DFGroup({ title, sub, id, flush, span, foot, children, defaultOpen }) {
+  const [open, setOpen] = React.useState(defaultOpen !== false);
   return (
-    <React.Fragment>
-      <DSecNav items={secs} />
-      <DSec id="sec-identity" icon="badge" title={AR ? 'هوية المشروع' : 'Project identity'} sub={AR ? 'البيانات التعريفية الأساسية' : 'Core registration data'}>
-        <DFieldGrid fields={d.profile.fields} lang={lang} editMode={editMode} />
-      </DSec>
-      <DSec id="sec-desc" icon="description" title={AR ? 'الوصف' : 'Description'}>
-        {editMode
-          ? <textarea className="d-form-input" style={{ width: '100%', minHeight: 84, resize: 'vertical', fontFamily: 'inherit' }} defaultValue={d.profile.description}></textarea>
-          : <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--on-surface-variant)', margin: 0 }}>{d.profile.description}</p>}
-      </DSec>
-      <DSec id="sec-entity" icon="account_balance" title={t('mod_entity')} sub={AR ? 'الجهة المستفيدة والمالكة' : 'Owning & beneficiary body'}>
-        <DFieldGrid fields={d.entity.fields} lang={lang} editMode={editMode} />
-      </DSec>
-      <DSec id="sec-consultant" icon="engineering" title={t('mod_consultant')} sub={AR ? 'المكتب الاستشاري المشرف' : 'Supervising consultant'}>
-        <DFieldGrid fields={d.consultant.fields.filter(f => !/[Ss]upervision/.test(f.label.en))} lang={lang} editMode={editMode} />
-      </DSec>
-    </React.Fragment>
+    /* `span` lets a section card sit in an L04 tile grid without a second
+       card vocabulary being invented for the same job */
+    <section className={'d-fgroup' + (open ? '' : ' closed') + (span ? ' s' + span : '')} id={id}>
+      <header className="gh" onClick={() => setOpen(o => !o)}>
+        <span className="ttl">{title}</span>
+        {sub && <span className="sub">{sub}</span>}
+        <span className="sp"></span>
+        <Icon name="expand_more" size={16} className="chev" />
+      </header>
+      {/* `flush` = the body IS the content (a grid, a viewer): no padding,
+          no gaps, the card's own edges frame it */}
+      {open && <div className={'gb' + (flush ? ' flush' : '')}>{children}</div>}
+      {open && foot && <div className="gf">{foot}</div>}
+    </section>
+  );
+}
+
+/* Activity log — the record's system history as a tab, not a docked rail.
+   Logs only: no comment thread and no composer. Presentation stays the
+   .trail/.tstep timeline L23 prescribes for a single record's history,
+   with field changes rendered as from -> to. */
+function DActivityLog({ lang, items }) {
+  const AR = lang === 'ar';
+  const logs = (items || []).filter(i => i.kind === 'system');
+  /* A grouped-number value (1,236,122,106) is money; the log stores it
+     pre-formatted, so route it through the one money renderer instead of
+     letting a bare figure sit next to properly-tagged ones elsewhere. */
+  const cval = v => {
+    const t = String(v == null ? '' : v).trim();
+    return /^\d{1,3}(,\d{3})+$/.test(t)
+      ? <DMoney v={t} lang={lang} size="xs" />
+      : (t || '—');
+  };
+  return (
+    <div className="d-actlog">
+      <div className="d-trail">
+        {logs.map((it, i) => (
+          <div key={i} className={'d-tstep' + (it.tone ? ' ' + it.tone : '')}>
+            <span className="tdot"><Icon name={it.icon || 'settings'} size={11} /></span>
+            <div className="th">
+              <span>{(window.epmActor(it.by, lang) || {}).name || it.by}</span>
+              {it.lvl === 'project' && <span className="lvl">{AR ? 'على مستوى المشروع' : 'project-wide'}</span>}
+              <time className="tm">{it.when}</time>
+            </div>
+            {window.epmActor(it.by, lang) && (
+              <div className="tr">
+                <span className="ro">{window.epmActor(it.by, lang).role}</span>
+                <span className="sep">·</span>
+                <span className="og">{window.epmActor(it.by, lang).org}</span>
+              </div>
+            )}
+            {it.changes
+              ? it.changes.map((c, j) => (
+                  <div className="chg" key={j} title={c.field + ': ' + (c.from || '—') + ' → ' + c.to}>
+                    <span className="f">{c.field}</span>
+                    <span className="from">{cval(c.from)}</span>
+                    <Icon name={AR ? 'arrow_back' : 'arrow_forward'} size={12} className="arw" />
+                    <span className="to">{cval(c.to)}</span>
+                  </div>
+                ))
+              : <div className="tb" dangerouslySetInnerHTML={{ __html: it.text }}></div>}
+          </div>
+        ))}
+        {!logs.length && (
+          <div className="d-tstep"><span className="tdot"><Icon name="inbox" size={11} /></span>
+            <div className="tb">{AR ? 'لا توجد أحداث مسجّلة على هذا السجل.' : 'No events recorded on this record.'}</div></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* A page's activity log shows exactly two things: changes to the fields
+   THIS page renders, and project-wide events that are true regardless of
+   which record you are looking at. An edit to a field the page does not
+   show belongs to the page that does show it. */
+function buildProjectActivity(d, lang, opts) {
+  const AR = lang === 'ar';
+  const o = opts || {};
+  const out = [];
+
+  // ---- project-wide: physical progress, true of the project itself
+  ((d.progress && d.progress.history) || []).slice(-2).forEach(h => out.push({
+    kind: 'system', lvl: 'project', icon: 'trending_up', by: AR ? 'النظام' : 'System', when: h.date, tone: 'done',
+    text: (AR ? 'تحديث الإنجاز المادي إلى ' : 'Physical progress updated to ') + '<mark>' + h.physical + '%</mark>',
+  }));
+
+  // ---- record events belonging to this page
+  if (o.vos) (d.variationOrders || []).slice(0, 3).forEach(v => out.push({
+    kind: 'system', lvl: 'record', icon: 'history', by: AR ? 'النظام' : 'System', when: v.date,
+    text: (AR ? 'أمر تغييري <mark>' : 'Change order <mark>') + v.no + '</mark> — ' + v.reason,
+  }));
+  if (o.meetings) (d.meetings || []).slice(0, 2).forEach(m => out.push({
+    kind: 'system', lvl: 'record', icon: 'groups', by: AR ? 'النظام' : 'System', when: m.date,
+    text: (AR ? 'محضر اجتماع: ' : 'Meeting minutes: ') + m.subject,
+  }));
+
+  // ---- field edits, narrowed to the labels this page actually renders
+  const shown = o.fields ? new Set(o.fields) : null;
+  (o.logs || []).forEach(k => ((d[k] && d[k].editLog) || []).forEach(e => {
+    const changes = shown ? (e.changes || []).filter(c => shown.has(c.field)) : (e.changes || []);
+    if (!changes.length) return;
+    out.push({ kind: 'system', lvl: 'record', icon: 'edit', by: e.by, when: e.date, changes: changes });
+  }));
+
+  return out.sort((x, y) => String(y.when).localeCompare(String(x.when)));
+}
+
+/* Project Information — design standards §30 screen 05 (L11 -> L12).
+   Zone flags for L11: Z2 req · Z7 req · Z8 req · Z6 opt · Z9 opt · Z10 opt.
+   The record has one applicable facet (Details), so there is no Z5 tab strip
+   and no Z6 (forbidden on Details). Content is exactly what this page always
+   had - identity, description, entity, consultant - regrouped, not extended. */
+function DModInformation({ t, lang, d, editMode, frameTitle, frameActions }) {
+  const AR = lang === 'ar';
+  const [sub, setSub] = React.useState('details');
+  const pf = d.profile.fields || [];
+  /* Field groups are semantic, not an arbitrary slice: each group is a
+     coherent set the reviewer reads together, and none exceeds L12's
+     max of 7 fields. Anything unmatched falls through to identity. */
+  const GROUPS = [
+    { id: 'sec-identity', ar: 'هوية المشروع', en: 'Project identity',
+      subAr: 'البيانات التعريفية الأساسية', subEn: 'Core registration data',
+      re: /project name|project code|project type|award year|execution stage|project status/i },
+    { id: 'sec-loc', ar: 'الموقع', en: 'Location',
+      subAr: 'الموقع الجغرافي وحدود العمل', subEn: 'Geographic location & site extents',
+      re: /coordinate|region|governorate|site|address|area/i },
+    { id: 'sec-budget', ar: 'التمويل والموازنة', en: 'Funding & budget',
+      subAr: 'مصدر التمويل وتصنيف الصرف', subEn: 'Funding source & spending classification',
+      re: /funding|priority|spending category|budget approval/i },
+  ];
+  const used = new Set();
+  GROUPS.forEach(g => {
+    g.fields = pf.filter(f => !used.has(f) && g.re.test(f.label.en || ''));
+    g.fields.forEach(f => used.add(f));
+  });
+  GROUPS[0].fields = GROUPS[0].fields.concat(pf.filter(f => !used.has(f)));
+  const shownGroups = GROUPS.filter(g => g.fields.length);
+  const consultant = (d.consultant.fields || []).filter(f => !/[Ss]upervision/.test(f.label.en));
+  const shownFields = React.useMemo(() => [
+    ...pf, ...(d.entity.fields || []), ...consultant,
+  ].map(f => f.label[lang]), [pf, d.entity.fields, consultant, lang]);
+  const activity = React.useMemo(() => window.EPM.buildProjectActivity(d, lang, {
+    logs: ['profile', 'entity', 'consultant'], fields: shownFields,
+  }), [d, lang, shownFields]);
+
+
+  const logCount = activity.filter(a2 => a2.kind === 'system').length;
+  const TABS = [
+    { id: 'details', label: AR ? 'التفاصيل' : 'Details' },
+    { id: 'log', label: AR ? 'سجل النشاط' : 'Activity log', n: logCount },
+  ];
+
+  return (
+    <DModuleFrame title={frameTitle} actions={sub === 'details' ? frameActions : null}
+      tabs={TABS} tab={sub} onTab={setSub}>
+      {sub === 'log' && <DActivityLog lang={lang} items={activity} />}
+      {sub === 'details' && <React.Fragment>
+
+      {shownGroups.map(g => (
+        <DFGroup key={g.id} id={g.id} title={AR ? g.ar : g.en} sub={AR ? g.subAr : g.subEn}>
+          <DFieldGrid fields={g.fields} lang={lang} editMode={editMode} scope="profile" />
+        </DFGroup>
+      ))}
+
+      <DFGroup id="sec-desc" title={AR ? 'الوصف' : 'Description'}
+        sub={AR ? 'نطاق العمل كما ورد في العقد' : 'Scope of work as contracted'}>
+        <div className="d-fwide">
+          {editMode
+            ? <textarea className="d-form-input" style={{ width: '100%', minHeight: 96, resize: 'vertical', fontFamily: 'inherit' }} defaultValue={d.profile.description}></textarea>
+            : <p>{d.profile.description}</p>}
+        </div>
+      </DFGroup>
+
+      <DFGroup id="sec-entity" title={t('mod_entity')}
+        sub={AR ? 'الجهة المستفيدة والمالكة' : 'Owning & beneficiary body'}>
+        <DFieldGrid fields={d.entity.fields} lang={lang} editMode={editMode} scope="entity" />
+      </DFGroup>
+
+      <DFGroup id="sec-consultant" title={t('mod_consultant')}
+        sub={AR ? 'المكتب الاستشاري المشرف' : 'Supervising consultant'}>
+        <DFieldGrid fields={consultant} lang={lang} editMode={editMode} scope="consultant" />
+      </DFGroup>
+      </React.Fragment>}
+    </DModuleFrame>
   );
 }
 
@@ -185,13 +360,19 @@ function DModSimple({ title, fields, lang, editMode }) {
   return (<React.Fragment><div className="d-section-title">{title}</div><DFieldGrid fields={fields} lang={lang} editMode={editMode} /></React.Fragment>);
 }
 
-function DModContractNew({ t, lang, d, p, editMode, selKey, setSelKey }) {
+function DModContractNew({ t, lang, d, p, editMode, selKey, setSelKey, showToast, frameActions }) {
   const AR = lang === 'ar';
   const list = d.contracts || [{ key: 'main', name: AR ? 'العقد' : 'Contract', status: d.contract.status, code: d.contract.code, raw: d.contract.raw, fields: d.contract.fields, contractor: d.contractor }];
   React.useEffect(() => { if (selKey == null && list.length === 1) setSelKey(list[0].key); }, [list.length]);
   const [openPayNo, setOpenPayNo] = React.useState(null);
+  const [openAmd, setOpenAmd] = React.useState(null);
+  const [paneWide, setPaneWide] = React.useState(false);
   const [cTab, setCTab] = React.useState('overview');
-  React.useEffect(() => { setCTab('overview'); setOpenPayNo(null); }, [selKey]);
+  React.useEffect(() => { setCTab('overview'); setOpenPayNo(null); setOpenAmd(null); setPaneWide(false); }, [selKey]);
+  /* a record pane belongs to the tab that opened it: leaving that tab closes
+     it, so a stale record can never sit beside unrelated content. Leaving the
+     module unmounts the component, which clears it too. */
+  React.useEffect(() => { setOpenPayNo(null); setOpenAmd(null); setPaneWide(false); }, [cTab]);
   const totalValue = list.reduce((a, x) => a + (x.raw.contractCost || 0), 0);
   const c = list.find(x => x.key === selKey);
   // approved change orders amend the contract; the last applied one is effective.
@@ -199,74 +380,168 @@ function DModContractNew({ t, lang, d, p, editMode, selKey, setSelKey }) {
   const amd = React.useMemo(() => (c && window.contractAmendments ? window.contractAmendments(c, d, lang, p) : null), [c && c.key, d, lang, p && p.id]);
 
   if (!c) {
-    const totalSpent = list.reduce((a, x) => a + (x.raw.totalSpent || 0), 0);
-    const avgPhys = Math.round(list.reduce((a, x) => a + (x.raw.physicalPct || 0), 0) / list.length);
-    const avgFin = Math.round(list.reduce((a, x) => a + (x.raw.financialPct || 0), 0) / list.length);
+    /* Contracts register — §30 screen 06: L05 on the table standard
+       (code column first, then name), with a portfolio summary above it
+       so the user gets the whole contractual position in one view. */
+    const rows = list.map(x => {
+      const am = window.contractAmendments ? window.contractAmendments(x, d, lang, p) : null;
+      const effective = am ? am.effective.value : x.raw.contractCost;
+      const pend = am ? am.pending.length : 0;
+      const addenda = am ? (am.versions.length - 1) : 0;
+      const fget = re => { const f = (x.fields || []).find(y => re.test(y.label.en || '')); return f ? f.value : null; };
+      return { x, effective, pend, addenda,
+        contractor: (x.contractor && window.epmContractorName({ contractor: x.contractor }, lang)) || window.epmContractorName(d, lang) || '—',
+        component: fget(/component/i), finish: fget(/finish date/i), start: fget(/start date/i),
+        spentPct: x.raw.contractCost ? Math.round(x.raw.totalSpent / x.raw.contractCost * 100) : 0 };
+    });
+    const totalSpent = list.reduce((a2, x) => a2 + (x.raw.totalSpent || 0), 0);
+    const totalEffective = rows.reduce((a2, rr) => a2 + rr.effective, 0);
+    const addendaImpact = totalEffective - totalValue;
+    const totalAddenda = rows.reduce((a2, rr) => a2 + rr.addenda, 0);
+    const totalPending = rows.reduce((a2, rr) => a2 + rr.pend, 0);
+    /* value-weighted, so a small contract at 90% cannot mask a large one at 10% */
+    const wPhys = totalEffective ? Math.round(rows.reduce((a2, rr) => a2 + rr.x.raw.physicalPct * rr.effective, 0) / totalEffective) : 0;
+    const dates = rows.map(rr => rr.finish).filter(Boolean).sort();
+    const starts = rows.map(rr => rr.start).filter(Boolean).sort();
+    const byStatus = {}; list.forEach(x => { byStatus[x.status] = (byStatus[x.status] || 0) + 1; });
+
+    const spentPct = totalEffective ? Math.round(totalSpent / totalEffective * 100) : 0;
+
     return (
-      <React.Fragment>
-        <div className="d-model-topbar">
-          <div className="d-section-title" style={{ margin: 0 }}>{t('mod_contract')}</div>
-          <span className="d-cell-sub">· {list.length} {AR ? 'عقود' : 'contracts'}</span>
-          <div style={{ flex: 1 }}></div>
-          <span className="d-cell-sub mono">{AR ? 'إجمالي قيمة العقود' : 'Total contract value'}: {window.fmtNum(totalValue)} IQD</span>
-        </div>
-        <div className="d-metrics c3">
-          <div className="d-metric">
-            <span className="d-metric-ring"><DDonut value={avgPhys} size={64} stroke={7} color="var(--viz-1)" /><b>{avgPhys}%</b></span>
-            <span className="d-metric-tx"><span className="k">{AR ? 'متوسط الإنجاز المادي' : 'Avg. physical completion'}</span><span className="s">{AR ? 'عبر كل العقود' : 'Across all contracts'}</span></span>
+      <DModuleFrame
+        title={AR ? 'سجل عقود المشروع' : 'Project contract register'}
+        sub={list.length + (AR ? ' عقود' : ' contracts')}
+        actions={<React.Fragment>
+          {frameActions}
+          <button className="d-btn sm" onClick={() => showToast && showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}>
+            <Icon name="download" size={15} />{AR ? 'تصدير' : 'Export'}</button>
+          <button className="d-btn sm primary" onClick={() => showToast && showToast(AR ? 'إضافة عقد — تجريبي' : 'Add contract — demo')}>
+            <Icon name="add" size={15} />{AR ? 'إضافة عقد' : 'Add contract'}</button>
+        </React.Fragment>}
+        status={<DZ10 lang={lang} asOf={d.asOf} stats={[
+          { k: AR ? 'العقود' : 'Contracts', v: list.length },
+          { k: AR ? 'القيمة النافذة' : 'Effective', v: totalEffective, money: true },
+          { k: AR ? 'المصروف' : 'Spent', v: totalSpent, money: true }]} />}>
+
+        {/* Contractual position — each datum gets the encoding it deserves:
+            counts as chips, money that reconciles as a reconciliation strip,
+            part-to-whole as bars. Not one flat key/value list. */}
+        <section className="d-csum">
+          <header className="hd">
+            <span className="cnt"><b className="num">{list.length}</b><i>{AR ? 'عقود' : 'contracts'}</i></span>
+            <span className="chips">
+              {Object.keys(byStatus).map(k2 => (
+                <span key={k2} className={'d-pill ' + k2}>{(window.EPM.STATUS[k2] ? window.EPM.STATUS[k2][lang] : k2) + ' ' + byStatus[k2]}</span>
+              ))}
+            </span>
+            <span className="sp"></span>
+            <span className="per">
+              <em>{AR ? 'فترة العقود' : 'Contract period'}</em>
+              <b className="num">{(starts[0] || '—') + ' → ' + (dates[dates.length - 1] || '—')}</b>
+            </span>
+          </header>
+
+          {/* value reconciliation: original + addenda = effective */}
+          <div className="d-recon">
+            <div className="tm">
+              <span className="k">{AR ? 'القيمة الأصلية' : 'Original value'}</span>
+              <DMoney v={totalValue} lang={lang} size="md" />
+            </div>
+            <span className="op">{addendaImpact < 0 ? '−' : '+'}</span>
+            <div className={'tm' + (addendaImpact ? (addendaImpact > 0 ? ' bad' : ' good') : ' zero')}>
+              <span className="k">{AR ? 'أثر الملاحق' : 'Addenda impact'}</span>
+              <DMoney v={Math.abs(addendaImpact)} lang={lang} size="md" />
+              <span className="n">{totalAddenda} {AR ? 'ملحق' : 'addenda'}{totalPending ? ' · ' + totalPending + (AR ? ' قيد الاعتماد' : ' pending') : ''}</span>
+            </div>
+            <span className="op eq">=</span>
+            <div className="tm strong">
+              <span className="k">{AR ? 'القيمة النافذة' : 'Effective value'}</span>
+              <DMoney v={totalEffective} lang={lang} size="md" />
+            </div>
           </div>
-          <div className="d-metric">
-            <span className="d-metric-ring"><DDonut value={avgFin} size={64} stroke={7} color="var(--viz-2)" /><b>{avgFin}%</b></span>
-            <span className="d-metric-tx"><span className="k">{AR ? 'متوسط الإنجاز المالي' : 'Avg. financial completion'}</span><span className="s">{AR ? 'عبر كل العقود' : 'Across all contracts'}</span></span>
+
+          {/* part-to-whole ratios read as bars, not as paired numbers */}
+          <div className="d-csum-bars">
+            <div className="bx">
+              <div className="bh">
+                <span className="k">{AR ? 'الصرف من القيمة النافذة' : 'Spent of effective value'}</span>
+                <b className="num">{spentPct}%</b>
+              </div>
+              <span className="track"><i style={{ width: spentPct + '%', background: 'var(--success)' }}></i></span>
+              <div className="bf">
+                <span><em>{AR ? 'مصروف' : 'spent'}</em> <DMoney v={totalSpent} lang={lang} size="xs" /></span>
+                <span><em>{AR ? 'متبقٍ' : 'remaining'}</em> <DMoney v={Math.max(0, totalEffective - totalSpent)} lang={lang} size="xs" /></span>
+              </div>
+            </div>
+            <div className="bx">
+              <div className="bh">
+                <span className="k">{AR ? 'الإنجاز المادي المرجّح' : 'Weighted physical progress'}</span>
+                <b className="num">{wPhys}%</b>
+              </div>
+              <span className="track"><i style={{ width: wPhys + '%', background: 'var(--viz-1)' }}></i>
+                <u style={{ insetInlineStart: spentPct + '%' }} title={AR ? 'نسبة الصرف' : 'spend %'}></u></span>
+              <div className="bf">
+                <span>{AR ? 'مرجّح بقيمة كل عقد · العلامة = نسبة الصرف' : 'weighted by contract value · marker = spend %'}</span>
+              </div>
+            </div>
           </div>
-          <div className="d-util-bar">
-            <div className="d-util-row"><span className="lbl">{AR ? 'المصروف من إجمالي قيمة العقود' : 'Spent of total contract value'}</span><b className="amt">{totalValue ? Math.round(totalSpent / totalValue * 100) : 0}%</b></div>
-            <div className="d-progress"><span className="t" style={{ height: 8 }}><span style={{ width: (totalValue ? Math.round(totalSpent / totalValue * 100) : 0) + '%' }}></span></span></div>
-            <div className="d-util-row"><span className="lbl">{AR ? 'إجمالي قيمة العقود' : 'Total contract value'}</span><span className="amt mono">{window.fmtNum(totalValue)}</span></div>
-            <div className="d-util-row"><span className="lbl">{AR ? 'إجمالي المصروف' : 'Total spent'}</span><span className="amt mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(totalSpent)}</span></div>
-          </div>
-        </div>
-        <div className="d-section-title">{AR ? 'سجل العقود' : 'Contract register'}</div>
+        </section>
+
         <div className="d-contract-grid">
-          {list.map((x) => {
-            const spentPct = x.raw.contractCost ? Math.min(100, Math.round(x.raw.totalSpent / x.raw.contractCost * 100)) : 0;
-            return (
-              <button key={x.key} className="d-contract-card" onClick={() => setSelKey(x.key)}>
-                <div className="d-contract-card-top">
-                  <span className="d-vo-emblem" style={{ background: 'color-mix(in srgb,var(--primary) 12%,transparent)', color: 'var(--primary)' }}><Icon name="description" size={18} /></span>
-                  <div className="d-contract-card-title">
-                    <b>{x.name}</b>
-                    <span className="mono">{x.code}</span>
-                  </div>
-                  <DPill status={x.status} lang={lang} />
+          {rows.map(rr => (
+            <button key={rr.x.key} className="d-contract-card" onClick={() => setSelKey(rr.x.key)}>
+              <div className="d-contract-card-top">
+                <div className="d-contract-card-title">
+                  <b>{rr.x.name}</b>
+                  <span className="mono">{rr.x.code}</span>
                 </div>
-                <div className="d-contract-card-val">
-                  <span className="lbl">{AR ? 'كلفة العقد' : 'Contract cost'}</span>
-                  <span className="amt"><span className="mono">{window.fmtNum(x.raw.contractCost)}</span><small>IQD</small></span>
+                <DPill status={rr.x.status} lang={lang} />
+              </div>
+
+              <div className="d-contract-card-val">
+                <span className="lbl">{rr.addenda > 0 ? (AR ? 'القيمة النافذة' : 'Effective value') : (AR ? 'قيمة العقد' : 'Contract value')}</span>
+                <DMoney v={rr.effective} lang={lang} size="lg" />
+                {rr.addenda > 0 ? (
+                  <span className="delta">
+                    {rr.effective > rr.x.raw.contractCost ? '▲ ' : '▼ '}
+                    {window.fmtNum(Math.abs(rr.effective - rr.x.raw.contractCost))}
+                    <em>{AR ? ' عن الأصلية ' : ' vs original '}{window.fmtNum(rr.x.raw.contractCost)} {AR ? 'د.ع' : 'IQD'}</em>
+                  </span>
+                ) : (
+                  <span className="delta quiet">{AR ? 'القيمة الأصلية دون تعديل' : 'original value, unamended'}</span>
+                )}
+              </div>
+
+              <div className="d-contract-card-mtx">
+                <div className="d-contract-mini">
+                  <div className="hd"><span>{AR ? 'الإنجاز المادي' : 'Physical'}</span><b>{rr.x.raw.physicalPct}%</b></div>
+                  <div className="d-progress"><span className="t" style={{ height: 6 }}><span style={{ width: rr.x.raw.physicalPct + '%', background: 'var(--viz-1)' }}></span></span></div>
                 </div>
-                <div className="d-contract-card-mtx">
-                  <div className="d-contract-mini">
-                    <div className="hd"><span>{AR ? 'الإنجاز المادي' : 'Physical'}</span><b style={{ color: 'var(--azure-600)' }}>{x.raw.physicalPct}%</b></div>
-                    <div className="d-progress"><span className="t" style={{ height: 6 }}><span style={{ width: x.raw.physicalPct + '%', background: 'var(--azure-500)' }}></span></span></div>
-                  </div>
-                  <div className="d-contract-mini">
-                    <div className="hd"><span>{AR ? 'الإنجاز المالي' : 'Financial'}</span><b style={{ color: 'var(--on-surface)' }}>{x.raw.financialPct}%</b></div>
-                    <div className="d-progress"><span className="t" style={{ height: 6 }}><span style={{ width: x.raw.financialPct + '%', background: 'var(--on-surface)' }}></span></span></div>
-                  </div>
-                  <div className="d-contract-mini">
-                    <div className="hd"><span>{AR ? 'مصروف من الكلفة' : 'Spent of cost'}</span><b>{spentPct}%</b></div>
-                    <div className="d-progress"><span className="t" style={{ height: 6 }}><span style={{ width: spentPct + '%' }}></span></span></div>
-                  </div>
+                <div className="d-contract-mini">
+                  <div className="hd"><span>{AR ? 'المصروف' : 'Spent'}</span><b>{rr.spentPct}%</b></div>
+                  <div className="d-progress"><span className="t" style={{ height: 6 }}><span style={{ width: rr.spentPct + '%', background: 'var(--success)' }}></span></span></div>
                 </div>
-                <div className="d-contract-card-foot">
-                  <span>{(x.fields.find(fl => fl.label.en === 'Component') || {}).value || ''}</span>
-                  <span className="go">{AR ? 'التفاصيل' : 'View details'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} /></span>
-                </div>
-              </button>
-            );
-          })}
+              </div>
+
+              <dl className="d-contract-card-kv">
+                <div><dt>{AR ? 'المقاول' : 'Contractor'}</dt><dd>{rr.contractor}</dd></div>
+                <div><dt>{AR ? 'المكوّن' : 'Component'}</dt><dd>{rr.component || '—'}</dd></div>
+                <div><dt>{AR ? 'المدة' : 'Period'}</dt><dd className="num">{(rr.start || '—') + ' → ' + (rr.finish || '—')}</dd></div>
+                <div><dt>{AR ? 'المصروف' : 'Spent'}</dt><dd><DMoney v={rr.x.raw.totalSpent} lang={lang} size="sm" /></dd></div>
+              </dl>
+
+              <div className="d-contract-card-foot">
+                <span className="tags">
+                  {rr.addenda > 0 && <span className="tg">{rr.addenda} {AR ? 'ملحق' : 'addenda'}</span>}
+                  {rr.pend > 0 && <span className="tg warn">{rr.pend} {AR ? 'قيد الاعتماد' : 'pending'}</span>}
+                  {!rr.addenda && !rr.pend && <span className="tg quiet">{AR ? 'بلا ملاحق' : 'no addenda'}</span>}
+                </span>
+                <span className="go">{AR ? 'فتح العقد' : 'Open contract'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} /></span>
+              </div>
+            </button>
+          ))}
         </div>
-      </React.Fragment>
+      </DModuleFrame>
     );
   }
 
@@ -277,118 +552,258 @@ function DModContractNew({ t, lang, d, p, editMode, selKey, setSelKey }) {
   const openPay = contractPays.find(pay => pay.no === openPayNo);
   const openAlloc = openPay && (openPay.allocations || []).find(a => a.contractKey === c.key);
   const openCerts = openPay ? (openPay.attachments || []).filter(at => !at.contractKey || at.contractKey === c.key) : [];
-  const CTABS = [
-    { id: 'overview', ico: 'insights', label: AR ? 'نظرة عامة' : 'Overview' },
-    { id: 'details', ico: 'list_alt', label: AR ? 'التفاصيل' : 'Details' },
-    { id: 'payments', ico: 'payments', label: AR ? 'الدفعات' : 'Payments', n: contractPays.length },
-    { id: 'amend', ico: 'history', label: AR ? 'التعديلات التعاقدية' : 'Amendments', n: amdCount },
+  /* Contract fields as semantic groups (L12: titled groups, max 7 fields),
+     not one flat grid of 23. Anything unmatched falls through to identity. */
+  const CGROUPS = [
+    { id: 'sec-terms', ar: 'هوية العقد', en: 'Contract identity',
+      subAr: 'التعريف والمكوّن', subEn: 'Identification & component',
+      re: /contract name|contract code|component|contract status/i },
+    { id: 'sec-dates', ar: 'التواريخ والمدة', en: 'Dates & duration',
+      subAr: 'المباشرة والإنجاز والمراسلات الرسمية', subEn: 'Start, finish & official correspondence',
+      re: /start date|finish date|official incoming|duration|time extensions/i },
+    { id: 'sec-amounts', ar: 'المبالغ التعاقدية', en: 'Contract amounts',
+      subAr: 'الإحالة والاحتياط والإشراف', subEn: 'Award, reserve & supervision',
+      re: /award amount|reserve amount|supervision & monitoring amount/i },
+    { id: 'sec-spend', ar: 'المصروف', en: 'Disbursement',
+      subAr: 'المنصرف مقابل كل بند', subEn: 'Spent against each line',
+      re: /spent from|total spent|cumulative contract spend/i },
+    { id: 'sec-perf', ar: 'الأداء والالتزامات', en: 'Performance & obligations',
+      subAr: 'نسب الإنجاز والغرامات والضمانات', subEn: 'Progress, penalties & guarantees',
+      re: /physical %|financial %|penalty|guarantees/i },
   ];
+  const cUsed = new Set();
+  CGROUPS.forEach(g => {
+    g.fields = (c.fields || []).filter(f => !cUsed.has(f) && g.re.test(f.label.en || ''));
+    g.fields.forEach(f => cUsed.add(f));
+  });
+  CGROUPS[0].fields = CGROUPS[0].fields.concat((c.fields || []).filter(f => !cUsed.has(f)));
+  const cShownGroups = CGROUPS.filter(g => g.fields.length);
+
+  const cActivity = window.EPM.buildProjectActivity(d, lang, {
+    logs: ['contract', 'contractor'], vos: true,
+    fields: [...(c.fields || []), ...((c.contractor && c.contractor.fields) || (d.contractor && d.contractor.fields) || [])].map(f => f.label[lang]),
+  });
+  const CTABS = [
+    { id: 'overview', label: AR ? 'نظرة عامة' : 'Overview' },
+    { id: 'details', label: AR ? 'التفاصيل' : 'Details' },
+    { id: 'payments', label: AR ? 'الدفعات' : 'Payments', n: contractPays.length },
+    { id: 'amend', label: AR ? 'الملاحق والتعديلات' : 'Addenda & amendments', n: amdCount },
+    { id: 'log', label: AR ? 'سجل النشاط' : 'Activity log', n: cActivity.filter(a2 => a2.kind === 'system').length },
+  ];
+  /* the contract's own attributes — Z2 carries the project, so the record
+     identity lives here as a metadata strip rather than a second header. */
+  const cfld = re => { const f = (c.fields || []).find(x => re.test(x.label.en || '')); return f ? f.value : null; };
+  const effective = amd ? amd.effective.value : r.contractCost;
+  const CMETA = [
+    { k: AR ? 'المقاول المنفّذ' : 'Contractor', v: (c.contractor && window.epmContractorName({ contractor: c.contractor }, lang)) || window.epmContractorName(d, lang) },
+    { k: AR ? 'المكوّن' : 'Component', v: cfld(/component/i) },
+    { k: AR ? 'المباشرة' : 'Start', v: cfld(/start date/i), num: true },
+    { k: AR ? 'الإنجاز التعاقدي' : 'Finish', v: cfld(/finish date/i), num: true },
+    { k: AR ? 'مبلغ الإحالة' : 'Award amount', v: r.contractCost, money: true },
+    { k: AR ? 'القيمة النافذة' : 'Effective value', v: effective, money: true },
+    { k: AR ? 'المصروف' : 'Spent', v: r.totalSpent, money: true },
+    { k: AR ? 'الكتاب الرسمي' : 'Incoming no.', v: cfld(/official incoming no/i), num: true },
+  ].filter(x => x.v != null && x.v !== '');
   return (
-    <React.Fragment>
-      <div className="d-vo-detail">
-        <div className="d-vo-detail-head">
-          {list.length > 1 && <button className="d-btn sm ghost" onClick={() => setSelKey(null)}><Icon name={AR ? 'arrow_forward' : 'arrow_back'} size={16} />{AR ? 'سجل العقود' : 'Register'}</button>}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><b style={{ fontSize: 15 }}>{c.name}</b><DPill status={c.status} lang={lang} /></div>
-            <div className="reason" style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }} dir="ltr">{c.code}</div>
-          </div>
-          <div style={{ textAlign: 'end' }}>
-            <div className="mono" style={{ fontSize: 15, fontWeight: 'var(--fw-x)' }}>{window.fmtNum(amd ? amd.effective.value : r.contractCost)}</div>
-            <div className="d-cell-sub" style={{ fontSize: 11 }}>IQD · {amd && amd.versions.length > 1 ? (AR ? 'القيمة النافذة' : 'effective value') : (AR ? 'كلفة كلية' : 'total cost')}</div>
-            {amd && amd.versions.length > 1 && <div className="d-cell-sub mono" style={{ fontSize: 11 }}>{AR ? 'الأصلية ' : 'original '}{window.fmtNum(r.contractCost)}</div>}
-          </div>
-        </div>
-        <div className="d-vo-tabs">
-          {CTABS.map(tb => (
-            <button key={tb.id} className={cTab === tb.id ? 'on' : ''} onClick={() => setCTab(tb.id)}>
-              <Icon name={tb.ico} size={15} />{tb.label}
-              {tb.n != null && <span className="d-cell-sub mono" style={{ fontSize: 11 }}>{tb.n}</span>}
-            </button>
-          ))}
-        </div>
-        <div className="d-vo-tabbody">
+    <DModuleFrame
+      tabs={CTABS} tab={cTab} onTab={setCTab}
+      title={c.name}
+      sub={c.code}
+      back={list.length > 1 ? (
+        <button className="d-btn sm ghost" onClick={() => setSelKey(null)} title={AR ? 'العودة إلى سجل العقود' : 'Back to contract register'}>
+          <Icon name={AR ? 'arrow_forward' : 'arrow_back'} size={15} />{AR ? 'سجل العقود' : 'Contract register'}
+        </button>
+      ) : null}
+      aside={openAmd ? (
+        <DRecordPane lang={lang} wide={paneWide}
+          title={openAmd.label}
+          meta={[
+            { k: AR ? 'المصدر' : 'Source', v: openAmd.source, num: true },
+            { k: AR ? 'التاريخ' : 'Date', v: openAmd.date, num: true },
+            { k: AR ? 'الحالة' : 'State', v: AR ? window.AMD_STATE[openAmd.state].ar : window.AMD_STATE[openAmd.state].en },
+            { k: AR ? 'العقد' : 'Contract', v: c.code, num: true },
+          ]}
+          onExpand={() => setPaneWide(w => !w)}
+          onClose={() => { setOpenAmd(null); setPaneWide(false); }}
+          footer={<button className="d-btn sm" onClick={() => showToast && showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}>
+            <Icon name="download" size={15} />{AR ? 'تصدير الملحق' : 'Export addendum'}</button>}>
+          <DAmendmentRecord lang={lang} amd={openAmd} />
+        </DRecordPane>
+      ) : openPay ? (
+        <DRecordPane lang={lang} wide={paneWide}
+          title={openPay.no}
+          meta={[
+            { k: AR ? 'المبلغ' : 'Amount', v: openAlloc ? openAlloc.amount : 0, money: true },
+            { k: AR ? 'التاريخ' : 'Date', v: openPay.date, num: true },
+            { k: AR ? 'كتاب التمويل' : 'Finance letter', v: openPay.financeLetter.no, num: true },
+            { k: AR ? 'العقد' : 'Contract', v: c.code, num: true },
+          ]}
+          onExpand={() => setPaneWide(w => !w)}
+          onClose={() => { setOpenPayNo(null); setPaneWide(false); }}
+          footer={<button className="d-btn sm" onClick={() => showToast && showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}>
+            <Icon name="download" size={15} />{AR ? 'تصدير الدفعة' : 'Export payment'}</button>}>
+          <DRecordGrp label={AR ? 'تفصيل الدفعة لهذا العقد' : 'Payment breakdown for this contract'}>
+            <table className="d-line-table">
+              <thead><tr><th>{AR ? 'البند' : 'Item'}</th>
+                <th className="r">{AR ? 'المبلغ' : 'Amount'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th></tr></thead>
+              <tbody>{openAlloc && openAlloc.items.map((it, k) => (
+                <tr key={k}><td className="name wrap">{it.name}</td>
+                  <td className="r"><DMoney v={it.value} lang={lang} size="sm" bare /></td></tr>))}</tbody>
+            </table>
+          </DRecordGrp>
+          <DRecordGrp label={AR ? 'المرفقات' : 'Attachments'}>
+            {openCerts.length
+              ? <DFiles files={openCerts.map(at => ({ name: at.name, meta: at.file + ' · ' + at.size }))} />
+              : <span className="d-cell-sub">{AR ? 'لا توجد مرفقات' : 'No attachments'}</span>}
+          </DRecordGrp>
+        </DRecordPane>
+      ) : null}
+      asideWide={paneWide}
+      actions={<React.Fragment>
+        {cTab === 'details' && frameActions}
+        {(cTab === 'payments' || cTab === 'amend') && (
+          <button className="d-btn sm" onClick={() => showToast && showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}>
+            <Icon name="download" size={15} />{AR ? 'تصدير' : 'Export'}</button>
+        )}
+      </React.Fragment>}
+      status={(cTab === 'payments' || cTab === 'amend') ? (
+        <DZ10 lang={lang} asOf={d.asOf} stats={cTab === 'payments'
+          ? [{ k: AR ? 'الدفعات' : 'Payments', v: contractPays.length },
+             { k: AR ? 'الإجمالي' : 'Total', money: true, v: contractPays.reduce((a, pay) => a + (((pay.allocations || []).find(al => al.contractKey === c.key) || {}).amount || 0), 0) }]
+          : [{ k: AR ? 'الملاحق' : 'Addenda', v: amdCount },
+             { k: AR ? 'القيمة النافذة' : 'Effective', v: effective, money: true }]} />
+      ) : null}>
+
+      {/* record identity as attributes — the overview facet only, so it does
+          not repeat above every tab's payload */}
+      {cTab === 'overview' && <dl className="d-meta">
+        <div className="d-meta-i"><dt>{AR ? 'العقد' : 'Contract'}</dt>
+          <dd>{c.name} <span className="mono" style={{ color: 'var(--fg-subtle)' }}>{c.code}</span></dd></div>
+        <div className="d-meta-i"><dt>{AR ? 'الحالة' : 'Status'}</dt>
+          <dd><DPill status={c.status} lang={lang} /></dd></div>
+        {CMETA.map((m, i) => (
+          <div className="d-meta-i" key={i}><dt>{m.k}</dt>
+            <dd className={m.num ? 'num' : ''}>{m.money ? <DMoney v={m.v} lang={lang} size="sm" /> : m.v}</dd></div>
+        ))}
+      </dl>}
+
         {cTab === 'overview' && <React.Fragment>
-      <div className="d-metrics c3">
-        <div className="d-metric">
-          <span className="d-metric-ring"><DDonut value={r.physicalPct} size={64} stroke={7} color="var(--viz-1)" /><b>{r.physicalPct}%</b></span>
-          <span className="d-metric-tx"><span className="k">{AR ? 'الإنجاز المادي' : 'Physical completion'}</span><span className="s">{AR ? 'نِسبة تنفيذ الأعمال' : 'Work executed'}</span></span>
-        </div>
-        <div className="d-metric">
-          <span className="d-metric-ring"><DDonut value={r.financialPct} size={64} stroke={7} color="var(--viz-2)" /><b>{r.financialPct}%</b></span>
-          <span className="d-metric-tx"><span className="k">{AR ? 'الإنجاز المالي' : 'Financial completion'}</span><span className="s">{AR ? 'نِسبة الصرف' : 'Amount disbursed'}</span></span>
-        </div>
-        <div className="d-util-bar">
-          <div className="d-util-row"><span className="lbl">{AR ? 'المصروف من كلفة العقد الكلي' : 'Spent of total contract cost'}</span><b className="amt">{r.contractCost ? Math.round(r.totalSpent / r.contractCost * 100) : 0}%</b></div>
-          <div className="d-progress"><span className="t" style={{ height: 8 }}><span style={{ width: (r.contractCost ? Math.round(r.totalSpent / r.contractCost * 100) : 0) + '%' }}></span></span></div>
-          <div className="d-util-row"><span className="lbl">{AR ? 'كلفة العقد الكلية' : 'Total contract cost'}</span><span className="amt mono">{window.fmtNum(r.contractCost)}</span></div>
-          <div className="d-util-row"><span className="lbl">{AR ? 'إجمالي المصروف' : 'Total spent'}</span><span className="amt mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(r.totalSpent)}</span></div>
-        </div>
-      </div>
-      <DSec id="sec-cost" icon="payments" title={AR ? 'تفصيل كلفة العقد' : 'Contract cost breakdown'} sub={AR ? 'الإحالة · الاحتياط · الإشراف' : 'Award · reserve · supervision'}>      <div className="d-fig-row" style={{ marginBottom: 0 }}>
-        {[
-          [AR ? 'الإحالة' : 'Award', r.awardAmt, r.spentAward],
-          [AR ? 'الاحتياط' : 'Reserve', r.reserveAmt, r.spentReserve],
-          [AR ? 'الإشراف والمراقبة' : 'Supervision & monitoring', r.supervisionAmt, r.spentSupervision],
-        ].map((row, i) => {
-          const pct = row[1] ? Math.min(100, Math.round(row[2] / row[1] * 100)) : 0;
-          return (
-            <div className="d-fig" key={i}>
-              <div className="k">{row[0]}</div>
-              <div className="v mono">{window.fmtNum(row[1])}<small> IQD</small></div>
-              <div className="d-progress" style={{ marginTop: 6 }}><span className="t" style={{ height: 6 }}><span style={{ width: pct + '%' }}></span></span></div>
-              <div className="d-cell-sub mono" style={{ fontSize: 11, marginTop: 4 }}>{AR ? 'مصروف' : 'spent'} {window.fmtNum(row[2])} ({pct}%)</div>
+          {/* Financial position — the reconciliation strip + part-to-whole bars
+              already used on the register, so both levels read identically. */}
+          <section className="d-csum">
+            <header className="hd">
+              <span className="cnt"><b className="num">{r.contractCost ? Math.round(r.totalSpent / r.contractCost * 100) : 0}</b><i>%</i></span>
+              <span className="chips"><span className="d-cell-sub">{AR ? 'من كلفة العقد الكلية' : 'of total contract cost'}</span></span>
+              <span className="sp"></span>
+              <span className="per">
+                <em>{AR ? 'كلفة العقد الكلية' : 'Total contract cost'}</em>
+                <b className="num"><DMoney v={r.contractCost} lang={lang} size="sm" /></b>
+              </span>
+            </header>
+
+            <div className="d-csum-bars">
+              <div className="bx">
+                <div className="bh">
+                  <span className="k">{AR ? 'الإنجاز المادي' : 'Physical completion'}</span>
+                  <b className="num">{r.physicalPct}%</b>
+                </div>
+                <span className="track"><i style={{ width: r.physicalPct + '%', background: 'var(--viz-1)' }}></i>
+                  <u style={{ insetInlineStart: r.financialPct + '%' }} title={AR ? 'الإنجاز المالي' : 'financial %'}></u></span>
+                <div className="bf"><span>{AR ? 'نسبة تنفيذ الأعمال · العلامة = الإنجاز المالي' : 'work executed · marker = financial %'}</span></div>
+              </div>
+              <div className="bx">
+                <div className="bh">
+                  <span className="k">{AR ? 'الإنجاز المالي' : 'Financial completion'}</span>
+                  <b className="num">{r.financialPct}%</b>
+                </div>
+                <span className="track"><i style={{ width: r.financialPct + '%', background: 'var(--success)' }}></i></span>
+                <div className="bf">
+                  <span><em>{AR ? 'مصروف' : 'spent'}</em> <DMoney v={r.totalSpent} lang={lang} size="xs" /></span>
+                  <span><em>{AR ? 'متبقٍ' : 'remaining'}</em> <DMoney v={Math.max(0, r.contractCost - r.totalSpent)} lang={lang} size="xs" /></span>
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
-      </DSec>
+          </section>
+
+          {/* Cost breakdown — one group, one card per component */}
+          <DFGroup id="sec-cost" title={AR ? 'تفصيل كلفة العقد' : 'Contract cost breakdown'}
+            sub={AR ? 'الإحالة · الاحتياط · الإشراف' : 'Award · reserve · supervision'}>
+            <div className="d-costsplit">
+              {[
+                [AR ? 'الإحالة' : 'Award', r.awardAmt, r.spentAward],
+                [AR ? 'الاحتياط' : 'Reserve', r.reserveAmt, r.spentReserve],
+                [AR ? 'الإشراف والمراقبة' : 'Supervision & monitoring', r.supervisionAmt, r.spentSupervision],
+              ].map((row, i) => {
+                const pct = row[1] ? Math.min(100, Math.round(row[2] / row[1] * 100)) : 0;
+                return (
+                  <div className="cs" key={i}>
+                    <div className="ch"><span className="k">{row[0]}</span><b className="num">{pct}%</b></div>
+                    <DMoney v={row[1]} lang={lang} size="md" />
+                    <span className="track"><i style={{ width: pct + '%' }}></i></span>
+                    <div className="cf"><em>{AR ? 'مصروف' : 'spent'}</em><DMoney v={row[2]} lang={lang} size="xs" /></div>
+                  </div>
+                );
+              })}
+            </div>
+          </DFGroup>
         </React.Fragment>}
 
         {cTab === 'details' && <React.Fragment>
-          <DSec id="sec-terms" icon="list_alt" title={AR ? 'شروط العقد' : 'Contract terms'}>
-            <DFieldGrid fields={c.fields} lang={lang} editMode={editMode} />
-          </DSec>
-          <DSec id="sec-contractor" icon="engineering" title={t('mod_contractor')} sub={AR ? 'بيانات المقاول المنفّذ' : 'Executing contractor'}>
-            <DFieldGrid fields={c.contractor.fields} lang={lang} editMode={editMode} />
-          </DSec>
+          {cShownGroups.map(g => (
+            <DFGroup key={g.id} id={g.id} title={AR ? g.ar : g.en} sub={AR ? g.subAr : g.subEn}>
+              <DFieldGrid fields={g.fields} lang={lang} editMode={editMode} scope="contract" />
+            </DFGroup>
+          ))}
+          <DFGroup id="sec-contractor" title={t('mod_contractor')}
+            sub={AR ? 'بيانات المقاول المنفّذ' : 'Executing contractor'}>
+            <DFieldGrid fields={c.contractor.fields} lang={lang} editMode={editMode} scope="contractor" />
+          </DFGroup>
         </React.Fragment>}
 
-        {cTab === 'amend' && <DContractAmendments lang={lang} c={c} d={d} p={p} />}
+        {cTab === 'amend' && <DContractAmendments lang={lang} c={c} d={d} p={p}
+          openAmd={openAmd} onOpenAmd={setOpenAmd} />}
+
+        {cTab === 'log' && <DActivityLog lang={lang} items={cActivity} />}
 
         {cTab === 'payments' && (contractPays.length ? (
-          <div className="d-card-sub">
-            {contractPays.map((pay, i) => {
-              const alloc = (pay.allocations || []).find(a => a.contractKey === c.key);
-              return (
-                <button key={i} className="d-openrow" onClick={() => setOpenPayNo(pay.no)}>
-                  <span className="d-vo-emblem" style={{ background: 'color-mix(in srgb,var(--success) 14%,transparent)', color: 'var(--on-surface)', flex: 'none' }}><Icon name="payments" size={17} /></span>
-                  <span className="om"><b>{pay.no} · {pay.date}</b><span>{AR ? 'كتاب' : 'letter'} {pay.financeLetter.no}</span></span>
-                  <span className="mono" style={{ color: 'var(--on-surface)', fontWeight: 'var(--fw-bold)', fontSize: 12 }}>{window.fmtNum(alloc ? alloc.amount : 0)} IQD</span>
-                  <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={17} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-                </button>
-              );
-            })}
-          </div>
-        ) : <div className="d-cell-sub" style={{ padding: '8px 2px' }}>{AR ? 'لا توجد دفعات مسجلة لهذا العقد.' : 'No payments recorded for this contract.'}</div>)}
-
-        {openPay && <DDrawer wide onClose={() => setOpenPayNo(null)}
-          title={`${openPay.no} · ${window.fmtNum(openAlloc ? openAlloc.amount : 0)} IQD`}
-          sub={`${openPay.date} · ${AR ? 'كتاب' : 'letter'} ${openPay.financeLetter.no}`}
-          footer={<button className="d-btn" onClick={() => setOpenPayNo(null)}>{AR ? 'إغلاق' : 'Close'}</button>}>
-          <DDrawerGrp label={AR ? 'تفصيل الدفعة لهذا العقد' : 'Payment breakdown for this contract'}>
-            <table className="d-line-table">
-              <thead><tr><th>{AR ? 'البند' : 'Item'}</th><th>{AR ? 'المبلغ' : 'Amount'}</th></tr></thead>
-              <tbody>{openAlloc && openAlloc.items.map((it, k) => <tr key={k}><td className="d-cell-sub">{it.name}</td><td className="mono">{window.fmtNum(it.value)}</td></tr>)}</tbody>
+          <div className="d-tablewrap">
+            <table className="d-table">
+              <thead><tr>
+                <th>{AR ? 'رقم الدفعة' : 'Payment no.'}</th>
+                <th>{AR ? 'كتاب التمويل' : 'Finance letter'}</th>
+                <th>{AR ? 'التاريخ' : 'Date'}</th>
+                <th>{AR ? 'البنود' : 'Lines'}</th>
+                <th className="r">{AR ? 'المبلغ' : 'Amount'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+              </tr></thead>
+              <tbody>
+                {contractPays.map((pay, i) => {
+                  const alloc = (pay.allocations || []).find(a2 => a2.contractKey === c.key);
+                  return (
+                    <tr key={i} onClick={() => setOpenPayNo(pay.no)} style={{ cursor: 'pointer' }}
+                      className={openPayNo === pay.no ? 'sel' : ''}>
+                      <td className="mono d-cell-sub">{pay.no}</td>
+                      <td className="d-cell-strong">{pay.financeLetter.no}</td>
+                      <td className="num d-cell-sub">{pay.date}</td>
+                      <td className="num d-cell-sub">{(alloc && alloc.items ? alloc.items.length : 0)}</td>
+                      <td className="r"><DMoney v={alloc ? alloc.amount : 0} lang={lang} size="sm" bare /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot><tr>
+                <td colSpan={4}>{AR ? 'الإجمالي' : 'Total'}</td>
+                <td className="r"><DMoney v={contractPays.reduce((a2, pay) => a2 + (((pay.allocations || []).find(al => al.contractKey === c.key) || {}).amount || 0), 0)} lang={lang} size="sm" bare /></td>
+              </tr></tfoot>
             </table>
-          </DDrawerGrp>
-          <DDrawerGrp label={AR ? 'المرفقات' : 'Attachments'}>
-            {openCerts.length ? <DFiles files={openCerts.map(at => ({ name: at.name, meta: `${at.file} · ${at.size}` }))} />
-              : <span className="d-cell-sub">{AR ? 'لا توجد مرفقات' : 'No attachments'}</span>}
-          </DDrawerGrp>
-        </DDrawer>}
-        </div>
-      </div>
-    </React.Fragment>
+          </div>
+        ) : (
+          <div className="d-empty">
+            <span className="d-empty-ico"><Icon name="payments" size={26} /></span>
+            <b>{AR ? 'لا توجد دفعات مسجلة لهذا العقد' : 'No payments recorded for this contract'}</b>
+          </div>
+        ))}
+
+    </DModuleFrame>
   );
 }
 
@@ -397,7 +812,7 @@ function DModConsultant({ t, lang, d, editMode }) {
   return (
     <React.Fragment>
       <DSec icon="engineering" title={t('mod_consultant')}>
-        <DFieldGrid fields={d.consultant.fields} lang={lang} editMode={editMode} />
+        <DFieldGrid fields={d.consultant.fields} lang={lang} editMode={editMode} scope="consultant" />
       </DSec>
       <DSec icon="bar_chart" title={lang === 'ar' ? 'نسبة الصرف من الإشراف' : 'Supervision spend ratio'}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}><span className="d-cell-sub">{lang === 'ar' ? 'المصروف' : 'Spent'}</span><b className="mono">{spentPct}%</b></div>
@@ -415,6 +830,21 @@ function DPaymentWizard({ lang, d, onClose, onDone }) {
   const ITEMS = AR ? ['الإحالة', 'الاحتياط', 'الإشراف والمراقبة'] : ['Award', 'Reserve', 'Supervision & monitoring'];
   const steps = AR ? ['العقود المشمولة', 'المبالغ والبنود', 'كتاب المالية', 'ذرعات الأعمال', 'مراجعة'] : ['Contracts covered', 'Amounts & items', 'Finance letter', 'Work certificates', 'Review'];
   const toggle = k => setSel(s => s.includes(k) ? s.filter(x => x !== k) : [...s, k]);
+  // capture the entered amounts + finance letter so the payment is real
+  const [amts, setAmts] = React.useState({});
+  const [flNo, setFlNo] = React.useState('FIN-7211');
+  const [flDate, setFlDate] = React.useState('2026-07-20');
+  const amtOf = (k, j) => Number(amts[k + '|' + j]) || 0;
+  const total = contracts.filter(c => sel.includes(c.key)).reduce((s, c) => s + ITEMS.reduce((a, _, j) => a + amtOf(c.key, j), 0), 0);
+  const buildPayment = () => {
+    const allocations = contracts.filter(c => sel.includes(c.key)).map(c => ({
+      contractKey: c.key, contractName: c.name,
+      amount: ITEMS.reduce((a, _, j) => a + amtOf(c.key, j), 0),
+      items: ITEMS.map((it, j) => ({ name: it, value: amtOf(c.key, j) })),
+    }));
+    return { date: flDate, amount: total, financeLetter: { no: flNo, date: flDate },
+      allocations, attachments: [], by: AR ? 'أنت' : 'You' };
+  };
   return (
     <div className="d-modal-scrim" onClick={onClose}>
       <div className="d-modal" onClick={e => e.stopPropagation()}>
@@ -435,7 +865,7 @@ function DPaymentWizard({ lang, d, onClose, onDone }) {
               <div key={c.key} className="d-card-sub" style={{ padding: 12 }}>
                 <b style={{ fontSize: 12 }}>{c.name}</b>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 8 }}>
-                  {ITEMS.map((it, j) => <div key={j}><label className="d-cell-sub" style={{ fontSize: 11 }}>{it}</label><input className="d-form-input mono" placeholder="0" /></div>)}
+                  {ITEMS.map((it, j) => <div key={j}><label className="d-cell-sub" style={{ fontSize: 11 }}>{it}</label><input className="d-form-input mono" placeholder="0" value={amts[c.key + '|' + j] || ''} onChange={e => setAmts(a => ({ ...a, [c.key + '|' + j]: e.target.value.replace(/[^\d.]/g, '') }))} /></div>)}
                 </div>
               </div>
             ))}
@@ -443,287 +873,868 @@ function DPaymentWizard({ lang, d, onClose, onDone }) {
           </div>}
           {step === 2 && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label className="d-cell-sub">{AR ? 'رقم كتاب المالية' : 'Finance letter no.'}</label><input className="d-form-input mono" defaultValue="FIN-7211" /></div>
-              <div><label className="d-cell-sub">{AR ? 'تاريخ الكتاب' : 'Letter date'}</label><input className="d-form-input mono" defaultValue="2026-07-20" /></div>
+              <div><label className="d-cell-sub">{AR ? 'رقم كتاب المالية' : 'Finance letter no.'}</label><input className="d-form-input mono" value={flNo} onChange={e => setFlNo(e.target.value)} /></div>
+              <div><label className="d-cell-sub">{AR ? 'تاريخ الكتاب' : 'Letter date'}</label><input className="d-form-input mono" value={flDate} onChange={e => setFlDate(e.target.value)} /></div>
             </div>
             <div className="d-drop"><Icon name="upload_file" size={26} /><b>{AR ? 'أرفق كتاب المالية' : 'Attach the finance letter'}</b><span className="d-cell-sub">{AR ? 'PDF — تجريبي' : 'PDF — demo'}</span></div>
           </div>}
           {step === 3 && <div className="d-drop"><Icon name="upload_file" size={30} /><b>{AR ? 'أرفق ذرعات الأعمال لكل عقد مشمول' : 'Attach work measurement certificates for each covered contract'}</b><span className="d-cell-sub">{AR ? 'PDF / صور — تجريبي' : 'PDF / images — demo'}</span></div>}
           {step === 4 && <div className="d-card-sub" style={{ padding: 14 }}><table className="d-line-table"><tbody>
             <tr><td>{AR ? 'العقود المشمولة' : 'Contracts covered'}</td><td>{contracts.filter(c => sel.includes(c.key)).map(c => c.name).join(' · ')}</td></tr>
-            <tr><td>{AR ? 'المرفقات المطلوبة' : 'Required attachments'}</td><td className="d-cell-sub">{AR ? 'كتاب المالية + ذرعة أعمال لكل عقد' : 'Finance letter + a work certificate per contract'}</td></tr>
+            <tr><td>{AR ? 'المبلغ الإجمالي' : 'Total amount'}</td><td className="mono">{window.fmtNum(total)} IQD</td></tr>
+            <tr><td>{AR ? 'كتاب المالية' : 'Finance letter'}</td><td className="mono">{flNo} · {flDate}</td></tr>
           </tbody></table></div>}
         </div>
-        <div className="d-modal-foot">{step > 0 && <button className="d-btn ghost" onClick={() => setStep(s => s - 1)}>{AR ? 'السابق' : 'Back'}</button>}<div style={{ flex: 1 }}></div>{step < steps.length - 1 ? <button className="d-btn primary" onClick={() => setStep(s => s + 1)}>{AR ? 'التالي' : 'Next'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={16} /></button> : <button className="d-btn primary" onClick={onDone}><Icon name="check" size={16} />{AR ? 'تسجيل الدفعة' : 'Register payment'}</button>}</div>
+        <div className="d-modal-foot">{step > 0 && <button className="d-btn ghost" onClick={() => setStep(s => s - 1)}>{AR ? 'السابق' : 'Back'}</button>}<div style={{ flex: 1 }}></div>{step < steps.length - 1 ? <button className="d-btn primary" onClick={() => setStep(s => s + 1)}>{AR ? 'التالي' : 'Next'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={16} /></button> : <button className="d-btn primary" onClick={() => onDone(buildPayment())}><Icon name="check" size={16} />{AR ? 'تسجيل الدفعة' : 'Register payment'}</button>}</div>
       </div>
     </div>
   );
 }
 
-function DModFinancialNew({ t, lang, d, editMode, showToast }) {
+/* الموقف المالي — L16 Financial sheet.
+   The archetype's own words: "a reconciled matrix of money with roll-ups …
+   every number must reconcile and drill to its source records".
+     Z3  reconciliation strip — approved · revised · spend + % · balance,
+         pinned so it stays visible while the sheet scrolls
+     Z5  year tabs (allocation here IS annual) + الإجمالي
+     Z7  the sheet: two header tiers (الموازنة / الفعلي / التنبؤ), frozen
+         identity column, indented hierarchy with bold roll-ups, sticky
+         totals footer, negatives in parentheses and danger colour
+     Z8  the record behind a clicked payment
+     Z10 totals + as-of
+   No Z9: money moves through payment and change-order records, never by
+   editing the sheet. */
+function DModFinancialNew({ t, lang, d, p, editMode, showToast, frameActions }) {
   const r = d.financial.raw;
   const AR = lang === 'ar';
-  const cumPct = Math.min(100, Math.round(r.disbursed / r.revisedCost * 100));
   const [showPay, setShowPay] = React.useState(false);
-  const [openPay, setOpenPay] = React.useState(null);
-  const [histOpen, setHistOpen] = React.useState(false);
+  const [openPayNo, setOpenPayNo] = React.useState(null);
+  const [paneWide, setPaneWide] = React.useState(false);
+  const [openRows, setOpenRows] = React.useState({});
   const curYear = (r.yearlyAllocations.find(y => y.current) || r.yearlyAllocations[r.yearlyAllocations.length - 1]).year;
   const [selYear, setSelYear] = React.useState(curYear);
   React.useEffect(() => { const h = () => setShowPay(true); window.addEventListener('epm:pay-register', h); return () => window.removeEventListener('epm:pay-register', h); }, []);
-  const kindIco = { pdf: 'picture_as_pdf', image: 'image', sheet: 'table_view', doc: 'description' };
-  const yr = r.yearlyAllocations.find(y => y.year === selYear) || r.yearlyAllocations[0];
-  const yrPayments = d.financial.payments.filter(pay => new Date(pay.date).getFullYear() === selYear);
-  const yrPct = yr.allocation ? Math.min(100, Math.round(yr.spend / yr.allocation * 100)) : 0;
-  const projectFields = d.financial.fields.filter(f => !/Annual|Cumulative spend/.test(f.label.en));
+  /* the open record belongs to the year that was showing when it was
+     opened; changing the Z5 year closes it rather than leaving a record
+     from another period docked beside this one's figures */
+  React.useEffect(() => { setOpenPayNo(null); setPaneWide(false); }, [selYear]);
+
+  /* registered payments persist per project and merge with the seeded ones */
+  const [extraPays, setExtraPays] = window.usePersistedState('payments.rows.' + (window.__epmPid || 'na'), []);
+  const allPayments = React.useMemo(() => [...(d.financial.payments || []), ...extraPays], [d.financial.payments, extraPays]);
+  const registerPayment = (pay) => {
+    // §2.9.3 gate: amount > 0 and cumulative spend must not exceed the revised cost
+    const cumBefore = allPayments.reduce((sum, x) => sum + (x.amount || 0), 0);
+    const vres = window.EPM.validate('financial', { annualSpend: 0, annualAllocation: 0, cumulative: cumBefore + (pay.amount || 0), revisedCost: r.revisedCost || r.cost });
+    if ((pay.amount || 0) <= 0) { showToast(AR ? 'قيمة الدفعة يجب أن تكون أكبر من صفر' : 'Payment amount must be greater than zero'); return; }
+    if (!vres.ok) { showToast(AR ? vres.errors[0].ar : vres.errors[0].en); return; }
+    const no = 'PAY-' + (allPayments.length + 120);
+    setExtraPays(ps => [...ps, Object.assign({ no: no }, pay)]);
+    const yr2 = new Date(pay.date).getFullYear();
+    if (r.yearlyAllocations.some(y => y.year === yr2)) setSelYear(yr2);
+    window.EPM.pushEvent && window.EPM.pushEvent({ icon: 'payments', tone: 'azure', txtAr: 'سجّلتَ دفعة مالية ' + no + ' على', txtEn: 'you registered payment ' + no + ' on', tgt: (window.__epmPid || '') });
+    showToast(AR ? 'تم تسجيل الدفعة — ' + no : 'Payment registered — ' + no);
+  };
+
+  const ALL = 'all';
+  const inYear = dt => selYear === ALL || new Date(dt).getFullYear() === selYear;
+  const yr = r.yearlyAllocations.find(y => y.year === selYear);
+  const yrPayments = allPayments.filter(pay => inYear(pay.date));
+  const yrPct = yr && yr.allocation ? Math.min(100, Math.round(yr.spend / yr.allocation * 100)) : 0;
+
+  /* ---- the sheet ------------------------------------------------------
+     Rows are the project's contracts and, under each, the three cost
+     components the contract is actually made of. Budget is contractual,
+     actuals come from the payment records, so every cell drills to a
+     source. Figures are whole IQD; the unit is stated once, in the
+     grid bar, exactly as the archetype requires. */
+  const contracts = d.contracts || [];
+  const voNet = React.useMemo(() => {
+    const m = {};
+    (d.variationOrders || []).filter(v => v.status === 'approved').forEach(v => {
+      const k = window.voContractKey ? window.voContractKey(v, d.contracts) : 'main';
+      m[k] = (m[k] || 0) + (v.net != null ? v.net : v.value || 0);
+    });
+    return m;
+  }, [d.variationOrders]);
+
+  /* spend by contract + component, scoped to the selected year */
+  const spendOf = React.useMemo(() => {
+    const m = {};
+    yrPayments.forEach(pay => (pay.allocations || []).forEach(al => {
+      (al.items || []).forEach((it, i) => {
+        const k = al.contractKey + ':' + i;
+        m[k] = (m[k] || 0) + (it.value || 0);
+      });
+    }));
+    return m;
+  }, [yrPayments]);
+
+  const COMP = [
+    { i: 0, ar: 'الإحالة', en: 'Award', amt: 'awardAmt', life: 'spentAward' },
+    { i: 1, ar: 'الاحتياط', en: 'Reserve', amt: 'reserveAmt', life: 'spentReserve' },
+    { i: 2, ar: 'الإشراف والمراقبة', en: 'Supervision & monitoring', amt: 'supervisionAmt', life: 'spentSupervision' },
+  ];
+  const sheet = contracts.map(c => {
+    const cr = c.raw || {};
+    const kids = COMP.map(comp => {
+      const orig = cr[comp.amt] || 0;
+      /* an approved change order changes the award, not the reserve or the
+         supervision allowance — so the whole net lands on the first line */
+      const chg = comp.i === 0 ? (voNet[c.key] || 0) : 0;
+      const revised = orig + chg;
+      const spentY = spendOf[c.key + ':' + comp.i] || 0;
+      const spentLife = cr[comp.life] || 0;
+      const pct = cr.physicalPct || 0;
+      /* EAC the EVM way — AC / (physical %) — so a contract spending
+         faster than it builds forecasts an overrun. Never capped: a
+         clamped forecast hides exactly the case worth reporting. */
+      const eac = pct > 0 ? Math.round(spentLife / (pct / 100)) : revised;
+      return { key: c.key + ':' + comp.i, name: AR ? comp.ar : comp.en, orig, chg, revised, spentY, spentLife, eac, variance: revised - eac };
+    });
+    const sum = f => kids.reduce((t2, k) => t2 + k[f], 0);
+    return {
+      key: c.key, code: c.code, name: c.name, status: c.status, kids,
+      orig: sum('orig'), chg: sum('chg'), revised: sum('revised'),
+      spentY: sum('spentY'), spentLife: sum('spentLife'), eac: sum('eac'), variance: sum('variance'),
+    };
+  });
+  const tot = f => sheet.reduce((t2, x) => t2 + x[f], 0);
+  const sheetTotal = { orig: tot('orig'), chg: tot('chg'), revised: tot('revised'), spentY: tot('spentY'), spentLife: tot('spentLife'), eac: tot('eac'), variance: tot('variance') };
+  const recordedGap = r.revisedCost - sheetTotal.revised;
+
+  /* a figure cell: tabular, end-aligned, negatives in parentheses + danger */
+  const N = (v, opts) => {
+    const o = opts || {};
+    const neg = v < 0;
+    const txt = (neg ? '(' + window.fmtNum(Math.abs(Math.round(v))) + ')' : window.fmtNum(Math.round(v)));
+    return <td className={'r num' + (o.cls ? ' ' + o.cls : '')}
+      style={o.tone ? { color: neg ? 'var(--error)' : 'var(--status-completed-tx)' } : null}>
+      {o.bold ? <b>{txt}</b> : txt}</td>;
+  };
+
+  const openPay = allPayments.find(x => x.no === openPayNo);
+  const cumPct = r.revisedCost ? Math.min(100, Math.round(r.disbursed / r.revisedCost * 100)) : 0;
+  /* the annual allocation and annual spend were filtered out of this list
+     because the old layout printed them in the year card — which left them
+     with no edit path at all. They are recorded ministry values like every
+     other field here, so they belong in the one editable tab. */
+  const projectFields = d.financial.fields;
+
+  /* the year's traceable events — VOs, payments and recorded edits */
+  const yrEvents = React.useMemo(() => {
+    const vos = (d.variationOrders || []).filter(v => v.status === 'approved' && inYear(v.date));
+    const eds = (d.financial.editLog || []).filter(ev => inYear(ev.date));
+    return [
+      ...vos.map(v => ({ date: v.date, icon: 'sync_alt', by: v.responsible, label: (AR ? 'أمر تغييري معتمد ' : 'Change order approved ') + v.no, note: v.reason, delta: v.net })),
+      ...yrPayments.map(pay => ({ date: pay.date, icon: 'payments', by: pay.by, label: (AR ? 'دفعة مسجّلة ' : 'Payment recorded ') + pay.no, note: pay.financeLetter.no, delta: pay.amount })),
+      ...eds.flatMap(ev => ev.changes.map(c => ({ date: ev.date, icon: 'edit', by: ev.by, label: c.field, from: c.from, to: c.to }))),
+    ].sort((x, y2) => new Date(y2.date) - new Date(x.date));
+  }, [d.variationOrders, yrPayments, selYear]);
+
+  /* a recorded edit stores its values pre-formatted; a grouped number is
+     money and renders like every other amount on the page */
+  const finVal = v => {
+    const txt = String(v == null ? '' : v).trim();
+    return /^\d{1,3}(,\d{3})+$/.test(txt)
+      ? <DMoney v={txt} lang={lang} size="xs" />
+      : (txt || '—');
+  };
+
+  /* Z5 carries the sheet variants the archetype lists (budget · payments ·
+     changes …); the year, being a filter, belongs in the Z6 toolbar. One
+     long scroll of six sections was the wrong read for a page whose parts
+     are consulted one at a time. */
+  const YEARS = [
+    ...r.yearlyAllocations.map(y => ({ id: y.year, label: String(y.year) })),
+    { id: ALL, label: AR ? 'كل السنوات' : 'All years' },
+  ];
+  const [secTab, setSecTab] = React.useState('sheet');
+  React.useEffect(() => { setOpenPayNo(null); setPaneWide(false); }, [secTab]);
+  const STABS = [
+    { id: 'sheet', label: AR ? 'جدول الكلف' : 'Cost sheet' },
+    { id: 'alloc', label: AR ? 'التخصيص السنوي' : 'Allocation' },
+    { id: 'pays', label: AR ? 'الدفعات' : 'Payments', n: yrPayments.length },
+    { id: 'sla', label: AR ? 'مهل التدقيق' : 'Audit SLA' },
+    { id: 'fields', label: AR ? 'البيانات المسجّلة' : 'Recorded data' },
+    { id: 'hist', label: AR ? 'سجل التغييرات' : 'Change history', n: yrEvents.length },
+  ];
+
   return (
-    <React.Fragment>
-      {showPay && <DPaymentWizard lang={lang} d={d} onClose={() => setShowPay(false)} onDone={() => { setShowPay(false); showToast(AR ? 'تم تسجيل الدفعة' : 'Payment registered'); }} />}
-      <div className="d-section-title">{t('mod_financials')}</div>
-      <div className="d-metrics c2">
-        <div className="d-metric">
-          <span className="d-metric-ring"><DDonut value={cumPct} size={64} stroke={7} color="var(--viz-1)" /><b>{cumPct}%</b></span>
-          <span className="d-metric-tx"><span className="k">{AR ? 'المصروف من الكلفة المعدلة' : 'Spent of revised cost'}</span><span className="s">{window.fmtNum(r.disbursed)} / {window.fmtNum(r.revisedCost)} IQD</span></span>
-        </div>
-        <div className="d-util-bar">
-          <div className="d-util-row"><span className="lbl">{AR ? 'كلفة المشروع المقررة' : 'Planned cost'}</span><span className="amt mono">{window.fmtNum(r.plannedCost)}</span></div>
-          <div className="d-util-row"><span className="lbl">{AR ? 'الكلفة المعدلة' : 'Revised cost'}</span><span className="amt mono">{window.fmtNum(r.revisedCost)}</span></div>
-          <div className="d-util-row"><span className="lbl">{AR ? 'المصروف التراكمي' : 'Cumulative spend'}</span><span className="amt mono" style={{ color: 'var(--azure-600)' }}>{window.fmtNum(r.disbursed)}</span></div>
-        </div>
-      </div>
-      <DFieldGrid fields={projectFields} lang={lang} editMode={editMode} />
-
-      <div className="d-section-title">{AR ? 'التخصيص السنوي' : 'Annual allocation'}</div>
-      <div className="d-year-card">
-        <div className="d-year-tabs">
-          {r.yearlyAllocations.map((y, i) => {
-            const on = y.year === selYear;
-            return (
-              <button key={i} className={`d-year-tab ${on ? 'on' : ''}`} onClick={() => setSelYear(y.year)}>
-                {y.year}{y.current && <i className="dot"></i>}
-              </button>
-            );
-          })}
-        </div>
-        <div className="d-year-detail">
-        <div className="d-year-detail-head">
-          <b>{selYear}</b>{yr.current && <span className="d-year-cur">{AR ? 'الحالية' : 'Current'}</span>}
-          <div style={{ flex: 1 }}></div>
-          <span className="mono" style={{ fontSize: 13, fontWeight: 'var(--fw-x)', color: yrPct > 95 ? 'var(--warning)' : 'var(--azure-600)' }}>{yrPct}%</span>
-          <span className="d-cell-sub">{AR ? 'مستهلك' : 'utilized'}</span>
-        </div>
-        <div className="d-progress" style={{ margin: '0 16px' }}><span className="t" style={{ height: 7 }}><span style={{ width: yrPct + '%', background: yrPct > 95 ? 'var(--warning)' : 'var(--azure-500)' }}></span></span></div>
-        <div className="d-fig-row" style={{ margin: '14px 16px' }}>
-          <div className="d-fig" style={{ padding: 0, border: 'none', background: 'none' }}><div className="k">{AR ? 'التخصيص' : 'Allocation'}</div><div className="v mono">{window.fmtNum(yr.allocation)}</div></div>
-          <div className="d-fig" style={{ padding: 0, border: 'none', background: 'none' }}><div className="k">{AR ? 'المصروف' : 'Spend'}</div><div className="v mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(yr.spend)}</div></div>
-          <div className="d-fig" style={{ padding: 0, border: 'none', background: 'none' }}><div className="k">{AR ? 'المتبقي' : 'Remaining'}</div><div className="v mono">{window.fmtNum(yr.allocation - yr.spend)}</div></div>
-        </div>
-        <div style={{ margin: '0 16px 14px', paddingTop: 12, borderTop: '1px solid var(--surface-container-high)' }}>
-          <div className="d-vo-subtitle">{AR ? `سجل الدفعات — ${selYear}` : `Payment records — ${selYear}`}</div>
-          {yrPayments.length === 0 && <div className="d-cell-sub" style={{ padding: '8px 0' }}>{AR ? 'لا توجد دفعات مسجّلة لهذه السنة' : 'No payments recorded for this year'}</div>}
-          {yrPayments.map((pay, i) => (
-            <button key={i} className="d-openrow" onClick={() => setOpenPay(pay.no)}>
-              <span className="d-vo-emblem" style={{ background: 'color-mix(in srgb,var(--success) 14%,transparent)', color: 'var(--on-surface)', flex: 'none' }}><Icon name="payments" size={17} /></span>
-              <span className="om"><b>{pay.no} · {pay.date}</b><span>{(pay.allocations || []).map(a => a.contractName).join(' · ')}</span></span>
-              <span className="mono" style={{ color: 'var(--on-surface)', fontWeight: 'var(--fw-bold)', fontSize: 12 }}>{window.fmtNum(pay.amount)} IQD</span>
-              <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={17} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-            </button>
+    <DModuleFrame
+      title={t('mod_financials')}
+      sub={AR ? 'د.ع' : 'IQD'}
+      tabs={STABS} tab={secTab} onTab={setSecTab}
+      toolbar={secTab === 'sheet' || secTab === 'alloc' || secTab === 'pays' || secTab === 'hist' ? (
+        <span className="d-yearsel" role="group" aria-label={AR ? 'السنة المالية' : 'Fiscal year'}>
+          <em>{AR ? 'السنة' : 'Year'}</em>
+          {YEARS.map(y => (
+            <button key={y.id} className={selYear === y.id ? 'on' : ''} onClick={() => setSelYear(y.id)}>{y.label}</button>
           ))}
-        </div>
-        {(() => {
-          const pay = yrPayments.find(x => x.no === openPay);
-          if (!pay) return null;
-          return (
-            <DDrawer wide onClose={() => setOpenPay(null)}
-              title={`${pay.no} · ${window.fmtNum(pay.amount)} IQD`}
-              sub={`${pay.date} · ${AR ? 'كتاب' : 'letter'} ${pay.financeLetter.no}`}
-              footer={<button className="d-btn" onClick={() => setOpenPay(null)}>{AR ? 'إغلاق' : 'Close'}</button>}>
-              <DDrawerGrp label={AR ? 'توزيع الدفعة على العقود' : 'Allocation across contracts'}>
-                <table className="d-line-table">
-                  <thead><tr><th>{AR ? 'العقد' : 'Contract'}</th><th>{AR ? 'البند' : 'Item'}</th><th>{AR ? 'المبلغ' : 'Amount'}</th></tr></thead>
-                  <tbody>{(pay.allocations || []).flatMap((a, ai) => a.items.map((it, ii) => <tr key={ai + '-' + ii}>{ii === 0 && <td rowSpan={a.items.length} className="d-cell-strong">{a.contractName}</td>}<td className="d-cell-sub">{it.name}</td><td className="mono">{window.fmtNum(it.value)}</td></tr>))}</tbody>
-                </table>
-              </DDrawerGrp>
-              <DDrawerGrp label={AR ? 'كتاب المالية والمرفقات' : 'Finance letter & attachments'}>
-                <DFiles files={pay.attachments.map(at => ({ name: at.name, meta: `${at.file} · ${at.size}` }))} />
-              </DDrawerGrp>
-            </DDrawer>
-          );
-        })()}
+        </span>
+      ) : null}
+      actions={<React.Fragment>
+        {/* تعديل belongs only to the tab that actually holds editable fields */}
+        {secTab === 'fields' && frameActions}
+        <button className="d-btn sm" onClick={() => showToast(AR ? 'تصدير XLSX — تجريبي' : 'Export XLSX — demo')}>
+          <Icon name="download" size={15} />{AR ? 'تصدير' : 'Export'}</button>
+      </React.Fragment>}
+      aside={openPay ? (
+        <DRecordPane lang={lang} wide={paneWide}
+          title={openPay.no}
+          meta={[
+            { k: AR ? 'المبلغ' : 'Amount', v: openPay.amount, money: true },
+            { k: AR ? 'التاريخ' : 'Date', v: openPay.date, num: true },
+            { k: AR ? 'كتاب التمويل' : 'Finance letter', v: openPay.financeLetter.no, num: true },
+            { k: AR ? 'سجّلها' : 'Recorded by', v: openPay.by },
+          ]}
+          onExpand={() => setPaneWide(w => !w)}
+          onClose={() => { setOpenPayNo(null); setPaneWide(false); }}
+          footer={<button className="d-btn sm" onClick={() => showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}>
+            <Icon name="download" size={15} />{AR ? 'تصدير الدفعة' : 'Export payment'}</button>}>
+          <DRecordGrp label={AR ? 'توزيع الدفعة على العقود' : 'Allocation across contracts'}>
+            <table className="d-line-table">
+              <thead><tr><th>{AR ? 'البند' : 'Item'}</th>
+                <th className="r">{AR ? 'المبلغ' : 'Amount'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th></tr></thead>
+              <tbody>{(openPay.allocations || []).flatMap((al, ai) => [
+                <tr key={'h' + ai} className="grp"><td colSpan={2} className="name">{al.contractName}</td></tr>,
+                ...al.items.map((it, ii) => (
+                  <tr key={ai + '-' + ii}><td className="wrap d-cell-sub">{it.name}</td>
+                    <td className="r"><DMoney v={it.value} lang={lang} size="sm" bare /></td></tr>)),
+              ])}</tbody>
+              <tfoot><tr><td>{AR ? 'الإجمالي' : 'Total'}</td>
+                <td className="r"><DMoney v={openPay.amount} lang={lang} size="sm" bare /></td></tr></tfoot>
+            </table>
+          </DRecordGrp>
+          <DRecordGrp label={AR ? 'كتاب المالية والمرفقات' : 'Finance letter & attachments'}>
+            <DFiles files={openPay.attachments.map(at => ({ name: at.name, meta: at.file + ' · ' + at.size }))} />
+          </DRecordGrp>
+        </DRecordPane>
+      ) : null}
+      asideWide={paneWide}
+      status={<DZ10 lang={lang} asOf={d.asOf} stats={[
+        { k: AR ? 'الكلفة المعدلة' : 'Revised cost', v: r.revisedCost, money: true },
+        { k: AR ? 'المصروف' : 'Spend', v: r.disbursed, money: true },
+        { k: AR ? 'نسبة الصرف' : 'Spend %', v: cumPct + '%' },
+      ]} />}>
 
-        {(() => {
-          const yrVOs = d.variationOrders.filter(v => v.status === 'approved' && new Date(v.date).getFullYear() === selYear);
-          const yrPays = d.financial.payments.filter(pay => new Date(pay.date).getFullYear() === selYear);
-          const yrEdits = (d.financial.editLog || []).filter(ev => new Date(ev.date).getFullYear() === selYear);
-          const events = [
-            ...yrVOs.map(v => ({ date: v.date, kind: 'vo', by: v.responsible, label: (AR ? 'أمر تغييري معتمد ' : 'Change order approved ') + v.no, note: v.reason, delta: v.net })),
-            ...yrPays.map(pay => ({ date: pay.date, kind: 'pay', by: pay.by, label: (AR ? 'دفعة مسجّلة ' : 'Payment recorded ') + pay.no, note: pay.financeLetter.no, delta: pay.amount })),
-            ...yrEdits.flatMap(ev => ev.changes.map(c => ({ date: ev.date, kind: 'edit', by: ev.by, label: c.field, from: c.from, to: c.to, delta: null }))),
-          ].sort((a, b) => new Date(b.date) - new Date(a.date));
-          if (!events.length) return null;
-          const ico = { vo: 'sync_alt', pay: 'payments', edit: 'edit_note' };
-          const col = { vo: 'var(--on-surface)', pay: 'var(--on-surface)', edit: 'var(--azure-600)' };
-          return (
-            <div style={{ margin: '0 16px 14px', paddingTop: 12, borderTop: '1px solid var(--surface-container-high)' }}>
-              <button className="d-openrow" style={{ padding: '10px 0', borderBottom: 'none' }} onClick={() => setHistOpen(true)}>
-                <span className="d-vo-emblem" style={{ background: 'color-mix(in srgb,var(--tertiary) 14%,transparent)', color: 'var(--on-surface)', flex: 'none' }}><Icon name="history" size={17} /></span>
-                <span className="om"><b>{AR ? 'سجل التغييرات' : 'Change history'}</b><span>{AR ? `${events.length} حدث في ${selYear}` : `${events.length} events in ${selYear}`}</span></span>
-                <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={17} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-              </button>
-              {histOpen && <DDrawer wide onClose={() => setHistOpen(false)}
-                title={AR ? 'سجل التغييرات' : 'Change history'}
-                sub={AR ? `${selYear} · ${events.length} حدث` : `${selYear} · ${events.length} events`}
-                footer={<button className="d-btn" onClick={() => setHistOpen(false)}>{AR ? 'إغلاق' : 'Close'}</button>}>
-                <div className="d-edit-timeline">
-                {events.map((ev, i) => (
-                  <div className="d-edit-item" key={i}>
-                    <span className="d-edit-dot" style={{ background: col[ev.kind] }}></span>
-                    <div className="d-edit-body">
-                      <div className="d-edit-meta"><Icon name={ico[ev.kind]} size={13} style={{ color: col[ev.kind] }} /><b>{ev.by}</b><span className="mono">{ev.date}</span></div>
-                      <div className="d-edit-chips">
-                        <span className="d-edit-chip">
-                          <span className="f">{ev.label}</span>
-                          {ev.delta != null
-                            ? <span className="to" style={{ color: col[ev.kind] }}>+{window.fmtNum(ev.delta)}</span>
-                            : <React.Fragment><span className="fr">{ev.from}</span><Icon name="arrow_back" size={11} style={{ transform: AR ? 'none' : 'scaleX(-1)' }} /><span className="to">{ev.to}</span></React.Fragment>}
-                        </span>
-                        {ev.delta != null && ev.note && <span className="d-edit-chip"><span className="d-cell-sub">{ev.note}</span></span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                </div>
-              </DDrawer>}
+      {showPay && <DPaymentWizard lang={lang} d={d} onClose={() => setShowPay(false)} onDone={(pay) => { setShowPay(false); if (pay) registerPayment(pay); }} />}
+
+      {/* Z3 — the reconciliation strip. Belongs to the SHEET: the archetype
+          puts it there so the totals stay in view while the matrix scrolls.
+          On the other tabs it only restated Z10, so it does not render. */}
+      {secTab === 'sheet' && <div className="d-fsheet-recon">
+        <span className="tm"><em>{AR ? 'الكلفة المقررة' : 'Approved cost'}</em><DMoney v={r.plannedCost} lang={lang} size="sm" /></span>
+        <span className="op">+</span>
+        <span className="tm"><em>{AR ? 'تغييرات معتمدة' : 'Approved changes'}</em><DMoney v={r.revisedCost - r.plannedCost} lang={lang} size="sm" signed /></span>
+        <span className="op">=</span>
+        <span className="tm strong"><em>{AR ? 'الكلفة المعدلة' : 'Revised cost'}</em><DMoney v={r.revisedCost} lang={lang} size="sm" /></span>
+        <span className="op">−</span>
+        <span className="tm"><em>{AR ? 'المصروف التراكمي' : 'Cumulative spend'} <i className="pc">{cumPct}%</i></em><DMoney v={r.disbursed} lang={lang} size="sm" /></span>
+        <span className="op">=</span>
+        <span className={'tm ' + (r.revisedCost - r.disbursed < 0 ? 'bad' : 'good')}>
+          <em>{AR ? 'المتبقي' : 'Balance'}</em><DMoney v={r.revisedCost - r.disbursed} lang={lang} size="sm" /></span>
+      </div>}
+
+      {/* ---- the sheet ---- */}
+      {secTab === 'sheet' && (
+        <DFGroup id="fin-sheet" title={AR ? 'جدول الكلف حسب العقود ومكوّناتها' : 'Cost sheet by contract and component'}
+          sub={(AR ? 'د.ع · ' : 'IQD · ') + (selYear === ALL ? (AR ? 'كل السنوات' : 'all years') : selYear)}>
+          <div className="d-vow-tw wide-sheet">
+            <table className="d-line-table d-sheet">
+              <thead>
+                <tr className="d-grp">
+                  <th className="freeze" style={{ minWidth: 230 }}></th>
+                  <th className="grp r" colSpan={3}>{AR ? 'الموازنة' : 'Budget'}</th>
+                  <th className="grp r" colSpan={2}>{AR ? 'الفعلي' : 'Actual'}</th>
+                  <th className="grp r" colSpan={2}>{AR ? 'التنبؤ' : 'Forecast'}</th>
+                  <th></th>
+                </tr>
+                <tr>
+                  <th className="freeze" style={{ minWidth: 230 }}>{AR ? 'بند الكلفة' : 'Cost item'}</th>
+                  <th className="r" style={{ width: 128 }}>{AR ? 'المقررة' : 'Approved'}</th>
+                  <th className="r" style={{ width: 124 }}>{AR ? 'تغييرات معتمدة' : 'Approved changes'}</th>
+                  <th className="r" style={{ width: 128 }}>{AR ? 'المعدلة' : 'Revised'}</th>
+                  <th className="r" style={{ width: 128 }}>{selYear === ALL ? (AR ? 'مصروف' : 'Spend') : (AR ? 'مصروف السنة' : 'Spend this year')}</th>
+                  <th className="r" style={{ width: 128 }}>{AR ? 'مصروف تراكمي' : 'Cumulative spend'}</th>
+                  <th className="r" style={{ width: 128 }}>{AR ? 'عند الإنجاز' : 'At completion'}</th>
+                  <th className="r" style={{ width: 116 }}>{AR ? 'الفرق' : 'Variance'}</th>
+                  <th style={{ width: 128 }}>{AR ? 'الحالة' : 'State'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sheet.map(row => {
+                  const open = openRows[row.key] !== false;
+                  return (
+                    <React.Fragment key={row.key}>
+                      <tr className="lvl1" onClick={() => setOpenRows(o => Object.assign({}, o, { [row.key]: !open }))}
+                        style={{ cursor: 'pointer' }}>
+                        <td className="freeze">
+                          <span className="d-tree lvl1"><Icon name={open ? 'expand_more' : (AR ? 'chevron_left' : 'chevron_right')} size={15} className="tw" />
+                            <b>{row.code}</b><span className="nm">{row.name}</span></span>
+                        </td>
+                        {N(row.orig)}{N(row.chg)}{N(row.revised, { bold: true })}
+                        {N(row.spentY)}{N(row.spentLife)}{N(row.eac)}{N(row.variance, { tone: true })}
+                        <td>{row.status ? <DPill status={row.status} lang={lang} /> : null}</td>
+                      </tr>
+                      {open && row.kids.map(k => (
+                        <tr key={k.key} className="lvl2">
+                          <td className="freeze"><span className="d-tree lvl2">{k.name}</span></td>
+                          {N(k.orig)}{N(k.chg)}{N(k.revised)}
+                          {N(k.spentY)}{N(k.spentLife)}{N(k.eac)}{N(k.variance, { tone: true })}
+                          <td></td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="freeze">{AR ? 'إجمالي العقود' : 'Total — contracts'}</td>
+                  {N(sheetTotal.orig)}{N(sheetTotal.chg)}{N(sheetTotal.revised, { bold: true })}
+                  {N(sheetTotal.spentY)}{N(sheetTotal.spentLife)}{N(sheetTotal.eac)}{N(sheetTotal.variance, { tone: true })}
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <DMsgBar tone="info"
+            title={AR ? 'أساسا القياس: الموازنة المعتمدة مقابل الالتزامات التعاقدية'
+                      : 'Two bases: approved budget vs contracted commitments'}>
+            {AR ? 'الكلفة المعدلة المسجّلة ' : 'The recorded revised cost '}
+            <DMoney v={r.revisedCost} lang={lang} size="sm" />
+            {AR ? ' هي الموازنة المعتمدة للمشروع، بينما إجمالي العقود '
+                : ' is the project\'s approved budget, while the contracts total '}
+            <DMoney v={sheetTotal.revised} lang={lang} size="sm" />
+            {AR ? ' هو قيمة ما التُزم به تعاقدياً — الفرق ' : ' is what has been contractually committed — difference '}
+            <DMoney v={recordedGap} lang={lang} size="sm" signed />
+            {recordedGap >= 0
+              ? (AR ? ' لم يُتعاقَد عليه بعد.' : ' not yet contracted.')
+              : (AR ? '، أي أن الالتزامات تتجاوز الموازنة وتستوجب تعديل الكلفة أو مناقلة.'
+                    : ', so commitments exceed the budget and need a cost revision or a reallocation.')}
+          </DMsgBar>
+        </DFGroup>
+      )}
+
+      {/* ---- annual allocation ---- */}
+      {secTab === 'alloc' && (yr ? (
+        <DFGroup id="fin-year" title={AR ? 'التخصيص السنوي' : 'Annual allocation'}
+          sub={selYear + (yr.current ? (AR ? ' · السنة الحالية' : ' · current year') : '')}>
+          <div className="d-yalloc">
+            <div className="ah">
+              <span className="k">{AR ? 'نسبة الاستهلاك' : 'Utilisation'}</span>
+              <b className="num">{yrPct}%</b>
             </div>
-          );
-        })()}
-      </div>
-      </div>
-    </React.Fragment>
+            <span className="track"><i style={{ width: yrPct + '%', background: yrPct > 95 ? 'var(--warning)' : 'var(--viz-1)' }}></i></span>
+            <div className="af">
+              <span><em>{AR ? 'التخصيص' : 'Allocation'}</em><DMoney v={yr.allocation} lang={lang} size="md" /></span>
+              <span><em>{AR ? 'المصروف' : 'Spend'}</em><DMoney v={yr.spend} lang={lang} size="md" /></span>
+              <span><em>{AR ? 'المتبقي' : 'Remaining'}</em><DMoney v={yr.allocation - yr.spend} lang={lang} size="md" /></span>
+            </div>
+          </div>
+          {yrPct > 95 && (
+            <DMsgBar tone="warning" title={AR ? 'التخصيص السنوي شارف على النفاد' : 'The annual allocation is nearly exhausted'}>
+              {AR ? 'أي صرف إضافي يتطلّب مناقلة معتمدة أو تخصيصاً تكميلياً.' : 'Any further spend needs an approved reallocation or a supplementary allocation.'}
+            </DMsgBar>
+          )}
+          <DMsgBar tone="info" title={AR ? 'أين تُحرَّر هذه القيم' : 'Where these values are edited'}>
+            {AR ? 'تخصيص السنة الحالية ومصروفها يُحرَّران في تبويب «البيانات المسجّلة» — وهو تبويب التحرير الوحيد في هذه الصفحة. السنوات السابقة سجلّ مقفل، ويغيّرها إجراء مناقلة معتمد لا التحرير المباشر.'
+                : 'The current year\'s allocation and spend are edited in the «Recorded data» tab — the only editable tab on this page. Earlier years are a closed record; an approved reallocation changes them, not direct editing.'}
+          </DMsgBar>
+          <div className="d-vow-tw"><table className="d-line-table">
+            <thead><tr>
+              <th style={{ width: 92 }}>{AR ? 'السنة' : 'Year'}</th>
+              <th className="r" style={{ width: 150 }}>{AR ? 'التخصيص' : 'Allocation'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+              <th className="r" style={{ width: 150 }}>{AR ? 'المصروف' : 'Spend'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+              <th className="r" style={{ width: 150 }}>{AR ? 'المتبقي' : 'Remaining'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+              <th className="r" style={{ width: 90 }}>{AR ? 'الاستهلاك' : 'Used'}</th>
+            </tr></thead>
+            <tbody>{r.yearlyAllocations.map(y => {
+              const pc = y.allocation ? Math.round(y.spend / y.allocation * 100) : 0;
+              return (
+                <tr key={y.year} className={y.year === selYear ? 'sel' : ''}
+                  onClick={() => setSelYear(y.year)} style={{ cursor: 'pointer' }}>
+                  <td className="code">{y.year}</td>
+                  <td className="r"><DMoney v={y.allocation} lang={lang} size="sm" bare /></td>
+                  <td className="r"><DMoney v={y.spend} lang={lang} size="sm" bare /></td>
+                  <td className="r"><DMoney v={y.allocation - y.spend} lang={lang} size="sm" bare /></td>
+                  <td className="r num">{pc}%</td>
+                </tr>);
+            })}</tbody>
+            <tfoot><tr>
+              <td>{AR ? 'الإجمالي' : 'Total'}</td>
+              <td className="r"><DMoney v={r.yearlyAllocations.reduce((sum, y) => sum + y.allocation, 0)} lang={lang} size="sm" bare /></td>
+              <td className="r"><DMoney v={r.yearlyAllocations.reduce((sum, y) => sum + y.spend, 0)} lang={lang} size="sm" bare /></td>
+              <td className="r"><DMoney v={r.yearlyAllocations.reduce((sum, y) => sum + (y.allocation - y.spend), 0)} lang={lang} size="sm" bare /></td>
+              <td></td>
+            </tr></tfoot>
+          </table></div>
+        </DFGroup>
+      ) : (
+        <DFGroup id="fin-year" title={AR ? 'التخصيص السنوي' : 'Annual allocation'}
+          sub={AR ? 'كل السنوات' : 'all years'}>
+          <div className="d-cell-sub">{AR ? 'اختر سنة من شريط الأدوات لعرض تفاصيل تخصيصها.' : 'Pick a year in the toolbar to see its allocation.'}</div>
+        </DFGroup>
+      ))}
+
+      {/* ---- payments ---- */}
+      {secTab === 'pays' && (
+        <DFGroup id="fin-pays" title={AR ? 'سجل الدفعات' : 'Payments register'}
+          sub={yrPayments.length + (AR ? ' دفعة · ' : ' payment(s) · ') + (selYear === ALL ? (AR ? 'كل السنوات' : 'all years') : selYear)}>
+          {yrPayments.length ? (
+            <table className="d-line-table">
+              <thead><tr>
+                <th style={{ width: 104 }}>{AR ? 'الرمز' : 'Code'}</th>
+                <th style={{ minWidth: 180 }}>{AR ? 'كتاب التمويل' : 'Finance letter'}</th>
+                <th style={{ width: 108 }}>{AR ? 'التاريخ' : 'Date'}</th>
+                <th className="r" style={{ width: 64 }}>{AR ? 'العقود' : 'Contracts'}</th>
+                <th className="r" style={{ width: 140 }}>{AR ? 'المبلغ' : 'Amount'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+              </tr></thead>
+              <tbody>{yrPayments.map((pay, i) => (
+                <tr key={i} onClick={() => setOpenPayNo(pay.no)} style={{ cursor: 'pointer' }}
+                  className={openPayNo === pay.no ? 'sel' : ''}>
+                  <td className="code">{pay.no}</td>
+                  <td className="name wrap">{pay.financeLetter.no}
+                    <div className="d-cell-sub">{(pay.allocations || []).map(al => al.contractName).join(' · ')}</div></td>
+                  <td className="mono">{pay.date}</td>
+                  <td className="r num">{(pay.allocations || []).length}</td>
+                  <td className="r"><DMoney v={pay.amount} lang={lang} size="sm" bare /></td>
+                </tr>))}</tbody>
+              <tfoot><tr>
+                <td colSpan={4}>{AR ? 'الإجمالي' : 'Total'}</td>
+                <td className="r"><DMoney v={yrPayments.reduce((sum, x) => sum + x.amount, 0)} lang={lang} size="sm" bare /></td>
+              </tr></tfoot>
+            </table>
+          ) : (
+            <div className="d-cell-sub">{AR ? 'لا توجد دفعات مسجّلة لهذه السنة.' : 'No payments recorded for this year.'}</div>
+          )}
+        </DFGroup>
+      )}
+
+      {/* ---- advance audit SLA (§2.3.2) ---- */}
+      {secTab === 'sla' && (() => {
+        const sub = (function () { const tt = new Date(window.EPM.DATA_DATE); tt.setDate(tt.getDate() - 9); return tt.toISOString().slice(0, 10); })();
+        const sla = window.EPM.paymentSLA(sub, lang);
+        const tone = sla.color === 'red' ? 'danger' : sla.color === 'amber' ? 'warning' : 'success';
+        return (
+          <DFGroup id="fin-sla" title={AR ? 'مهلة تدقيق السلفة الجارية' : 'Current advance — audit SLA'}
+            sub={sla.overdue ? (AR ? 'مُصعّد' : 'escalated') : (AR ? 'ضمن المهلة' : 'within SLA')}>
+            <div className="d-slastages">
+              {sla.stages.map(st => (
+                <div key={st.key} className={'ss ' + st.status}>
+                  <div className="sh"><span className="dot"></span><b>{st.label}</b></div>
+                  <div className="sm">{st.owner}</div>
+                  <div className="sf"><span>{AR ? 'السقف' : 'SLA'} {st.sla}{AR ? 'ي' : 'd'}</span>
+                    <span>{st.status === 'done' ? (AR ? 'منجز' : 'done') : st.status === 'active' ? (st.daysIn + (AR ? 'ي مضت' : 'd elapsed')) : (AR ? 'لم تبدأ' : 'pending')}</span></div>
+                </div>
+              ))}
+            </div>
+            <DMsgBar tone={tone} title={(AR ? 'الموعد القانوني للصرف ' : 'Legal pay-by date ') + sla.payBy}>
+              {(sla.payByDays >= 0 ? (AR ? 'خلال ' + sla.payByDays + ' يوم' : 'in ' + sla.payByDays + ' days') : (AR ? 'متجاوز' : 'overdue'))
+                + ' · ' + (AR ? 'المرحلة الحالية: ' : 'current stage: ') + sla.currentLabel
+                + (sla.escalated ? (AR ? ' — صُعّد للمستوى الأعلى' : ' — escalated to a higher level') : '')}
+            </DMsgBar>
+          </DFGroup>
+        );
+      })()}
+
+      {/* ---- the only editable tab ---- */}
+      {secTab === 'fields' && (
+        <DFGroup id="fin-fields" title={AR ? 'البيانات المالية المسجّلة' : 'Recorded financial data'}
+          sub={AR ? 'قيم معتمدة من الدائرة المالية' : 'values recorded by the finance department'}>
+          <DFieldGrid fields={projectFields} lang={lang} editMode={editMode} scope="financial" />
+        </DFGroup>
+      )}
+
+      {/* ---- traceability ---- */}
+      {secTab === 'hist' && (
+        <DFGroup id="fin-hist" title={AR ? 'سجل التغييرات المالية' : 'Financial change history'}
+          sub={yrEvents.length + (AR ? ' حدث · ' : ' event(s) · ') + (selYear === ALL ? (AR ? 'كل السنوات' : 'all years') : selYear)}>
+          {yrEvents.length ? (
+            <div className="d-trail">
+              {yrEvents.map((ev, i) => (
+                <div className="d-tstep" key={i}>
+                  <span className="tdot"><Icon name={ev.icon} size={11} /></span>
+                  <div className="th"><span>{(window.epmActor(ev.by, lang) || {}).name || ev.by}</span>
+                    <time className="tm">{ev.date}</time></div>
+                  {window.epmActor(ev.by, lang) && (
+                    <div className="tr"><span className="ro">{window.epmActor(ev.by, lang).role}</span>
+                      <span className="sep">·</span><span className="og">{window.epmActor(ev.by, lang).org}</span></div>
+                  )}
+                  <div className="chg">
+                    <span className="f">{ev.label}</span>
+                    {ev.delta != null
+                      ? <span className="to"><DMoney v={ev.delta} lang={lang} size="xs" signed /></span>
+                      : <React.Fragment><span className="from">{finVal(ev.from)}</span>
+                          <Icon name={AR ? 'arrow_back' : 'arrow_forward'} size={12} className="arw" />
+                          <span className="to">{finVal(ev.to)}</span></React.Fragment>}
+                  </div>
+                  {ev.note && <div className="tb d-cell-sub">{ev.note}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="d-cell-sub">{AR ? 'لا توجد أحداث مالية في هذه السنة.' : 'No financial events in this year.'}</div>
+          )}
+        </DFGroup>
+      )}
+
+    </DModuleFrame>
   );
 }
 
 /* Progress = READ-ONLY dashboard: overall + by-WBS-level progress,
    impact/cost, schedule-risk summary — aggregated from project info
    and updates flowing in from Schedule / Financial / Change Orders. */
-function DModProgress({ t, lang, d, p }) {
+function DModProgress({ t, lang, d, p, asOf, frameTitle, frameActions, goTab }) {
   const e = d.evm;
   const AR = lang === 'ar';
   const fin = d.financial.raw;
   const phys = p ? p.tech : (d.progress.history.slice(-1)[0] || {}).physical || 0;
   const finPct = fin.financialPct;
-  const plannedProg = Math.min(100, phys + 8);
   const sd = React.useMemo(() => window.EPM.buildScheduleData(p, lang), [p && p.id, lang]);
+  /* What the baseline REQUIRES at the data date: its own earned value, from
+     the same activities and cost weights physical % uses, read off baseline
+     dates. A constant offset made every project identically behind; a
+     smoothstep over the span disagreed with delayDays. */
+  const plannedProg = React.useMemo(() => {
+    const v = (d.evm && d.evm.plannedPct != null) ? d.evm.plannedPct
+      : (window.EPM.derivePlannedPct ? window.EPM.derivePlannedPct(p, lang) : null);
+    return v == null ? Math.min(100, phys + 8) : v;
+  }, [d.evm, p && p.id, lang, phys]);
   const roll = window.schedRollup ? window.schedRollup(sd.activities) : { wbsPct: {}, projectPct: phys };
   const wbsRows = sd.activities.filter(a => a.type === 'wbs' && a.level >= 2);
   const approvedVO = d.variationOrders.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0);
   const pendingVO = d.variationOrders.filter(v => v.status === 'pending').reduce((s, v) => s + v.value, 0);
-  const schedImpact = sd.activities.filter(a => a.type === 'act' && a.slip > 0 && !a.milestone).reduce((s, a) => s + Math.round(a.cost / (a.origDur || 1) * 0.15 * a.slip), 0);
+  const schedImpact = sd.activities.filter(a => a.type === 'act' && a.slip > 0 && !a.milestone)
+    .reduce((s, a) => s + Math.round(a.cost / (a.origDur || 1) * 0.15 * a.slip), 0);
   const atRisk = sd.activities.filter(a => a.type === 'act' && !a.milestone && (a.slip > 10 || (a.float === 0 && a.slip > 0)));
   const barColor = pct => pct >= 90 ? 'var(--status-completed)' : pct >= 45 ? 'var(--viz-1)' : 'var(--status-suspended)';
-  return (
+
+  /* L04: one global period selector in Z6 governs every tile. It picks which
+     earlier reading each tile compares against, which is what makes the
+     "prior period" half of the tile contract real rather than decorative. */
+  const HIST = d.progress.history || [];
+  /* labels are noun phrases so the "مقارنة مع …" prefix composes, and the
+     spans are distinct: with four readings, back:3 and back:4 were the same
+     row, and "since start" for a project at 17% has to read +17, not +10 */
+  const PERIODS = [
+    { id: 'm1', ar: 'القراءة السابقة', en: 'the previous reading', back: 1 },
+    { id: 'q1', ar: 'الربع الماضي', en: 'last quarter', back: 3 },
+    { id: 'all', ar: 'بداية المشروع', en: 'project start', back: HIST.length + 99 },
+  ];
+  const [per, setPer] = React.useState('m1');
+  const P = PERIODS.find(x => x.id === per) || PERIODS[0];
+  const prior = P.id === 'all' ? { physical: 0, financial: 0 }
+    : (HIST[Math.max(0, HIST.length - 1 - P.back)] || HIST[0] || { physical: phys, financial: finPct });
+  const last = HIST[HIST.length - 1] || prior;
+  /* The two series are generated independently, so subtracting `finPct` (the
+     financial module's basis) from `history.financial` produced things like
+     "+53 points in a month". Each delta now stays inside one series and is
+     scaled onto the figure the tile actually shows. */
+  const dPhys = phys - (prior.physical || 0);
+  const dFin = P.id === 'all' ? finPct
+    : (last.financial && prior.financial != null
+      ? Math.round(finPct * ((last.financial - prior.financial) / (last.financial || 1))) : 0);
+  const perLabel = AR ? P.ar : P.en;
+  const dirOf = v => v > 0 ? 'up' : v < 0 ? 'down' : 'flat';
+
+  const [tab, setTab] = React.useState('summary');
+  const TABS = [
+    { id: 'summary', label: AR ? 'الملخص' : 'Summary' },
+    { id: 'wbs', label: AR ? 'حسب هيكل التجزئة' : 'By WBS' },
+    { id: 'cost', label: AR ? 'الأثر والكلفة' : 'Impact & cost' },
+    { id: 'risk', label: AR ? 'مخاطر الجدول' : 'Schedule risk', n: atRisk.length || undefined },
+  ];
+  const jump = k => () => (goTab ? goTab(k) : null);
+  const M = v => <DMoney v={Math.round(v)} lang={lang} size="sm" />;
+  const [defs, setDefs] = React.useState(false);
+
+  const sCurve = React.useMemo(() => {
+    const N = 8;                                   // periods across the whole project 0 → 100
+    const smooth = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+    const nowFrac = Math.min(1, Math.max(0.05, phys / 100));
+    const rows = [];
+    for (let i = 0; i <= N; i++) {
+      const f = i / N;
+      const planCum = Math.round(smooth(f) * 100);
+      const inPast = f <= nowFrac + 1e-6;
+      const actCum = inPast ? Math.round(smooth(f / (nowFrac || 1)) * phys) : null;
+      const prev = rows[rows.length - 1];
+      rows.push({ label: 'M' + i, planCum, actCum,
+        planPeriod: planCum - (prev ? prev.planCum : 0),
+        actPeriod: actCum == null ? 0 : actCum - (prev && prev.actCum != null ? prev.actCum : 0) });
+    }
+    return rows;
+  }, [phys]);
+
+  /* Z8 is permitted exactly two things on L04: a filter panel or a panel
+     saying how each metric is derived. In a ministry that reads the second
+     one off a screen in a meeting, it is the more useful of the two. */
+  const DEF = (k, v) => <div className="d-form-i"><span className="k">{k}</span><span className="v">{v}</span></div>;
+  const DEFS = (
     <React.Fragment>
-      <div className="d-section-title">{t('mod_progress')}</div>
-
-      {/* overall progress */}
-      <div className="d-metrics c3">
-        <div className="d-metric">
-          <span className="d-metric-ring"><DDonut value={phys} size={64} stroke={7} color="var(--viz-1)" /><b>{phys}%</b></span>
-          <span className="d-metric-tx"><span className="k">{AR ? 'الإنجاز المادي' : 'Physical completion'}</span><span className="v">{phys}%</span><span className="s">{AR ? 'المخطط' : 'Planned'} {plannedProg}%</span></span>
+      <DMsgBar tone="info" icon="functions" title={AR ? 'كل رقم على هذه الصفحة مشتق' : 'Every figure on this page is derived'}>
+        {AR ? 'لا يُدخَل أي مؤشر هنا يدوياً — كلها محسوبة من الجدول الزمني وجدول الكميات والموقف المالي، وتتحرك مع تاريخ البيانات.'
+            : 'No indicator here is entered by hand — each is computed from the schedule, the BOQ and the financial position, and moves with the data date.'}
+      </DMsgBar>
+      <DRecordGrp label={AR ? 'الإنجاز' : 'Completion'}>
+        <div className="d-form-grid">
+          {DEF(AR ? 'الإنجاز المادي' : 'Physical', AR ? 'مجموع أوزان الأنشطة المنجزة ÷ مجموع الأوزان، مرجّحاً بالكلفة.' : 'Weighted sum of completed activity weights ÷ total weight, by cost.')}
+          {DEF(AR ? 'الإنجاز المالي' : 'Financial', AR ? 'المصروف التراكمي ÷ الكلفة المعدلة (بعد الأوامر التغييرية المعتمدة).' : 'Cumulative spend ÷ revised cost (after approved change orders).')}
+          {DEF(AR ? 'المخطط' : 'Planned', AR ? 'الإنجاز الذي يفرضه خط الأساس عند تاريخ البيانات، على منحنى المدة نفسه.' : 'What the baseline requires at the data date, on the same duration curve.')}
         </div>
-        <div className="d-metric">
-          <span className="d-metric-ring"><DDonut value={finPct} size={64} stroke={7} color="var(--viz-2)" /><b>{finPct}%</b></span>
-          <span className="d-metric-tx"><span className="k">{AR ? 'الإنجاز المالي' : 'Financial completion'}</span><span className="v">{finPct}%</span><span className="s">{AR ? 'من الكلفة المعدلة' : 'of revised cost'}</span></span>
+      </DRecordGrp>
+      <DRecordGrp label={AR ? 'الأداء' : 'Performance'}>
+        <div className="d-form-grid">
+          {DEF('SPI', AR ? 'القيمة المكتسبة ÷ القيمة المخططة. أقل من واحد يعني تأخراً عن الجدول.' : 'Earned ÷ planned value. Below one means behind schedule.')}
+          {DEF('CPI', AR ? 'القيمة المكتسبة ÷ الكلفة الفعلية. أقل من واحد يعني تجاوزاً في الكلفة.' : 'Earned ÷ actual cost. Below one means over cost.')}
+          {DEF('EAC', AR ? 'الكلفة المتوقعة عند الإنجاز = الموازنة ÷ CPI.' : 'Estimate at completion = budget ÷ CPI.')}
+          {DEF('VAC', AR ? 'الموازنة ناقص EAC. القيمة الموجبة تعني البقاء ضمن الموازنة.' : 'Budget minus EAC. A positive value means within budget.')}
         </div>
-        <div className="d-util-bar">
-          <div className="d-util-row"><span className="lbl">{AR ? 'الإنجاز التجميعي للجدول' : 'Schedule rollup'}</span><b className="amt" style={{ color: 'var(--azure-600)' }}>{roll.projectPct}%</b></div>
-          <div className="d-progress"><span className="t" style={{ height: 8 }}><span style={{ width: roll.projectPct + '%' }}></span></span></div>
-          <div className="d-util-row d-idx"><span className="lbl">SPI</span><span className="amt mono v">{e.spi}</span></div>
-          <div className="d-util-row d-idx"><span className="lbl">CPI</span><span className="amt mono v">{e.cpi}</span></div>
+      </DRecordGrp>
+      <DRecordGrp label={AR ? 'الزمن' : 'Time'}>
+        <div className="d-form-grid">
+          {DEF(AR ? 'التأخر' : 'Delay', AR ? 'الفرق بين النهاية المتوقعة والنهاية التعاقدية بالأيام.' : 'Forecast finish minus contractual finish, in days.')}
+          {DEF(AR ? 'العوم السالب' : 'Negative float', AR ? 'أنشطة لا يمكن إنجازها في موعدها دون تسريع.' : 'Activities that cannot meet their dates without acceleration.')}
         </div>
-      </div>
-
-      {/* progress by WBS level */}
-      <div className="d-section-title">{AR ? 'الإنجاز حسب مستويات هيكل التجزئة' : 'Progress by WBS level'}</div>
-      <div className="d-card-sub">
-        {wbsRows.map((w, i) => {
-          const pct = roll.wbsPct[w.code] || 0;
-          return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: i < wbsRows.length - 1 ? '1px solid var(--surface-container-high)' : 'none' }}>
-              <span className="mono d-cell-sub" style={{ fontSize: 11, width: 44, flex: 'none' }}>{w.code}</span>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: w.level <= 2 ? 'var(--fw-x)' : 'var(--fw-regular)', paddingInlineStart: (w.level - 2) * 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</span>
-              <div className="d-progress" style={{ width: 220, flex: 'none' }}><span className="t"><span style={{ width: pct + '%', background: barColor(pct) }}></span></span><span className="pc">{pct}%</span></div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="d-grid c2 eqrows" style={{ marginTop: 14 }}>
-        {/* impact & cost */}
-        <div className="d-panel">
-          <div className="d-panel-head"><b>{AR ? 'الأثر والكلفة' : 'Impact & cost'}</b></div>
-          <div className="d-fig-row" style={{ margin: 0, padding: 14 }}>
-            <div className="d-fig"><div className="k">{AR ? 'الكلفة المعدلة' : 'Revised cost'}</div><div className="v mono">{Math.round(fin.revisedCost / 1e6)}<small>M</small></div></div>
-            <div className="d-fig"><div className="k">{AR ? 'المصروف التراكمي' : 'Cumulative spend'}</div><div className="v mono">{Math.round(fin.disbursed / 1e6)}<small>M</small></div></div>
-            <div className="d-fig"><div className="k">{AR ? 'أوامر تغييرية معتمدة' : 'Approved change orders'}</div><div className="v mono" style={{ color: 'var(--on-surface)' }}>{Math.round(approvedVO / 1e6)}<small>M</small></div></div>
-            <div className="d-fig"><div className="k">{AR ? 'أثر كلفة الجدول (تقديري)' : 'Schedule cost impact (est.)'}</div><div className="v mono" style={{ color: 'var(--on-surface)' }}>{Math.round(schedImpact / 1e6)}<small>M</small></div></div>
-            <div className="d-fig"><div className="k">EAC</div><div className="v mono">{Math.round(e.eac / 1e6)}<small>M</small></div></div>
-            <div className="d-fig"><div className="k">VAC</div><div className="v mono" style={{ color: e.vac < 0 ? 'var(--error)' : 'var(--on-surface)' }}>{Math.round(e.vac / 1e6)}<small>M</small></div></div>
-          </div>
-        </div>
-        {/* schedule risk summary */}
-        <div className="d-panel">
-          <div className="d-panel-head"><b>{AR ? 'ملخص مخاطر الجدول' : 'Schedule risk summary'}</b></div>
-          <div className="d-alert-tiles" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
-            <div className="d-alert-tile"><div className="n" style={{ color: sd.delayDays > 0 ? 'var(--error)' : 'var(--on-surface)' }}>{sd.delayDays > 0 ? '+' : ''}{sd.delayDays}</div><div className="l">{AR ? 'تأخر (يوم)' : 'Delay (d)'}</div></div>
-            <div className="d-alert-tile"><div className="n" style={{ color: 'var(--on-surface)' }}>{sd.criticalCount}</div><div className="l">{AR ? 'أنشطة حرجة' : 'Critical'}</div></div>
-            <div className="d-alert-tile"><div className="n" style={{ color: 'var(--status-suspended-tx)' }}>{sd.negFloatCount}</div><div className="l">{AR ? 'عوم سالب' : 'Neg. float'}</div></div>
-          </div>
-          <div style={{ padding: '0 14px 12px' }}>
-            <div className="d-cell-sub" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', margin: '2px 0 8px' }}>{AR ? 'أنشطة معرّضة للخطر' : 'At-risk activities'}</div>
-            {atRisk.length === 0 && <span className="d-cell-sub">{AR ? 'لا توجد' : 'None'}</span>}
-            {atRisk.map((a, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < atRisk.length - 1 ? '1px dashed var(--outline-variant)' : 'none' }}>
-                <Icon name="warning" size={14} style={{ color: 'var(--error)', flex: 'none' }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
-                <span className="mono" style={{ fontSize: 11.5, color: 'var(--error)' }}>+{a.slip}{AR ? 'ي' : 'd'}</span>
-                {a.float === 0 && <span className="d-pill critical" style={{ height: 18 }}>{AR ? 'حرج' : 'Crit'}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* trend + update history (updates flowing from sections) */}
-      <div className="d-section-title">{AR ? 'منحنى S — المخطط مقابل الفعلي (تراكمي)' : 'S-curve — plan vs actual (cumulative)'}</div>
-      {(() => {
-        const N = 8; // periods across the whole project 0 → 100
-        const smooth = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x); // smoothstep S-shape
-        const nowFrac = Math.min(1, Math.max(0.05, phys / 100));
-        const rows = [];
-        for (let i = 0; i <= N; i++) {
-          const f = i / N;
-          const planCum = Math.round(smooth(f) * 100);
-          const inPast = f <= nowFrac + 1e-6;
-          const actCum = inPast ? Math.round(smooth(f / (nowFrac || 1)) * phys) : null;
-          const prev = rows[rows.length - 1];
-          rows.push({
-            label: 'M' + i,
-            planCum,
-            actCum,
-            planPeriod: planCum - (prev ? prev.planCum : 0),
-            actPeriod: actCum == null ? 0 : actCum - (prev && prev.actCum != null ? prev.actCum : 0),
-          });
-        }
-        return <DSCurve lang={lang} data={rows} />;
-      })()}
-      <div className="d-section-title">{AR ? 'تحديثات الإنجاز (من الأقسام)' : 'Progress updates (from sections)'}</div>
-      <div className="d-card-sub">
-        <table className="d-line-table">
-          <thead><tr><th>{AR ? 'التاريخ' : 'Date'}</th><th>{AR ? 'الإنجاز المادي' : 'Physical'}</th><th>{AR ? 'الإنجاز المالي' : 'Financial'}</th><th>{AR ? 'المصدر' : 'Source'}</th><th>{AR ? 'المستخدم' : 'By'}</th></tr></thead>
-          <tbody>{d.progress.history.map((h, i) => <tr key={i}><td className="mono">{h.date}</td><td className="mono">{h.physical}%</td><td className="mono">{h.financial}%</td><td className="d-cell-sub">{i % 2 ? (AR ? 'الجدول الزمني' : 'Schedule') : (AR ? 'الموقف المالي' : 'Financial')}</td><td>{h.by}</td></tr>)}</tbody>
-        </table>
-      </div>
+      </DRecordGrp>
     </React.Fragment>
+  );
+
+  return (
+    <DModuleFrame
+      title={frameTitle || t('mod_progress')}
+      sub={AR ? `المادي ${phys}% مقابل مخطط ${plannedProg}% · المالي ${finPct}%`
+              : `Physical ${phys}% vs planned ${plannedProg}% · financial ${finPct}%`}
+      tabs={TABS} tab={tab} onTab={setTab}
+      toolbar={<React.Fragment>
+        <label className="d-ctxsel"><span>{AR ? 'المقارنة مع' : 'Compare with'}</span>
+          <select value={per} onChange={ev => setPer(ev.target.value)}>
+            {PERIODS.map(x => <option key={x.id} value={x.id}>{AR ? x.ar : x.en}</option>)}
+          </select></label>
+        {/* a panel toggle is a view control and belongs with the other view
+            controls, not in the actions cluster that acts on the module */}
+        <button className={'d-fchip' + (defs ? ' on' : '')} aria-pressed={defs} onClick={() => setDefs(v => !v)}>
+          <Icon name="functions" size={13} />{AR ? 'كيف تُحتسب' : 'How it is derived'}</button>
+      </React.Fragment>}
+      actions={frameActions}
+      aside={defs ? (
+        <DRecordPane lang={lang} title={AR ? 'تعريف المؤشرات' : 'Metric definitions'}
+          onClose={() => setDefs(false)}>{DEFS}</DRecordPane>
+      ) : null}
+      status={<DZ10 lang={lang} asOf={asOf || sd.dataDate} stats={[
+        { k: AR ? 'المادي' : 'Physical', v: phys + '%' },
+        { k: AR ? 'المالي' : 'Financial', v: finPct + '%' },
+        { k: 'SPI / CPI', v: e.spi + ' / ' + e.cpi },
+        { k: AR ? 'آخر تحديث للإنجاز' : 'Last progress update', v: (HIST.slice(-1)[0] || {}).date || '—' },
+      ]} />}>
+
+      {tab === 'summary' && <DTileGrid>
+        {defs && <div className="d-l04-z8fall">
+          <DFGroup title={AR ? 'تعريف المؤشرات' : 'Metric definitions'}>{DEFS}</DFGroup>
+        </div>}
+        {/* reading order: headline → trend → breakdown → exceptions → detail */}
+        <DTile lang={lang} span={3} label={AR ? 'الإنجاز المادي' : 'Physical completion'}
+          value={phys} unit="%" state={phys < plannedProg - 5 ? 'bad' : phys < plannedProg ? 'warn' : 'ok'}
+          delta={{ v: (dPhys > 0 ? '+' : '') + dPhys + (AR ? ' نقطة' : ' pts'), dir: dirOf(dPhys) }}
+          cmp={{ label: AR ? 'مخطط' : 'planned', value: plannedProg + '%' }}
+          note={(AR ? 'مقارنة مع ' : 'vs ') + perLabel}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+
+        <DTile lang={lang} span={3} label={AR ? 'الإنجاز المالي' : 'Financial completion'}
+          value={finPct} unit="%"
+          state={finPct - phys > 20 ? 'bad' : Math.abs(finPct - phys) > 10 ? 'warn' : 'ok'}
+          delta={{ v: (dFin > 0 ? '+' : '') + dFin + (AR ? ' نقطة' : ' pts'), dir: dirOf(dFin) }}
+          cmp={{ label: AR ? 'المادي' : 'physical', value: phys + '%' }}
+          note={finPct - phys > 20
+            ? (AR ? 'الصرف يسبق الإنجاز بـ ' + (finPct - phys) + ' نقطة — يستوجب مراجعة'
+                  : 'Disbursement leads delivery by ' + (finPct - phys) + ' points — needs review')
+            : <React.Fragment>{AR ? 'مصروف ' : 'spent '}{M(fin.disbursed)}{AR ? ' من ' : ' of '}{M(fin.revisedCost)}</React.Fragment>}
+          to={{ label: AR ? 'الموقف المالي' : 'the financial position', fn: jump('financial') }} />
+
+        <DTile lang={lang} span={3} label={AR ? 'التأخر عن خط الأساس' : 'Delay against baseline'}
+          value={(sd.delayDays > 0 ? '+' : '') + sd.delayDays} unit={AR ? 'يوم' : 'd'}
+          state={sd.delayDays > 14 ? 'bad' : sd.delayDays > 0 ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'النهاية التعاقدية' : 'contractual finish', value: sd.baselineFinish }}
+          note={(AR ? 'النهاية المتوقعة ' : 'forecast ') + sd.forecastFinish}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+
+        <DTile lang={lang} span={3} label="SPI / CPI"
+          value={e.spi + ' / ' + e.cpi}
+          state={e.spi < 0.95 ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'الهدف' : 'target', value: '1.00' }}
+          note={/* earned value can keep pace while the critical path slips —
+                   saying only one of those beside a +27-day delay reads as a
+                   contradiction, so the tile states both */
+            (e.spi < 1 ? (AR ? 'القيمة المكتسبة دون الخطة' : 'earned value below plan')
+              : sd.delayDays > 0 ? (AR ? 'القيمة المكتسبة على الخطة، والتأخر محصور في المسار الحرج'
+                                       : 'earned value on plan; the delay sits on the critical path')
+              : (AR ? 'القيمة المكتسبة على الخطة' : 'earned value on plan'))
+            + ' · ' + (e.cpi < 1 ? (AR ? 'تجاوز في الكلفة' : 'over cost') : (AR ? 'الكلفة ضمن الحدود' : 'cost within limits'))}
+          to={{ label: AR ? 'الأثر والكلفة' : 'impact & cost', fn: () => setTab('cost') }} />
+
+        <DTile lang={lang} span={6} flush
+          label={AR ? 'منحنى الإنجاز — المخطط مقابل الفعلي (تراكمي)' : 'Progress curve — plan vs actual (cumulative)'}
+          note={(AR ? 'تاريخ البيانات ' : 'data date ') + sd.dataDate}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }}>
+          <div style={{ padding: 'var(--space-12)' }}><DSCurve lang={lang} data={sCurve} /></div>
+        </DTile>
+
+        <DFGroup span={12} flush
+          title={AR ? 'تحديثات الإنجاز (واردة من الأقسام)' : 'Progress updates (from the sections)'}
+          sub={AR ? 'كل سطر معتمد من قسم مصدره — لا يُحرَّر هنا' : 'each row is endorsed by its own section — not edited here'}
+          foot={<button type="button" className="d-linkbtn" onClick={jump('audit')}>
+            {AR ? 'التفصيل في سجل التدقيق' : 'Detail in the audit log'}<Icon name="chevron_right" size={14} /></button>}>
+          <table className="d-line-table">
+            <thead><tr>
+              <th style={{ width: 120 }}>{AR ? 'التاريخ' : 'Date'}</th>
+              <th style={{ width: 120 }} className="r">{AR ? 'المادي' : 'Physical'}</th>
+              <th style={{ width: 120 }} className="r">{AR ? 'المالي' : 'Financial'}</th>
+              <th style={{ width: 170 }}>{AR ? 'المصدر' : 'Source'}</th>
+              <th>{AR ? 'المستخدم' : 'By'}</th></tr></thead>
+            <tbody>{HIST.map((h, i) => (
+              <tr key={i}><td className="code">{h.date}</td>
+                <td className="num r">{h.physical}%</td><td className="num r">{h.financial}%</td>
+                <td className="d-cell-sub">{i % 2 ? (AR ? 'الجدول الزمني' : 'Schedule') : (AR ? 'الموقف المالي' : 'Financial position')}</td>
+                <td className="d-cell-sub">{h.by}</td></tr>))}</tbody>
+          </table>
+        </DFGroup>
+      </DTileGrid>}
+
+      {tab === 'wbs' && <DTileGrid>
+        <DTile lang={lang} span={3} label={AR ? 'الإنجاز التجميعي للجدول' : 'Schedule rollup'}
+          value={roll.projectPct} unit="%"
+          state={roll.projectPct < plannedProg - 5 ? 'bad' : roll.projectPct < plannedProg ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'مخطط' : 'planned', value: plannedProg + '%' }}
+          note={AR ? 'محسوب صعوداً من الأنشطة، لا يُدخَل يدوياً' : 'rolled up from activities, never entered by hand'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+        <DTile lang={lang} span={3} label={AR ? 'مستويات مكتملة' : 'Levels complete'}
+          value={wbsRows.filter(w => (roll.wbsPct[w.code] || 0) >= 100).length} unit={'/' + wbsRows.length}
+          state="none" cmp={{ label: AR ? 'الأدنى' : 'lowest',
+            value: (wbsRows.length ? Math.min.apply(null, wbsRows.map(w => roll.wbsPct[w.code] || 0)) : 0) + '%' }}
+          note={AR ? 'مستوى ثانٍ فأعلى من هيكل التجزئة' : 'WBS level 2 and above'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+        <DTile lang={lang} span={3} label={AR ? 'الفجوة عن المخطط' : 'Gap against plan'}
+          value={(phys - plannedProg > 0 ? '+' : '') + (phys - plannedProg)} unit={AR ? 'نقطة' : 'pts'}
+          state={phys < plannedProg - 5 ? 'bad' : phys < plannedProg ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'مخطط' : 'planned', value: plannedProg + '%' }}
+          note={AR ? 'الفجوة موزّعة على المستويات في الجدول أدناه' : 'the gap is distributed across the levels below'}
+          to={{ label: AR ? 'جدول الكميات' : 'the BOQ', fn: jump('boq') }} />
+
+        <DFGroup span={12} flush title={AR ? 'الإنجاز حسب مستويات هيكل التجزئة' : 'Progress by WBS level'}
+          sub={AR ? 'محسوبة صعوداً من الأنشطة المرجّحة بالكلفة' : 'rolled up from cost-weighted activities'}
+          foot={<button type="button" className="d-linkbtn" onClick={jump('schedule')}>
+            {AR ? 'التفصيل في الجدول الزمني' : 'Detail in the schedule'}<Icon name="chevron_right" size={14} /></button>}>
+          <div className="d-vow-tw"><table className="d-line-table">
+            <thead><tr>
+              <th style={{ width: 90 }}>{AR ? 'الرمز' : 'Code'}</th>
+              <th style={{ minWidth: 240 }}>{AR ? 'المستوى' : 'Level'}</th>
+              <th style={{ width: 260 }}>{AR ? 'الإنجاز' : 'Progress'}</th></tr></thead>
+            <tbody>{wbsRows.map((w, i) => { const pct = roll.wbsPct[w.code] || 0;
+              return (
+              <tr key={i}>
+                <td className="code">{w.code}</td>
+                <td className={w.level <= 2 ? 'name' : 'd-cell-sub'}
+                  style={{ paddingInlineStart: 'calc(var(--cell-px) + ' + ((w.level - 2) * 16) + 'px)' }}>{w.name}</td>
+                <td><div className="d-progress"><span className="t"><span style={{ width: pct + '%', background: barColor(pct) }}></span></span><span className="pc">{pct}%</span></div></td>
+              </tr>); })}</tbody>
+          </table></div>
+        </DFGroup>
+      </DTileGrid>}
+
+      {tab === 'cost' && <DTileGrid>
+        <DTile lang={lang} span={3} label="EAC" state={e.eac > fin.revisedCost ? 'bad' : 'ok'}
+          value={<DMoney v={Math.round(e.eac)} lang={lang} size="md" />}
+          cmp={{ label: AR ? 'الكلفة المعدلة' : 'revised cost', value: <DMoney v={Math.round(fin.revisedCost)} lang={lang} size="sm" bare /> }}
+          note={AR ? 'الكلفة المتوقعة عند الإنجاز = الموازنة ÷ CPI' : 'estimate at completion = budget ÷ CPI'}
+          to={{ label: AR ? 'الموقف المالي' : 'the financial position', fn: jump('financial') }} />
+        <DTile lang={lang} span={3} label="VAC" state={e.vac < 0 ? 'bad' : 'ok'}
+          value={<DMoney v={Math.round(e.vac)} lang={lang} size="md" signed />}
+          cmp={{ label: AR ? 'الهدف' : 'target', value: AR ? 'لا يقل عن صفر' : 'not below zero' }}
+          note={e.vac < 0 ? (AR ? 'تجاوز متوقع للموازنة' : 'forecast overrun') : (AR ? 'ضمن الموازنة' : 'within budget')}
+          to={{ label: AR ? 'الموقف المالي' : 'the financial position', fn: jump('financial') }} />
+        <DTile lang={lang} span={3} label={AR ? 'الكلفة المعدلة' : 'Revised cost'}
+          value={<DMoney v={Math.round(fin.revisedCost)} lang={lang} size="md" />}
+          cmp={{ label: AR ? 'الكلفة المقررة' : 'original cost', value: <DMoney v={Math.round(fin.cost || 0)} lang={lang} size="sm" bare /> }}
+          note={AR ? 'الكلفة النافذة بعد الملاحق' : 'the effective cost after addenda'}
+          to={{ label: AR ? 'العقد' : 'the contract', fn: jump('contract') }} />
+        <DTile lang={lang} span={3} label={AR ? 'المصروف التراكمي' : 'Cumulative spend'}
+          value={<DMoney v={Math.round(fin.disbursed)} lang={lang} size="md" />}
+          cmp={{ label: AR ? 'من المعدلة' : 'of revised', value: finPct + '%' }}
+          note={AR ? 'كما في تاريخ البيانات' : 'as at the data date'}
+          to={{ label: AR ? 'الموقف المالي' : 'the financial position', fn: jump('financial') }} />
+
+        <DTile lang={lang} span={3} label={AR ? 'أوامر تغييرية معتمدة' : 'Approved change orders'}
+          value={<DMoney v={Math.round(approvedVO)} lang={lang} size="md" signed />}
+          state={pendingVO ? 'warn' : 'none'}
+          cmp={pendingVO ? { label: AR ? 'قيد الاعتماد' : 'pending', value: <DMoney v={Math.round(pendingVO)} lang={lang} size="sm" bare /> } : null}
+          note={AR ? 'المعتمد وحده يدخل الكلفة المعدلة؛ ما هو قيد الاعتماد لا يُرحَّل.' : 'only approved orders enter the revised cost; pending ones do not post.'}
+          to={{ label: AR ? 'الأوامر التغييرية' : 'change orders', fn: jump('changeorders') }} />
+        <DTile lang={lang} span={3} label={AR ? 'أثر كلفة التأخر (تقديري)' : 'Cost of delay (estimated)'}
+          value={<DMoney v={Math.round(schedImpact)} lang={lang} size="md" />}
+          state={schedImpact > 0 ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'أيام التأخر' : 'delay days', value: sd.delayDays }}
+          note={AR ? 'تقدير غير تعاقدي — لا يدخل الكلفة المعدلة ولا يُطالَب به.' : 'a non-contractual estimate — it does not enter the revised cost and is not claimed.'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+      </DTileGrid>}
+
+      {tab === 'risk' && <DTileGrid>
+        <DTile lang={lang} span={3} label={AR ? 'التأخر' : 'Delay'}
+          value={(sd.delayDays > 0 ? '+' : '') + sd.delayDays} unit={AR ? 'يوم' : 'd'}
+          state={sd.delayDays > 14 ? 'bad' : sd.delayDays > 0 ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'الهدف' : 'target', value: '0' }}
+          note={AR ? 'مقابل خط الأساس المعتمد' : 'against the approved baseline'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+        <DTile lang={lang} span={3} label={AR ? 'أنشطة حرجة' : 'Critical activities'}
+          value={sd.criticalCount} state="none"
+          cmp={{ label: AR ? 'من الأنشطة' : 'of activities', value: sd.activities.filter(a => a.type === 'act').length }}
+          note={AR ? 'عوم كلي صفر — أي انزياح يمس النهاية' : 'zero total float — any slip moves the finish'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+        <DTile lang={lang} span={3} label={AR ? 'عوم سالب' : 'Negative float'}
+          value={sd.negFloatCount} state={sd.negFloatCount ? 'bad' : 'ok'}
+          cmp={{ label: AR ? 'الهدف' : 'target', value: '0' }}
+          note={AR ? 'لا يمكن إنجازها في موعدها دون تسريع' : 'cannot meet their dates without acceleration'}
+          to={{ label: AR ? 'الجدول الزمني' : 'the schedule', fn: jump('schedule') }} />
+        <DTile lang={lang} span={3} label={AR ? 'أنشطة معرّضة للخطر' : 'At-risk activities'}
+          value={atRisk.length} state={atRisk.length ? 'warn' : 'ok'}
+          cmp={{ label: AR ? 'الحد' : 'threshold', value: AR ? 'أكثر من 10 أيام' : 'over 10 days' }}
+          note={AR ? 'انزياح يتجاوز الحد، أو أي انزياح على مسار حرج' : 'slip past the threshold, or any slip on a critical path'}
+          to={{ label: AR ? 'إدارة المخاطر' : 'the risk register', fn: jump('risk') }} />
+
+        <DFGroup span={12} flush title={AR ? 'الأنشطة المعرّضة للخطر' : 'At-risk activities'}
+          sub={AR ? 'مرتّبة بحسب الانزياح' : 'ordered by slip'}
+          foot={<button type="button" className="d-linkbtn" onClick={jump('schedule')}>
+            {AR ? 'التفصيل في الجدول الزمني' : 'Detail in the schedule'}<Icon name="chevron_right" size={14} /></button>}>
+          {atRisk.length ? (
+            <table className="d-line-table">
+              <thead><tr>
+                <th style={{ width: 90 }}>{AR ? 'المعرّف' : 'ID'}</th>
+                <th style={{ minWidth: 240 }}>{AR ? 'النشاط' : 'Activity'}</th>
+                <th style={{ width: 110 }} className="r">{AR ? 'الانزياح' : 'Slip'} <span className="cur">({AR ? 'يوم' : 'd'})</span></th>
+                <th style={{ width: 110 }} className="r">{AR ? 'العوم' : 'Float'} <span className="cur">({AR ? 'يوم' : 'd'})</span></th>
+                <th style={{ width: 110 }}>{AR ? 'المسار الحرج' : 'Critical'}</th></tr></thead>
+              <tbody>{atRisk.map((a, i) => (
+                <tr key={i}>
+                  <td className="code">{a.id}</td>
+                  <td className="name wrap">{a.name}</td>
+                  <td className="num r">+{a.slip}</td>
+                  <td className="num r">{a.float}</td>
+                  <td>{a.float === 0 ? <span className="d-pill critical">{AR ? 'حرج' : 'Critical'}</span> : <span className="d-cell-sub">—</span>}</td>
+                </tr>))}</tbody>
+            </table>
+          ) : (
+            <div className="d-empty">
+              <span className="d-empty-ico"><Icon name="check_circle" size={26} /></span>
+              <b>{AR ? 'لا أنشطة معرّضة للخطر' : 'No at-risk activities'}</b>
+              <span>{AR ? 'لا نشاط تجاوز انزياحه الحد، ولا انزياح على المسار الحرج، عند تاريخ البيانات.' : 'No activity has slipped past the threshold and nothing on the critical path has slipped, as at the data date.'}</span>
+            </div>
+          )}
+        </DFGroup>
+      </DTileGrid>}
+    </DModuleFrame>
   );
 }
 
@@ -1057,250 +2068,9 @@ const VO_STAGE_STATE = {
   pending: { ar: 'بالانتظار', en: 'Pending', icon: 'radio_button_unchecked', color: 'var(--on-surface-variant)' },
 };
 
-function DVOStageTimeline({ v, lang }) {
-  const AR = lang === 'ar';
-  return (
-    <div className="d-vo-stages">
-      {v.stages.map((s, i) => {
-        const S = VO_STAGE_STATE[s.status];
-        const over = s.status === 'overdue' || (s.status === 'done' && s.elapsed > s.sla);
-        return (
-          <div key={i} className={`d-vo-stage ${s.status}`}>
-            <div className="d-vo-stage-rail"><span className="dot" style={{ background: S.color }}><Icon name={S.icon} size={12} /></span>{i < v.stages.length - 1 && <span className="bar" style={{ background: s.status === 'done' ? 'var(--on-surface)' : 'var(--outline-variant)' }}></span>}</div>
-            <div className="d-vo-stage-body">
-              <div className="hd"><b>{s.label}</b><span className="d-pill" style={{ background: 'color-mix(in srgb,' + S.color + ' 14%,transparent)', color: TXC(S.color) }}>{S[lang]}</span></div>
-              <div className="mt d-cell-sub">{s.owner} · {AR ? 'السقف' : 'SLA'} {s.sla}{AR ? 'ي' : 'd'}{(s.status === 'done' || s.status === 'active' || s.status === 'overdue') && <span style={{ color: over ? 'var(--error)' : 'var(--on-surface-variant)', fontWeight: over ? 'var(--fw-bold)' : 'inherit' }}> · {AR ? 'المستغرق' : 'elapsed'} {s.elapsed}{AR ? 'ي' : 'd'}</span>}{s.doneDate && <span className="mono"> · {s.doneDate}</span>}</div>
-              {s.decision && <div className="mt" style={{ fontSize: 11.5, color: s.status === 'overdue' || s.status === 'rejected' ? 'var(--error)' : 'var(--on-surface-variant)' }}>{s.decision}</div>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function DModVO({ t, lang, d, p, showToast }) {
-  const AR = lang === 'ar';
-  const [rows, setRows] = React.useState(d.variationOrders.map(v => ({ ...v, attachments: [...(v.attachments || [])] })));
-  const [note, setNote] = React.useState(false);
-  const [openNo, setOpenNo] = React.useState(null);
-  const [showCreate, setShowCreate] = React.useState(false);
-  // activities for the wizard's schedule picker — read from the same schedule engine the Gantt uses
-  const voActs = React.useMemo(() => (showCreate && p ? window.EPM.buildScheduleData(p, lang).activities : []), [showCreate, p && p.id, lang]);
-  const fileRef = React.useRef(null);
-  const pendingUpload = React.useRef(null);
-  const act = (no, st) => {
-    setRows(rs => rs.map(r => r.no === no ? { ...r, status: st, stages: r.stages.map(s => ({ ...s, status: st === 'approved' ? 'done' : (s.status === 'active' || s.status === 'overdue' ? 'rejected' : s.status) })) } : r));
-    if (st === 'approved') { setNote(true); showToast(AR ? 'تم الاعتماد النهائي' : 'Final endorsement done'); }
-    else showToast(AR ? 'أُعيد بملاحظات' : 'Returned with notes');
-  };
-  const kindIco = { pdf: 'picture_as_pdf', image: 'image', sheet: 'table_view', doc: 'description' };
-  const addAttach = (no) => { pendingUpload.current = no; fileRef.current && fileRef.current.click(); };
-  const onFile = (e) => {
-    const no = pendingUpload.current; const f = e.target.files && e.target.files[0];
-    const nm = f ? f.name : 'evidence.pdf';
-    const ext = nm.split('.').pop().toLowerCase();
-    const kind = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) ? 'image' : ['xls', 'xlsx', 'csv'].includes(ext) ? 'sheet' : ext === 'pdf' ? 'pdf' : 'doc';
-    setRows(rs => rs.map(r => r.no === no ? { ...r, attachments: [{ name: AR ? 'مستند مرفوع' : 'Uploaded evidence', file: nm, kind, size: f ? (Math.max(1, Math.round(f.size / 1024)) + ' KB') : '—', by: AR ? 'أنت' : 'You', date: '2026-07-23' }, ...r.attachments] } : r));
-    showToast(AR ? 'تم إرفاق المستند' : 'Evidence attached');
-    if (e.target) e.target.value = '';
-  };
-  const approvedSum = rows.filter(r => r.status === 'approved').reduce((a, r) => a + r.net, 0);
-  const pendingCount = rows.filter(r => r.status === 'pending').length;
-  const escalated = rows.filter(r => r.slaExceeded).length;
-  const NOW = new Date('2026-07-22');
-  const leadOf = v => Math.max(0, Math.round((NOW - new Date(v.inDate)) / 86400000));
-  const leadTone = dys => dys > 14 ? 'var(--error)' : dys > 7 ? 'var(--warning)' : 'var(--on-surface)';
-  const pend = rows.filter(r => r.status === 'pending');
-  const avgLead = pend.length ? Math.round(pend.reduce((a, v) => a + leadOf(v), 0) / pend.length) : 0;
-  const dl = (a, b) => <div className="d-dl-i"><span className="k">{a}</span><span className="v mono">{b}</span></div>;
-  // role-based access + escalation: the actor for a pending order is the active stage's owner,
-  // unless its SLA is exceeded — then it escalates to the senior manager (§2.3.2.1 / §2.3.3.1).
-  const MANAGER = AR ? 'المستوى الإداري الأعلى' : 'Senior manager';
-  const ROLES = [...(rows[0] ? rows[0].stages.map(s => s.owner) : []), MANAGER];
-  const actorOf = v => v.status !== 'pending' ? null : (v.slaExceeded ? MANAGER : ((v.stages.find(s => s.key === v.activeStage) || {}).owner || null));
-  // current role follows the pre-built workflow — default to the stage owner the workflow is currently waiting on
-  const firstPending = rows.find(r => r.status === 'pending');
-  const workflowActor = (firstPending && actorOf(firstPending)) || ROLES[0];
-  const [role, setRole] = React.useState(workflowActor);
-  const [voTab, setVoTab] = React.useState('workflow');
-  React.useEffect(() => { const h = () => setShowCreate(true); window.addEventListener('epm:vo-create', h); return () => window.removeEventListener('epm:vo-create', h); }, []);
-  return (
-    <React.Fragment>
-      <input type="file" ref={fileRef} onChange={onFile} style={{ display: 'none' }} />
-      {showCreate && <DVOCreateWizard lang={lang} contract={d.contract} boq={d.boq} acts={voActs}
-        onClose={() => setShowCreate(false)}
-        onDraft={() => { setShowCreate(false); showToast(AR ? 'حُفظ الأمر التغييري كمسودة' : 'Change order saved as draft'); }}
-        onDone={() => { setShowCreate(false); showToast(AR ? 'أُرسل الأمر التغييري للمراجعة' : 'Change order sent for review'); }} />}
-      <div className="d-model-topbar">
-        <div className="d-section-title" style={{ margin: 0 }}>{t('mod_changeorders')}</div>
-        <div style={{ flex: 1 }}></div>
-      </div>
-      <div className="d-fig-row" >
-        <div className="d-fig"><div className="k">{AR ? 'صافي المعتمد' : 'Net approved'}</div><div className="v mono">{Math.round(approvedSum / 1e6)}<small>M</small></div></div>
-        <div className="d-fig"><div className="k">{AR ? 'قيد الاعتماد' : 'Pending'}</div><div className="v">{pendingCount}</div></div>
-        <div className="d-fig"><div className="k">{AR ? 'مُصعّدة' : 'Escalated'}</div><div className="v" style={{ color: escalated ? 'var(--error)' : 'var(--on-surface)' }}>{escalated}</div></div>
-        <div className="d-fig"><div className="k">{AR ? 'إجمالي الأوامر' : 'Total orders'}</div><div className="v">{rows.length}</div></div>
-        <div className="d-fig"><div className="k" title="Transaction Lead Time">{AR ? 'معدل دوران المعاملة' : 'Transaction lead time'}</div><div className="v" style={{ color: leadTone(avgLead) }}>{avgLead}<small>{AR ? ' يوم' : ' d'}</small></div></div>
-      </div>
-      {note && <div className="d-card-sub" style={{ padding: '10px 14px', marginBottom: 14, fontSize: 12, color: 'var(--on-surface)', display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="verified" size={16} />{t('vo_recalc_note')}</div>}
-
-      {!openNo && (() => {
-        const pend = rows.filter(v => v.status === 'pending');
-        const closed = rows.filter(v => v.status !== 'pending');
-        const openDetail = no => { setOpenNo(no); setVoTab('workflow'); };
-        return (<React.Fragment>
-          <div className="d-section-title">{AR ? 'بحاجة إجراء' : 'Needs action'} {pend.length ? '· ' + pend.length : ''}</div>
-          <div className="d-card-sub">
-            {pend.length === 0 && <div style={{ padding: '14px', fontSize: 12, color: 'var(--on-surface-variant)' }}><Icon name="check_circle" size={15} style={{ verticalAlign: -2, color: 'var(--on-surface)', marginInlineEnd: 6 }} />{AR ? 'لا توجد أوامر قيد الاعتماد' : 'No orders pending approval'}</div>}
-            {pend.map((v, i) => {
-              const activeSt = v.stages.find(s => s.key === v.activeStage);
-              const actor = actorOf(v);
-              return (
-                <button key={v.no} className="d-vo-row" style={{ borderBottom: i < pend.length - 1 ? '1px solid var(--surface-container-high)' : 'none' }} onClick={() => openDetail(v.no)}>
-                  <span className="d-vo-emblem" style={{ background: 'color-mix(in srgb,var(--warning) 14%,transparent)', color: 'var(--status-suspended-tx)' }}><Icon name="pending" size={18} /></span>
-                  <div className="d-vo-main">
-                    <span className="no">{v.no} · {v.date} · {v.inNo} · <span style={{ color: 'var(--on-surface-variant)' }}>{v.type === 'supply' ? (AR ? 'تجهيز' : 'Supply') : (AR ? 'هندسي' : 'Engineering')}</span></span>
-                    <span className="reason">{v.reason}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 11.5, flexWrap: 'wrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--azure-600)' }}><Icon name="attach_file" size={12} />{v.attachments.length}</span>
-                      {v.affectsCP && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--on-surface)' }}><Icon name="priority_high" size={12} />{AR ? 'المسار الحرج' : 'Critical path'}</span>}
-                      {activeSt && <React.Fragment><i style={{ width: 8, height: 8, borderRadius: 9, background: v.slaExceeded ? 'var(--error)' : 'var(--warning)' }}></i><span style={{ color: v.slaExceeded ? 'var(--error)' : 'var(--warning)', fontWeight: 'var(--fw-bold)' }}>{v.slaExceeded ? (AR ? 'مُصعّد: ' : 'Escalated: ') + actor : activeSt.label}</span></React.Fragment>}
-                    </span>
-                  </div>
-                  <span className="d-vo-val mono">{window.fmtNum(v.net)} IQD</span>
-                  <span className="d-pill" style={{ background: 'color-mix(in srgb,var(--warning) 14%,transparent)', color: 'var(--status-suspended-tx)' }}>{AR ? 'قيد الاعتماد' : 'Pending'}</span>
-                  <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={18} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="d-section-title">{AR ? 'المعتمدة والمغلقة' : 'Approved & closed'} {closed.length ? '· ' + closed.length : ''}</div>
-          <div className="d-card-sub" style={{ overflowX: 'auto' }}>
-            <table className="d-line-table d-vo-closed">
-              <thead><tr><th>{AR ? 'الرقم' : 'No.'}</th><th>{AR ? 'السبب' : 'Reason'}</th><th>{AR ? 'النوع' : 'Type'}</th><th>{AR ? 'التاريخ' : 'Date'}</th><th>{AR ? 'الصافي' : 'Net'}</th><th>{AR ? 'الحالة' : 'Status'}</th><th></th></tr></thead>
-              <tbody>{closed.map((v, i) => { const st = window.EPM.VO_STATUS[v.status]; return (
-                <tr key={v.no} style={{ cursor: 'pointer' }} onClick={() => openDetail(v.no)}>
-                  <td className="mono">{v.no}</td>
-                  <td className="d-cell-strong">{v.reason}</td>
-                  <td className="d-cell-sub">{v.type === 'supply' ? (AR ? 'تجهيز' : 'Supply') : (AR ? 'هندسي' : 'Engineering')}</td>
-                  <td className="mono d-cell-sub">{v.date}</td>
-                  <td className="mono">{window.fmtNum(v.net)}</td>
-                  <td><span className={`d-pill ${v.status === 'approved' ? 'completed' : 'stalled'}`}>{st[lang]}</span></td>
-                  <td><Icon name={AR ? 'chevron_left' : 'chevron_right'} size={16} style={{ color: 'var(--on-surface-variant)' }} /></td>
-                </tr>
-              ); })}</tbody>
-            </table>
-          </div>
-        </React.Fragment>);
-      })()}
-
-      {openNo && (() => {
-        const v = rows.find(r => r.no === openNo); if (!v) return null;
-        const st = window.EPM.VO_STATUS[v.status];
-        const actor = actorOf(v);
-        const canAct = v.status === 'pending' && role === actor;
-        const es = v.slaExceeded ? v.stages.find(s => s.status === 'overdue') : null;
-        const TABS = [
-          { id: 'workflow', ic: 'account_tree', lbl: AR ? 'المسار' : 'Workflow' },
-          { id: 'values', ic: 'payments', lbl: AR ? 'القيمة والمدة' : 'Value & time' },
-          { id: 'impact', ic: 'difference', lbl: AR ? 'الأثر' : 'Impact' },
-          { id: 'files', ic: 'attach_file', lbl: (AR ? 'المرفقات' : 'Files') + ' (' + v.attachments.length + ')' },
-          { id: 'history', ic: 'history', lbl: AR ? 'السجل' : 'History' },
-        ];
-        return (
-          <div className="d-vo-detail">
-            <div className="d-vo-detail-head">
-              <button className="d-btn sm ghost" onClick={() => setOpenNo(null)}><Icon name={AR ? 'arrow_forward' : 'arrow_back'} size={16} />{AR ? 'السجل' : 'Register'}</button>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><b style={{ fontSize: 15 }}>{v.no}</b><span className="d-cell-sub">{v.type === 'supply' ? (AR ? 'تجهيز' : 'Supply') : (AR ? 'هندسي' : 'Engineering')}</span>{v.status === 'pending' ? <span className="d-pill" style={{ background: 'color-mix(in srgb,var(--warning) 14%,transparent)', color: 'var(--status-suspended-tx)' }}>{AR ? 'قيد الاعتماد' : 'Pending'}</span> : <span className={`d-pill ${v.status === 'approved' ? 'completed' : 'stalled'}`}>{st[lang]}</span>}</div>
-                <div className="reason" style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>{v.reason} · {v.inNo} · {v.date}</div>
-              </div>
-              <div style={{ textAlign: 'end' }}><div className="mono" style={{ fontSize: 15, fontWeight: 'var(--fw-x)' }}>{window.fmtNum(v.net)}</div><div className="d-cell-sub" style={{ fontSize: 11 }}>IQD · {AR ? 'صافي' : 'net'}</div></div>
-              {v.status === 'pending' && (canAct ? (
-                <div className="d-vo-actions">
-                  <button className="d-btn sm" onClick={() => { act(v.no, 'approved'); setOpenNo(null); }}><Icon name="check" size={14} />{v.slaExceeded ? (AR ? 'اعتماد (تصعيد)' : 'Approve (escalated)') : t('approve')}</button>
-                  <button className="d-btn sm ghost" onClick={() => { act(v.no, 'rejected'); setOpenNo(null); }}><Icon name="close" size={14} />{t('reject')}</button>
-                </div>
-              ) : <span className="d-pill" style={{ background: 'color-mix(in srgb,var(--warning) 14%,transparent)', color: 'var(--status-suspended-tx)' }}><Icon name="lock" size={12} style={{ marginInlineEnd: 3 }} />{AR ? 'بانتظار: ' : 'Awaiting: '}{actor}</span>)}
-            </div>
-
-            {es && <div className="d-callout" style={{ margin: '0 16px 12px', borderColor: 'var(--error)', background: 'color-mix(in srgb,var(--error) 6%,transparent)' }}><span className="d-callout-ico" style={{ background: 'var(--error)', color: '#fff' }}><Icon name="trending_up" size={18} /></span><div className="d-callout-tx"><span className="k" style={{ color: 'var(--error)' }}>{AR ? 'تصعيد تلقائي للمستوى الإداري الأعلى' : 'Auto-escalated to senior manager'}</span><b style={{ fontSize: 12, fontWeight: 'var(--fw-bold)' }}>{AR ? `تجاوزت مرحلة «${es.label}» سقفها (${es.sla} يوم) بمرور ${es.elapsed} يوم دون إجراء — انتقلت الصلاحية إلى ${MANAGER}.` : `Stage “${es.label}” exceeded its ${es.sla}-day SLA (${es.elapsed}d elapsed) — authority moved to the ${MANAGER}.`}</b></div></div>}
-
-            <div className="d-vo-tabs">{TABS.map(tb => <button key={tb.id} className={voTab === tb.id ? 'on' : ''} onClick={() => setVoTab(tb.id)}><Icon name={tb.ic} size={15} />{tb.lbl}</button>)}</div>
-
-            <div className="d-vo-tabbody">
-              {voTab === 'workflow' && <React.Fragment>
-                {v.status === 'pending' && <div className="d-callout" style={{ marginBottom: 14 }}><span className="d-callout-ico"><Icon name="badge" size={18} /></span><div className="d-callout-tx"><span className="k">{AR ? 'الإجراء الحالي' : 'Current action'}</span><b style={{ fontSize: 12, fontWeight: 'var(--fw-bold)' }}>{canAct ? (AR ? 'دورك الحالي مخوّل باتخاذ الإجراء على هذه المرحلة.' : 'Your current role is authorized to act on this stage.') : (AR ? `الإجراء متاح لـ «${actor}» فقط. بدّل الدور من الأعلى لتجربته.` : `Action is available to “${actor}” only. Switch role above to try it.`)}</b></div></div>}
-                <DVOStageTimeline v={v} lang={lang} />
-                {v.status === 'pending' && <div className="d-callout" style={{ marginTop: 14 }}><span className="d-callout-ico"><Icon name="verified_user" size={18} /></span><div className="d-callout-tx"><span className="k">{AR ? 'فصل الصلاحيات' : 'Separation of duties'}</span><b style={{ fontSize: 12, fontWeight: 'var(--fw-bold)' }}>{AR ? 'لا يجوز اعتماد الأمر من مُدخِله — المصادقة من جهة مخوّلة مختلفة، وكل إجراء يُسجّل في سجل التدقيق.' : 'The order cannot be approved by its author — endorsement is by a different authorized party; every action is logged.'}</b></div></div>}
-              </React.Fragment>}
-
-              {voTab === 'values' && <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="d-grid c2 eqrows">
-                  <div className="d-panel"><div className="d-panel-head"><b>{AR ? 'تفصيل القيمة' : 'Value breakdown'}</b></div><div className="d-dl" style={{ gridTemplateColumns: '1fr 1fr', gap: '8px 16px', padding: 14 }}>
-                    {dl(AR ? 'القيمة الأصلية' : 'Original', window.fmtNum(v.original))}
-                    {dl(AR ? 'الإضافية' : 'Additional', '+' + window.fmtNum(v.additional))}
-                    {dl(AR ? 'الحسم' : 'Deduction', '−' + window.fmtNum(v.deduction))}
-                    {dl(AR ? 'الصافية' : 'Net', window.fmtNum(v.net))}
-                    <div className="d-dl-i" style={{ gridColumn: '1 / -1' }}><span className="k">{AR ? 'قيمة العقد المعدلة' : 'Revised contract value'}</span><span className="v mono" style={{ color: 'var(--primary)', fontWeight: 'var(--fw-x)' }}>{window.fmtNum(v.revisedContract)} IQD</span></div>
-                  </div></div>
-                  <div className="d-panel"><div className="d-panel-head"><b>{AR ? 'التمديد الزمني والمسار الحرج' : 'Time extension & critical path'}</b></div><div className="d-dl" style={{ gridTemplateColumns: '1fr 1fr', gap: '8px 16px', padding: 14 }}>
-                    {dl(AR ? 'التمديد المطلوب' : 'Requested ext.', v.reqExt + (AR ? ' يوم' : ' d'))}
-                    {dl(AR ? 'التمديد المعتمد' : 'Approved ext.', v.appExt != null ? v.appExt + (AR ? ' يوم' : ' d') : '—')}
-                    <div className="d-dl-i"><span className="k">{AR ? 'تاريخ الإنجاز المعدّل' : 'Revised completion'}</span><span className="v mono" style={{ color: 'var(--error)' }}>{v.revisedCompletion}</span></div>
-                    <div className="d-dl-i"><span className="k">{AR ? 'أثر المسار الحرج' : 'Critical-path effect'}</span><span className="v" style={{ color: v.affectsCP ? 'var(--error)' : 'var(--on-surface)' }}>{v.affectsCP ? (AR ? '+' + v.cpDelayDays + ' يوم على المشروع' : '+' + v.cpDelayDays + 'd to project') : (AR ? 'لا يؤثر' : 'No effect')}</span></div>
-                  </div></div>
-                </div>
-                {v.supply && <div><div className="d-vo-subtitle">{AR ? 'إعادة توزيع الكميات (تجهيز)' : 'Quantity redistribution (supply)'}</div><div className="d-card-sub"><table className="d-line-table">
-                  <thead><tr><th>{AR ? 'الجهة قبل' : 'From beneficiary'}</th><th>{AR ? 'الجهة بعد' : 'To beneficiary'}</th><th>{AR ? 'الكمية قبل' : 'Qty before'}</th><th>{AR ? 'الكمية بعد' : 'Qty after'}</th></tr></thead>
-                  <tbody><tr><td>{v.supply.benFrom}</td><td>{v.supply.benTo}</td><td className="mono">{v.supply.qtyBefore}</td><td className="mono">{v.supply.qtyAfter}</td></tr></tbody>
-                </table></div></div>}
-              </div>}
-
-              {voTab === 'impact' && <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div><div className="d-vo-subtitle">{AR ? 'ملخص الأثر — قبل / بعد' : 'Impact summary — before / after'}</div><div className="d-card-sub"><table className="d-line-table">
-                  <thead><tr><th>{AR ? 'البند' : 'Item'}</th><th>{AR ? 'قبل' : 'Before'}</th><th>{AR ? 'بعد' : 'After'}</th></tr></thead>
-                  <tbody>
-                    <tr><td>{AR ? 'قيمة العقد' : 'Contract value'}</td><td className="mono d-cell-sub">{window.fmtNum(d.contract.raw.contractCost)}</td><td className="mono">{window.fmtNum(v.revisedContract)}</td></tr>
-                    <tr><td>{AR ? 'تاريخ الإنجاز' : 'Completion date'}</td><td className="mono d-cell-sub">{d.contract.raw.finish}</td><td className="mono" style={{ color: 'var(--error)' }}>{v.revisedCompletion}</td></tr>
-                  </tbody>
-                </table></div></div>
-                <div><div className="d-vo-subtitle">{AR ? 'بنود الكميات المتأثرة' : 'Affected BOQ items'}</div><div className="d-card-sub"><table className="d-line-table">
-                  <thead><tr><th>{AR ? 'الرمز' : 'Code'}</th><th>{AR ? 'الوصف' : 'Description'}</th><th>{AR ? 'قبل' : 'Before'}</th><th>{AR ? 'بعد' : 'After'}</th><th>{AR ? 'السعر' : 'Rate'}</th><th>{AR ? 'الفرق' : 'Δ Value'}</th></tr></thead>
-                  <tbody>{v.affectedBOQ.map((b, j) => <tr key={j}><td className="mono">{b.code}</td><td>{b.desc}</td><td className="mono">{b.qtyBefore} {b.unit}</td><td className="mono">{b.qtyAfter} {b.unit}</td><td className="mono d-cell-sub">{window.fmtNum(b.rate)}</td><td className="mono" style={{ color: (b.qtyAfter - b.qtyBefore) >= 0 ? 'var(--error)' : 'var(--on-surface)' }}>{(b.qtyAfter - b.qtyBefore) >= 0 ? '+' : ''}{window.fmtNum((b.qtyAfter - b.qtyBefore) * b.rate)}</td></tr>)}</tbody>
-                </table></div></div>
-                <div><div className="d-vo-subtitle">{AR ? 'أنشطة الجدول المتأثرة' : 'Affected schedule activities'}</div><div className="d-card-sub"><table className="d-line-table">
-                  <thead><tr><th>{AR ? 'المعرّف' : 'ID'}</th><th>{AR ? 'النشاط' : 'Activity'}</th><th>{AR ? 'حرج' : 'Critical'}</th><th>{AR ? 'الانزياح' : 'Slip'}</th></tr></thead>
-                  <tbody>{v.affectedActivities.map((a, j) => <tr key={j}><td className="mono">{a.id}</td><td>{a.name}</td><td>{a.critical ? <span className="d-pill critical" style={{ height: 18 }}>{AR ? 'حرج' : 'Crit'}</span> : '—'}</td><td className="mono" style={{ color: 'var(--error)' }}>+{a.slip}{AR ? 'ي' : 'd'}</td></tr>)}</tbody>
-                </table></div></div>
-              </div>}
-
-              {voTab === 'files' && <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}><div className="d-vo-subtitle" style={{ margin: 0 }}>{AR ? 'المرفقات (إثبات)' : 'Attachments (evidence)'}</div><button className="d-btn sm ghost" onClick={() => addAttach(v.no)}><Icon name="upload_file" size={14} />{AR ? 'إرفاق مستند' : 'Attach'}</button></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {v.attachments.map((at, j) => (
-                    <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-sm)' }}>
-                      <Icon name={kindIco[at.kind] || 'description'} size={18} style={{ color: 'var(--azure-600)', flex: 'none' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 'var(--fw-bold)' }}>{at.name}</div><div className="mono d-cell-sub" style={{ fontSize: 11 }}>{at.file} · {at.size} · {at.by} · {at.date}</div></div>
-                      <button className="d-btn sm ghost" onClick={() => showToast(AR ? 'تنزيل — تجريبي' : 'Download — demo')}><Icon name="download" size={14} /></button>
-                    </div>
-                  ))}
-                </div>
-              </div>}
-
-              {voTab === 'history' && <div className="d-card-sub"><table className="d-line-table">
-                <thead><tr><th>{AR ? 'التاريخ' : 'Date'}</th><th>{AR ? 'الجهة' : 'Actor'}</th><th>{AR ? 'الإجراء' : 'Action'}</th><th>{AR ? 'الملاحظة' : 'Note'}</th></tr></thead>
-                <tbody>{v.history.map((h, j) => <tr key={j}><td className="mono">{h.date}</td><td>{h.actor}</td><td className="d-cell-strong">{h.action}</td><td className="d-cell-sub">{h.note}</td></tr>)}</tbody>
-              </table></div>}
-            </div>
-          </div>
-        );
-      })()}
-    </React.Fragment>
-  );
-}
+/* DModVO lived here until the L05/L14 rebuild. app/vo-record.jsx loads
+   after this file and defines the live one, so this copy had been dead
+   since that split — and kept drifting out of sync with the real page. */
 
 function DModMeetings({ t, lang, d }) {
   const AR = lang === 'ar';
@@ -1311,7 +2081,7 @@ function DModMeetings({ t, lang, d }) {
   ];
   return (
     <React.Fragment>
-      <DSecNav items={[{ id: 'sec-mtg', icon: 'groups', label: t('mod_meetings') }, { id: 'sec-act', icon: 'list_alt', label: AR ? 'سجل الإجراءات' : 'Action register' }]} />
+      <DSecNav items={[{ id: 'sec-mtg', label: t('mod_meetings') }, { id: 'sec-act', label: AR ? 'سجل الإجراءات' : 'Action register' }]} />
       <DSec id="sec-mtg" icon="groups" title={t('mod_meetings')} sub={AR ? 'المحاضر والقرارات' : 'Minutes & decisions'} n={d.meetings.length} flush>
         {d.meetings.map((m, i) => (
           <div key={i} style={{ padding: '14px 16px', borderBottom: i < d.meetings.length - 1 ? '1px solid var(--surface-container-high)' : 'none' }}>
@@ -1333,174 +2103,666 @@ function DModMeetings({ t, lang, d }) {
   );
 }
 
-function DModDrawings({ t, lang, d, showToast }) {
-  const [docs, setDocs] = React.useState(d.drawings);
+/* L18 — library & viewer. A controlled register paired with an inline
+   preview. The doc puts the discipline tree in a Z1 extension; our Z1 is the
+   module rail, so the tree docks at Z7's inline-start and the three panes
+   (tree · register · preview) still stand side by side. */
+function DModDrawings({ t, lang, d, showToast, asOf, frameTitle, frameActions }) {
+  const AR = lang === 'ar';
+  const [docs, setDocs] = window.usePersistedState('drawings.rows.v2.' + (window.__epmPid || 'na'), function () { return d.drawings; });
   const [openId, setOpenId] = React.useState(null);
-  const upload = (id) => {
-    setDocs(ds => ds.map(doc => doc.id === id ? { ...doc, revisions: [{ rev: 'R' + (doc.revisions.length + 1), date: '2026-07-21', reason: lang === 'ar' ? 'مراجعة جديدة — تجريبي' : 'New revision — demo', by: lang === 'ar' ? 'أنت' : 'You' }, ...doc.revisions] } : doc));
-    showToast(lang === 'ar' ? 'تمت إضافة مراجعة جديدة' : 'New revision added');
+  const [wide, setWide] = React.useState(false);
+  const [tab, setTab] = React.useState('preview');
+  const [dis, setDis] = React.useState('all');
+  /* expanding to the full-width viewer and back must not lose the reader's
+     place — the wider pane reflows shorter and the browser clamps scrollTop */
+  const keepScroll = React.useRef(0);
+  const toggleWide = () => {
+    const b = document.querySelector('.d-rpane .rp-b');
+    keepScroll.current = b ? b.scrollTop : 0;
+    setWide(w => !w);
   };
-  const totalRevisions = docs.reduce((a, doc) => a + doc.revisions.length, 0);
-  const pendingCount = docs.filter(doc => doc.status === 'draft').length;
+  React.useLayoutEffect(() => {
+    const b = document.querySelector('.d-rpane .rp-b');
+    if (b && keepScroll.current) b.scrollTop = keepScroll.current;
+  }, [wide]);
+  const [q, setQ] = React.useState('');
+  const [status, setStatus] = React.useState('all');
+  const [latestOnly, setLatestOnly] = React.useState(true);
+  const [sel, setSel] = React.useState({});                 // multi-select for transmittal / bulk download
+  const [cmp, setCmp] = React.useState(null);               // revision being compared against the current
+  const [zoom, setZoom] = React.useState(100);
+  const [rot, setRot] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  /* "Markup creates a record carrying the viewpoint" — a toast that claims to
+     create a note and creates nothing is worse than no markup at all */
+  const [marks, setMarks] = window.usePersistedState('drawings.marks.' + (window.__epmPid || 'na'), {});
+  const [mkKind, setMkKind] = React.useState('comment');
+  const [mkText, setMkText] = React.useState('');
+  const DIS = window.EPM.DOC_DISCIPLINES || [];
+  React.useEffect(() => { setTab('preview'); setCmp(null); setZoom(100); setRot(0); setPage(1); }, [openId]);
+
+  const ql = q.trim().toLowerCase();
+  const match = x => (dis === 'all' || x.discipline === dis)
+    && (status === 'all' || x.status === status)
+    && (!ql || (x.id + ' ' + (x.title || '') + ' ' + (x.disciplineLabel || '') + ' ' + (x.revisions[0] ? x.revisions[0].by : '')).toLowerCase().includes(ql));
+  const shown = docs.filter(match);
+  const open = docs.find(x => x.id === openId);
+  const filtered = !!(ql || dis !== 'all' || status !== 'all');
+  const clearAll = () => { setQ(''); setDis('all'); setStatus('all'); };
+  const totalRevisions = docs.reduce((a2, x) => a2 + x.revisions.length, 0);
+  /* a selection that survives a filter can send documents the reader cannot
+     see, so it is always intersected with what is on screen */
+  const selIds = Object.keys(sel).filter(k => sel[k] && shown.some(x => x.id === k));
+  const stPill = st => st === 'approved' ? 'completed' : st === 'rejected' ? 'stalled' : 'suspended';
+
+  /* A new file is always a NEW revision — replacement in place does not exist
+     as an operation, and a superseded revision is never removed. */
+  const upload = (id) => {
+    const doc = docs.find(x => x.id === id); if (!doc) return;
+    const rev = 'R' + (doc.revisions.length + 1);
+    const draft = { name: doc.id + '-' + rev, file: doc.id + '-' + rev + '.pdf', rev };
+    const v = window.EPM.validate('document', draft, { existing: doc.revisions.map(r => ({ name: doc.id + '-' + r.rev, rev: r.rev })) });
+    if (!v.ok) { showToast(AR ? v.errors[0].ar : v.errors[0].en); return; }
+    const U = (window.EPM && window.EPM.CURRENT_USER) || {};
+    const by = (U.name && (AR ? U.name.ar : U.name.en)) || (AR ? 'المستخدم الحالي' : 'Current user');
+    setDocs(ds => ds.map(x => x.id !== id ? x : { ...x, status: 'draft', revisions: [{ rev,
+      date: window.EPM.DATA_DATE, by,
+      reason: AR ? 'مراجعة جديدة مرفوعة من النظام' : 'New revision uploaded',
+      transmittal: 'TR-' + (2900 + doc.revisions.length) }, ...x.revisions] }));
+    showToast(AR ? 'أُضيفت المراجعة ' + rev + ' — المراجعة السابقة محفوظة ومعلَّمة كملغاة' : 'Revision ' + rev + ' added — the previous one is kept and marked superseded');
+  };
+  const setStatusOf = (id, st) => {
+    setDocs(ds => ds.map(x => x.id === id ? { ...x, status: st } : x));
+    showToast(st === 'approved' ? (AR ? 'اعتُمدت الوثيقة' : 'Document approved') : (AR ? 'أُعيدت الوثيقة بملاحظات' : 'Document returned with comments'));
+  };
+
+  const kv = (k, v) => <div className="d-form-i"><span className="k">{k}</span><span className="v">{v}</span></div>;
+  const addMark = (id) => {
+    if (!mkText.trim()) return;
+    const U = (window.EPM && window.EPM.CURRENT_USER) || {};
+    const by = (U.name && (AR ? U.name.ar : U.name.en)) || (AR ? 'المستخدم الحالي' : 'Current user');
+    const doc = docs.find(x => x.id === id);
+    const vp = { page, zoom, rot, rev: doc ? doc.revisions[0].rev : '—' };
+    setMarks(m => Object.assign({}, m, { [id]: (m[id] || []).concat([
+      { no: (m[id] || []).length + 1, kind: mkKind, text: mkText.trim(), by,
+        date: window.EPM.DATA_DATE, viewpoint: vp }]) }));
+    setMkText('');
+    showToast(AR ? 'أُنشئ التأشير ويحمل موضع العرض الحالي' : 'Markup created, carrying the current viewpoint');
+  };
+  const goViewpoint = v => { setPage(v.page); setZoom(v.zoom); setRot(v.rot); setTab('preview'); };
+  const MK_LBL = { comment: [ 'ملاحظة', 'Comment' ], rfi: [ 'طلب معلومات', 'RFI' ], ncr: [ 'عدم مطابقة', 'NCR' ] };
+  const cur = open ? open.revisions[0] : null;
+  const cmpRev = open && cmp ? open.revisions.find(r => r.rev === cmp) : null;
+
   return (
-    <React.Fragment>
-      <div className="d-fig-row" >
-        <div className="d-fig"><div className="k">{lang === 'ar' ? 'الوثائق' : 'Documents'}</div><div className="v">{docs.length}</div></div>
-        <div className="d-fig"><div className="k">{t('revisions')}</div><div className="v">{totalRevisions}</div></div>
-        <div className="d-fig"><div className="k">{lang === 'ar' ? 'بانتظار المراجعة' : 'Awaiting review'}</div><div className="v">{pendingCount}</div></div>
+    <DModuleFrame
+      title={frameTitle || t('mod_documents')}
+      sub={AR ? docs.length + ' وثيقة · ' + totalRevisions + ' مراجعة' : docs.length + ' documents · ' + totalRevisions + ' revisions'}
+      toolbar={<React.Fragment>
+        {/* "latest revision only" is the default and is ALWAYS visible, so a
+            reader never wonders whether they are seeing the whole history */}
+        <button className={'d-fchip' + (latestOnly ? ' on' : '')} aria-pressed={latestOnly}
+          onClick={() => setLatestOnly(v => !v)}>
+          <Icon name="filter_alt" size={13} />{AR ? 'آخر مراجعة فقط' : 'Latest revision only'}</button>
+      </React.Fragment>}
+      actions={<React.Fragment>
+        {selIds.length > 0 && <React.Fragment>
+          <button className="d-btn sm" onClick={() => showToast(AR ? 'إنشاء إشعار إرسال لـ ' + selIds.length + ' وثيقة' : 'Creating a transmittal for ' + selIds.length + ' documents')}>
+            <Icon name="send" size={15} />{AR ? 'إشعار إرسال' : 'Transmittal'}</button>
+          <button className="d-btn sm" onClick={() => showToast(AR ? 'تنزيل ' + selIds.length + ' وثيقة' : 'Downloading ' + selIds.length + ' documents')}>
+            <Icon name="download" size={15} />{AR ? 'تنزيل' : 'Download'}</button>
+          <button className="d-btn sm ghost" onClick={() => setSel({})}>
+            <Icon name="close" size={13} />{AR ? 'إلغاء التحديد' : 'Clear selection'}</button>
+        </React.Fragment>}
+        {frameActions}
+      </React.Fragment>}
+      aside={open ? (
+        <DRecordPane lang={lang} wide={wide} onExpand={toggleWide}
+          title={open.title || open.id}
+          meta={[
+            { k: AR ? 'رقم الوثيقة' : 'Document no.', v: open.id, num: true },
+            { k: AR ? 'المراجعة' : 'Revision', v: cur ? cur.rev : '—', num: true },
+            { k: AR ? 'حالة الإصدار' : 'Issue status', v: <span className={'d-pill ' + stPill(open.status)}>{window.EPM.DOC_STATUS[open.status][lang]}</span> },
+            { k: AR ? 'التخصص' : 'Discipline', v: open.disciplineLabel },
+          ]}
+          tabs={[{ id: 'preview', label: AR ? 'المعاينة' : 'Preview' },
+                 { id: 'revisions', label: AR ? 'المراجعات' : 'Revisions', n: open.revisions.length },
+                 { id: 'marks', label: AR ? 'التأشيرات' : 'Markups', n: (marks[open.id] || []).length },
+                 { id: 'details', label: AR ? 'التفاصيل' : 'Details' }]}
+          tab={tab} onTab={setTab}
+          onClose={() => { setOpenId(null); setWide(false); }}
+          footer={<React.Fragment>
+            <button className="d-btn sm primary" onClick={() => upload(open.id)}>
+              <Icon name="upload_file" size={15} />{AR ? 'رفع مراجعة' : 'New revision'}</button>
+            <span className="sp"></span>
+            <button className="d-icon-btn sm" title={AR ? 'تنزيل' : 'Download'} aria-label={AR ? 'تنزيل' : 'Download'}
+              onClick={() => showToast(AR ? 'تنزيل ' + open.id + '-' + cur.rev : 'Downloading ' + open.id + '-' + cur.rev)}>
+              <Icon name="download" size={16} /></button>
+            <button className="d-icon-btn sm" title={AR ? 'إشعار إرسال' : 'Transmit'} aria-label={AR ? 'إشعار إرسال' : 'Transmit'}
+              onClick={() => showToast(AR ? 'إنشاء إشعار إرسال لـ ' + open.id : 'Creating a transmittal for ' + open.id)}>
+              <Icon name="send" size={16} /></button>
+          </React.Fragment>}>
+
+          {tab === 'preview' && <React.Fragment>
+            {/* viewer chrome: pages, zoom, rotate, compare-with-revision */}
+            <div className="d-viewerbar">
+              <button className="d-icon-btn sm flip" title={AR ? 'الصفحة السابقة' : 'Previous page'} aria-label={AR ? 'الصفحة السابقة' : 'Previous page'}
+                disabled={page <= 1} onClick={() => setPage(v => Math.max(1, v - 1))}><Icon name="chevron_left" size={16} /></button>
+              <span className="pg num" aria-live="polite">{page} / 4</span>
+              <button className="d-icon-btn sm flip" title={AR ? 'الصفحة التالية' : 'Next page'} aria-label={AR ? 'الصفحة التالية' : 'Next page'}
+                disabled={page >= 4} onClick={() => setPage(v => Math.min(4, v + 1))}><Icon name="chevron_right" size={16} /></button>
+              <span className="sp"></span>
+              <button className="d-icon-btn sm" title={AR ? 'تصغير' : 'Zoom out'} aria-label={AR ? 'تصغير' : 'Zoom out'}
+                disabled={zoom <= 50} onClick={() => setZoom(z => Math.max(50, z - 25))}><Icon name="remove" size={16} /></button>
+              <span className="pg num" aria-live="polite">{zoom}%</span>
+              <button className="d-icon-btn sm" title={AR ? 'تكبير' : 'Zoom in'} aria-label={AR ? 'تكبير' : 'Zoom in'}
+                disabled={zoom >= 200} onClick={() => setZoom(z => Math.min(200, z + 25))}><Icon name="add" size={16} /></button>
+              <button className="d-icon-btn sm" title={AR ? 'تدوير' : 'Rotate'} aria-label={AR ? 'تدوير' : 'Rotate'}
+                onClick={() => setRot(r => (r + 90) % 360)}><Icon name="rotate_right" size={16} /></button>
+            </div>
+            <div className="d-viewer" role="group" aria-label={AR ? 'معاينة الوثيقة' : 'Document preview'}>
+              <div className="sheet" style={{ transform: 'rotate(' + rot + 'deg) scale(' + (zoom / 100) + ')' }}>
+                <span className="no num">{open.id}-{cur.rev}</span>
+                <Icon name="description" size={34} />
+                <b>{open.title || open.id}</b>
+                <span className="pgn num">{AR ? 'صفحة ' : 'page '}{page} / 4</span>
+                {cmpRev && <span className="cmp num">{AR ? 'مقارنة مع ' : 'compared with '}{cmpRev.rev}</span>}
+              </div>
+            </div>
+            {open.revisions.length > 1 && (
+              <div className="d-form-field f-full">
+                <label htmlFor="dwg-cmp">{AR ? 'مقارنة مع مراجعة' : 'Compare with revision'}</label>
+                <select id="dwg-cmp" className="d-form-input" value={cmp || ''} onChange={e => setCmp(e.target.value || null)}>
+                  <option value="">{AR ? '— بدون مقارنة —' : '— no comparison —'}</option>
+                  {open.revisions.slice(1).map(r => <option key={r.rev} value={r.rev}>{r.rev} · {r.date}</option>)}
+                </select>
+              </div>)}
+            {cmpRev && <DMsgBar tone="info" icon="difference" title={AR ? 'ما تغيّر بين المراجعتين' : 'What changed between the revisions'}>
+              {cmpRev.rev} ({cmpRev.date}) → {cur.rev} ({cur.date}) — {cur.reason}
+            </DMsgBar>}
+            <DRecordGrp label={AR ? 'تأشير على المعاينة' : 'Markup on this view'}>
+              <div className="d-form-grid">
+                <div className="d-form-field f-half"><label htmlFor="mk-kind">{AR ? 'النوع' : 'Kind'}</label>
+                  <select id="mk-kind" className="d-form-input" value={mkKind} onChange={e => setMkKind(e.target.value)}>
+                    <option value="comment">{AR ? 'ملاحظة' : 'Comment'}</option>
+                    <option value="rfi">{AR ? 'طلب معلومات (RFI)' : 'Request for information (RFI)'}</option>
+                    <option value="ncr">{AR ? 'تقرير عدم مطابقة (NCR)' : 'Non-conformance report (NCR)'}</option>
+                  </select></div>
+                <div className="d-form-field f-full"><label htmlFor="mk-tx">{AR ? 'نص التأشير' : 'Markup text'}</label>
+                  <textarea id="mk-tx" rows={2} className="d-form-input" value={mkText}
+                    placeholder={AR ? 'يُسجَّل مع الصفحة والتكبير والدوران والمراجعة الحالية' : 'Recorded with the page, zoom, rotation and current revision'}
+                    onChange={e => setMkText(e.target.value)}></textarea></div>
+              </div>
+              <div className="d-rowacts">
+                <button className="d-btn sm" disabled={!mkText.trim()} onClick={() => addMark(open.id)}>
+                  <Icon name="edit_note" size={15} />{AR ? 'إنشاء تأشير' : 'Create markup'}</button>
+                {open.status !== 'approved' && <button className="d-btn sm primary" onClick={() => setStatusOf(open.id, 'approved')}>
+                  <Icon name="check" size={15} />{AR ? 'اعتماد' : 'Approve'}</button>}
+                {open.status !== 'rejected' && <button className="d-btn sm" onClick={() => setStatusOf(open.id, 'rejected')}>
+                  <Icon name="undo" size={15} />{AR ? 'إعادة بملاحظات' : 'Return'}</button>}
+              </div>
+            </DRecordGrp>
+          </React.Fragment>}
+
+          {tab === 'revisions' && (
+            <DRecordGrp label={AR ? 'سجل المراجعات' : 'Revision history'}>
+              <DMsgBar tone="info" icon="history" title={AR ? 'المراجعات لا تُحذف' : 'Revisions are never deleted'}>
+                {AR ? 'كل ملف جديد يُنشئ مراجعة جديدة؛ المراجعة السابقة تبقى في السجل معلَّمة كملغاة، ولا يوجد استبدال في المكان.'
+                    : 'Every new file creates a new revision; the previous one stays in the register marked superseded. Replacement in place does not exist.'}
+              </DMsgBar>
+              <div className="d-rcptlist">{open.revisions.map((rv, i) => (
+                <div className={'d-rcpt' + (i > 0 ? ' sup' : '')} key={rv.rev}>
+                  <div className="hd"><span className="no">{rv.rev}</span>
+                    {i === 0 ? <span className="d-pill completed">{AR ? 'الحالية' : 'Current'}</span>
+                             : <span className="d-pill">{AR ? 'ملغاة' : 'Superseded'}</span>}
+                    <span className="sp"></span><time className="num">{rv.date}</time></div>
+                  <div className="who">{rv.by}</div>
+                  <div className="nt">{rv.reason}</div>
+                  <div className="fls">
+                    <button type="button" className="d-filechip" title={open.id + '-' + rv.rev + '.pdf'}
+                      onClick={() => showToast((AR ? 'فتح المستند: ' : 'Opening: ') + open.id + '-' + rv.rev + '.pdf')}>
+                      <Icon name="description" size={13} /><span className="nm">{open.id}-{rv.rev}.pdf</span></button>
+                    {rv.transmittal && <button type="button" className="d-filechip" title={rv.transmittal}
+                      onClick={() => showToast((AR ? 'إشعار الإرسال ' : 'Transmittal ') + rv.transmittal)}>
+                      <Icon name="send" size={13} /><span className="nm">{rv.transmittal}</span></button>}
+                  </div>
+                </div>))}</div>
+            </DRecordGrp>)}
+
+          {tab === 'marks' && (
+            <DRecordGrp label={AR ? 'التأشيرات على هذه الوثيقة' : 'Markups on this document'}>
+              {(marks[open.id] || []).length ? (
+                <div className="d-rcptlist">{(marks[open.id] || []).map((m, i) => (
+                  <div className="d-rcpt" key={i}>
+                    <div className="hd"><span className="no">{open.id}-M{m.no}</span>
+                      <span className="d-pill">{AR ? MK_LBL[m.kind][0] : MK_LBL[m.kind][1]}</span>
+                      <span className="sp"></span><time className="num">{m.date}</time></div>
+                    <div className="who">{m.by}</div>
+                    <div className="nt">{m.text}</div>
+                    <div className="fls">
+                      {/* the viewpoint is the point of a markup — clicking it
+                          restores the exact view it was made against */}
+                      <button type="button" className="d-filechip" onClick={() => goViewpoint(m.viewpoint)}>
+                        <Icon name="visibility" size={13} />
+                        <span className="nm">{AR ? 'موضع العرض' : 'Viewpoint'}</span>
+                        <span className="sz num">{m.viewpoint.rev} · {AR ? 'ص' : 'p'}{m.viewpoint.page} · {m.viewpoint.zoom}%</span></button>
+                    </div>
+                  </div>))}</div>
+              ) : (
+                <div className="d-vow-empty"><Icon name="edit_note" size={22} />
+                  <b>{AR ? 'لا تأشيرات بعد' : 'No markups yet'}</b>
+                  <span>{AR ? 'التأشير يُنشئ ملاحظة أو طلب معلومات أو تقرير عدم مطابقة، ويحمل الصفحة والتكبير والمراجعة التي أُنشئ عليها.' : 'A markup creates a comment, an RFI or an NCR, carrying the page, zoom and revision it was made against.'}</span></div>
+              )}
+            </DRecordGrp>)}
+
+          {tab === 'details' && <React.Fragment>
+            <DRecordGrp label={AR ? 'التصنيف' : 'Classification'}>
+              <div className="d-form-grid">
+                {kv(AR ? 'رقم الوثيقة' : 'Document no.', <span className="num">{open.id}</span>)}
+                {kv(AR ? 'العنوان' : 'Title', open.title)}
+                {kv(AR ? 'التخصص' : 'Discipline', open.disciplineLabel)}
+                {kv(AR ? 'النوع' : 'Type', open.type)}
+              </div>
+            </DRecordGrp>
+            <DRecordGrp label={AR ? 'الإصدار الحالي' : 'Current issue'}>
+              <div className="d-form-grid">
+                {kv(AR ? 'المراجعة' : 'Revision', <span className="num">{cur.rev}</span>)}
+                {kv(AR ? 'تاريخ الإصدار' : 'Issued date', <span className="num">{cur.date}</span>)}
+                {kv(AR ? 'جهة الإصدار' : 'Issued by', cur.by)}
+                {kv(AR ? 'إشعار الإرسال' : 'Transmittal', <span className="num">{cur.transmittal || '—'}</span>)}
+                {kv(AR ? 'حالة الإصدار' : 'Issue status', <span className={'d-pill ' + stPill(open.status)}>{window.EPM.DOC_STATUS[open.status][lang]}</span>)}
+                {kv(AR ? 'عدد المراجعات' : 'Revisions', <span className="num">{open.revisions.length}</span>)}
+              </div>
+            </DRecordGrp>
+          </React.Fragment>}
+        </DRecordPane>
+      ) : null}
+      asideWide={wide} asideClass="aside-l18"
+      status={<DZ10 lang={lang} asOf={asOf} stats={[
+        { k: AR ? 'الوثائق' : 'Documents', v: shown.length + ' / ' + docs.length },
+        { k: AR ? 'المراجعات' : 'Revisions', v: totalRevisions },
+        { k: AR ? 'قيد المراجعة' : 'Awaiting review', v: docs.filter(x => x.status === 'draft').length },
+        { k: AR ? 'محدد' : 'Selected', v: selIds.length },
+      ]} />}>
+
+      {open && <div className="d-l18-fall">
+        <DFGroup title={(AR ? 'معاينة — ' : 'Preview — ') + open.id} sub={open.title}
+          foot={<button type="button" className="d-linkbtn" onClick={() => setOpenId(null)}>
+            {AR ? 'إغلاق المعاينة' : 'Close the preview'}<Icon name="chevron_right" size={14} /></button>}>
+          <div className="d-viewer" role="group" aria-label={AR ? 'معاينة الوثيقة' : 'Document preview'}>
+            <div className="sheet">
+              <span className="no num">{open.id}-{cur.rev}</span>
+              <Icon name="description" size={34} />
+              <b>{open.title}</b>
+              <span className="pgn num">{AR ? 'مراجعة ' : 'revision '}{cur.rev} · {cur.date}</span>
+            </div>
+          </div>
+          <div className="d-form-grid">
+            {kv(AR ? 'حالة الإصدار' : 'Issue status', <span className={'d-pill ' + stPill(open.status)}>{window.EPM.DOC_STATUS[open.status][lang]}</span>)}
+            {kv(AR ? 'جهة الإصدار' : 'Issued by', cur.by)}
+            {kv(AR ? 'إشعار الإرسال' : 'Transmittal', <span className="num">{cur.transmittal || '—'}</span>)}
+            {kv(AR ? 'المراجعات' : 'Revisions', <span className="num">{open.revisions.length}</span>)}
+          </div>
+        </DFGroup>
+      </div>}
+
+      <div className="d-l18">
+        {/* the classification tree — the doc's Z1 extension, docked here */}
+        <DFGroup id="dwg-tree" title={AR ? 'التصنيف' : 'Classification'} sub={String(docs.length)}>
+          <nav className="d-l18-tree" aria-label={AR ? 'تصنيف الوثائق' : 'Document classification'}>
+            <button className={'nd' + (dis === 'all' ? ' on' : '')}
+              aria-current={dis === 'all' ? 'true' : undefined} onClick={() => setDis('all')}>
+              <Icon name="folder" size={15} /><span className="tx">{AR ? 'كل الوثائق' : 'All documents'}</span>
+              <span className="n num">{docs.length}</span></button>
+            {DIS.map(x => { const c = docs.filter(y => y.discipline === x.key).length;
+              return (
+              <button key={x.key} className={'nd' + (dis === x.key ? ' on' : '') + (c ? '' : ' zero')}
+                aria-current={dis === x.key ? 'true' : undefined}
+                disabled={!c} onClick={() => setDis(x.key)}>
+                <Icon name="folder_open" size={15} /><span className="tx">{x[lang]}</span>
+                <span className="n num">{c}</span></button>); })}
+          </nav>
+        </DFGroup>
+
+        <DFGroup id="dwg-reg" flush
+          title={AR ? 'سجل الوثائق' : 'Document register'}
+          sub={shown.length + (AR ? ' من ' : ' of ') + docs.length + (latestOnly ? (AR ? ' · آخر مراجعة فقط' : ' · latest only') : '')}>
+          <div className="d-toolbar">
+            <div className="d-field">
+              <Icon name="search" size={16} style={{ color: 'var(--on-surface-variant)' }} />
+              <input aria-label={AR ? 'بحث في الوثائق' : 'Search documents'}
+                placeholder={AR ? 'بحث بالرقم أو العنوان أو الجهة…' : 'Search by number, title or issuer…'}
+                value={q} onChange={e => setQ(e.target.value)} />
+            </div>
+            {['all', 'approved', 'draft', 'rejected'].map(st => { const c = st === 'all' ? docs.length : docs.filter(x => x.status === st).length;
+              return (
+              <button key={st} className={'d-fchip' + (status === st ? ' on' : '')} aria-pressed={status === st}
+                disabled={st !== 'all' && !c} onClick={() => setStatus(st)}>
+                {st === 'all' ? (AR ? 'الكل' : 'All') : window.EPM.DOC_STATUS[st][lang]}<span className="n">{c}</span></button>); })}
+            <div className="sp"></div>
+            {filtered && <button className="d-btn sm ghost" onClick={clearAll}>
+              <Icon name="close" size={13} />{AR ? 'مسح الفلاتر' : 'Clear filters'}</button>}
+          </div>
+
+          {shown.length ? (
+          /* Eight columns do not fit beside a tree AND a preview — the state
+             this archetype is designed for. The issue date, the issuing party
+             and the transmittal ride under the title and the revision, where
+             they read as one issue rather than three columns the reader has
+             to scroll a detached header to reach. All three are also in the
+             pane's Details tab. */
+          <div className="d-vow-tw wide-dwg"><table className="d-line-table d-dwg-reg"><thead><tr>
+            <th style={{ width: 34 }} className="ck"><input type="checkbox" aria-label={AR ? 'تحديد الكل' : 'Select all'}
+              ref={el => { if (el) el.indeterminate = shown.some(x => sel[x.id]) && !shown.every(x => sel[x.id]); }}
+              checked={shown.length > 0 && shown.every(x => sel[x.id])}
+              onChange={e => { const on = e.target.checked; const o = { ...sel }; shown.forEach(x => { if (on) o[x.id] = 1; else delete o[x.id]; }); setSel(o); }} /></th>
+            <th style={{ width: 124 }}>{AR ? 'رقم الوثيقة والتخصص' : 'Number & discipline'}</th>
+            <th style={{ minWidth: 160 }}>{AR ? 'العنوان وجهة الإصدار' : 'Title & issuer'}</th>
+            <th style={{ width: 96 }}>{AR ? 'المراجعة' : 'Revision'}</th>
+            <th style={{ width: 120 }}>{AR ? 'حالة الإصدار' : 'Issue status'}</th></tr></thead>
+            <tbody>{shown.map(x => {
+              const revs = latestOnly ? x.revisions.slice(0, 1) : x.revisions;
+              return revs.map((rv, i) => (
+                <tr key={x.id + rv.rev} tabIndex={0} role="link" aria-label={x.id + ' — ' + x.title}
+                  className={(openId === x.id ? 'sel ' : '') + (i > 0 ? 'sup' : '')}
+                  onKeyDown={e => { if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(x.id); } }}
+                  onClick={() => setOpenId(x.id)} style={{ cursor: 'pointer' }}>
+                  <td className="ck" onClick={e => e.stopPropagation()}
+                    onKeyDown={e => e.stopPropagation()}>
+                    {i === 0 && <input type="checkbox" aria-label={(AR ? 'تحديد ' : 'Select ') + x.id}
+                      checked={!!sel[x.id]} onChange={e => setSel(o => ({ ...o, [x.id]: e.target.checked ? 1 : 0 }))} />}</td>
+                  <td className="code">{x.id}
+                    <div className="d-cell-sub">{x.disciplineLabel}</div></td>
+                  <td className="name wrap">{x.title}
+                    <div className="d-cell-sub">{rv.by}
+                      {i > 0 && <em>{AR ? ' · مراجعة ملغاة' : ' · superseded revision'}</em>}</div></td>
+                  <td className="num">{rv.rev}
+                    <div className="d-cell-sub">{rv.date}</div></td>
+                  <td>{i === 0 ? <span className={'d-pill ' + stPill(x.status)}>{window.EPM.DOC_STATUS[x.status][lang]}</span>
+                                : <span className="d-pill withdrawn">{AR ? 'ملغاة' : 'Superseded'}</span>}
+                    <div className="d-cell-sub num">{rv.transmittal || '—'}</div></td>
+                </tr>)); })}</tbody>
+          </table></div>
+          ) : docs.length === 0 ? (
+            <div className="d-empty">
+              <span className="d-empty-ico"><Icon name="folder_open" size={26} /></span>
+              <b>{AR ? 'لا وثائق في هذا المشروع' : 'No documents on this project'}</b>
+              <span>{AR ? 'تُرفع المخططات والتقارير إلى السجل، وكل ملف جديد يصبح مراجعة تحمل رقمها وجهة إصدارها.' : 'Drawings and reports are uploaded to the register; every new file becomes a revision carrying its number and its issuer.'}</span>
+            </div>
+          ) : (
+            <div className="d-empty">
+              <span className="d-empty-ico"><Icon name="filter_alt_off" size={26} /></span>
+              <b>{AR ? 'لا وثائق مطابقة' : 'No matching documents'}</b>
+              <span>{AR ? 'غيّر التخصص أو حالة الإصدار، أو امسح الفلاتر لعرض السجل كاملاً.' : 'Change the discipline or issue status, or clear the filters to see the whole register.'}</span>
+              <button className="d-btn sm" onClick={clearAll}><Icon name="close" size={14} />{AR ? 'مسح الفلاتر' : 'Clear filters'}</button>
+            </div>
+          )}
+        </DFGroup>
       </div>
-      <DSec icon="folder" title={t('mod_documents')} sub={lang === 'ar' ? 'المخططات والمراجعات' : 'Drawings & revisions'} n={docs.length} flush>
-        {docs.map(doc => {
-          const st = window.EPM.DOC_STATUS[doc.status];
-          return (
-            <button className="d-openrow" key={doc.id} onClick={() => setOpenId(doc.id)}>
-              <Icon name="layers" size={17} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-              <span className="om"><b>{doc.id} — {doc.type}</b><span>{doc.revisions.length} {t('revisions')} · {doc.revisions[0] ? doc.revisions[0].date : ''}</span></span>
-              <span className={`d-pill ${doc.status === 'approved' ? 'completed' : doc.status === 'rejected' ? 'stalled' : 'suspended'}`}>{st[lang]}</span>
-              <Icon name={lang === 'ar' ? 'chevron_left' : 'chevron_right'} size={16} style={{ color: 'var(--on-surface-variant)', flex: 'none' }} />
-            </button>
-          );
-        })}
-      </DSec>
-      {(() => {
-        const doc = docs.find(x => x.id === openId);
-        if (!doc) return null;
-        return (
-          <DDrawer wide onClose={() => setOpenId(null)}
-            title={`${doc.id} — ${doc.type}`}
-            sub={`${doc.revisions.length} ${t('revisions')}`}
-            footer={<button className="d-btn primary" onClick={() => upload(doc.id)}><Icon name="add" size={15} />{t('upload_revision')}</button>}>
-              <DDrawerGrp label={lang === 'ar' ? 'الملفات' : 'Files'}>
-                <DFiles files={doc.revisions.map((rv, i) => ({ name: `${doc.id}-${rv.rev}.pdf`, meta: `${rv.date} · ${rv.by}${i === 0 ? (lang === 'ar' ? ' · الحالية' : ' · current') : ''}` }))} />
-              </DDrawerGrp>
-              <DDrawerGrp label={lang === 'ar' ? 'سجل المراجعات' : 'Revision history'}>
-                <table className="d-line-table">
-                  <thead><tr><th>{lang === 'ar' ? 'المراجعة' : 'Rev'}</th><th>{lang === 'ar' ? 'السبب' : 'Reason'}</th><th>{lang === 'ar' ? 'التاريخ' : 'Date'}</th><th>{lang === 'ar' ? 'بواسطة' : 'By'}</th></tr></thead>
-                  <tbody>{doc.revisions.map((rv, i) => (
-                    <tr key={i}>
-                      <td className="mono" style={{ fontWeight: 'var(--fw-bold)', color: i === 0 ? 'var(--on-surface)' : 'var(--on-surface-variant)' }}>{rv.rev}</td>
-                      <td>{rv.reason}</td><td className="mono d-cell-sub">{rv.date}</td><td className="d-cell-sub">{rv.by}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </DDrawerGrp>
-          </DDrawer>
-        );
-      })()}
-    </React.Fragment>
+    </DModuleFrame>
   );
 }
 
 /* ---------- Overview: hero health + phase pipeline + rail (IA §6) ---------- */
+/* Object overview hub (§L10) — hierarchy: verdict → process → modules → detail.
+   Every prior capability is preserved: progress curve, stage readiness w/ drill-through,
+   financial position, BOQ, change orders, risks, documents, alerts, recent activity. */
 function DModOverview({ t, lang, p, d, goTab }) {
-  const R = window.EPM.buildReadiness(p);
-  const MODS = window.EPM.PROJECT_MODULES;
-  const modMap = {}; MODS.forEach(m => { modMap[m.id] = m; });
-  const fin = d.financial.raw;
   const AR = lang === 'ar';
+  const R = window.EPM.buildReadiness(p, lang, d);
+  const MODS = window.EPM.modulesFor ? window.EPM.modulesFor(p) : window.EPM.PROJECT_MODULES;
+  const modMap = {}; MODS.forEach(m => { modMap[m.id] = m; });
+  const isSupply = p && p.type === 'supply';
+  const fin = d.financial.raw;
   const sd = React.useMemo(() => window.EPM.buildScheduleData(p, lang), [p && p.id, lang]);
   const alerts = React.useMemo(() => window.EPM.buildAlertsData(p, lang).alerts, [p && p.id, lang]);
+  const n = v => window.fmtNum(Math.round(v));
+  const musd = v => Math.round(v / 1e6).toLocaleString('en-US') + (AR ? ' م' : 'M');
   const plannedProg = Math.min(100, p.tech + 8);
-  const spi = (p.tech / (plannedProg || 1)).toFixed(2);
-  const cpi = (p.tech / (fin.financialPct || 1)).toFixed(2);
-  const openCO = d.variationOrders.filter(v => v.status === 'pending').length;
+  const spi = +(p.tech / (plannedProg || 1)).toFixed(2);
+  const cpi = +(p.tech / (fin.financialPct || 1)).toFixed(2);
+  const physVar = p.tech - plannedProg;
+  const vos = d.variationOrders || [];
+  const risks = d.risks || [];
+  const docs = d.drawings || [];
   const aC = { red: alerts.filter(a => a.sev === 'red').length, amber: alerts.filter(a => a.sev === 'amber').length, green: alerts.filter(a => a.sev === 'green').length };
+  const rHigh = risks.filter(r => (r.sev || r.severity || r.level) === 'high').length;
 
-  const PHASES = [
-    { lbl: AR ? 'التعريف' : 'Definition', ids: ['information', 'contract', 'boq', 'financial'] },
-    { lbl: AR ? 'التنفيذ' : 'Execution', ids: ['schedule', 'progress', 'changeorders', 'risk'] },
+  const NOW_FRAC = 0.66;
+  const smooth = f => f <= 0 ? 0 : f >= 1 ? 1 : f * f * (3 - 2 * f);
+  const scurve = React.useMemo(() => {
+    const rows = [], months = 12;
+    for (let i = 1; i <= months; i++) {
+      const f = i / months, planCum = Math.round(smooth(f) * 100);
+      const actCum = f <= NOW_FRAC + 1e-6 ? Math.round(smooth(f / NOW_FRAC) * p.tech) : null;
+      const prev = rows[rows.length - 1];
+      rows.push({ label: (AR ? 'ش' : 'M') + i, planCum, actCum,
+        planPeriod: planCum - (prev ? prev.planCum : 0),
+        actPeriod: actCum == null ? 0 : actCum - (prev && prev.actCum != null ? prev.actCum : 0) });
+    }
+    return rows;
+  }, [p.tech, AR]);
+
+  /* financial S-curve — same construction as the progress curve so the two
+     rows read identically, scaled to the disbursement percentage. */
+  const costCurve = React.useMemo(() => {
+    const rows = [], months = 12;
+    for (let i = 1; i <= months; i++) {
+      const f = i / months, planCum = Math.round(smooth(f) * 100);
+      const actCum = f <= NOW_FRAC + 1e-6 ? Math.round(smooth(f / NOW_FRAC) * fin.financialPct) : null;
+      const prev = rows[rows.length - 1];
+      rows.push({ label: (AR ? 'ش' : 'M') + i, planCum, actCum,
+        planPeriod: planCum - (prev ? prev.planCum : 0),
+        actPeriod: actCum == null ? 0 : actCum - (prev && prev.actCum != null ? prev.actCum : 0) });
+    }
+    return rows;
+  }, [fin.financialPct, AR]);
+  const remaining = Math.max(0, fin.revisedCost - fin.disbursed);
+  const costVar = fin.revisedCost - fin.plannedCost;
+
+  const STAGE_IDS = ['information', 'contract', 'boq', 'financial', 'schedule', 'progress', 'changeorders', 'risk'].filter(id => modMap[id]);
+  const approved = STAGE_IDS.filter(id => R[id] === 'approved').length;
+  const nextId = STAGE_IDS.find(id => ['ready', 'returned', 'blocked'].includes(R[id])) || STAGE_IDS.find(id => R[id] === 'inprogress');
+
+  /* Basic project metadata — the attributes a reviewer needs before reading
+     any figure. Pulled from the real field bags, and deliberately excluding
+     anything Z2 already shows (number, name, status, contract code). */
+  const fld = (bag, re) => { const f = ((bag && bag.fields) || []).find(x => re.test(x.label.en || '')); return f ? f.value : null; };
+  const META = [
+    { k: AR ? 'الجهة المستفيدة' : 'Beneficiary', v: fld(d.entity, /university|beneficiary/i) },
+    { k: AR ? 'المقاول المنفّذ' : 'Contractor', v: window.epmContractorName(d, lang) },
+    { k: AR ? 'المكتب الاستشاري' : 'Consultant', v: fld(d.consultant, /consultant name/i) },
+    { k: AR ? 'نوع المشروع' : 'Project type', v: fld(d.profile, /project type/i) },
+    { k: AR ? 'نوع التمويل' : 'Funding', v: fld(d.profile, /funding/i) },
+    { k: AR ? 'المنطقة' : 'Region', v: fld(d.profile, /region/i) },
+    { k: AR ? 'المباشرة' : 'Start', v: fld(d.contract, /start date/i), num: true },
+    { k: AR ? 'الإنجاز التعاقدي' : 'Contract finish', v: fld(d.contract, /finish date/i), num: true },
+    { k: AR ? 'الكلفة المعدلة' : 'Revised cost', v: n(fin.revisedCost) + (AR ? ' د.ع' : ' IQD'), num: true },
+  ].filter(x => x.v != null && x.v !== '');
+
+
+  /* L22: every alert states the required action as a verb. */
+  const ACTION = {
+    changeorders: AR ? 'اتخاذ قرار الاعتماد' : 'Decide approval',
+    schedule: AR ? 'مراجعة المسار الحرج' : 'Review critical path',
+    financial: AR ? 'مراجعة الصرف' : 'Review disbursement',
+    boq: AR ? 'مراجعة الكميات' : 'Review quantities',
+    risk: AR ? 'تحديث خطة المعالجة' : 'Update mitigation',
+    documents: AR ? 'رفع النسخة المطلوبة' : 'Upload revision',
+    progress: AR ? 'تحديث نسبة الإنجاز' : 'Update progress',
+  };
+  const openAlerts = alerts.filter(a => a.status !== 'ack');
+  /* counts and shares must both be over the OPEN set, or the percentages
+     do not add up to 100 (acknowledged alerts were inflating the counts). */
+  const oC = { red: openAlerts.filter(a => a.sev === 'red').length,
+               amber: openAlerts.filter(a => a.sev === 'amber').length,
+               green: openAlerts.filter(a => a.sev === 'green').length };
+  const SEV = [
+    { k: 'red', ar: 'حرجة', en: 'High', icon: 'error', n: oC.red },
+    { k: 'amber', ar: 'متوسطة', en: 'Medium', icon: 'warning', n: oC.amber },
+    { k: 'green', ar: 'منخفضة', en: 'Low', icon: 'info', n: oC.green },
   ];
-  const allStages = PHASES.flatMap(ph => ph.ids).filter(id => modMap[id]);
-  const approved = allStages.filter(id => R[id] === 'approved').length;
-  const nextId = allStages.find(id => ['ready', 'returned', 'blocked'].includes(R[id])) || allStages.find(id => R[id] === 'inprogress');
-  const nextR = nextId ? window.EPM.READINESS[R[nextId]] : null;
-
-  const feed = [
-    ...d.meetings.slice(0, 2).map(m => ({ ic: 'groups', tx: m.subject, when: m.date })),
-    ...d.variationOrders.slice(0, 2).map(v => ({ ic: 'sync_alt', tx: v.no + ' — ' + v.reason, when: v.date })),
-    ...d.progress.history.slice(-1).map(h => ({ ic: 'trending_up', tx: (AR ? 'تحديث الإنجاز إلى ' : 'Progress updated to ') + h.physical + '%', when: h.date })),
-  ].sort((a, b) => b.when.localeCompare(a.when)).slice(0, 5);
-
-  const meta = [
-    [AR ? 'الكلفة المعدلة' : 'Revised cost', Math.round(fin.revisedCost / 1e6) + 'M', null],
-    [AR ? 'المصروف التراكمي' : 'Cumulative spend', Math.round(fin.disbursed / 1e6) + 'M', null],
-    [AR ? 'الإنجاز المتوقع' : 'Forecast finish', sd.forecastFinish, sd.delayDays > 0 ? 'var(--error)' : 'var(--on-surface)'],
-    [AR ? 'التأخر' : 'Delay', (sd.delayDays > 0 ? '+' : '') + sd.delayDays + (AR ? 'ي' : 'd'), sd.delayDays > 0 ? 'var(--error)' : 'var(--on-surface)'],
-    ['SPI', spi, spi < 1 ? 'var(--error)' : 'var(--on-surface)'],
-    ['CPI', cpi, cpi < 1 ? 'var(--error)' : 'var(--on-surface)'],
-  ];
+  const sevRank = { red: 0, amber: 1, green: 2 };
+  const topAlerts = [...openAlerts].sort((x, y) => (sevRank[x.sev] - sevRank[y.sev]) || String(x.when).localeCompare(String(y.when))).slice(0, 4);
 
   return (
     <React.Fragment>
-      <div className="d-ov-hero">
-        <div className="d-ov-hero-top"><DPill status={p.status} lang={lang} /><span className="code">{p.id} · {d.contract.code}</span></div>
-        <div className="d-ov-meters">
-          <div className="d-ov-meter">
-            <div className="top"><span className="lbl">{AR ? 'الإنجاز المادي' : 'Physical completion'}</span><span className="pct" style={{ color: 'var(--azure-600)' }}>{p.tech}%</span></div>
-            <div className="mtrack"><span style={{ width: p.tech + '%', background: 'var(--azure-500)' }}></span></div>
+      {/* ── metadata: the project's main attributes ───────────── */}
+      <dl className="d-meta">
+        {META.map((m, i) => (
+          <div className="d-meta-i" key={i}>
+            <dt>{m.k}</dt>
+            <dd className={m.num ? 'num' : ''}>{m.v}</dd>
           </div>
-          <div className="d-ov-meter">
-            <div className="top"><span className="lbl">{AR ? 'الإنجاز المالي' : 'Financial completion'}</span><span className="pct" style={{ color: 'var(--on-surface)' }}>{fin.financialPct}%</span></div>
-            <div className="mtrack"><span style={{ width: fin.financialPct + '%', background: 'var(--on-surface)' }}></span></div>
+        ))}
+      </dl>
+
+      {/* ── 1. VERDICT: is this project on track? ─────────────── */}
+      <div className="d-verdict">
+        <div className="chart">
+          <div className="ch-head">
+            <b>{AR ? 'التقدم التراكمي' : 'Cumulative progress'}</b>
+            <span className="d-cell-sub">{AR ? 'مخطط مقابل فعلي' : 'planned vs actual'}</span>
           </div>
+          <DSCurve lang={lang} data={scurve} />
         </div>
-        <div className="d-ov-metarow">
-          {meta.map((m, i) => <div className="d-ov-mi" key={i}><span className="k">{m[0]}</span><span className="v" style={m[2] ? { color: m[2] } : null}>{m[1]}</span></div>)}
+        <div className="verdicts">
+          <div className={'vd big ' + (physVar < 0 ? 'bad' : 'good')}>
+            <span className="k">{AR ? 'الإنجاز المادي' : 'Physical progress'}</span>
+            <span className="v">{p.tech}<i>%</i></span>
+            <span className="d">{physVar < 0 ? '▼' : '▲'} {Math.abs(physVar)} {AR ? 'نقطة عن المخطط' : 'pts vs plan'} ({plannedProg}%)</span>
+            <span className="track"><i style={{ width: p.tech + '%' }}></i><u style={{ insetInlineStart: plannedProg + '%' }}></u></span>
+          </div>
+          <div className="vdrow">
+            <div className={'vd ' + (spi < 1 ? 'bad' : 'good')}>
+              <span className="k">SPI</span><span className="v">{spi.toFixed(2)}</span><span className="d">{AR ? 'حد 0.95' : 'thr 0.95'}</span>
+            </div>
+            <div className={'vd ' + (cpi < 1 ? 'bad' : 'good')}>
+              <span className="k">CPI</span><span className="v">{cpi.toFixed(2)}</span><span className="d">{AR ? 'حد 0.95' : 'thr 0.95'}</span>
+            </div>
+            <div className={'vd ' + (sd.delayDays > 0 ? 'bad' : 'good')}>
+              <span className="k">{AR ? 'التأخر' : 'Delay'}</span><span className="v">{sd.delayDays > 0 ? '+' + sd.delayDays : '0'}</span><span className="d">{sd.forecastFinish}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="d-callout">
-        <span className="d-callout-ico"><Icon name="assistant_direction" size={20} /></span>
-        <div className="d-callout-tx">
-          <span className="k">{t('next_action')}</span>
-          {nextId ? <b>{t(modMap[nextId].key)} — {nextR[lang]}</b> : <b>{AR ? 'جميع المراحل معتمدة' : 'All stages approved'}</b>}
+      {/* ── 1b. COST: is the money tracking the work? ─────────── */}
+      <div className="d-verdict">
+        <div className="chart">
+          <div className="ch-head">
+            <b>{AR ? 'المنحنى المالي' : 'Cost curve'}</b>
+            <span className="d-cell-sub">{AR ? 'الصرف المخطط مقابل الفعلي' : 'planned vs actual spend'}</span>
+          </div>
+          <DSCurve lang={lang} data={costCurve} color="var(--success)" />
         </div>
-        {nextId && <button className="d-btn sm primary" onClick={() => goTab(nextId)}>{AR ? 'الانتقال' : 'Go'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={15} /></button>}
+        <div className="verdicts">
+          <button className={'vd big click ' + (fin.financialPct > p.tech ? 'bad' : 'good')} onClick={() => goTab('financial')}>
+            <span className="k">{AR ? 'نسبة الصرف' : 'Disbursed'}</span>
+            <span className="v">{fin.financialPct}<i>%</i></span>
+            <span className="d">{musd(fin.disbursed)} {AR ? 'من' : 'of'} {musd(fin.revisedCost)} · {AR ? 'المادي' : 'physical'} {p.tech}%</span>
+            <span className="track"><i style={{ width: fin.financialPct + '%' }}></i><u style={{ insetInlineStart: p.tech + '%' }}></u></span>
+          </button>
+          <div className="vdrow">
+            <div className="vd">
+              <span className="k">{AR ? 'المقررة' : 'Approved'}</span>
+              <span className="v num">{musd(fin.plannedCost)}</span>
+              <span className="d">{AR ? 'د.ع' : 'IQD'}</span>
+            </div>
+            <div className={'vd ' + (costVar > 0 ? 'bad' : 'good')}>
+              <span className="k">{AR ? 'المعدلة' : 'Revised'}</span>
+              <span className="v num">{musd(fin.revisedCost)}</span>
+              <span className="d">{costVar > 0 ? '▲ ' : costVar < 0 ? '▼ ' : ''}{musd(Math.abs(costVar))}</span>
+            </div>
+            <div className="vd">
+              <span className="k">{AR ? 'المتبقي' : 'Remaining'}</span>
+              <span className="v num">{musd(remaining)}</span>
+              <span className="d">{AR ? 'للصرف' : 'to spend'}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="d-ov-work" style={{ marginTop: 14 }}>
-        <div className="d-panel">
-          <div className="d-ov-pipe-head">
-            <b>{AR ? 'خط سير المراحل' : 'Stage pipeline'}</b>
-            <span className="d-ov-pipe-prog"><span className="track"><span style={{ width: Math.round(approved / allStages.length * 100) + '%' }}></span></span>{approved}/{allStages.length} {AR ? 'معتمد' : 'approved'}</span>
-          </div>
-          {PHASES.map((ph, pi) => (
-            <div key={pi}>
-              <span className="d-ov-phase-l">{ph.lbl}</span>
-              {ph.ids.filter(id => modMap[id]).map((id, i, arr) => (
-                <button key={id} className="d-ready-row" onClick={() => goTab(id)} style={{ borderBottom: (pi < PHASES.length - 1 || i < arr.length - 1) ? '1px solid var(--surface-container-high)' : 'none' }}>
-                  <Icon name={modMap[id].icon} size={17} style={{ color: 'var(--on-surface-variant)' }} />
+      {/* ── 2. PROCESS: where is it in the lifecycle? ─────────── */}
+      <div className="d-stagebar">
+        <div className="sb-head">
+          <b>{AR ? 'خط سير المراحل' : 'Stage pipeline'}</b>
+          <span className="prog"><span className="track"><i style={{ width: Math.round(approved / STAGE_IDS.length * 100) + '%' }}></i></span>{approved}/{STAGE_IDS.length} {AR ? 'معتمد' : 'approved'}</span>
+          {nextId && <button className="d-btn sm primary" onClick={() => goTab(nextId)}>{t('next_action')}: {t(modMap[nextId].key)}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} /></button>}
+        </div>
+        <ol className="steps">
+          {STAGE_IDS.map(id => {
+            const st = R[id], meta = window.EPM.READINESS[st] || window.EPM.READINESS.notstarted;
+            return (
+              <li key={id} className={'step ' + (meta.cls || '') + (id === nextId ? ' now' : '')}>
+                <button onClick={() => goTab(id)}>
+                  <span className="dot"><Icon name={meta.icon} size={14} /></span>
                   <span className="nm">{t(modMap[id].key)}</span>
-                  <DReadiness state={R[id]} lang={lang} sm />
-                  <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={16} style={{ color: 'var(--on-surface-variant)' }} />
+                  <span className="st">{meta[AR ? 'ar' : 'en']}</span>
                 </button>
-              ))}
-            </div>
-          ))}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
+      {/* ── 3. ATTENTION: what needs a decision now (L22) ─────── */}
+      <section className={'d-alertfocus' + (oC.red ? ' crit' : '')}>
+        <header className="af-h">
+          <span className="ic"><Icon name={oC.red ? 'error' : 'notifications_active'} size={20} /></span>
+          <span className="tx">
+            <b>{AR ? 'التنبيهات النشطة' : 'Active alerts'}</b>
+            <span>{oC.red
+              ? (AR ? oC.red + ' تنبيهاً حرجاً يحتاج قراراً الآن' : oC.red + ' critical alerts need a decision now')
+              : (AR ? 'لا توجد تنبيهات حرجة' : 'No critical alerts')}</span>
+          </span>
+          <span className="tot"><b className="num">{openAlerts.length}</b><i>{AR ? 'مفتوح' : 'open'}</i></span>
+          <button className="d-btn sm primary" onClick={() => goTab('alerts')}>
+            {AR ? 'فتح التنبيهات' : 'Open alerts'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} />
+          </button>
+        </header>
+
+        <div className="af-sev">
+          {SEV.map(sv => {
+            const share = openAlerts.length ? Math.round(sv.n / openAlerts.length * 100) : 0;
+            return (
+              <button key={sv.k} className={'sv ' + sv.k + (sv.n ? '' : ' zero')} onClick={() => goTab('alerts')}>
+                <span className="r1"><Icon name={sv.icon} size={16} /><em>{AR ? sv.ar : sv.en}</em></span>
+                <span className="r2"><b className="num">{sv.n}</b><i className="num">{share}%</i></span>
+                <span className="bar"><u style={{ width: share + '%' }}></u></span>
+              </button>
+            );
+          })}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="d-panel">
-            <div className="d-panel-head"><b>{AR ? 'ملخص التنبيهات' : 'Alert summary'}</b><button className="d-link" onClick={() => goTab('alerts')}>{t('view_all')}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={15} /></button></div>
-            <div className="d-alert-tiles">
-              {[['var(--error)', aC.red, AR ? 'حرجة' : 'High'], ['var(--status-suspended-tx)', aC.amber, AR ? 'متوسطة' : 'Medium'], ['var(--on-surface)', aC.green, AR ? 'منخفضة' : 'Low']].map((a, i) => (
-                <div className="d-alert-tile" key={i}><div className="n" style={{ color: a[0] }}>{a[1]}</div><div className="l">{a[2]}</div></div>
-              ))}
-            </div>
-          </div>
-          <div className="d-panel">
-            <div className="d-panel-head"><b>{t('recent')}</b></div>
-            <div>
-              {feed.map((f, i) => (
-                <div key={i} className="d-mini" style={{ cursor: 'default' }}>
-                  <span className="d-mini-emblem" style={{ background: 'var(--surface-container-high)', color: 'var(--on-surface-variant)', width: 30, height: 30 }}><Icon name={f.ic} size={15} /></span>
-                  <span className="d-mini-main"><b style={{ fontSize: 12 }}>{f.tx}</b><span className="mono">{f.when}</span></span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+        <ul className="af-list">
+          {topAlerts.map(al => (
+            <li key={al.id} className={'al ' + al.sev}>
+              <span className="dot"></span>
+              <span className="tx">
+                <b>{al.title}</b>
+                <span className="meta">
+                  <span className="mono">{al.id}</span><span className="sep">·</span>{al.src}
+                  {al.sla && <React.Fragment><span className="sep">·</span><span className="sla">{al.sla}</span></React.Fragment>}
+                  {al.esc && al.esc.some(e => !e.done) && <React.Fragment><span className="sep">·</span>
+                    <span className="esc">{(AR ? 'تصعيد إلى ' : 'Escalates to ') + al.esc.find(e => !e.done).role}</span></React.Fragment>}
+                </span>
+              </span>
+              <button className="act" onClick={() => goTab(al.tab || 'alerts')}>
+                {ACTION[al.tab] || (AR ? 'مراجعة التنبيه' : 'Review alert')}
+                <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} />
+              </button>
+            </li>
+          ))}
+          {!topAlerts.length && (
+            <li className="al empty"><span className="dot"></span>
+              <span className="tx"><b>{AR ? 'لا توجد تنبيهات مفتوحة على هذا المشروع.' : 'No open alerts on this project.'}</b></span></li>
+          )}
+        </ul>
+      </section>
+
     </React.Fragment>
   );
 }
@@ -1620,36 +2882,122 @@ function DModReports({ t, lang, p, showToast }) {
 }
 
 /* ---------- Risk Management (team minutes §2.1.6) ---------- */
-function DModRisk({ t, lang, d }) {
+/* إدارة المخاطر — L05 register. §30 binds severity to Z5, and a risk's
+   mitigation opens as an L11 record, so the row opens the Z8 pane rather
+   than a drawer. */
+function DModRisk({ t, lang, d, asOf, frameTitle, frameActions }) {
   const AR = lang === 'ar';
   const risks = d.risks;
-  const sevPill = { high: 'stalled', med: 'suspended', low: 'completed' };
-  const sevLbl = { high: AR ? 'عالٍ' : 'High', med: AR ? 'متوسط' : 'Medium', low: AR ? 'منخفض' : 'Low' };
-  const counts = { high: risks.filter(r => r.sev === 'high').length, med: risks.filter(r => r.sev === 'med').length, low: risks.filter(r => r.sev === 'low').length };
+  const SEV = {
+    high: { pill: 'stalled', ar: 'عالٍ', en: 'High' },
+    med: { pill: 'suspended', ar: 'متوسط', en: 'Medium' },
+    low: { pill: 'completed', ar: 'منخفض', en: 'Low' },
+  };
+  const counts = { all: risks.length, high: 0, med: 0, low: 0 };
+  risks.forEach(r => { counts[r.sev]++; });
+  const [sev, setSev] = React.useState('all');
+  const [query, setQuery] = React.useState('');
+  const [openNo, setOpenNo] = React.useState(null);
+  React.useEffect(() => { setOpenNo(null); }, [sev]);
+  const match = r => {
+    if (sev !== 'all' && r.sev !== sev) return false;
+    if (query && !((r.no + ' ' + r.desc + ' ' + r.owner).toLowerCase().includes(query.toLowerCase()))) return false;
+    return true;
+  };
+  const shown = risks.filter(match);
+  const open = risks.find(r => r.no === openNo);
+  const TABS = [
+    { id: 'all', label: AR ? 'الكل' : 'All', n: counts.all },
+    { id: 'high', label: AR ? 'عالٍ' : 'High', n: counts.high },
+    { id: 'med', label: AR ? 'متوسط' : 'Medium', n: counts.med },
+    { id: 'low', label: AR ? 'منخفض' : 'Low', n: counts.low },
+  ];
+  const kv = (k, v) => <div className="d-form-i"><span className="k">{k}</span><span className="v">{v}</span></div>;
+
   return (
-    <React.Fragment>
-      <div className="d-fig-row" >
-        <div className="d-fig"><div className="k">{AR ? 'مخاطر عالية' : 'High'}</div><div className="v" style={{ color: 'var(--error)' }}>{counts.high}</div></div>
-        <div className="d-fig"><div className="k">{AR ? 'متوسطة' : 'Medium'}</div><div className="v" style={{ color: 'var(--status-suspended-tx)' }}>{counts.med}</div></div>
-        <div className="d-fig"><div className="k">{AR ? 'منخفضة' : 'Low'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>{counts.low}</div></div>
-      </div>
-      <DSec icon="shield" title={t('mod_risk')} sub={AR ? 'الخطورة = الاحتمالية × التأثير' : 'Severity = probability × impact'} n={risks.length} flush>
-        <div style={{ overflowX: 'auto' }}>
-        <table className="d-line-table">
-          <thead><tr><th>{AR ? 'الرقم' : 'No.'}</th><th>{AR ? 'الوصف' : 'Description'}</th><th>{AR ? 'النوع' : 'Type'}</th><th>{AR ? 'الاحتمالية' : 'Prob.'}</th><th>{AR ? 'التأثير' : 'Impact'}</th><th>{AR ? 'الخطورة' : 'Severity'}</th><th>{AR ? 'الجهة المسؤولة' : 'Owner'}</th><th>{AR ? 'المؤشر' : 'KPI'}</th><th>{AR ? 'الحالة' : 'Status'}</th></tr></thead>
-          <tbody>{risks.map((r, i) => (
-            <tr key={i}>
-              <td className="mono">{r.no}</td><td>{r.desc}</td><td className="d-cell-sub">{r.type}</td>
-              <td className="d-cell-sub">{r.prob}</td><td className="d-cell-sub">{r.impact}</td>
-              <td><span className={`d-pill ${sevPill[r.sev]}`}>{sevLbl[r.sev]}</span></td>
-              <td className="d-cell-sub">{r.owner}</td><td className="mono">{r.kpi}</td><td className="d-cell-sub">{r.status}</td>
-            </tr>
-          ))}</tbody>
-        </table>
+    <DModuleFrame
+      title={frameTitle || t('mod_risk')}
+      sub={AR ? 'الخطورة = الاحتمالية × التأثير' : 'Severity = probability × impact'}
+      tabs={TABS} tab={sev} onTab={setSev}
+      actions={frameActions}
+      aside={open ? (
+        <DRecordPane lang={lang}
+          title={open.desc}
+          meta={[
+            { k: AR ? 'الرقم' : 'No.', v: open.no, num: true },
+            { k: AR ? 'الخطورة' : 'Severity', v: <span className={'d-pill ' + SEV[open.sev].pill}>{AR ? SEV[open.sev].ar : SEV[open.sev].en}</span> },
+            { k: AR ? 'الجهة المسؤولة' : 'Owner', v: open.owner },
+            { k: AR ? 'الحالة' : 'Status', v: open.status },
+          ]}
+          onClose={() => setOpenNo(null)}>
+          <DRecordGrp label={AR ? 'التقييم' : 'Assessment'}>
+            <div className="d-form-grid">
+              {kv(AR ? 'النوع' : 'Type', open.type)}
+              {kv(AR ? 'الاحتمالية' : 'Probability', open.prob)}
+              {kv(AR ? 'التأثير' : 'Impact', open.impact)}
+              {kv(AR ? 'المؤشر المرتبط' : 'Linked KPI', <span className="mono">{open.kpi}</span>)}
+            </div>
+          </DRecordGrp>
+          <DMsgBar tone="info" icon="functions" title={AR ? 'كيف تُحتسب الخطورة' : 'How severity is derived'}>
+            {AR ? 'الخطورة = الاحتمالية × التأثير، وتُحتسب تلقائياً ولا تُحرَّر يدوياً. ترتبط بمؤشرات الأداء SPI · CPI · EAC · VAC.'
+                : 'Severity = probability × impact, computed automatically and never edited by hand. It is tied to the SPI · CPI · EAC · VAC indicators.'}
+          </DMsgBar>
+        </DRecordPane>
+      ) : null}
+      status={<DZ10 lang={lang} asOf={asOf} stats={[
+        { k: AR ? 'المخاطر' : 'Risks', v: shown.length + ' / ' + risks.length },
+        { k: AR ? 'عالية' : 'High', v: counts.high },
+        { k: AR ? 'متوسطة' : 'Medium', v: counts.med },
+      ]} />}>
+
+      <DFGroup id="risk-reg" flush
+        title={AR ? 'سجل المخاطر' : 'Risk register'}
+        sub={shown.length + (AR ? ' من ' : ' of ') + risks.length}>
+        <div className="d-toolbar">
+          <div className="d-field">
+            <Icon name="search" size={16} style={{ color: 'var(--on-surface-variant)' }} />
+            <input aria-label={AR ? 'بحث في المخاطر' : 'Search risks'} placeholder={AR ? 'بحث بالرقم أو الوصف أو الجهة…' : 'Search by number, description or owner…'}
+              value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+          <div className="sp"></div>
+          {query && <button className="d-btn sm ghost" onClick={() => setQuery('')}><Icon name="close" size={13} />{AR ? 'مسح' : 'Clear'}</button>}
         </div>
-      </DSec>
-      <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 10 }}>{AR ? 'مستوى الخطورة = الاحتمالية × التأثير، ويُحسب تلقائياً. مرتبط بمؤشرات الأداء (SPI/CPI/EAC/VAC).' : 'Severity = probability × impact, auto-computed. Linked to EVM KPIs (SPI/CPI/EAC/VAC).'}</p>
-    </React.Fragment>
+        {shown.length ? (
+          <div className="d-vow-tw"><table className="d-line-table">
+            <thead><tr>
+              <th style={{ width: 84 }}>{AR ? 'الرقم' : 'No.'}</th>
+              <th style={{ minWidth: 220 }}>{AR ? 'الوصف' : 'Description'}</th>
+              <th style={{ width: 120 }}>{AR ? 'النوع' : 'Type'}</th>
+              <th style={{ width: 96 }}>{AR ? 'الاحتمالية' : 'Probability'}</th>
+              <th style={{ width: 96 }}>{AR ? 'التأثير' : 'Impact'}</th>
+              <th style={{ width: 96 }}>{AR ? 'الخطورة' : 'Severity'}</th>
+              <th style={{ width: 160 }}>{AR ? 'الجهة المسؤولة' : 'Owner'}</th>
+              <th style={{ width: 92 }}>{AR ? 'المؤشر' : 'KPI'}</th>
+              <th style={{ width: 132 }}>{AR ? 'الحالة' : 'Status'}</th>
+            </tr></thead>
+            <tbody>{shown.map((r, i) => (
+              <tr key={i} onClick={() => setOpenNo(r.no)} style={{ cursor: 'pointer' }}
+                className={openNo === r.no ? 'sel' : ''}>
+                <td className="code">{r.no}</td>
+                <td className="name wrap">{r.desc}</td>
+                <td className="d-cell-sub">{r.type}</td>
+                <td className="d-cell-sub">{r.prob}</td>
+                <td className="d-cell-sub">{r.impact}</td>
+                <td><span className={'d-pill ' + SEV[r.sev].pill}>{AR ? SEV[r.sev].ar : SEV[r.sev].en}</span></td>
+                <td className="d-cell-sub wrap">{r.owner}</td>
+                <td className="mono d-cell-sub">{r.kpi}</td>
+                <td className="d-cell-sub">{r.status}</td>
+              </tr>))}</tbody>
+          </table></div>
+        ) : (
+          <div className="d-empty">
+            <span className="d-empty-ico"><Icon name="shield" size={26} /></span>
+            <b>{AR ? 'لا مخاطر مطابقة' : 'No matching risks'}</b>
+            <span>{AR ? 'غيّر مستوى الخطورة أو امسح البحث.' : 'Change the severity tab or clear the search.'}</span>
+          </div>
+        )}
+      </DFGroup>
+    </DModuleFrame>
   );
 }
 
@@ -1668,4 +3016,5 @@ function DModAudit({ t, lang }) {
   );
 }
 
-Object.assign(window, { DSec, DSecNav, DFiles, DDrawerGrp, DReadiness, DReviewFlow, DField, DFieldGrid, DEditTimeline, DModProfile, DModInformation, DModEntity, DModSimple, DModConsultant, DModContractNew, DModFinancialNew, DModProgress, DModRisk, DModBOQ, DModVO, DBOQAssignment, computeBOQGroups, defaultBOQLinks, boqWeights, DModMeetings, DModDrawings, DModOverview, DModReports, DModAudit });
+Object.assign(window.EPM, { buildProjectActivity });
+Object.assign(window, { DFGroup, DActivityLog, DSec, DSecNav, DFiles, DDrawerGrp, DReadiness, DReviewFlow, DField, DFieldGrid, DEditTimeline, DModProfile, DModInformation, DModEntity, DModSimple, DModConsultant, DModContractNew, DModFinancialNew, DModProgress, DModRisk, DModBOQ, DBOQAssignment, computeBOQGroups, defaultBOQLinks, boqWeights, DModMeetings, DModDrawings, DModOverview, DModReports, DModAudit });

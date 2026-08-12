@@ -121,7 +121,7 @@ const STR = {
   gated_by:        { ar: 'مقيّد بمصفوفة الصلاحيات', en: 'Gated by the permission matrix' },
   // module names
   mod_overview:    { ar: 'نظرة عامة', en: 'Overview' },
-  mod_contract:    { ar: 'العقد', en: 'Contract' },
+  mod_contract:    { ar: 'العقود', en: 'Contracts' },
   mod_committees:  { ar: 'اللجان', en: 'Committees' },
   mod_corr:        { ar: 'المخاطبات', en: 'Correspondence' },
   mod_financials:  { ar: 'الموقف المالي', en: 'Financial Position' },
@@ -214,6 +214,9 @@ const STR = {
   demo_data:       { ar: 'بيانات تجريبية للعرض', en: 'Demonstration data' },
   mod_meetings:    { ar: 'محاضر الاجتماعات', en: 'Meetings' },
   mod_drawings:    { ar: 'المخططات والوثائق', en: 'Drawings' },
+  mod_supplyitems: { ar: 'الفقرات التجهيزية', en: 'Supply Line Items' },
+  mod_receipts:    { ar: 'الاستلامات', en: 'Receipts' },
+  mod_inquiry:     { ar: 'استعلام الفقرات', en: 'Item Inquiry' },
   proposed_badge:  { ar: 'مقترح', en: 'Proposed' },
   approve:         { ar: 'اعتماد', en: 'Approve' },
   reject:          { ar: 'رفض', en: 'Reject' },
@@ -249,27 +252,24 @@ function makeT(getLang) { return (k) => (STR[k] ? STR[k][getLang()] : k); }
 const KIND_PUBLIC = { ar:'جامعة حكومية', en:'Public university' };
 const KIND_TECH   = { ar:'جامعة تقنية',  en:'Technical university' };
 const KIND_UNIT   = { ar:'وحدة مركزية',  en:'Central unit' };
+const KIND_SUPPLY = { ar:'مديرية تجهيز', en:'Procurement directorate' };
 
+// Reduced sample set (was 19 workspaces / 231 projects) to keep the stored
+// dataset small. `projects`/`active`/`completion` are recomputed from the
+// generated project records below (see WS_STATS), so these are seed hints only.
 const WORKSPACES = [
-  { id: 'ub',  ar: 'جامعة بغداد',                  en: 'University of Baghdad',      code: 'UOB', projects: 24, active: 16, completion: 71, color: '#0e6b47', kind: KIND_PUBLIC },
-  { id: 'nu',  ar: 'الجامعة المستنصرية',           en: 'Al-Mustansiriyah University', code: 'MU', projects: 12, active: 7,  completion: 64, color: '#1d4e89', kind: KIND_PUBLIC },
-  { id: 'tu',  ar: 'الجامعة التكنولوجية',          en: 'University of Technology',   code: 'UOT', projects: 18, active: 11, completion: 58, color: '#7d611d', kind: KIND_TECH },
-  { id: 'cu',  ar: 'الوحدة المركزية — مركز الوزارة', en: 'Central Unit — Ministry Center', code: 'CU', projects: 9, active: 6, completion: 80, color: '#8c2f3a', kind: KIND_UNIT },
-  { id: 'du',  ar: 'جامعة ديالى',                  en: 'University of Diyala',       code: 'DU',  projects: 6,  active: 3,  completion: 49, color: '#2a6f5a', kind: KIND_PUBLIC },
-  { id: 'bu',  ar: 'جامعة البصرة',                 en: 'University of Basrah',       code: 'BU',  projects: 21, active: 13, completion: 67, color: '#2f6d8c', kind: KIND_PUBLIC },
-  { id: 'mo',  ar: 'جامعة الموصل',                 en: 'University of Mosul',        code: 'UOM', projects: 19, active: 12, completion: 55, color: '#6b4d8c', kind: KIND_PUBLIC },
-  { id: 'ku',  ar: 'جامعة الكوفة',                 en: 'University of Kufa',         code: 'KU',  projects: 14, active: 9,  completion: 73, color: '#3a6b2a', kind: KIND_PUBLIC },
-  { id: 'ba',  ar: 'جامعة بابل',                   en: 'University of Babylon',      code: 'BAB', projects: 11, active: 6,  completion: 61, color: '#8c5a2f', kind: KIND_PUBLIC },
-  { id: 'kb',  ar: 'جامعة كربلاء',                 en: 'University of Kerbala',      code: 'KRB', projects: 8,  active: 5,  completion: 78, color: '#8c2f6d', kind: KIND_PUBLIC },
-  { id: 'an',  ar: 'جامعة الأنبار',                en: 'University of Anbar',        code: 'ANB', projects: 13, active: 7,  completion: 46, color: '#4a5b8c', kind: KIND_PUBLIC },
-  { id: 'tk',  ar: 'جامعة تكريت',                  en: 'University of Tikrit',       code: 'TKU', projects: 10, active: 6,  completion: 59, color: '#2a5b6b', kind: KIND_PUBLIC },
-  { id: 'ws',  ar: 'جامعة واسط',                   en: 'University of Wasit',        code: 'WSU', projects: 7,  active: 4,  completion: 52, color: '#6b2f3a', kind: KIND_PUBLIC },
-  { id: 'qa',  ar: 'جامعة القادسية',               en: 'University of Al-Qadisiyah', code: 'QU',  projects: 9,  active: 5,  completion: 68, color: '#2f8c6b', kind: KIND_PUBLIC },
-  { id: 'tq',  ar: 'جامعة ذي قار',                 en: 'University of Thi-Qar',      code: 'TQU', projects: 8,  active: 4,  completion: 44, color: '#5b3a8c', kind: KIND_PUBLIC },
-  { id: 'kk',  ar: 'جامعة كركوك',                  en: 'University of Kirkuk',       code: 'KIR', projects: 6,  active: 3,  completion: 63, color: '#8c6b2f', kind: KIND_PUBLIC },
-  { id: 'ntu', ar: 'الجامعة التقنية الشمالية',     en: 'Northern Technical Univ.',   code: 'NTU', projects: 15, active: 9,  completion: 57, color: '#4d6b2a', kind: KIND_TECH },
-  { id: 'mtu', ar: 'الجامعة التقنية الوسطى',       en: 'Middle Technical Univ.',     code: 'MTU', projects: 16, active: 10, completion: 62, color: '#2f4a8c', kind: KIND_TECH },
-  { id: 'std', ar: 'وحدة الدراسات و التخطيط',      en: 'Studies & Planning Unit',    code: 'SPU', projects: 5,  active: 3,  completion: 84, color: '#8c3a2f', kind: KIND_UNIT },
+  { id: 'ub',  ar: 'جامعة بغداد',                  en: 'University of Baghdad',      code: 'UOB', projects: 5, active: 3, completion: 71, color: '#0e6b47', kind: KIND_PUBLIC },
+  { id: 'nu',  ar: 'الجامعة المستنصرية',           en: 'Al-Mustansiriyah University', code: 'MU', projects: 4, active: 2, completion: 64, color: '#1d4e89', kind: KIND_PUBLIC },
+  { id: 'tu',  ar: 'الجامعة التكنولوجية',          en: 'University of Technology',   code: 'UOT', projects: 4, active: 3, completion: 58, color: '#7d611d', kind: KIND_TECH },
+  { id: 'cu',  ar: 'الوحدة المركزية — مركز الوزارة', en: 'Central Unit — Ministry Center', code: 'CU', projects: 3, active: 2, completion: 80, color: '#8c2f3a', kind: KIND_UNIT },
+  { id: 'sp',  ar: 'المديرية العامة للتجهيز والمشتريات', en: 'Directorate for Supply & Procurement', code: 'SPD', projects: 3, active: 2, completion: 62, color: '#2f5d8c', kind: KIND_SUPPLY },
+];
+
+// Full ministry formations catalogue (§2.2.4) — the ~35 government universities plus
+// the ministry center & research authority. The four WORKSPACES above carry the seeded
+// sample data; this list is the reference lookup for the Formation dropdown & admin.
+const FORMATIONS = [
+  {ar:'جامعة بغداد',en:'University of Baghdad'},{ar:'الجامعة المستنصرية',en:'Al-Mustansiriyah University'},{ar:'الجامعة التكنولوجية',en:'University of Technology'},{ar:'جامعة البصرة',en:'University of Basrah'},{ar:'جامعة الموصل',en:'University of Mosul'},{ar:'جامعة الكوفة',en:'University of Kufa'},{ar:'جامعة النهرين',en:'Al-Nahrain University'},{ar:'جامعة القادسية',en:'University of Al-Qadisiyah'},{ar:'جامعة بابل',en:'University of Babylon'},{ar:'جامعة تكريت',en:'Tikrit University'},{ar:'جامعة ديالى',en:'University of Diyala'},{ar:'جامعة واسط',en:'University of Wasit'},{ar:'جامعة كربلاء',en:'University of Kerbala'},{ar:'جامعة المثنى',en:'Al-Muthanna University'},{ar:'جامعة ذي قار',en:'University of Thi-Qar'},{ar:'جامعة ميسان',en:'University of Misan'},{ar:'جامعة الأنبار',en:'University of Anbar'},{ar:'جامعة تلعفر',en:'University of Tal Afar'},{ar:'جامعة نينوى',en:'University of Nineveh'},{ar:'الجامعة العراقية',en:'Iraqia University'},{ar:'جامعة كركوك',en:'University of Kirkuk'},{ar:'جامعة الفلوجة',en:'University of Fallujah'},{ar:'جامعة الحمدانية',en:'Al-Hamdaniya University'},{ar:'جامعة القاسم الخضراء',en:'Al-Qasim Green University'},{ar:'جامعة البصرة للنفط والغاز',en:'Basrah University for Oil & Gas'},{ar:'جامعة الكرخ للعلوم',en:'Al-Karkh University of Science'},{ar:'جامعة جابر بن حيان الطبية',en:'Jabir ibn Hayyan Medical University'},{ar:'جامعة ابن سينا للعلوم الطبية',en:'Ibn Sina University of Medical Sciences'},{ar:'جامعة تكنولوجيا المعلومات والاتصالات',en:'University of Information Technology & Communications'},{ar:'جامعة سومر',en:'University of Sumer'},{ar:'جامعة الشطرة',en:'University of Shatra'},{ar:'جامعة الفرات الأوسط التقنية',en:'Middle Euphrates Technical University'},{ar:'الجامعة التقنية الجنوبية',en:'Southern Technical University'},{ar:'الجامعة التقنية الوسطى',en:'Middle Technical University'},{ar:'الجامعة التقنية الشمالية',en:'Northern Technical University'},{ar:'مركز الوزارة',en:'Ministry Center'},{ar:'هيئة البحث والتطوير',en:'Research & Development Authority'},
 ];
 
 const STATUS = {
@@ -282,6 +282,34 @@ const STATUS = {
 
 const BRANCHES = { ar: ['الأبنية','الكهرباء','الميكانيك','الطرق','الصيانة'], en: ['Buildings','Electrical','Mechanical','Roads','Maintenance'] };
 const EXECUTORS = { ar: ['شركة الفرات','مقاولات الرشيد','دار الهندسة','شركة بابل','الإعمار الحديثة'], en: ['Al-Furat Co.','Al-Rashid Constr.','Dar Al-Handasa','Babel Co.','Modern Reconstruction'] };
+// party pools so contractor / consultant / MEP contractor vary per project
+const CONTRACTORS = [
+  { ar:'شركة الفرات للمقاولات', en:'Al-Furat Contracting', ent:{ar:'شركة الفرات العامة',en:'Al-Furat General Co.'} },
+  { ar:'شركة الرشيد للمقاولات', en:'Al-Rashid Contracting', ent:{ar:'شركة الرشيد العامة',en:'Al-Rashid General Co.'} },
+  { ar:'شركة بابل للإنشاءات', en:'Babel Construction', ent:{ar:'شركة بابل العامة',en:'Babel General Co.'} },
+  { ar:'شركة الإعمار الحديثة', en:'Modern Reconstruction Co.', ent:{ar:'الإعمار الحديثة العامة',en:'Modern Reconstruction General'} },
+  { ar:'شركة دجلة للمقاولات', en:'Dijla Contracting', ent:{ar:'شركة دجلة العامة',en:'Dijla General Co.'} },
+  { ar:'شركة النهرين للإنشاءات', en:'Al-Nahrain Construction', ent:{ar:'شركة النهرين العامة',en:'Al-Nahrain General Co.'} },
+];
+const CONSULTANTS = [
+  { ar:'المكتب الاستشاري الهندسي', en:'Engineering Consultancy Bureau' },
+  { ar:'دار الهندسة للاستشارات', en:'Dar Al-Handasa Consultants' },
+  { ar:'مكتب الرافدين الاستشاري', en:'Al-Rafidain Consulting Office' },
+  { ar:'بيت الخبرة الهندسي', en:'Engineering House of Expertise' },
+  { ar:'المركز الاستشاري للتصاميم', en:'Design Consultancy Center' },
+];
+const MEP_CONTRACTORS = [
+  { ar:'شركة النور للأنظمة الكهروميكانيكية', en:'Al-Noor Electromechanical', ent:{ar:'شركة النور العامة',en:'Al-Noor General Co.'} },
+  { ar:'شركة الطاقة المتقدمة', en:'Advanced Power Systems', ent:{ar:'شركة الطاقة العامة',en:'Advanced Power General'} },
+  { ar:'شركة بغداد للكهروميكانيك', en:'Baghdad Electromechanical', ent:{ar:'بغداد للكهروميكانيك العامة',en:'Baghdad EM General'} },
+];
+// equipment-supply vendors — for supply (تجهيز) projects instead of works contractors
+const SUPPLIERS = [
+  { ar:'شركة الرافدين للتجهيزات العلمية', en:'Al-Rafidain Scientific Supplies', ent:{ar:'الرافدين العامة للتجهيز',en:'Al-Rafidain General Supply'} },
+  { ar:'شركة بغداد للتوريدات', en:'Baghdad Supplies Co.', ent:{ar:'بغداد للتوريدات العامة',en:'Baghdad Supplies General'} },
+  { ar:'شركة النخبة للأجهزة المختبرية', en:'Elite Lab Equipment Co.', ent:{ar:'النخبة العامة',en:'Elite General Co.'} },
+  { ar:'شركة الشرق للتكنولوجيا', en:'Al-Sharq Technology', ent:{ar:'الشرق العامة للتكنولوجيا',en:'Al-Sharq Technology General'} },
+];
 
 const PROJECT_NAMES = [
   { ar: 'إنشاء مكتبة كلية الهندسة',      en: 'Engineering College Library' },
@@ -298,24 +326,42 @@ const PROJECT_NAMES = [
   { ar: 'تأهيل قاعات المحاضرات',         en: 'Lecture Halls Rehabilitation' },
 ];
 
+// procurement / equipment-supply project names (used by the 'sp' workspace)
+const SUPPLY_PROJECT_NAMES = [
+  { ar: 'تجهيز مختبرات الحاسوب للجامعات', en: 'Computer Lab Equipment Supply' },
+  { ar: 'تجهيز الأجهزة المختبرية العلمية', en: 'Scientific Lab Devices Supply' },
+  { ar: 'تجهيز الأثاث والمعدات الصفّية', en: 'Classroom Furniture & Equipment Supply' },
+  { ar: 'تجهيز أجهزة الطاقة والمولدات', en: 'Power & Generator Units Supply' },
+  { ar: 'تجهيز معدات المكتبات الرقمية', en: 'Digital Library Equipment Supply' },
+];
+
 function rng(seed){ let s = seed; return () => (s = (s*9301+49297)%233280) / 233280; }
 function buildProjects(wsId, count) {
   const r = rng(wsId.charCodeAt(0)*7 + wsId.charCodeAt(1)*13 + count);
   const keys = Object.keys(STATUS);
+  // per-workspace id base so project ids are UNIQUE across workspaces (no two
+  // workspaces share a PRJ-xxxx); digits stay varied for the per-project seeds.
+  const wi = Math.max(0, WORKSPACES.findIndex(w => w.id === wsId));
   const out = [];
   for (let i = 0; i < count; i++) {
-    const nm = PROJECT_NAMES[(i + Math.floor(r()*PROJECT_NAMES.length)) % PROJECT_NAMES.length];
+    const namePool = wsId === 'sp' ? SUPPLY_PROJECT_NAMES : PROJECT_NAMES;
+    // unique within a workspace: consecutive indices from a per-workspace offset,
+    // so no two projects under the same formation share a name. A throwaway r()
+    // keeps the RNG stream position identical (other seeded values unchanged).
+    const nameOffset = (wi * 3 + wsId.charCodeAt(1)) % namePool.length;
+    r();
+    const nm = namePool[(nameOffset + i) % namePool.length];
     const stKey = keys[Math.floor(r()*keys.length)];
     const tech = stKey === 'completed' ? 100 : Math.floor(r()*92)+4;
     const cost = (Math.floor(r()*28)+3) * 50000000;
     const bi = Math.floor(r()*5), ei = Math.floor(r()*5);
     const d = Math.floor(r()*27)+1, mo = Math.floor(r()*5)+1;
     const plannedCost = Math.round(cost / (1.03 + r()*0.15));
-    const financialPct = Math.max(0, tech - Math.round(3 + r()*9));
+    const financialPct = Math.max(0, Math.min(100, Math.round(tech * (0.88 + r() * 0.27))));
     out.push({
-      id: `PRJ-${(148 + i*7 + wsId.charCodeAt(0)).toString().padStart(4,'0')}`,
+      id: `PRJ-${(137 + wi*70 + i*11).toString().padStart(4,'0')}`,
       name: nm, status: stKey, tech, cost, plannedCost, financialPct,
-      branchIdx: bi, executorIdx: ei,
+      branchIdx: bi, executorIdx: ei, type: wsId === 'sp' ? 'supply' : 'construction', ws: wsId,
       updated: `2026-0${mo}-${d.toString().padStart(2,'0')}`,
     });
   }
@@ -324,9 +370,9 @@ function buildProjects(wsId, count) {
 
 const ACTIVITY = [
   { who:{ar:'أحمد فؤاد',en:'Ahmed Fouad'}, act:{ar:'حدّث الموقف المالي لـ',en:'updated financials for'}, tgt:'PRJ-0148', t:{ar:'قبل ١٢ دقيقة',en:'12 min ago'} },
-  { who:{ar:'ليلى حسن',en:'Layla Hasan'}, act:{ar:'أضافت لجنة فنية إلى',en:'added a technical committee to'}, tgt:'PRJ-0173', t:{ar:'قبل ساعة',en:'1 hr ago'} },
-  { who:{ar:'مصطفى علي',en:'Mustafa Ali'}, act:{ar:'رفع ملحق عقد على',en:'uploaded a contract addendum on'}, tgt:'PRJ-0156', t:{ar:'قبل ٣ ساعات',en:'3 hrs ago'} },
-  { who:{ar:'سارة كريم',en:'Sara Karim'}, act:{ar:'سجّلت مخاطبة واردة في',en:'logged inbound correspondence in'}, tgt:'PRJ-0161', t:{ar:'أمس',en:'Yesterday'} },
+  { who:{ar:'ليلى حسن',en:'Layla Hasan'}, act:{ar:'أضافت لجنة فنية إلى',en:'added a technical committee to'}, tgt:'PRJ-0170', t:{ar:'قبل ساعة',en:'1 hr ago'} },
+  { who:{ar:'مصطفى علي',en:'Mustafa Ali'}, act:{ar:'رفع ملحق عقد على',en:'uploaded a contract addendum on'}, tgt:'PRJ-0218', t:{ar:'قبل ٣ ساعات',en:'3 hrs ago'} },
+  { who:{ar:'سارة كريم',en:'Sara Karim'}, act:{ar:'سجّلت مخاطبة واردة في',en:'logged inbound correspondence in'}, tgt:'PRJ-0288', t:{ar:'أمس',en:'Yesterday'} },
 ];
 
 const ROLES = [
@@ -349,7 +395,7 @@ const MATRIX_ACTIONS = {
 };
 
 const AUDIT = [
-  { user:{ar:'أحمد فؤاد',en:'Ahmed Fouad'}, action:{ar:'تعديل',en:'Edit'}, entity:{ar:'العقد',en:'Contract'}, tgt:'CNT-0098', ip:'10.4.12.7', t:'2026-06-08 09:41' },
+  { user:{ar:'أحمد فؤاد',en:'Ahmed Fouad'}, action:{ar:'تعديل',en:'Edit'}, entity:{ar:'العقد',en:'Contract'}, tgt:'CNT-0148', ip:'10.4.12.7', t:'2026-06-08 09:41' },
   { user:{ar:'admin',en:'admin'},          action:{ar:'إضافة مستخدم',en:'Create user'}, entity:{ar:'المخوّلين',en:'Users'}, tgt:'USR-241', ip:'10.4.12.2', t:'2026-06-08 09:12' },
   { user:{ar:'ليلى حسن',en:'Layla Hasan'},  action:{ar:'حذف',en:'Delete'}, entity:{ar:'مرفق',en:'Attachment'}, tgt:'ATT-5521', ip:'10.4.13.9', t:'2026-06-07 16:50' },
   { user:{ar:'مصطفى علي',en:'Mustafa Ali'}, action:{ar:'تسجيل دخول',en:'Sign-in'}, entity:{ar:'الجلسة',en:'Session'}, tgt:'—', ip:'10.4.12.31', t:'2026-06-07 08:03' },
@@ -381,17 +427,17 @@ const ADMIN_GROUPS = [
 
 const ADMIN_PROJECTS = [
   { id:'PRJ-0148', name:{ar:'إنشاء مكتبة كلية الهندسة',en:'Engineering Library'}, ws:'ub', members:7, status:'ongoing' },
-  { id:'PRJ-0156', name:{ar:'تأهيل مختبرات الحاسوب',en:'Computer Labs Rehab'}, ws:'ub', members:4, status:'completed' },
-  { id:'PRJ-0161', name:{ar:'صيانة شبكة المياه',en:'Water Network Maintenance'}, ws:'nu', members:5, status:'stalled' },
-  { id:'PRJ-0204', name:{ar:'توسعة قاعة المؤتمرات',en:'Conference Hall Expansion'}, ws:'tu', members:6, status:'suspended' },
-  { id:'PRJ-0231', name:{ar:'مجمع المختبرات العلمية — مشترك',en:'Science Labs (shared)'}, ws:'cu', members:9, status:'ongoing', shared:true },
+  { id:'PRJ-0159', name:{ar:'تأهيل مختبرات الحاسوب',en:'Computer Labs Rehab'}, ws:'ub', members:4, status:'completed' },
+  { id:'PRJ-0207', name:{ar:'صيانة شبكة المياه',en:'Water Network Maintenance'}, ws:'nu', members:5, status:'stalled' },
+  { id:'PRJ-0277', name:{ar:'توسعة قاعة المؤتمرات',en:'Conference Hall Expansion'}, ws:'tu', members:6, status:'suspended' },
+  { id:'PRJ-0347', name:{ar:'مجمع المختبرات العلمية — مشترك',en:'Science Labs (shared)'}, ws:'cu', members:9, status:'ongoing', shared:true },
 ];
 
 const ASSIGNMENTS = [
   { principal:{ar:'أحمد فؤاد جواد',en:'Ahmed Fouad'}, ptype:'user', role:{ar:'مدير',en:'Director'}, scope:'enterprise', target:{ar:'النظام',en:'Enterprise'}, plane:'both' },
   { principal:{ar:'القسم الهندسي',en:'Engineering Section'}, ptype:'group', role:{ar:'موظف',en:'Employee'}, scope:'workspace', target:{ar:'جامعة بغداد',en:'University of Baghdad'}, plane:'ops' },
   { principal:{ar:'ليلى حسن محمود',en:'Layla Hasan'}, ptype:'user', role:{ar:'مشرف قسم',en:'Section supervisor'}, scope:'workspace', target:{ar:'جامعة بغداد',en:'University of Baghdad'}, plane:'both' },
-  { principal:{ar:'مصطفى علي كريم',en:'Mustafa Ali'}, ptype:'user', role:{ar:'عضو',en:'Member'}, scope:'project', target:{ar:'PRJ-0231 (مشترك)',en:'PRJ-0231 (shared)'}, plane:'ops' },
+  { principal:{ar:'مصطفى علي كريم',en:'Mustafa Ali'}, ptype:'user', role:{ar:'عضو',en:'Member'}, scope:'project', target:{ar:'PRJ-0347 (مشترك)',en:'PRJ-0347 (shared)'}, plane:'ops' },
   { principal:{ar:'شعبة الأبنية',en:'Buildings Branch'}, ptype:'group', role:{ar:'موظف',en:'Employee'}, scope:'project', target:{ar:'PRJ-0148',en:'PRJ-0148'}, plane:'ops' },
   { principal:{ar:'سارة كريم عبد',en:'Sara Karim'}, ptype:'user', role:{ar:'مشرف دائرة',en:'Dept. supervisor'}, scope:'workspace', target:{ar:'الجامعة المستنصرية',en:'Al-Mustansiriyah'}, plane:'both' },
 ];
@@ -455,6 +501,11 @@ const FUNDING_TYPES = [{ar:'الموازنة الاستثمارية',en:'Investm
 const PROJECT_TYPES = [{ar:'تجهيز أجهزة ومعدات',en:'Equipment supply'},{ar:'مشروع تشغيلي',en:'Operational'},{ar:'بنى تحتية',en:'Infrastructure'},{ar:'تصاميم ودراسات فنية',en:'Design & studies'},{ar:'تنفيذ وبناء وتشييد',en:'Execution & construction'},{ar:'استثماري وتنموي',en:'Investment & development'},{ar:'تطوير قدرات بحثية ومختبرات',en:'Research & labs'},{ar:'تنفيذ أمانة',en:'Trust execution'}];
 const PROJECT_STAGES = [{ar:'دراسة',en:'Study'},{ar:'تصميم',en:'Design'},{ar:'إعلان وإحالة',en:'Tender & award'},{ar:'لم يباشر به',en:'Not started'},{ar:'تنفيذ',en:'Execution'},{ar:'استلام أولي',en:'Preliminary handover'},{ar:'استلام نهائي',en:'Final handover'},{ar:'منجز',en:'Completed'},{ar:'سحب عمل',en:'Work withdrawn'},{ar:'متوقف',en:'Suspended'},{ar:'تجميد',en:'Frozen'},{ar:'تسوية حسابات',en:'Accounts settlement'}];
 const CONTRACT_STATUS_LIST = [{ar:'إعلان وإحالة',en:'Tender & award'},{ar:'لم يباشر به',en:'Not started'},{ar:'تنفيذ مستمر',en:'In execution'},{ar:'موقوف مؤقتاً بأمر إداري',en:'Suspended by admin order'},{ar:'سحب عمل',en:'Work withdrawn'},{ar:'متوقف',en:'Halted'},{ar:'تجميد',en:'Frozen'},{ar:'تسوية حسابات',en:'Accounts settlement'},{ar:'منجز',en:'Completed'}];
+// progress-ordered stages only (no administrative states) — used to derive the
+// execution stage from % complete; administrative stages come from project status
+const PROGRESS_STAGES = [{ar:'دراسة',en:'Study'},{ar:'تصميم',en:'Design'},{ar:'إعلان وإحالة',en:'Tender & award'},{ar:'لم يباشر به',en:'Not started'},{ar:'تنفيذ',en:'Execution'},{ar:'استلام أولي',en:'Preliminary handover'},{ar:'استلام نهائي',en:'Final handover'},{ar:'منجز',en:'Completed'}];
+// equipment-supply execution stages (§2.2.1 adapted for تجهيز)
+const SUPPLY_STAGES = [{ar:'إعلان وإحالة',en:'Tender & award'},{ar:'فتح الاعتماد المستندي',en:'LC opened'},{ar:'قيد التوريد والتجهيز',en:'Supplying'},{ar:'الاستلام المخزني',en:'Warehouse receipt'},{ar:'الاستلام الأولي',en:'Preliminary receipt'},{ar:'التوزيع على الجهات',en:'Distribution'},{ar:'منجز',en:'Completed'}];
 const PROJECT_STATUS3 = [{ar:'قيد التنفيذ',en:'In progress'},{ar:'منجز',en:'Completed'},{ar:'متوقف',en:'Suspended'}];
 const SPEND_CATS = [{ar:'تشغيلي',en:'Operational'},{ar:'استثماري',en:'Capital'},{ar:'صيانة',en:'Maintenance'}];
 const PRIORITIES = [{ar:'عالية',en:'High'},{ar:'متوسطة',en:'Medium'},{ar:'منخفضة',en:'Low'}];
@@ -462,13 +513,32 @@ const REGIONS = { ar:['بغداد','البصرة','نينوى','ديالى','ا�
 const COMPONENTS = [{ar:'المكوّن الإنشائي',en:'Structural component'},{ar:'المكوّن الكهربائي',en:'Electrical component'},{ar:'المكوّن الميكانيكي',en:'Mechanical component'}];
 const DELAY_REASONS = [{ar:'تأخر تجهيز المواد',en:'Material supply delay'},{ar:'ظروف مناخية',en:'Weather conditions'},{ar:'تغييرات تصميمية',en:'Design changes'},{ar:'تأخر الدفعات المالية',en:'Payment delays'}];
 const DOC_TYPES = [{ar:'مخطط إنشائي',en:'Structural drawing'},{ar:'مخطط كهربائي',en:'Electrical drawing'},{ar:'مخطط ميكانيكي',en:'Mechanical drawing'}];
+/* the classification a document register is filed under — the tree in L18 */
+const DOC_DISCIPLINES = [
+  { key:'arch',  ar:'معماري',          en:'Architectural', pfx:'AR', tyAr:'مخطط معماري',   tyEn:'Architectural drawing' },
+  { key:'struc', ar:'إنشائي',          en:'Structural',    pfx:'ST', tyAr:'مخطط إنشائي',   tyEn:'Structural drawing' },
+  { key:'elec',  ar:'كهربائي',         en:'Electrical',    pfx:'EL', tyAr:'مخطط كهربائي',  tyEn:'Electrical drawing' },
+  { key:'mech',  ar:'ميكانيكي',        en:'Mechanical',    pfx:'ME', tyAr:'مخطط ميكانيكي', tyEn:'Mechanical drawing' },
+  { key:'civil', ar:'مدني وبنى تحتية', en:'Civil & infrastructure', pfx:'CV', tyAr:'مخطط مدني', tyEn:'Civil drawing' },
+  /* a report is not a drawing, and calling it one is the kind of thing a
+     ministry reviewer notices before anything else on the page */
+  { key:'doc',   ar:'تقارير ومراسلات', en:'Reports & correspondence', pfx:'DC', tyAr:'وثيقة فنية', tyEn:'Technical document' },
+];
+const DOC_TITLES = {
+  arch:  [['مخطط الطوابق العامة','General floor plans'],['الواجهات والمقاطع','Elevations & sections'],['تفاصيل التشطيبات','Finishes details']],
+  struc: [['مخطط الأساسات','Foundation layout'],['تفاصيل الأعمدة والجسور','Column & beam details'],['مخطط الأسقف','Slab layout']],
+  elec:  [['مخطط التغذية الرئيسية','Main power distribution'],['مخطط الإنارة','Lighting layout'],['أنظمة الإنذار والاتصالات','Alarm & communications']],
+  mech:  [['مخطط التكييف والتهوية','HVAC layout'],['مخطط التمديدات الصحية','Plumbing layout'],['مكافحة الحريق','Fire fighting']],
+  civil: [['مخطط الموقع العام','Site layout'],['شبكات الخدمات الخارجية','External services network'],['أعمال الطرق والساحات','Roads & paving works']],
+  doc:   [['تقرير الفحص الموقعي','Site inspection report'],['كتاب إحالة مخططات','Drawing transmittal letter'],['محضر اجتماع فني','Technical meeting minutes']],
+};
 const DOC_STATUS = { draft:{ar:'مسوّدة',en:'Draft'}, approved:{ar:'معتمد',en:'Approved'}, rejected:{ar:'مرفوض',en:'Rejected'} };
 const VO_STATUS = { pending:{ar:'قيد الاعتماد',en:'Pending'}, approved:{ar:'معتمد',en:'Approved'}, rejected:{ar:'مرفوض',en:'Rejected'} };
 const GUARANTEE_TYPES = [{ar:'ضمان حسن التنفيذ',en:'Performance guarantee'},{ar:'ضمان الدفعة المقدمة',en:'Advance payment guarantee'}];
 
 function buildSchedule(p) {
   const r = rng((p ? p.id.charCodeAt(6) : 1) * 11 + 7);
-  const awardYear = 2021 + Math.floor(r()*5);
+  const awardYear = 2025 + Math.floor(r()*2);  // recent starts so projects straddle the 2026 data date (varied, real mid-flight progress)
   const start = `${awardYear}-0${1+Math.floor(r()*8)}-${(3+Math.floor(r()*24)).toString().padStart(2,'0')}`;
   const plannedFinish = `${awardYear+1+Math.floor(r()*2)}-0${1+Math.floor(r()*8)}-${(3+Math.floor(r()*24)).toString().padStart(2,'0')}`;
   const expectedFinish = `${awardYear+1+Math.floor(r()*2)}-1${Math.floor(r()*2)}-${(3+Math.floor(r()*24)).toString().padStart(2,'0')}`;
@@ -479,38 +549,70 @@ function buildProjectDetail(p, lang) {
   const r = rng((p ? p.id.charCodeAt(6) : 1) * 11 + 7);
   const F = (ar, en, value, opt) => { opt = opt || {}; return { label: { ar, en }, value, required: !!opt.required, proposed: !!opt.proposed, mono: !!opt.mono, unit: opt.unit || '', options: opt.options || null, auto: !!opt.auto }; };
   const O = list => list.map(x => x[lang]);
-  const benef = lang === 'ar' ? 'جامعة بغداد' : 'University of Baghdad';
+  // ---- per-project parties (derived, not static) ----
+  const wsId2 = p && p.ws ? (typeof p.ws === 'string' ? p.ws : p.ws.id) : null;
+  const wsRec = wsId2 ? WORKSPACES.find(w => w.id === wsId2) : null;
+  const isSupplyProj = p && p.type === 'supply';
+  // beneficiary = the project's own formation/university (supply projects serve many)
+  const benefObj = isSupplyProj ? { ar: 'جهات مستفيدة متعددة (توزيع)', en: 'Multiple beneficiaries (distributed)' }
+    : wsRec ? { ar: wsRec.ar, en: wsRec.en } : { ar: 'جامعة بغداد', en: 'University of Baghdad' };
+  const benef = benefObj[lang];
+  const cIdx = p ? (p.executorIdx + p.id.charCodeAt(7)) % CONTRACTORS.length : 0;
+  const conIdx = p ? (p.branchIdx + p.id.charCodeAt(6)) % CONSULTANTS.length : 0;
+  const mepIdx = p ? (p.id.charCodeAt(7) + p.id.charCodeAt(6)) % MEP_CONTRACTORS.length : 0;
+  // supply projects contract with equipment vendors + a technical inspection committee,
+  // not works contractors / engineering consultants
+  const contractorRec = isSupplyProj ? SUPPLIERS[cIdx % SUPPLIERS.length] : CONTRACTORS[cIdx];
+  const consultantRec = isSupplyProj ? { ar:'لجنة الفحص والاستلام الفني', en:'Technical inspection & receipt committee' } : CONSULTANTS[conIdx];
+  const mepRec = isSupplyProj ? SUPPLIERS[(mepIdx + 1) % SUPPLIERS.length] : MEP_CONTRACTORS[mepIdx];
+  // contract package names & components differ by project nature
+  const c1Meta = isSupplyProj ? { ar:'عقد التجهيز الرئيسي', en:'Main supply contract' } : { ar:'عقد الأعمال المدنية', en:'Civil works contract' };
+  const c2Meta = isSupplyProj ? { ar:'عقد التركيب والتشغيل', en:'Installation & commissioning contract' } : { ar:'عقد الأعمال الكهروميكانيكية', en:'Electromechanical works contract' };
+  const c1Comp = isSupplyProj ? { ar:'مكوّن التوريد والتجهيز', en:'Supply & equipping component' } : null;
+  const c2Comp = isSupplyProj ? { ar:'مكوّن التركيب والتشغيل', en:'Installation & commissioning component' } : COMPONENTS[1][lang];
+  const phoneOf = (base) => '+964 7' + (70 + (cIdx % 3)) + ' ' + (100 + cIdx * 37 % 900) + ' ' + (1000 + conIdx * 111 % 9000);
   const cost = p ? p.cost : 1000000000;
-  const disbursed = Math.round(cost * (0.3 + r()*0.4));
+  /* one project, one story: the money spent is the money the delivered work
+     accounts for. Drawing it independently put 62% paid against 17% built. */
+  const finPct0 = p && p.financialPct != null ? p.financialPct : Math.max(0, (p ? p.tech : 60) - 8);
+  const disbursed = Math.round(cost * finPct0 / 100);
   const due = Math.round(cost * (0.05 + r()*0.15));
   const remaining = cost - disbursed;
   const plannedCost = p && p.plannedCost ? p.plannedCost : Math.round(cost / 1.08);
-  const financialPct = p && p.financialPct != null ? p.financialPct : Math.max(0, (p ? p.tech : 60) - 8);
+  const financialPct = finPct0;
   const { awardYear, start: startDate, plannedFinish, expectedFinish } = buildSchedule(p);
-  const stage = PROJECT_STAGES[Math.min(PROJECT_STAGES.length - 1, Math.max(0, Math.round((p?p.tech:60) / 100 * (PROJECT_STAGES.length - 1))))];
+  // execution stage: administrative states come from status; otherwise derive from
+  // % complete over the PROGRESS stages (supply projects use supply stages).
+  const stageList = isSupplyProj ? SUPPLY_STAGES : PROGRESS_STAGES;
+  const stage = (p && p.status === 'suspended') ? { ar:'متوقف', en:'Suspended' }
+    : (p && p.status === 'withdrawn') ? { ar:'سحب عمل', en:'Work withdrawn' }
+    : stageList[Math.min(stageList.length - 1, Math.max(0, Math.round((p?p.tech:60) / 100 * (stageList.length - 1))))];
   const regionIdx = Math.floor(r()*REGIONS.ar.length);
-  const region = { ar: REGIONS.ar[regionIdx], en: REGIONS.en[regionIdx] };
+  // a distributed supply project isn't tied to one region/coordinates
+  const region = isSupplyProj ? { ar:'متعدد المواقع (توزيع)', en:'Multiple locations (distributed)' } : { ar: REGIONS.ar[regionIdx], en: REGIONS.en[regionIdx] };
   const projStatus3 = p && p.status === 'completed' ? PROJECT_STATUS3[1] : p && p.status === 'suspended' ? PROJECT_STATUS3[2] : PROJECT_STATUS3[0];
 
   const profile = {
     fields: [
       F('اسم المشروع','Project name', p ? p.name[lang] : '—', {required:true}),
       F('رمز المشروع','Project code', 'PC-' + (p?p.id.slice(4):'0000'), {proposed:true, mono:true}),
-      F('نوع المشروع','Project type', PROJECT_TYPES[(p?p.id.charCodeAt(6):0) % PROJECT_TYPES.length][lang], {required:true, options:O(PROJECT_TYPES)}),
+      F('نوع المشروع','Project type', isSupplyProj ? PROJECT_TYPES[0][lang] : PROJECT_TYPES[(p?p.id.charCodeAt(6):0) % PROJECT_TYPES.length][lang], {required:true, options:O(PROJECT_TYPES)}),
       F('نوع التمويل','Funding type', FUNDING_TYPES[Math.floor(r()*FUNDING_TYPES.length)][lang], {required:true, options:O(FUNDING_TYPES)}),
       F('سنة الإدراج','Award year', awardYear, {required:true, mono:true}),
-      F('مرحلة تنفيذ المشروع','Execution stage', stage[lang], {required:true, options:O(PROJECT_STAGES)}),
+      F('مرحلة تنفيذ المشروع','Execution stage', stage[lang], {required:true, options: isSupplyProj ? O(SUPPLY_STAGES) : O(PROJECT_STAGES)}),
       F('حالة المشروع','Project status', projStatus3[lang], {required:true, options:O(PROJECT_STATUS3)}),
-      F('إحداثيات الموقع','Coordinates', '33.3' + (regionIdx%9) + '°N, 44.3' + (regionIdx%7) + '°E', {mono:true}),
-      F('المنطقة الجغرافية','Region', region[lang], {proposed:true, options:REGIONS[lang]}),
+      F('إحداثيات الموقع','Coordinates', isSupplyProj ? (lang==='ar'?'غير مرتبط بموقع واحد':'Not tied to one site') : ('33.3' + (regionIdx%9) + '°N, 44.3' + (regionIdx%7) + '°E'), {mono:!isSupplyProj}),
+      F('المنطقة الجغرافية','Region', region[lang], {proposed:true, options: isSupplyProj ? [region[lang]] : REGIONS[lang]}),
       F('أولوية المشروع','Priority', PRIORITIES[Math.floor(r()*PRIORITIES.length)][lang], {proposed:true, options:O(PRIORITIES)}),
       F('الفئة الإنفاقية','Spending category', SPEND_CATS[Math.floor(r()*SPEND_CATS.length)][lang], {proposed:true, options:O(SPEND_CATS)}),
       F('رقم اعتماد الموازنة','Budget approval no.', 'BA-'+(2000+Math.floor(r()*900)), {proposed:true, mono:true}),
     ],
-    description: lang==='ar' ? 'مشروع ضمن خطة تطوير البنية التحتية للجامعة، يشمل أعمال إنشائية وتجهيزات فنية.' : 'A project within the university infrastructure plan, covering structural works and technical fit-out.',
+    description: isSupplyProj
+      ? (lang==='ar' ? 'مشروع تجهيز أجهزة ومعدات يشمل عدة فقرات مستقلة تُوزَّع كمياتها على جامعات وجهات مستفيدة متعددة، مع متابعة التوريد والاستلام المخزني والأولي.' : 'An equipment-supply project of several independent line items whose quantities are distributed across multiple universities, tracking supply and warehouse/preliminary receipt.')
+      : (lang==='ar' ? 'مشروع ضمن خطة تطوير البنية التحتية للجامعة، يشمل أعمال إنشائية وتجهيزات فنية.' : 'A project within the university infrastructure plan, covering structural works and technical fit-out.'),
     editLog: [
       { by: 'أحمد فؤاد', date: '2026-05-02', changes: [
-        { field: lang==='ar'?'مرحلة التنفيذ':'Execution stage', from: PROJECT_STAGES[Math.max(0,PROJECT_STAGES.indexOf(stage)-1)][lang], to: stage[lang] },
+        { field: lang==='ar'?'مرحلة التنفيذ':'Execution stage', from: stageList[Math.max(0, stageList.findIndex(sx=>sx.en===stage.en) - 1)][lang], to: stage[lang] },
         { field: lang==='ar'?'حالة المشروع':'Project status', from: PROJECT_STATUS3[0][lang], to: projStatus3[lang] },
       ]},
       { by: 'ليلى حسن', date: '2026-03-19', changes: [
@@ -527,7 +629,7 @@ function buildProjectDetail(p, lang) {
     fields: [
       F('اسم التشكيل','Formation', lang==='ar'?'وزارة التعليم العالي والبحث العلمي':'Ministry of Higher Education & Scientific Research', {required:true}),
       F('الجامعة / الجهة المستفيدة','University / Beneficiary', benef, {required:true}),
-      F('الهيكل التنظيمي','Org hierarchy', (lang==='ar'?'دائرة الإعمار والمشاريع › القسم الهندسي › ':'Reconstruction & Projects Dept. › Engineering Section › ') + window.EPM.BRANCHES[lang][p?p.branchIdx:0], {required:true}),
+      F('الهيكل التنظيمي','Org hierarchy', isSupplyProj ? (lang==='ar'?'دائرة الإعمار والمشاريع › قسم التجهيز والمشتريات':'Reconstruction & Projects Dept. › Supply & Procurement Section') : ((lang==='ar'?'دائرة الإعمار والمشاريع › القسم الهندسي › ':'Reconstruction & Projects Dept. › Engineering Section › ') + window.EPM.BRANCHES[lang][p?p.branchIdx:0]), {required:true}),
     ],
     editLog: [
       { by: 'مصطفى علي', date: '2026-02-14', changes: [
@@ -547,19 +649,24 @@ function buildProjectDetail(p, lang) {
   const contractCostTotal = awardAmt + reserveAmt + supervisionAmt;
   const cumulativeContractSpend = spentAward + spentReserve;
   const durationDays = Math.max(1, Math.round((new Date(plannedFinish) - new Date(startDate)) / 86400000));
+  // Liquidated-damages rate fixed per contract in the tender conditions — statutory
+  // band 10%–25% of contract value (Gov. Contract Regs 2/2014, revised 2017). Most
+  // contracts adopt the 10% floor; a few carry a higher agreed rate.
+  const penaltyRate = [0.10, 0.10, 0.15, 0.10, 0.20, 0.10, 0.12, 0.10][(p ? (p.id.charCodeAt(6) + p.id.charCodeAt(7)) : 0) % 8];
+  const dailyPenalty = Math.round(contractCostTotal * penaltyRate / durationDays);
   const extensionsCount = p && p.status === 'stalled' ? 1 + Math.floor(r()*2) : Math.floor(r()*2);
   const contract = {
     status: p ? p.status : 'ongoing',
     code: 'CNT-' + (p ? p.id.slice(4) : '0001'),
-    raw: { start: startDate, finish: plannedFinish, contractCost: contractCostTotal, awardAmt, spentAward, reserveAmt, spentReserve, supervisionAmt, spentSupervision, totalSpent, physicalPct: (p?p.tech:0), financialPct },
+    raw: { start: startDate, finish: plannedFinish, contractCost: contractCostTotal, awardAmt, spentAward, reserveAmt, spentReserve, supervisionAmt, spentSupervision, totalSpent, physicalPct: (p?p.tech:0), financialPct, penaltyRate },
     fields: [
-      F('اسم العقد','Contract name', (lang==='ar'?'عقد تنفيذ ':'Execution contract — ') + (p?p.name[lang]:''), {required:true}),
+      F('اسم العقد','Contract name', (isSupplyProj ? (lang==='ar'?'عقد تجهيز ':'Supply contract — ') : (lang==='ar'?'عقد تنفيذ ':'Execution contract — ')) + (p?p.name[lang]:''), {required:true}),
       F('رمز العقد','Contract code', 'CNT-'+(p?p.id.slice(4):'0001'), {mono:true, auto:true}),
       F('تاريخ المباشرة','Start date', startDate, {required:true, mono:true}),
       F('رقم الوارد الرسمي','Official incoming no.', 'IN-'+(4800+Math.floor(r()*400)), {required:true, mono:true}),
       F('تاريخ الوارد الرسمي','Official incoming date', startDate, {required:true, mono:true}),
       F('تاريخ الإنجاز','Finish date', plannedFinish, {required:true, mono:true}),
-      F('المكوّن','Component', COMPONENTS[Math.floor(r()*COMPONENTS.length)][lang], {options:O(COMPONENTS)}),
+      F('المكوّن','Component', isSupplyProj ? c1Comp[lang] : COMPONENTS[Math.floor(r()*COMPONENTS.length)][lang], {options: isSupplyProj ? [c1Comp[lang], c2Comp[lang]] : O(COMPONENTS)}),
       F('مبلغ الإحالة','Award amount', window.fmtNum(awardAmt), {unit:'IQD', mono:true}),
       F('المصروف من الإحالة','Spent from award', window.fmtNum(spentAward), {unit:'IQD', mono:true, auto:true}),
       F('مبلغ الاحتياط','Reserve amount', window.fmtNum(reserveAmt), {unit:'IQD', mono:true}),
@@ -571,10 +678,11 @@ function buildProjectDetail(p, lang) {
       F('نسبة الإنجاز المادي للعقد','Contract physical %', (p?p.tech:0)+'%', {mono:true}),
       F('نسبة الإنجاز المالي للعقد','Contract financial %', financialPct+'%', {mono:true}),
       F('مدة العقد بالأيام','Duration (days)', durationDays, {proposed:true, mono:true}),
-      F('الغرامات التأخيرية','Delay penalties', extensionsCount>0 ? window.fmtNum(Math.round(contractCost*0.002*extensionsCount))+' IQD' : (lang==='ar'?'لا يوجد':'None'), {proposed:true}),
+      F('نسبة الغرامة التأخيرية','Delay-penalty rate', (penaltyRate*100).toFixed(0)+'%', {required:true, mono:true, options:['10%','12%','15%','20%','25%']}),
+      F('الغرامة اليومية','Daily delay penalty', window.fmtNum(dailyPenalty), {unit:(lang==='ar'?'IQD/يوم':'IQD/day'), proposed:true, mono:true, auto:true}),
       F('التمديدات الزمنية','Time extensions', extensionsCount + (lang==='ar'?' تمديد':' extension(s)'), {proposed:true}),
       F('حالة العقد (الموسّعة)','Contract status (extended)', CONTRACT_STATUS_LIST[(p&&p.status==='suspended')?3:(p&&p.status==='stalled')?5:2][lang], {proposed:true, options:O(CONTRACT_STATUS_LIST)}),
-      F('الضمانات','Guarantees', GUARANTEE_TYPES[0][lang] + ' — ' + window.fmtNum(Math.round(contractCost*0.03)) + ' IQD', {proposed:true}),
+      F('الضمانات','Guarantees', GUARANTEE_TYPES[0][lang] + ' — ' + window.fmtNum(Math.round(contractCost*0.03)) + (lang==='ar'?' د.ع':' IQD'), {proposed:true}),
     ],
     editLog: [
       { by: 'أحمد فؤاد', date: '2026-04-06', changes: [
@@ -589,7 +697,7 @@ function buildProjectDetail(p, lang) {
 
   const consultant = {
     fields: [
-      F('اسم الشركة الاستشارية','Consultant name', lang==='ar'?'المكتب الاستشاري الهندسي':'Engineering Consultancy Bureau', {required:true}),
+      F('اسم الشركة الاستشارية','Consultant name', consultantRec[lang], {required:true}),
       F('مبلغ الإشراف والمراقبة','Supervision amount', window.fmtNum(Math.round(contractCost*(0.02+r()*0.02))), {unit:'IQD', mono:true}),
       F('المصروف من الإشراف','Spent from supervision', window.fmtNum(Math.round(contractCost*(0.02+r()*0.02)*(financialPct/100))), {unit:'IQD', mono:true}),
     ],
@@ -602,9 +710,9 @@ function buildProjectDetail(p, lang) {
 
   const contractor = {
     fields: [
-      F('اسم المقاول','Contractor name', lang==='ar'?'شركة الفرات للمقاولات':'Al-Furat Contracting', {required:true}),
-      F('الجهة المنفذة','Executing entity', lang==='ar'?'شركة الفرات العامة':'Al-Furat General Co.', {required:true}),
-      F('بيانات التواصل','Contact info', '+964 770 000 0000', {mono:true}),
+      F('اسم المقاول','Contractor name', contractorRec[lang], {required:true}),
+      F('الجهة المنفذة','Executing entity', contractorRec.ent[lang], {required:true}),
+      F('بيانات التواصل','Contact info', phoneOf(), {mono:true}),
     ],
     editLog: [
       { by: 'أحمد فؤاد', date: '2026-02-27', changes: [
@@ -627,14 +735,14 @@ function buildProjectDetail(p, lang) {
   const c2costTotal = c2award + c2reserve + c2supervision;
   const contract2 = {
     key: 'mep',
-    name: lang==='ar' ? 'عقد الأعمال الكهروميكانيكية' : 'Electromechanical works contract',
+    name: c2Meta[lang],
     status: p && p.status === 'completed' ? 'completed' : p && p.status === 'suspended' ? 'suspended' : 'ongoing',
     code: 'CNT-' + (p ? p.id.slice(4) : '0001') + '-EM',
-    raw: { start: startDate, finish: plannedFinish, contractCost: c2costTotal, awardAmt: c2award, spentAward: c2spent, reserveAmt: c2reserve, spentReserve: c2spentReserve, supervisionAmt: c2supervision, spentSupervision: c2spentSupervision, totalSpent: c2totalSpent, physicalPct: c2phys, financialPct: c2fin },
+    raw: { start: startDate, finish: plannedFinish, contractCost: c2costTotal, awardAmt: c2award, spentAward: c2spent, reserveAmt: c2reserve, spentReserve: c2spentReserve, supervisionAmt: c2supervision, spentSupervision: c2spentSupervision, totalSpent: c2totalSpent, physicalPct: c2phys, financialPct: c2fin, penaltyRate },
     fields: [
-      F('اسم العقد','Contract name', (lang==='ar'?'الأعمال الكهروميكانيكية — ':'Electromechanical — ') + (p?p.name[lang]:''), {required:true}),
+      F('اسم العقد','Contract name', (isSupplyProj ? (lang==='ar'?'التركيب والتشغيل — ':'Installation — ') : (lang==='ar'?'الأعمال الكهروميكانيكية — ':'Electromechanical — ')) + (p?p.name[lang]:''), {required:true}),
       F('رمز العقد','Contract code', 'CNT-'+(p?p.id.slice(4):'0001')+'-EM', {mono:true, auto:true}),
-      F('المكوّن','Component', COMPONENTS[1][lang], {options:O(COMPONENTS)}),
+      F('المكوّن','Component', isSupplyProj ? c2Comp[lang] : COMPONENTS[1][lang], {options: isSupplyProj ? [c1Comp[lang], c2Comp[lang]] : O(COMPONENTS)}),
       F('تاريخ المباشرة','Start date', startDate, {required:true, mono:true}),
       F('تاريخ الإنجاز','Finish date', plannedFinish, {required:true, mono:true}),
       F('مبلغ الإحالة','Award amount', window.fmtNum(c2award), {unit:'IQD', mono:true}),
@@ -647,13 +755,13 @@ function buildProjectDetail(p, lang) {
       F('حالة العقد (الموسّعة)','Contract status (extended)', CONTRACT_STATUS_LIST[2][lang], {options:O(CONTRACT_STATUS_LIST)}),
     ],
     contractor: { fields: [
-      F('اسم المقاول','Contractor name', lang==='ar'?'شركة النور للأنظمة الكهروميكانيكية':'Al-Noor Electromechanical', {required:true}),
-      F('الجهة المنفذة','Executing entity', lang==='ar'?'شركة النور العامة':'Al-Noor General Co.', {required:true}),
+      F('اسم المقاول','Contractor name', mepRec[lang], {required:true}),
+      F('الجهة المنفذة','Executing entity', mepRec.ent[lang], {required:true}),
       F('بيانات التواصل','Contact info', '+964 771 222 3333', {mono:true}),
     ]},
   };
   const contracts = [
-    { key:'main', name: lang==='ar'?'عقد الأعمال المدنية':'Civil works contract', status: contract.status, code: contract.code, raw: contract.raw, fields: contract.fields, contractor },
+    { key:'main', name: c1Meta[lang], status: contract.status, code: contract.code, raw: contract.raw, fields: contract.fields, contractor },
     contract2,
   ];
 
@@ -664,7 +772,10 @@ function buildProjectDetail(p, lang) {
   for (let y = startYear; y <= curYear; y++) {
     const alloc = Math.round(revisedCost * (0.18 + r()*0.08));
     const isCurrent = y === curYear;
-    const spend = Math.round(alloc * (isCurrent ? (0.4+r()*0.3) : (0.85+r()*0.15)));
+    // A realistic minority of projects run hot near year-end (≥90% of allocation,
+    // occasionally a minor overrun) — deterministic per project so it's stable.
+    const heavy = p && (parseInt(p.id.slice(4), 10) % 5 === 2);
+    const spend = Math.round(alloc * (isCurrent ? (heavy ? (0.92+r()*0.13) : (0.4+r()*0.32)) : (0.85+r()*0.15)));
     yearlyAllocations.push({ year: y, allocation: alloc, spend, current: isCurrent });
   }
   const annualAllocation = yearlyAllocations[yearlyAllocations.length-1].allocation;
@@ -676,8 +787,13 @@ function buildProjectDetail(p, lang) {
       F('التخصيص السنوي (للسنة الحالية)','Annual allocation (current year)', window.fmtNum(annualAllocation), {unit:'IQD', mono:true}),
       F('المصروف السنوي (للسنة الحالية)','Annual spend (current year)', window.fmtNum(annualSpend), {unit:'IQD', mono:true}),
       F('المصروف التراكمي','Cumulative spend', window.fmtNum(disbursed), {unit:'IQD', mono:true}),
+      F('مبلغ الأمانات','Deposits (retention) held', window.fmtNum(Math.round(disbursed*0.05)), {proposed:true, unit:'IQD', mono:true}),
+      F('حالة المناقلة','Reallocation (transfer) status', (p && (p.status==='stalled'||p.status==='suspended')) ? (lang==='ar'?'قيد المناقلة':'Under reallocation') : (lang==='ar'?'لا يوجد':'None'), {proposed:true, options:[lang==='ar'?'لا يوجد':'None', lang==='ar'?'قيد المناقلة':'Under reallocation', lang==='ar'?'مناقلة معتمدة':'Reallocation approved']}),
       F('نسبة الإنجاز المخطط','Planned progress %', Math.min(100,(p?p.tech:0)+8)+'%', {proposed:true, mono:true}),
     ],
+    // yearly financial-history timeline (§2.1.5, §2.8.1): a per-year record of
+    // allocation vs spend from award to completion.
+    history: yearlyAllocations.map(y => ({ year: y.year, allocation: y.allocation, spend: y.spend, current: y.current })),
     payments: Array.from({length:3}).map((_,i) => {
       const amt = Math.round(disbursed/3*(0.8+r()*0.4));
       const items = lang==='ar' ? ['الإحالة','الاحتياط','الإشراف والمراقبة'] : ['Award','Reserve','Supervision & monitoring'];
@@ -689,8 +805,8 @@ function buildProjectDetail(p, lang) {
         by: [lang==='ar'?'سارة كريم — قسم الحسابات':'Sara Kareem — Accounts dept.', lang==='ar'?'مصطفى علي — قسم الحسابات':'Mustafa Ali — Accounts dept.', lang==='ar'?'ليلى حسن — قسم الحسابات':'Layla Hassan — Accounts dept.'][i%3],
         financeLetter: { no: 'FIN-'+(7100+i*13), date: `202${4+i}-0${2+i*3}-0${i+8}` },
         allocations: [
-          { contractKey:'main', contractName: lang==='ar'?'عقد الأعمال المدنية':'Civil works contract', amount: civilShare, items:[{name:items[0],value:c1a},{name:items[1],value:c1b},{name:items[2],value:c1c}] },
-          { contractKey:'mep', contractName: lang==='ar'?'عقد الأعمال الكهروميكانيكية':'Electromechanical works contract', amount: mepShare, items:[{name:items[0],value:c2a},{name:items[1],value:c2b},{name:items[2],value:c2c}] },
+          { contractKey:'main', contractName: c1Meta[lang], amount: civilShare, items:[{name:items[0],value:c1a},{name:items[1],value:c1b},{name:items[2],value:c1c}] },
+          { contractKey:'mep', contractName: c2Meta[lang], amount: mepShare, items:[{name:items[0],value:c2a},{name:items[1],value:c2b},{name:items[2],value:c2c}] },
         ],
         attachments: [
           { name: lang==='ar'?'ذرعة الأعمال المنجزة':'Work measurement certificate', file:'PAY-'+(100+i)+'-measurement.pdf', kind:'pdf', size:'310 KB', contractKey:'main', type:'certificate' },
@@ -743,15 +859,29 @@ function buildProjectDetail(p, lang) {
   };
 
   const boqNames = lang==='ar' ? ['أعمال حفريات','أعمال خرسانية','أعمال بناء','تكسيات وتشطيبات','أعمال كهربائية'] : ['Excavation works','Concrete works','Masonry works','Finishes & cladding','Electrical works'];
-  const boqUnits = lang==='ar' ? ['م3','م3','م2','م2','نقطة'] : ['m3','m3','m2','m2','pt'];
+  const boqUnits = lang==='ar' ? ['م³','م³','م²','م²','نقطة'] : ['m³','m³','m²','m²','pt'];
+  // BOQ division (قسم) per item — groups the register into an expandable
+  // division→item hierarchy. Added as a label only; row count/codes/values unchanged.
+  const boqDivs = lang==='ar'
+    ? [{key:'D1',name:'الأعمال المدنية والإنشائية'},{key:'D2',name:'التكسيات والتشطيبات'},{key:'D3',name:'الأعمال الكهروميكانيكية'}]
+    : [{key:'D1',name:'Civil & structural works'},{key:'D2',name:'Finishes & cladding'},{key:'D3',name:'Electromechanical works'}];
+  const boqDivIdx = [0,0,0,1,2];   // excavation/concrete/masonry→civil · finishes→finishes · electrical→EM
+  /* The DIVISION decides the contract — civil and finishes are the civil
+     contract's scope, electromechanical is the MEP contract's. The contract
+     used to be inferred from the code's parity, which put the electrical
+     item under the civil contract and concrete under the MEP one. */
+  const DIV_CONTRACT = { D1: 'main', D2: 'main', D3: 'mep' };
   const boq = boqNames.map((nm,i) => {
     const contractedQty = 100 + Math.floor(r()*900);
     const executedQty = Math.min(contractedQty, Math.round(contractedQty * ((p?p.tech:60)/100) * (0.85+r()*0.25)));
     const price = 15000 + Math.floor(r()*60000);
-    return { no: i+1, code: 'BQ-'+String(i+1).padStart(3,'0'), item: nm, unit: boqUnits[i], contractedQty, executedQty, price, total: contractedQty*price };
+    const dv = boqDivs[boqDivIdx[i]];
+    return { no: i+1, code: 'BQ-'+String(i+1).padStart(3,'0'), item: nm, unit: boqUnits[i], contractedQty, executedQty, price, total: contractedQty*price, div: dv.key, divName: dv.name, contractKey: DIV_CONTRACT[dv.key] || 'main' };
   });
 
-  const voReasons = lang==='ar' ? ['زيادة كميات أعمال الكهرباء','تمديد مدة الإنجاز','تعديل تصميم الواجهة','زيادة كميات أعمال التشطيبات','ظروف غير متوقعة في الموقع','تعديل مواصفات مواد التشطيب'] : ['Increase in electrical quantities','Completion time extension','Facade design change','Increase in finishing quantities','Unforeseen site conditions','Finishing material specification change'];
+  const voReasons = (p && p.type==='supply')
+    ? (lang==='ar' ? ['زيادة كمية الأجهزة المتعاقد عليها','تمديد مدة التوريد','إعادة توزيع الكميات بين الجامعات','زيادة تجهيزات مختبرية إضافية','تأخر الشحنة لظروف قاهرة','تعديل مواصفات الأجهزة المجهّزة'] : ['Increase in contracted device quantity','Supply period extension','Redistribute quantities between universities','Additional lab equipment','Shipment delay — force majeure','Change to supplied device specs'])
+    : (lang==='ar' ? ['زيادة كميات أعمال الكهرباء','تمديد مدة الإنجاز','تعديل تصميم الواجهة','زيادة كميات أعمال التشطيبات','ظروف غير متوقعة في الموقع','تعديل مواصفات مواد التشطيب'] : ['Increase in electrical quantities','Completion time extension','Facade design change','Increase in finishing quantities','Unforeseen site conditions','Finishing material specification change']);
   const voEvBy = lang==='ar' ? ['المقاول','المهندس المقيم','سارة كريم \u2014 قسم الحسابات'] : ['Contractor','Resident engineer','Sara Kareem \u2014 Accounts dept.'];
   // change-order approval stages per meeting minutes §2.3.3.1 — each with an electronic time cap (SLA) and escalation.
   const VO_STAGE_DEFS = lang==='ar' ? [
@@ -769,13 +899,55 @@ function buildProjectDetail(p, lang) {
   ];
   const addDays = (iso, n) => { const dt = new Date(iso); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
   // the project's own "today": start + elapsed share of the duration, matching
-  // the schedule builder's data date. A fixed 2026 constant put change orders
-  // years outside contracts that run 2021-2023.
-  // identical to buildScheduleData's data date (origin + 330 * tech%), so lead
-  // times computed downstream agree with the schedule
-  const elapsedDays = Math.round(330 * ((p ? p.tech : 60) / 100));
-  const NOW_ISO = addDays(startDate, elapsedDays);
-  const voType = p && /تجهيز|supply|equip/i.test((p.type&&p.type[lang])||'') ? 'supply' : 'engineering';
+  // The change-order clock has to be the SAME clock the schedule runs on, or
+  // every "days elapsed" figure on the record is measured against a date the
+  // rest of the app has never heard of. The old formula (start + 330 * tech%)
+  // claimed to match buildScheduleData and did not — it drifted ~40 days,
+  // which is why an order raised 5 days ago showed 17 days at its stage.
+  // buildScheduleData: dataDate = origin + clamp(0, maxFinish, today - origin),
+  // i.e. today, but never past the schedule's own end.
+  const NOW_DATE = (window.EPM && window.EPM.DATA_DATE) || '2026-07-22';
+  const NOW_ISO = (function () {
+    const s0 = new Date(startDate), t0 = new Date(NOW_DATE), f0 = new Date(plannedFinish);
+    if (t0 < s0) return startDate;
+    return (t0 > f0 ? plannedFinish : NOW_DATE);
+  })();
+  const voType = p && p.type === 'supply' ? 'supply' : 'engineering';
+  // ---- supply-specific change-order seeds (match the live supply model) ----
+  const isSupplyP = p && p.type === 'supply';
+  const supEvBy = (lang==='ar') ? ['المجهز','لجنة الفحص والاستلام','سارة كريم — قسم الحسابات']
+                                 : ['Supplier','Inspection & receipt cttee','Sara Kareem — Accounts dept.'];
+  const evBy = isSupplyP ? supEvBy : voEvBy;
+  const supItems = (isSupplyP && window.EPM && window.EPM.buildSupplyData) ? (window.EPM.buildSupplyData(p, lang).items || []) : [];
+  const FORMS = (window.EPM && window.EPM.FORMATIONS) || [];
+  const uniName = (n, fb) => (FORMS[n] && FORMS[n][lang]) || fb;
+  // real فقرات تجهيزية (ITM-*) as change-order lines; the redistribution order
+  // (i=2) carries MULTIPLE source→target transfers — the new redistribution model
+  const supplyAffected = (i) => {
+    if (!supItems.length) return [];
+    const it0 = supItems[0], it1 = supItems[1] || it0;
+    if (i === 2) {
+      const bens = it0.beneficiaries || [];
+      const b0 = bens[0] || { name: uniName(0, 'جامعة بغداد'), qty: 20 };
+      const b1 = bens[1] || { name: uniName(1, 'الجامعة المستنصرية'), qty: 15 };
+      const transfers = [
+        { from: b0.name, to: uniName(5, lang==='ar'?'جامعة نينوى':'Univ. of Ninevah'), qty: Math.max(1, Math.round((b0.qty||10)*0.3)) },
+        { from: b0.name, to: uniName(8, lang==='ar'?'جامعة البصرة':'Univ. of Basrah'), qty: Math.max(1, Math.round((b0.qty||10)*0.2)) },
+        { from: b1.name, to: uniName(11, lang==='ar'?'جامعة كربلاء':'Univ. of Kerbala'), qty: Math.max(1, Math.round((b1.qty||8)*0.25)) },
+      ];
+      const moved = transfers.reduce((a,t)=>a+t.qty,0);
+      return [{ code: it0.code, item: it0.item, unit: it0.unit, rate: it0.price,
+        qtyBefore: it0.contracted, qtyAfter: it0.contracted, total: it0.total,
+        chg: 'redist', transfers: transfers, moved: moved, benFrom: transfers[0].from, benTo: transfers[0].to }];
+    }
+    if (i === 0 || i === 3) {
+      const it = i === 0 ? it0 : it1;
+      const add = Math.max(2, Math.round(it.contracted * (i===0 ? 0.15 : 0.10)));
+      return [{ code: it.code, item: it.item, unit: it.unit, rate: it.price,
+        qtyBefore: it.contracted, qtyAfter: it.contracted + add, total: it.total, chg: 'inc' }];
+    }
+    return [];
+  };
   const variationOrders = voReasons.map((rs,i) => {
     // i=0 approved+applied · i=1 pending · i=2 returned · i=3 approved+applied
     // (second amendment on the same items) · i=4 approved but NOT yet applied
@@ -783,9 +955,12 @@ function buildProjectDetail(p, lang) {
     // "متأخرة" and "قيد الاعتماد" are demonstrably different sets
     const status = (i===1 || i===5) ? 'pending' : i===2 ? 'rejected' : 'approved';
     // raised inside the contract term (55/70/85% through it), not a fixed year
-    // days before the data date: closed ones are old, the pending one is 22 days
-    // in (past its SLA), the newest approved order is 9 days in
-    const inDate = addDays(NOW_ISO, -[180, 22, 60, 120, 9, 5][i]);
+    // Days before the data date. The stuck order has to be genuinely stuck:
+    // the stages before the ministerial one consume ~18 days of contractual
+    // ceiling, so 22 days left it INSIDE its limit while the seed claimed it
+    // was escalated. At 95 days it sits ~77 days against a 14-day ceiling —
+    // which is the shape the design doc's own example describes.
+    const inDate = addDays(NOW_ISO, -[180, 95, 60, 120, 9, 5][i]);
     const additional = Math.round(contractCost*(0.012+r()*0.03));
     const deduction = i===2 ? Math.round(additional*0.35) : Math.round(additional*(r()*0.12));
     const net = additional - deduction;
@@ -820,7 +995,7 @@ function buildProjectDetail(p, lang) {
       no: 'VO-'+(i+1).toString().padStart(2,'0'), date: addDays(inDate, 3),
       inNo: 'IN-'+(5200+i*7), inDate,
       value: net, reason: rs, status, type: voType,
-      responsible: voEvBy[i%3],
+      responsible: evBy[i%3],
       // value breakdown §14
       original: Math.round(contractCost*0.04), additional, deduction, net,
       revisedContract: contractCost + net,
@@ -835,29 +1010,37 @@ function buildProjectDetail(p, lang) {
       // i=0 exceeds the 20% tier; i=1 stays inside it; i=2 is a time-only order.
       // Lines must be REAL rows of d.boq (same codes the register shows) and must
       // all belong to one contract — BQ-002 and BQ-004 both map to the EM package.
-      affectedBOQ: i===2 ? [] : [2, 4].map(n => {
+      // supply seed orders are amount/date/redistribution (no construction BOQ lines);
+      // new supply orders pick real فقرات تجهيزية through the wizard.
+      affectedBOQ: isSupplyP ? supplyAffected(i) : ((i===2) ? [] : [2, 4].map(n => {
         const b = boq[n-1];
         const factor = [1.55, 1.15, 1.30, 1.22, 1.12, 1.18][i] || 1.15;   // >20% except i=1 and i=4
         return { code: b.code, desc: b.item, unit: b.unit, qtyBefore: b.contractedQty,
           qtyAfter: Math.round(b.contractedQty * factor), rate: b.price, executedQty: b.executedQty };
-      }),
-      // affected schedule activities
-      affectedActivities: [
+      })),
+      // affected schedule activities — supply orders touch delivery activities;
+      // the redistribution order (supply i=2) is time-neutral
+      affectedActivities: (isSupplyP ? [
+        { id:'S4', name: lang==='ar'?'الشحن الدولي':'International shipping', slip: i===1?18:9, critical:true },
+        { id:'S8', name: lang==='ar'?'التوزيع على الجامعات':'Distribution to universities', slip: i===1?12:6, critical:true },
+      ] : [
         { id:'A6', name: lang==='ar'?'الأعمال الكهربائية':'Electrical works', slip: i===1?18:9, critical:true },
         { id:'A8', name: lang==='ar'?'التشطيبات النهائية':'Final finishes', slip: i===1?12:6, critical:true },
-      ].slice(0, i===2?1:2),
-      // supply-contract change fields §9
-      supply: voType==='supply' ? { benFrom: lang==='ar'?'جامعة بغداد':'Univ. of Baghdad', benTo: lang==='ar'?'الجامعة التكنولوجية':'Univ. of Technology', qtyBefore:40, qtyAfter:25 } : null,
+      ]).slice(0, isSupplyP ? ((i===1||i===4) ? 2 : 0) : (i===2?1:2)),
+      // legacy single-transfer supply field retired — supply redistribution is now
+      // an affectedBOQ redist line with multi source→target transfers (see supplyAffected)
+      supply: null,
       // decision history
       history: [
-        { date: inDate, actor: voEvBy[0], action: lang==='ar'?'تقديم الطلب':'Request submitted', note: rs },
+        { date: inDate, actor: evBy[0], action: lang==='ar'?'تقديم الطلب':'Request submitted', note: rs },
         ...stages.filter(s=>s.status==='done'||s.status==='rejected').map(s=>({ date:s.doneDate, actor:s.owner, action: s.status==='rejected'?(lang==='ar'?'إعادة':'Returned'):(lang==='ar'?'اعتماد المرحلة':'Stage approved')+' — '+s.label, note:s.decision })),
         ...(status==='approved' ? [{ date: addDays(inDate,20), actor: VO_STAGE_DEFS[4].owner, action: lang==='ar'?'المصادقة النهائية':'Final endorsement', note: (lang==='ar'?'قيمة صافية معتمدة ':'Net approved ')+window.fmtNum(net)+' IQD' }] : []),
       ],
       attachments: [
-        { name: lang==='ar'?'طلب المقاول الرسمي':'Contractor formal request', file: 'VO-'+(i+1)+'-request.pdf', kind:'pdf', size:'240 KB', by: voEvBy[0], date: inDate },
-        { name: lang==='ar'?'كشف تسعير الأعمال المستحدثة':'Priced estimate of new works', file: 'VO-'+(i+1)+'-boq.xlsx', kind:'sheet', size:'56 KB', by: voEvBy[1], date: addDays(inDate,3) },
-        ...(i===0 ? [{ name: lang==='ar'?'صور الموقع':'Site photos', file: 'VO-1-site.jpg', kind:'image', size:'1.2 MB', by: voEvBy[1], date: addDays(inDate,4) }] : []),
+        { name: isSupplyP ? (lang==='ar'?'طلب المجهز الرسمي':'Supplier formal request') : (lang==='ar'?'طلب المقاول الرسمي':'Contractor formal request'), file: 'VO-'+(i+1)+'-request.pdf', kind:'pdf', size:'240 KB', by: evBy[0], date: inDate },
+        { name: isSupplyP ? (lang==='ar'?'كشف الفقرات التجهيزية المسعّر':'Priced supply-items schedule') : (lang==='ar'?'كشف تسعير الأعمال المستحدثة':'Priced estimate of new works'), file: 'VO-'+(i+1)+'-boq.xlsx', kind:'sheet', size:'56 KB', by: evBy[1], date: addDays(inDate,3) },
+        ...(i===0 && !isSupplyP ? [{ name: lang==='ar'?'صور الموقع':'Site photos', file: 'VO-1-site.jpg', kind:'image', size:'1.2 MB', by: voEvBy[1], date: addDays(inDate,4) }] : []),
+        ...(i===0 && isSupplyP ? [{ name: lang==='ar'?'الكتالوغ والمواصفات الفنية':'Catalog & technical specs', file: 'VO-1-catalog.pdf', kind:'pdf', size:'1.2 MB', by: evBy[1], date: addDays(inDate,4) }] : []),
       ],
     };
   });
@@ -868,32 +1051,86 @@ function buildProjectDetail(p, lang) {
     { date:'2026-01-09', subject: lang==='ar'?'دراسة طلب التمديد':'Extension request review', decisions: lang==='ar'?'الموافقة المبدئية على تمديد 30 يوماً':'Preliminary approval for a 30-day extension', hasAttachment:false },
   ];
 
-  const drawings = [
-    { id:'DWG-01', type: DOC_TYPES[0][lang], status:'approved', revisions: [
-      { rev:'R2', date:'2026-03-02', reason: lang==='ar'?'تعديل مواقع الأعمدة':'Column-position revision', by:'دار الهندسة' },
-      { rev:'R1', date:'2025-11-14', reason: lang==='ar'?'الإصدار الأولي':'Initial issue', by:'دار الهندسة' },
-    ]},
-    { id:'DWG-02', type: DOC_TYPES[1][lang], status:'draft', revisions: [
-      { rev:'R1', date:'2026-05-20', reason: lang==='ar'?'الإصدار الأولي':'Initial issue', by:'المكتب الاستشاري الهندسي' },
-    ]},
-    { id:'DWG-03', type: DOC_TYPES[2][lang], status:'approved', revisions: [
-      { rev:'R3', date:'2026-04-08', reason: lang==='ar'?'تحديث مخطط التمديدات':'Ductwork routing update', by:'دار الهندسة' },
-      { rev:'R2', date:'2026-01-22', reason: lang==='ar'?'تعديل بعد الكشف الموقعي':'Site-survey adjustment', by:'دار الهندسة' },
-      { rev:'R1', date:'2025-10-05', reason: lang==='ar'?'الإصدار الأولي':'Initial issue', by:'دار الهندسة' },
-    ]},
-  ];
+  /* A real document register spans the disciplines, carries a title a reader
+     can recognise, and traces every issue to the transmittal that sent it.
+     Derived from the project seed so two projects never share a register. */
+  /* read the whole id, not two characters of it — with two, any pair of
+     projects sharing the last two digits got a byte-identical register */
+  const dwgSeed = (p ? String(p.id).split('').reduce(function (a2, c) { return (a2 * 31 + c.charCodeAt(0)) % 100000; }, 7) : 17) + 3;
+  const dwgR = rng(dwgSeed);
+  const dwgIssuers = lang === 'ar'
+    ? ['دار الهندسة', 'المكتب الاستشاري الهندسي', 'قسم التصميم — الجامعة', 'المقاول المنفّذ']
+    : ['Dar Al-Handasah', 'Engineering consultancy office', 'University design dept.', 'Executing contractor'];
+  const dwgReasons = lang === 'ar'
+    ? ['الإصدار الأولي', 'تعديل بعد الكشف الموقعي', 'تحديث بناءً على ملاحظات المراجعة', 'مطابقة للمنفَّذ', 'تعديل ناتج عن أمر تغييري']
+    : ['Initial issue', 'Revised after site survey', 'Updated per review comments', 'As-built alignment', 'Revision arising from a change order'];
+  const drawings = (function () {
+    const out = [];
+    DOC_DISCIPLINES.forEach(function (dis, di) {
+      const titles = DOC_TITLES[dis.key];
+      const howMany = 2 + Math.floor(dwgR() * (titles.length - 1));   // 2–3 per discipline
+      for (let i = 0; i < howMany; i++) {
+        const seq = out.length + 1;
+        const nRev = 1 + Math.floor(dwgR() * 3);                       // 1–3 revisions
+        const st = dwgR();
+        /* ordered widest-last: the old chain tested 0.72 first, so `rejected`
+           could never be produced — and the documents readiness state that
+           depends on it was unreachable too */
+        const status = st > 0.90 ? 'rejected' : st > 0.68 ? 'draft' : 'approved';
+        /* one drawing is issued by ONE office; design houses do not hand a
+           drawing to each other revision by revision */
+        const issuedBy = dwgIssuers[Math.floor(dwgR() * dwgIssuers.length)];
+        const revisions = [];
+        for (let r0 = nRev; r0 >= 1; r0--) {
+          /* the gap between revisions has to dominate the jitter, or R1 can
+             carry a newer date than the R2 that superseded it */
+          const back = (nRev - r0) * 120 + Math.floor(dwgR() * 45);
+          const isAsBuilt = r0 === nRev && nRev > 2;
+          revisions.push({ rev: 'R' + r0,
+            date: addDays(NOW_ISO, -(30 + back)),
+            reason: r0 === 1 ? dwgReasons[0] : dwgReasons[1 + Math.floor(dwgR() * (dwgReasons.length - 1))],
+            /* only an as-built revision legitimately changes hands, to the
+               party that actually built it */
+            by: isAsBuilt ? dwgIssuers[dwgIssuers.length - 1] : issuedBy,
+            transmittal: 'TR-' + (2400 + out.length * 4 + (nRev - r0)) });
+        }
+        out.push({ id: dis.pfx + '-DR-' + String(i + 1).padStart(3, '0'),
+          title: titles[i % titles.length][lang === 'ar' ? 0 : 1],
+          discipline: dis.key, disciplineLabel: dis[lang],
+          type: lang === 'ar' ? dis.tyAr : dis.tyEn,
+          status, revisions });
+      }
+    });
+    return out;
+  })();
 
   const parties = {
-    beneficiary: { ar:'جامعة بغداد', en:'University of Baghdad' },
-    consultant:  { ar:'المكتب الاستشاري الهندسي', en:'Engineering Consultancy Bureau' },
-    contractor:  { ar:'شركة الفرات للمقاولات', en:'Al-Furat Contracting' },
+    beneficiary: benefObj,
+    consultant:  { ar: consultantRec.ar, en: consultantRec.en },
+    contractor:  { ar: contractorRec.ar, en: contractorRec.en },
   };
 
   // ---- EVM indicators (team minutes §2.1.6 KPIs) ----
-  const plannedProgPct = Math.min(100, (p?p.tech:60) + 8);
+  // Planned value comes from how much of the CONTRACT TERM has elapsed, on the
+  // same S-shape the baseline follows. It used to be `tech + 8`, which made
+  // every project in the portfolio exactly 8 points behind and made SPI a pure
+  // function of % complete — no project could ever be ahead of schedule.
+  const plannedProgPct = (function () {
+    const s0 = new Date(startDate), f0 = new Date(plannedFinish), t0 = new Date(NOW_ISO);
+    const span = (f0 - s0) / 86400000;
+    if (!(span > 0)) return Math.min(100, (p ? p.tech : 60) + 8);
+    const f = Math.max(0, Math.min(1, (t0 - s0) / 86400000 / span));
+    return Math.round(f * f * (3 - 2 * f) * 100);
+  })();
   const pv = Math.round(contractCost * plannedProgPct / 100);
-  const ev = Math.round(contractCost * (p?p.tech:60) / 100);
-  const ac = disbursed;
+  const ev = Math.round(contractCost * (p ? p.tech : 60) / 100);
+  // Actual cost must describe the SAME work earned value describes. `disbursed`
+  // is drawn independently of physical progress, so reading it as AC gave a
+  // routine project a CPI of 0.27 and an EAC of 3.6x its budget — which the
+  // L04 rebuild then promoted to a headline tile. Cost efficiency is instead a
+  // stable per-project trait in a believable band.
+  const eff = 0.88 + ((p ? (p.id.charCodeAt(6) + p.id.charCodeAt(7)) % 10 : 5) / 10) * 0.30;
+  const ac = Math.max(1, Math.round(ev / eff));
   const cpi = ac ? +(ev / ac).toFixed(2) : 1;
   const spi = pv ? +(ev / pv).toFixed(2) : 1;
   const eac = cpi ? Math.round(contractCost / cpi) : contractCost;
@@ -901,10 +1138,10 @@ function buildProjectDetail(p, lang) {
   const evm = { pv, ev, ac, cpi, spi, eac, vac, budget: contractCost };
 
   // ---- Risk register (team minutes §2.1.6) ----
-  const riskTypes = lang==='ar' ? ['زمني','مالي','تشغيلي','تقني','جودة'] : ['Schedule','Financial','Operational','Technical','Quality'];
+  const riskTypes = lang==='ar' ? ['زمني','مالي','تشغيلي','قانوني','تقني','جودة','سلامة'] : ['Schedule','Financial','Operational','Legal','Technical','Quality','Safety'];
   const riskSeed = lang==='ar'
-    ? [['تأخر تجهيز المواد الكهربائية','زمني'],['تجاوز الكلفة التقديرية','مالي'],['نقص الأيدي العاملة الماهرة','تشغيلي'],['تعارض في المخططات التنفيذية','تقني']]
-    : [['Electrical material supply delay','Schedule'],['Cost overrun vs estimate','Financial'],['Shortage of skilled labor','Operational'],['Shop-drawing clash','Technical']];
+    ? [['تأخر تجهيز المواد الكهربائية','زمني'],['تجاوز الكلفة التقديرية','مالي'],['نقص الأيدي العاملة الماهرة','تشغيلي'],['نزاع تعاقدي حول التمديد','قانوني'],['تعارض في المخططات التنفيذية','تقني'],['عدم مطابقة خرسانة الأساس','جودة'],['مخاطر السلامة في أعمال الارتفاعات','سلامة']]
+    : [['Electrical material supply delay','Schedule'],['Cost overrun vs estimate','Financial'],['Shortage of skilled labor','Operational'],['Contractual dispute over extension','Legal'],['Shop-drawing clash','Technical'],['Foundation concrete non-conformance','Quality'],['Work-at-height safety exposure','Safety']];
   const probs = lang==='ar' ? ['منخفض','متوسط','عالي'] : ['Low','Medium','High'];
   const risks = riskSeed.map((rk, i) => {
     const pr = 1 + Math.floor(r()*3), im = 1 + Math.floor(r()*3);
@@ -923,11 +1160,11 @@ function buildProjectDetail(p, lang) {
 
 const NOTIFICATIONS = [
   { icon:'payments', tone:'azure', whoAr:'أحمد فؤاد', whoEn:'Ahmed Fouad', txtAr:'حدّث الموقف المالي لـ', txtEn:'updated financials for', tgt:'PRJ-0148', tAr:'قبل ١٢ دقيقة', tEn:'12 min ago', unread:true, group:'today' },
-  { icon:'warning', tone:'crimson', whoAr:'النظام', whoEn:'System', txtAr:'تنبيه تعثّر في', txtEn:'flagged a stall on', tgt:'PRJ-0286', tAr:'قبل ٤٠ دقيقة', tEn:'40 min ago', unread:true, group:'today' },
-  { icon:'groups', tone:'success', whoAr:'ليلى حسن', whoEn:'Layla Hasan', txtAr:'أضافت لجنة فنية إلى', txtEn:'added a committee to', tgt:'PRJ-0173', tAr:'قبل ساعتين', tEn:'2 hrs ago', unread:true, group:'today' },
-  { icon:'forward_to_inbox', tone:'azure', whoAr:'سارة كريم', whoEn:'Sara Karim', txtAr:'سجّلت مخاطبة واردة في', txtEn:'logged correspondence in', tgt:'PRJ-0161', tAr:'أمس', tEn:'Yesterday', unread:false, group:'earlier' },
-  { icon:'description', tone:'azure', whoAr:'مصطفى علي', whoEn:'Mustafa Ali', txtAr:'رفع ملحق عقد على', txtEn:'uploaded an addendum on', tgt:'PRJ-0156', tAr:'أمس', tEn:'Yesterday', unread:false, group:'earlier' },
-  { icon:'check_circle', tone:'success', whoAr:'النظام', whoEn:'System', txtAr:'اكتمل مشروع', txtEn:'marked complete:', tgt:'PRJ-0119', tAr:'قبل يومين', tEn:'2 days ago', unread:false, group:'earlier' },
+  { icon:'warning', tone:'crimson', whoAr:'النظام', whoEn:'System', txtAr:'تنبيه تعثّر في', txtEn:'flagged a stall on', tgt:'PRJ-0137', tAr:'قبل ٤٠ دقيقة', tEn:'40 min ago', unread:true, group:'today' },
+  { icon:'groups', tone:'success', whoAr:'ليلى حسن', whoEn:'Layla Hasan', txtAr:'أضافت لجنة فنية إلى', txtEn:'added a committee to', tgt:'PRJ-0170', tAr:'قبل ساعتين', tEn:'2 hrs ago', unread:true, group:'today' },
+  { icon:'forward_to_inbox', tone:'azure', whoAr:'سارة كريم', whoEn:'Sara Karim', txtAr:'سجّلت مخاطبة واردة في', txtEn:'logged correspondence in', tgt:'PRJ-0218', tAr:'أمس', tEn:'Yesterday', unread:false, group:'earlier' },
+  { icon:'description', tone:'azure', whoAr:'مصطفى علي', whoEn:'Mustafa Ali', txtAr:'رفع ملحق عقد على', txtEn:'uploaded an addendum on', tgt:'PRJ-0299', tAr:'أمس', tEn:'Yesterday', unread:false, group:'earlier' },
+  { icon:'check_circle', tone:'success', whoAr:'النظام', whoEn:'System', txtAr:'اكتمل مشروع', txtEn:'marked complete:', tgt:'PRJ-0181', tAr:'قبل يومين', tEn:'2 days ago', unread:false, group:'earlier' },
 ];
 
 // ---------- Schedule / Primavera dataset (Master Prompt §11) ----------
@@ -941,7 +1178,29 @@ function buildScheduleData(p, lang) {
   const projName = p ? p.name[lang] : (AR ? 'المشروع' : 'Project');
   // Primavera-style WBS tree: LV1 Project · LV2 Building/Zone · LV3 Discipline · LV4 Activity.
   const AC = (id, ar, en, o, dur, slip, preds, opt) => ({ id, name: AR ? ar : en, o, dur, slip, preds: preds || [], crit: !!(opt && opt.crit), milestone: !!(opt && opt.milestone) });
-  const tree = {
+  const isSupply = p && p.type === 'supply';
+  // Supply projects run the SAME schedule engine (Gantt, critical path, float,
+  // baseline/forecast, delay) but over procurement/delivery activities instead of
+  // construction WBS — the difference is the activity set, not the component.
+  const tree = isSupply ? {
+    name: projName, children: [
+      { name: AR ? 'التعاقد وفتح الاعتماد' : 'Contracting & LC', acts: [
+        AC('S1', 'الإحالة والتعاقد', 'Award & contract', 0, 15, 0, []),
+        AC('S2', 'فتح الاعتماد المستندي', 'Letter of Credit opened', 15, 30, 4, ['S1'], { crit: true }),
+      ] },
+      { name: AR ? 'التصنيع والشحن' : 'Manufacturing & Shipping', acts: [
+        AC('S3', 'التصنيع والتجهيز', 'Manufacturing', 45, 120, 15, ['S2'], { crit: true }),
+        AC('S4', 'الشحن والنقل الدولي', 'International shipping', 165, 45, 12, ['S3'], { crit: true }),
+        AC('S5', 'التخليص الكمركي', 'Customs clearance', 210, 25, 10, ['S4'], { crit: true }),
+      ] },
+      { name: AR ? 'الاستلام والتوزيع' : 'Receipt & Distribution', acts: [
+        AC('S6', 'الاستلام المخزني', 'Warehouse receipt', 235, 30, 8, ['S5'], { crit: true }),
+        AC('S7', 'الفحص والاستلام الأولي', 'Inspection & preliminary receipt', 265, 25, 6, ['S6']),
+        AC('S8', 'التوزيع على الجهات المستفيدة', 'Distribution to beneficiaries', 290, 40, 9, ['S7'], { crit: true }),
+        AC('S9', 'الاستلام النهائي', 'Final receipt', 330, 0, 12, ['S8'], { crit: true, milestone: true }),
+      ] },
+    ],
+  } : {
     name: projName, children: [
       { name: AR ? 'المنطقة A — المبنى الرئيسي' : 'Zone A — Main Building', children: [
         { name: AR ? 'الأعمال الإنشائية' : 'Structural', acts: [
@@ -970,6 +1229,22 @@ function buildScheduleData(p, lang) {
   (function collect(n) { if (n.acts) allSpecs.push(...n.acts); if (n.children) n.children.forEach(collect); })(tree);
   const totalDur = allSpecs.filter(a => !a.milestone).reduce((s2, a) => s2 + a.dur, 0) || 1;
   const budget = p ? p.cost : 1e9;
+  // Data-date position: how far the project has run along its own timeline,
+  // derived deterministically from the project id (NOT from a stored tech %).
+  // Each activity's progress then comes from where "now" sits in its window,
+  // so completion is a real bottom-up rollup, not a seeded number.
+  const maxFin = Math.max.apply(null, allSpecs.map(a => a.o + a.dur).concat([1]));
+  // "now" is the calendar data date; how many days the project has actually run
+  // (clamped to its schedule span). Progress below is a real time-position S-curve.
+  const NOW_DATE = (window.EPM && window.EPM.DATA_DATE) || '2026-07-22';
+  const dataOffset = Math.max(0, Math.min(maxFin, Math.round((new Date(NOW_DATE) - new Date(origin)) / 86400000)));
+  // per-project slip factor so schedules genuinely differ: some run on time
+  // (0), others slip more. Drives forecast dates, delay days & negative float.
+  const slipFactor = p ? [0, 0, 0.4, 0.9, 1.5, 2.2][(p.id.charCodeAt(7) + p.id.charCodeAt(6)) % 6] : 1;
+  // suspended / withdrawn projects stopped BEFORE "now" — freeze their progress
+  // at the stop point so a halted project never reads as complete.
+  const stopFrac = (p && (p.status === 'suspended' || p.status === 'withdrawn')) ? (0.35 + (p.id.charCodeAt(6) % 5) * 0.09) : 1;
+  const effOffset = Math.round(dataOffset * stopFrac);
   const acts = [];
   (function walk(node, level, code, parents) {
     acts.push({ type: 'wbs', level, name: node.name, code, parents });
@@ -977,8 +1252,14 @@ function buildScheduleData(p, lang) {
     if (node.children) node.children.forEach((c, i) => walk(c, level + 1, code + '.' + (i + 1), kidParents));
     if (node.acts) node.acts.forEach(a => {
       const blStart = D(origin, a.o), blFinish = D(origin, a.o + a.dur);
-      const curStart = D(origin, a.o + Math.round(a.slip * 0.5)), curFinish = D(origin, a.o + a.dur + a.slip);
-      const pct = a.milestone ? (tech > 95 ? 100 : 0) : Math.max(0, Math.min(100, Math.round(tech + (r() * 30 - 15))));
+      const sl = Math.round(a.slip * slipFactor);   // this project's actual slip on this activity
+      const curStart = D(origin, a.o + Math.round(sl * 0.5)), curFinish = D(origin, a.o + a.dur + sl);
+      // progress = where the data date falls in the activity's window (S-curve),
+      // with a little per-activity variation; independent of any project tech %
+      const winFrac = Math.max(0, Math.min(1, (effOffset - a.o) / (a.dur || 1)));
+      const jitter = winFrac > 0 && winFrac < 1 ? Math.round(r() * 8 - 4) : 0;
+      const pct = a.milestone ? (effOffset >= a.o + a.dur ? 100 : 0)
+        : Math.max(0, Math.min(100, Math.round(winFrac * 100) + jitter));
       const cost = a.milestone ? 0 : Math.round(budget * 0.92 * a.dur / totalDur);
       const manHours = a.milestone ? 0 : Math.round(a.dur * (7 + r() * 10) * 8);
       acts.push({ type: 'act', level: level + 1, id: a.id, name: a.name, wbs: node.name, wbsCode: code, parents: kidParents,
@@ -987,7 +1268,7 @@ function buildScheduleData(p, lang) {
         actType: a.milestone ? (AR ? 'معلم إنهاء' : 'Finish Milestone') : (AR ? 'مهمة معتمدة على المورد' : 'Task Dependent'),
         calendar: AR ? 'دوام 6 أيام/أسبوع' : '6-Day Workweek',
         cost, manHours, weight: +(a.dur / totalDur).toFixed(4),
-        float: a.crit ? 0 : Math.round(r() * 18), slip: a.slip, preds: a.preds });
+        float: a.crit ? 0 : Math.round(r() * 18), slip: sl, preds: a.preds });
     });
   })(tree, 1, 'PRJ', []);
   // WBS weight engine (BOQ↔Activity assignment): absolute % = share of total project; relative % = share of immediate parent WBS group.
@@ -1011,18 +1292,26 @@ function buildScheduleData(p, lang) {
     }
   });
   const flat = acts.filter(a => a.type === 'act');
-  const dataDate = D(origin, Math.round((330) * tech / 100));
+  const dataDate = D(origin, effOffset);
   const baselineFinish = flat[flat.length - 1].blFinish;
   const forecastFinish = flat[flat.length - 1].curFinish;
-  const delayDays = Math.round((new Date(forecastFinish) - new Date(baselineFinish)) / 86400000);
+  // §2.1.2 — a project suspended by administrative order freezes its contractual-
+  // duration counter at the stop date, so delay stops accruing while frozen.
+  const frozen = !!(p && (p.status === 'suspended' || p.status === 'withdrawn'));
+  const rawDelay = Math.round((new Date(forecastFinish) - new Date(baselineFinish)) / 86400000);
+  const delayDays = frozen ? Math.round(rawDelay * stopFrac) : rawDelay;
   return {
-    origin,
+    origin, frozen, freezeDate: frozen ? dataDate : null,
     dataDate, baselineFinish, forecastFinish, delayDays,
     criticalCount: flat.filter(a => a.critical && !a.milestone).length,
     negFloatCount: flat.filter(a => a.float === 0 && a.slip > 0 && !a.milestone).length,
     totalCost: totalCostAll, totalManHours: totalMHAll,
     activities: acts,
-    milestones: [
+    milestones: isSupply ? [
+      { name: AR ? '\u0641\u062a\u062d \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f \u0627\u0644\u0645\u0633\u062a\u0646\u062f\u064a' : 'LC opened', date: D(origin, 45), status: tech > 15 ? 'done' : 'due' },
+      { name: AR ? '\u0648\u0635\u0648\u0644 \u0627\u0644\u0634\u062d\u0646\u0629 \u0648\u0627\u0644\u062a\u062e\u0644\u064a\u0635' : 'Shipment cleared', date: D(origin, 235), status: tech > 55 ? 'done' : 'due' },
+      { name: AR ? '\u0627\u0644\u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0646\u0647\u0627\u0626\u064a' : 'Final receipt', date: forecastFinish, status: 'due' },
+    ] : [
       { name: AR ? '\u0627\u0639\u062a\u0645\u0627\u062f \u0627\u0644\u062a\u0635\u0645\u064a\u0645' : 'Design approval', date: D(origin, -10), status: 'done' },
       { name: AR ? '\u0625\u0646\u062c\u0627\u0632 \u0627\u0644\u0647\u064a\u0643\u0644' : 'Structure complete', date: D(origin, 210), status: tech > 60 ? 'done' : 'due' },
       { name: AR ? '\u0627\u0644\u062a\u0633\u0644\u064a\u0645 \u0627\u0644\u0627\u0628\u062a\u062f\u0627\u0626\u064a' : 'Preliminary handover', date: forecastFinish, status: 'due' },
@@ -1110,4 +1399,4 @@ function buildAlertsData(p, lang) {
   return { alerts, rules };
 }
 
-window.EPM = { STR, makeT, WORKSPACES, STATUS, BRANCHES, EXECUTORS, buildProjects, buildSchedule, buildScheduleData, buildModelData, buildAlertsData, ACTIVITY, ROLES, MATRIX_ENTITIES, MATRIX_ACTIONS, AUDIT, CURRENT_USER, PROJECT_MODULES, READINESS, buildReadiness, buildProjectDetail, VO_STATUS, DOC_STATUS, ADMIN_GROUPS, ADMIN_PROJECTS, ASSIGNMENTS, NOTIFICATIONS };
+window.EPM = { STR, makeT, WORKSPACES, FORMATIONS, STATUS, BRANCHES, EXECUTORS, buildProjects, buildSchedule, buildScheduleData, buildModelData, buildAlertsData, ACTIVITY, ROLES, MATRIX_ENTITIES, MATRIX_ACTIONS, AUDIT, CURRENT_USER, PROJECT_MODULES, READINESS, buildReadiness, buildProjectDetail, VO_STATUS, DOC_STATUS, DOC_DISCIPLINES, ADMIN_GROUPS, ADMIN_PROJECTS, ASSIGNMENTS, NOTIFICATIONS, FUNDING_TYPES, PROJECT_TYPES, PROJECT_STAGES, CONTRACT_STATUS_LIST };

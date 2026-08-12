@@ -19,9 +19,17 @@ const STR = {
   ministry:        { ar: 'وزارة التعليم العالي و البحث العلمي', en: 'Ministry of Higher Education & Scientific Research' },
   /** Breadcrumb root (v1.1 Z2). The full ministry name is too long for a crumb. */
   ministry_short:  { ar: 'الوزارة',                          en: 'Ministry' },
-  dept:            { ar: 'دائرة الإعمار و المشاريع',        en: 'Reconstruction & Projects Dept.' },
+  /** VERBATIM (data.jsx:13). The port had shortened it; `MinistryLockup` is
+   *  the only thing that renders it, and it renders the reference's full one. */
+  dept:            { ar: 'دائرة الإعمار و المشاريع — القسم الهندسي', en: 'Dept. of Reconstruction & Projects — Engineering Section' },
 
   // navigation
+  /** The RAIL's first item. VERBATIM (data.jsx:115 `nav_home`) — the reference
+   *  calls it «الرئيسية», not «النظرة العامة». `nav_portfolio` below is the
+   *  PAGE's own title, which is a different string doing a different job: the
+   *  reference's dashboard heads itself with a greeting, so there is nothing
+   *  to copy for it and ours stays. */
+  nav_home:        { ar: 'الرئيسية',                       en: 'Home' },
   nav_portfolio:   { ar: 'النظرة العامة',                  en: 'Portfolio' },
   nav_projects:    { ar: 'المشاريع',                       en: 'Projects' },
   /** Enterprise scope (no workspace selected). Verbatim from data.jsx:245. */
@@ -37,9 +45,15 @@ const STR = {
    *  reference's wording. */
   nav_schedule:    { ar: 'ضبط الجداول الزمنية',            en: 'Schedule Control' },
   nav_alerts:      { ar: 'مركز التنبيهات',                 en: 'Alerts Center' },
-  nav_reports:     { ar: 'التقارير و التحليلات',           en: 'Reports & Analytics' },
-  nav_group_ops:   { ar: 'العمليات',                       en: 'Operations' },
-  nav_group_gov:   { ar: 'الحوكمة',                        en: 'Governance' },
+  /** VERBATIM (data.jsx:178). Was «التقارير و التحليلات», which is not the
+   *  reference's wording — it says «الإحصائيات». */
+  nav_reports:     { ar: 'التقارير و الإحصائيات',          en: 'Reports & analytics' },
+  //
+  // `nav_group_ops` / `nav_group_gov` are gone. The reference's rail is a FLAT
+  // list (desktop-shell.jsx:247) — its only `.d-nav-grp` is «الحوكمة», and that
+  // one heads the ADMIN entry, which this app does not have because it has no
+  // admin screen. We were printing «العمليات» over the whole rail, a heading
+  // the reference never shows.
 
   // projects list — labels ported from DProjectsAll (enterprise-areas.jsx:112)
   projects_sub:    { ar: 'كل المشاريع عبر التشكيلات والجامعات', en: 'All projects across entities & universities' },
@@ -76,19 +90,41 @@ const STR = {
   // entities list — ported from DSpaces (v1.1, desktop-views.jsx:375).
   // `adm_ws` / `ws_sub` / `ws_showing` in the reference; renamed to the
   // screen's own name here since 04 §2 calls it Entities.
+  // Strings below are VERBATIM from the design-revamp prototype's own string
+  // table (data.jsx STR). `entities_sub` in particular is the reference's
+  // `ws_sub`, and it states BR-15 in the ministry's own words — which is a
+  // better sentence than the one we had invented for it.
   nav_entities:    { ar: 'مساحات العمل',                   en: 'Workspaces' },
-  entities_sub:    { ar: 'الجامعات و التشكيلات التي تملك المشاريع', en: 'The universities and units that own the projects' },
-  search_entities: { ar: 'ابحث بالاسم أو الرمز…',          en: 'Search by name or code…' },
+  entities_sub:    { ar: 'اختر مساحة عمل للانتقال إلى مشاريعها. وصولك هو اتحاد تكليفاتك حسب الدور و النطاق.', en: 'Choose a workspace to view its projects. Your access is the union of your role-and-scope assignments.' },
+  search_entities: { ar: 'ابحث في مساحات العمل بالاسم أو الرمز…', en: 'Search workspaces by name or code…' },
   entities_showing:{ ar: 'مساحة عمل',                      en: 'workspaces' },
   col_entity:      { ar: 'مساحة العمل',                    en: 'Workspace' },
   col_type:        { ar: 'النوع',                          en: 'Type' },
-  col_active:      { ar: 'النشطة',                         en: 'Active' },
-  col_completion:  { ar: 'نسبة الإنجاز',                   en: 'Completion' },
+  /** VERBATIM — the reference's `kpi_active` / `kpi_completion` (data.jsx:57,
+   *  :60), which is what DSpaces puts in these two headers. Ours said «النشطة»
+   *  and «نسبة الإنجاز». Used by this register only. */
+  col_active:      { ar: 'مشاريع نشطة',                    en: 'Active projects' },
+  col_completion:  { ar: 'متوسط الإنجاز',                  en: 'Avg. completion' },
+  /** VERBATIM (data.jsx:74) — DSpaces' own filtered-empty title. The register
+   *  used the generic `empty_filter_t` («لا نتائج مطابقة»); the reference names
+   *  the thing that is missing. Its body is inline there, so it is here too. */
+  ws_no_results:   { ar: 'لا توجد مساحات عمل مطابقة',      en: 'No matching workspaces' },
+  ws_no_results_b: { ar: 'جرّب اسماً أو رمزاً أو نوعاً آخر', en: 'Try another name, code or type' },
   empty_entities_t:{ ar: 'لا توجد مساحات عمل بعد',         en: 'No workspaces yet' },
   empty_entities_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
   /** BR-15 — assigned to nothing is a real state, not an empty database. */
   empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
   empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
+  // ── EP-WSP-02 «إنشاء مساحة جديدة» (ملحق الشكل 1) ──────────────────────
+  ws_create_name_ph:{ ar: 'مثال: جامعة البصرة',            en: 'e.g. University of Basrah' },
+  ws_create_name_en:{ ar: 'الاسم بالإنجليزية',             en: 'Name in English' },
+  ws_create_badge: { ar: 'رمز الشارة',                     en: 'Badge code' },
+  ws_create_badge_hint:{ ar: 'حرفان إلى خمسة — يظهر على الشارة الملوّنة.', en: 'Two to five letters — shown on the coloured emblem.' },
+  ws_create_code_hint:{ ar: 'يظهر في الرابط. أحرف لاتينية وأرقام.', en: 'Appears in the URL. Latin letters and digits.' },
+  ws_create_submit:{ ar: 'إضافة مساحة العمل',              en: 'Add workspace' },
+  cancel:          { ar: 'إلغاء',                          en: 'Cancel' },
+  saving:          { ar: 'جارٍ الحفظ…',                    en: 'Saving…' },
+
   ws_enter:        { ar: 'دخول',                           en: 'Open' },
   ws_enter_full:   { ar: 'الدخول إلى مساحة العمل',         en: 'Open workspace' },
   open_project:    { ar: 'فتح المشروع',                    en: 'Open project' },
@@ -360,10 +396,57 @@ const STR = {
   empty_filter_t:  { ar: 'لا نتائج مطابقة',                en: 'No matching projects' },
   empty_filter_b:  { ar: 'جرّب مصطلحاً آخر أو امسح المرشّحات.', en: 'Try another term or clear the filters.' },
   clear_filters:   { ar: 'مسح المرشّحات',                  en: 'Clear filters' },
+  /** The register toolbar's own clear button is just «مسح» with a close icon
+   *  in the reference (desktop-views.jsx:432) — the long form is for the
+   *  empty-state button, where there is room for it. */
+  clear:           { ar: 'مسح',                            en: 'Clear' },
   load_fixture:    { ar: 'تحميل بيانات العرض',             en: 'Load demo fixture' },
   loading:         { ar: 'جارٍ التحميل…',                  en: 'Loading…' },
   error_t:         { ar: 'تعذّر تحميل البيانات',           en: 'Could not load data' },
   retry:           { ar: 'إعادة المحاولة',                 en: 'Retry' },
+
+  // ── SCR-P0 landing + SCR-P1 sign-in. Strings marked VERBATIM are the
+  // reference's own (data.jsx STR); the rest are lifted from the two screens'
+  // inline `lang === 'ar' ? … : …` ternaries in screens-public.jsx, which is
+  // where the reference keeps most of this copy.
+  /** VERBATIM (data.jsx:11 `app_full`) — the nav brand's second line. */
+  app_tagline:     { ar: 'إدارة المشاريع الهندسية',        en: 'Engineering Projects Management' },
+  /** The reference's own h1 on both public screens — «…System» in English,
+   *  which is one word longer than the shell's `app_title`. */
+  app_title_full:  { ar: 'نظام إدارة المشاريع الهندسية',   en: 'Engineering Projects Management System' },
+  signin:          { ar: 'تسجيل الدخول',                   en: 'Sign in' },
+  /** The landing's access panel says «الدخول إلى النظام»; the login's says
+   *  «تسجيل الدخول». Two different headings in the reference, kept apart. */
+  signin_access:   { ar: 'الدخول إلى النظام',              en: 'System access' },
+  signin_sub:      { ar: 'هوية موحّدة على مستوى الوزارة',   en: 'Unified enterprise identity' },
+  signin_portal:   { ar: 'بوابة الدخول المؤسسية',          en: 'Institutional access portal' },
+  /** screens-public.jsx:199 — the SAME paragraph on the landing and the login
+   *  hero. The port had shortened it, dropping the second sentence, which is
+   *  the one that states the access rule. */
+  signin_blurb:    { ar: 'المنصّة الموحّدة لوزارة التعليم العالي لإدارة المشاريع الهندسية عبر الجامعات و الوحدات. الدخول مخصّص للموظّفين المخوّلين وفق الأدوار و النطاقات.', en: 'The unified platform of the Ministry of Higher Education for managing engineering projects across universities and units. Access is restricted to authorized personnel, by role and scope.' },
+  /** The landing's access panel — the divider and its two notes. */
+  secure_access:   { ar: 'الدخول الآمن',                   en: 'Secure access' },
+  note_network:    { ar: 'متاح داخل شبكة الوزارة فقط',      en: 'Available on the ministry network only' },
+  note_audited:    { ar: 'كل عملية دخول تُسجّل و تُدقّق',     en: 'Every sign-in is logged and audited' },
+  home:            { ar: 'الرئيسية',                       en: 'Home' },
+  /** The landing footer's three claims (screens-public.jsx:221). */
+  lp_integration:  { ar: 'تكامل على مستوى الوزارة',        en: 'Ministry-wide integration' },
+  lp_integration_b:{ ar: 'ربط الجامعات و الوحدات و المشاريع.', en: 'Links universities, units and projects.' },
+  lp_effective:    { ar: 'إدارة فعّالة و شفافة',            en: 'Effective, transparent management' },
+  lp_effective_b:  { ar: 'لمتابعة المشاريع و الموارد و الميزانيات.', en: 'Tracks projects, resources and budgets.' },
+  lp_secure:       { ar: 'نظام آمن و معتمد',               en: 'Secure, accredited system' },
+  lp_secure_b:     { ar: 'وفق معايير الحوكمة و الأمن السيبراني.', en: 'Per governance and cybersecurity standards.' },
+  username:        { ar: 'اسم المستخدم',                   en: 'Username' },
+  password:        { ar: 'كلمة المرور',                    en: 'Password' },
+  show_password:   { ar: 'إظهار كلمة المرور',              en: 'Show password' },
+  hide_password:   { ar: 'إخفاء كلمة المرور',              en: 'Hide password' },
+  remember:        { ar: 'تذكّرني',                        en: 'Remember me' },
+  forgot:          { ar: 'نسيت كلمة المرور؟',              en: 'Forgot password?' },
+  enter:           { ar: 'الدخول إلى النظام',              en: 'Enter the system' },
+  verifying:       { ar: 'جارٍ التحقق…',                   en: 'Verifying…' },
+  /** VERBATIM (data.jsx:52). */
+  login_note:      { ar: 'الوصول مقيّد بشبكة الوزارة الداخلية. كل عملية دخول تُسجَّل.', en: 'Access is restricted to the ministry network. Every sign-in is logged.' },
+  signout:         { ar: 'تسجيل الخروج',                   en: 'Sign out' },
 
   // chrome
   persona:         { ar: 'العرض بصفة',                     en: 'Viewing as' },
@@ -373,12 +456,10 @@ const STR = {
   // Keys keep the reference's own names (data.jsx STR) so a label can be
   // copied across verbatim.
   search_ph:       { ar: 'ابحث في المشاريع، العقود، اللجان…', en: 'Search projects, contracts, committees…' },
-  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'All workspaces' },
+  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'Master space' },
   enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
-  your_workspaces: { ar: 'مساحات العمل',                   en: 'Your workspaces' },
+  your_workspaces: { ar: 'مساحات العمل المتاحة لك',        en: 'Your workspaces' },
   ws_active_short: { ar: 'نشط',                            en: 'active' },
-  /** The switcher's own line under "All workspaces" — how many you may enter. */
-  ws_assigned_count:{ ar: 'مساحة مسندة إليك',              en: 'assigned to you' },
   ws_current:      { ar: 'مساحة العمل الحالية',            en: 'Current workspace' },
   ws_back_to_ministry:{ ar: 'العودة إلى المركز',           en: 'Back to the ministry' },
   //
@@ -398,7 +479,13 @@ const STR = {
   new_contract:    { ar: 'عقد جديد',                       en: 'New contract' },
   import_p6:       { ar: 'استيراد P6',                     en: 'Import P6' },
   alert_rules:     { ar: 'قواعد التنبيه',                  en: 'Alert rules' },
-  new_workspace:   { ar: 'مساحة عمل جديدة',                en: 'New workspace' },
+  /** The page-head ACTION. VERBATIM from the live DSpaces
+   *  (desktop-views.jsx:419): «مساحة عمل» / «Workspace» — the `add` icon beside
+   *  it already says "new", so the word was doing the icon's job twice. */
+  new_workspace:   { ar: 'مساحة عمل',                      en: 'Workspace' },
+  /** The DRAWER's title, where there is no icon and the sentence has to stand
+   *  on its own. The reference has no such drawer to copy. */
+  ws_create_title: { ar: 'إنشاء مساحة عمل',                en: 'Create a workspace' },
 
   // ── SCR-W4 BOQ (04 §4) — chrome only. Coverage and distribution STATE
   // labels are not here: they are 06 §10 and §11 value lists and come from

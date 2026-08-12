@@ -1,5 +1,33 @@
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 import { ShellComponent } from './shell/shell.component';
+import { AuthService } from './core/auth';
+
+/**
+ * The sign-in gate. It keeps the SCREENS behind the form, which is what the
+ * reference does — it is not a security boundary and does not pretend to be
+ * one: the API is still reachable directly (P-05, and see AuthService).
+ */
+const signedIn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return auth.isSignedIn() ? true : router.createUrlTree(['/login']);
+};
+
+/**
+ * The inverse, and it guards ONE route: `/`. In the reference, `/` is the
+ * landing page — the front door, before any session. Here `/` has to be two
+ * things, because the app also has a signed-in home: the landing when there is
+ * no session, the portfolio when there is. This guard is that fork.
+ *
+ * It is not a security boundary either. It exists so that signing in and then
+ * pressing Home does not drop you back onto a marketing page.
+ */
+const signedOut = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return auth.isSignedIn() ? router.createUrlTree(['/portfolio']) : true;
+};
 
 /**
  * ── APPEND ONE ENTRY PER PAGE ─────────────────────────────────────────────
@@ -11,9 +39,30 @@ import { ShellComponent } from './shell/shell.component';
  * folder:  /projects → features/projects/ → Features/Projects/
  */
 export const routes: Routes = [
+  // SCR-P0 · features/auth — the landing page, and the reference's front door.
+  // `pathMatch: 'full'` so it claims ONLY `/`; the shell route below has the
+  // same empty path and takes every child path under it. Order matters: this
+  // one has to be first, and when there IS a session its guard hands `/` on to
+  // the portfolio rather than falling through.
+  {
+    path: '',
+    pathMatch: 'full',
+    canActivate: [signedOut],
+    loadComponent: () => import('./features/auth/landing.page').then(m => m.LandingPage),
+  },
+
+  // SCR-P1 · features/auth — the public route. Outside the shell: it has its
+  // own chrome and must not render a sidebar for a session that has not
+  // started.
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login.page').then(m => m.LoginPage),
+  },
+
   {
     path: '',
     component: ShellComponent,
+    canActivate: [signedIn],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'portfolio' },
 

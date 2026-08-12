@@ -10,6 +10,10 @@ export interface Persona {
   roleAr: string;
   roleEn: string;
   isDelegate: boolean;
+  /** Workspace codes this persona is assigned to (BR-15). */
+  workspaces: string[];
+  /** §7 — a ministry-centre user, whose scope is the whole portfolio. */
+  ministryWide: boolean;
 }
 
 /**

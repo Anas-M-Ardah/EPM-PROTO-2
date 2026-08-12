@@ -26,6 +26,10 @@ export interface WorkspaceProjectRow {
 
 export interface WorkspaceOverviewResponse {
   code: string;
+  /** The emblem text — "UOB", not "ub". See Workspace.DisplayCode. */
+  displayCode: string;
+  /** The emblem background. An identity colour, never a status one. */
+  color: string;
   nameAr: string;
   nameEn: string;
   kind: string;
@@ -44,4 +48,14 @@ export interface WorkspaceOverviewResponse {
   statusDistribution: WorkspaceStatusSlice[];
   watchlist: WorkspaceProjectRow[];
   recent: WorkspaceProjectRow[];
+}
+
+/** MIRRORS CreateWorkspaceRequest in WorkspacesDto.cs. */
+export interface CreateWorkspaceRequest {
+  code: string;
+  displayCode: string;
+  nameAr: string;
+  nameEn: string;
+  kind: string;
+  color: string;
 }

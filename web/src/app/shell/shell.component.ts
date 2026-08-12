@@ -6,6 +6,7 @@ import { LangService, StrKey } from '../core/lang';
 import { LookupsService } from '../core/lookups';
 import { PersonaService } from '../core/persona';
 import { ThemeService } from '../core/theme';
+import { AuthService } from '../core/auth';
 import { WorkspacesService } from '../core/workspaces';
 import { ProjectScopeService } from '../core/project-scope';
 import { StatusPillComponent } from '../shared/status-pill.component';
@@ -75,6 +76,7 @@ export class ShellComponent {
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
   theme = inject(ThemeService);
+  private auth = inject(AuthService);
   workspaces = inject(WorkspacesService);
   projects = inject(ProjectScopeService);
   toast = inject(ToastService);
@@ -136,7 +138,7 @@ export class ShellComponent {
    * Together they are how the rail answers "where am I" without a banner.
    */
   private readonly enterpriseNav: NavItem[] = [
-    { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' },
+    { path: '/portfolio', icon: 'dashboard', key: 'nav_home' },
     // The reference badges this one with the workspace count and nothing else.
     // It is now the count of workspaces ASSIGNED to the viewer (BR-15).
     { path: '/entities', icon: 'apartment', key: 'nav_entities', count: () => this.workspaces.count() || null },
@@ -156,9 +158,15 @@ export class ShellComponent {
     { path: '/reports', icon: 'insights', key: 'nav_reports' },
   ];
 
-  nav = computed<{ group: StrKey; items: NavItem[] }[]>(() => [
-    { group: 'nav_group_ops', items: this.currentWs() ? this.workspaceNav : this.enterpriseNav },
-  ]);
+  /**
+   * FLAT, like the reference's (desktop-shell.jsx:247). It used to be a list of
+   * groups with a single «العمليات» heading over everything, which is a heading
+   * the reference never prints: its only `.d-nav-grp` is «الحوكمة», and that
+   * one sits above the ADMIN entry — a screen this app does not have, so
+   * neither the entry nor its heading belongs here (a nav item whose page does
+   * not exist is exactly the dead link the module list exists to prevent).
+   */
+  nav = computed<NavItem[]>(() => this.currentWs() ? this.workspaceNav : this.enterpriseNav);
 
   /** The workspace in scope, or undefined for the ministry-wide view. */
   currentWs = computed(() => this.workspaces.byCode(this.wsCode()));
@@ -169,19 +177,25 @@ export class ShellComponent {
   });
 
   /**
-   * The line under the workspace name in the switcher button. The reference
-   * shows `kind · N active` (desktop-shell.jsx:424). The kind is a lookup
-   * label, not a chrome string — the same `workspace-kind` list the register
+   * The line under the workspace name in the switcher BUTTON. The reference is
+   * one expression (desktop-shell.jsx:241):
+   *
+   *     {scope === 'workspace' ? ws.kind[lang] : t('enterprise_ctx')}
+   *
+   * — the kind on its own inside a workspace, «الوزارة» outside one. Both
+   * branches here used to say something else: «N مساحة مسندة إليك» at ministry
+   * scope, which is a figure the reference never puts in this slot, and
+   * `kind · N نشط` inside a workspace, which is the POPOVER ROW's format
+   * (`wsSub` below) borrowed into the button.
+   *
+   * The kind is a lookup label, not a chrome string — the same `workspace-kind` list the register
    * filters by, so the two can never drift.
    */
   scopeSub = computed(() => {
     const ws = this.currentWs();
-    if (!ws) {
-      const n = this.workspaces.count();
-      return n ? `${n} ${this.lang.t('ws_assigned_count')}` : this.lang.t('enterprise_ctx');
-    }
-    const kind = this.lookups.label('workspace-kind', ws.kind);
-    return `${kind} · ${ws.activeCount} ${this.lang.t('ws_active_short')}`;
+    return ws
+      ? this.lookups.label('workspace-kind', ws.kind)
+      : this.lang.t('enterprise_ctx');
   });
 
   /** The switcher rows' own subtitle — same shape, per workspace. */
@@ -222,7 +236,7 @@ export class ShellComponent {
     const scope = this.lang.isAr() ? 'مساحة العمل' : 'Workspace';
     const app = this.lang.isAr() ? 'التطبيق' : 'Application';
 
-    const pages: CommandAction[] = this.nav().flatMap(g => g.items).map(it => ({
+    const pages: CommandAction[] = this.nav().map(it => ({
       id: 'nav' + it.path,
       group: goto,
       icon: it.icon,
@@ -421,6 +435,18 @@ export class ShellComponent {
   private go(path: string) {
     const ws = this.wsCode();
     this.router.navigate([path], { queryParams: ws ? { ws } : {} });
+  }
+
+  /**
+   * The reference's `onSignout` is `() => setRoute('landing')` — every one of
+   * them (main.jsx:60, :65, :100). It returns to the FRONT DOOR, not to the
+   * sign-in form. This used to send you to `/login`, which was the only place
+   * it could go when there was no landing page; there is one now.
+   */
+  signOut() {
+    this.closeOverlays();
+    this.auth.signOut();
+    this.router.navigate(['/']);
   }
 
   onPersona(id: string) {

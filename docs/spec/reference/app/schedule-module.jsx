@@ -13,8 +13,7 @@ const SCHED_STATUS = {
   inprogress: { ar: 'قيد التنفيذ', en: 'In progress', icon: 'pending', color: 'var(--status-ongoing)' },
   ahead: { ar: 'متقدّم', en: 'Ahead', icon: 'trending_up', color: 'var(--status-completed)' },
   delayed: { ar: 'متأخر', en: 'Delayed', icon: 'warning', color: 'var(--status-delayed)' },
-  completed: { ar: 'مكتمل', en: 'Completed', icon: 'check_circle', color: 'var(--status-completed)' },
-};
+  completed: { ar: 'مكتمل', en: 'Completed', icon: 'check_circle', color: 'var(--status-completed)' } };
 function schedStatusOf(a) {
   if (a.milestone) return a.pct >= 100 ? 'completed' : (a.slip > 5 ? 'delayed' : 'notstarted');
   if (a.pct >= 100) return 'completed';
@@ -78,9 +77,15 @@ function DSchedStatus({ st, lang, dot }) {
   return <span className="d-sched-stat" style={{ color: S.color }}><Icon name={S.icon} size={14} />{S[lang]}</span>;
 }
 
-function DGantt({ sd, acts, wbsPct, lang, filterCrit, onSelect, selId, basis, amdIdx, onAmd }) {
+function DGantt({ sd, acts, wbsPct, lang, filterCrit, onSelect, selId, basis, amdIdx, onAmd, wbsLevel }) {
   const amdOf = id => (amdIdx && amdIdx.acts[id] && amdIdx.acts[id].srcs.length) ? amdIdx.acts[id] : null;
   const [collapsed, setCollapsed] = React.useState({});
+  /* L15: open at the chosen WBS level instead of fully expanded */
+  React.useEffect(() => {
+    const next = {};
+    acts.forEach(a => { if (a.type === 'wbs' && (a.level || 1) >= (wbsLevel || 2)) next[a.code] = true; });
+    setCollapsed(next);
+  }, [wbsLevel, acts.length]);
   // 20b — gate on the chart room actually available inside the pane, not on
   // window.innerWidth (the pane is ~498px narrower than the window, so a
   // window test reports "wide" while the track has nowhere to draw).
@@ -161,7 +166,7 @@ function DGantt({ sd, acts, wbsPct, lang, filterCrit, onSelect, selId, basis, am
             </div>
           </div>
           {rows.map((a, idx) => {
-            const indent = { paddingInlineStart: 8 + ((a.level || 1) - 1) * 15 };
+            const indent = { paddingInlineStart: 8 + ((a.level || 1) - 1) * 8 };
             if (a.type === 'wbs') {
               const isOpen = !collapsed[a.code];
               const sp = spans[a.code];
@@ -171,10 +176,10 @@ function DGantt({ sd, acts, wbsPct, lang, filterCrit, onSelect, selId, basis, am
                 <div key={idx} className="d-gantt-row wbs">
                   <div className="d-gantt-cellname wbs-name" style={indent}>
                     <button className="d-gantt-collapse" onClick={() => toggle(a.code)} title={isOpen ? (AR ? 'طي' : 'Collapse') : (AR ? 'توسيع' : 'Expand')}><Icon name={isOpen ? 'expand_more' : (AR ? 'chevron_left' : 'chevron_right')} size={15} /></button>
-                    <span className="mono" style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{a.code}</span>
+                    <span className="mono" style={{ color: 'var(--on-surface-variant)' }}>{a.code}</span>
                     <span className="nm" style={{ fontWeight: a.level <= 1 ? 'var(--fw-x)' : 'var(--fw-bold)' }}>{a.name}</span>
-                    {wbsPct[a.code] != null && <span className="mono" style={{ marginInlineStart: 'auto', fontSize: 11, color: 'var(--on-surface-variant)' }}>{wbsPct[a.code]}%</span>}
-                    <span className="mono" style={{ fontSize: 11, color: 'var(--on-surface)' }} title={AR ? 'الوزن المطلق' : 'Absolute weight'}>· {basis === 'manhours' ? a.wMHAbs : a.wCostAbs}%</span>
+                    {wbsPct[a.code] != null && <span className="mono" style={{ marginInlineStart: 'auto', color: 'var(--on-surface-variant)' }}>{wbsPct[a.code]}%</span>}
+                    <span className="mono" style={{ color: 'var(--on-surface)' }} title={AR ? 'الوزن المطلق' : 'Absolute weight'}>· {basis === 'manhours' ? a.wMHAbs : a.wCostAbs}%</span>
                   </div>
                   <div className="d-gantt-cellinfo" style={{ width: infoW }}>
                     <span className="c" style={{ flex: '1 1 56px' }}>—</span>
@@ -208,7 +213,7 @@ function DGantt({ sd, acts, wbsPct, lang, filterCrit, onSelect, selId, basis, am
               <div key={idx} className={`d-gantt-row ${selId === a.id ? 'on' : ''}`} onClick={() => onSelect(a.id)}>
                 <div className="d-gantt-cellname" style={indent}>
                   <DSchedStatus st={st} lang={lang} dot />
-                  <span className="mono" style={{ color: 'var(--on-surface-variant)', fontSize: 11 }}>{a.id}</span>
+                  <span className="mono" style={{ color: 'var(--on-surface-variant)' }}>{a.id}</span>
                   <span className="nm">{a.name}</span>
                   {a.critical && <span className="d-crit-dot" title={AR ? 'مسار حرج' : 'Critical'}></span>}
                   {amdOf(a.id) ? <DAmdMark lang={lang} e={amdOf(a.id)} onOpen={() => onAmd && onAmd(a)} /> : null}
@@ -277,8 +282,8 @@ function DSchedTable({ acts, wbsPct, lang, onSelect, selId, basis, amdIdx, onAmd
             {acts.map((a, i) => {
               if (a.type === 'wbs') return (
                 <tr key={i} style={{ background: a.level <= 1 ? 'var(--surface-container-high)' : 'var(--surface-container)' }}>
-                  <td className="mono d-cell-sub" style={{ fontSize: 11 }}>{a.code}</td>
-                  <td colSpan={8} style={{ fontWeight: 'var(--fw-x)', paddingInlineStart: 8 + ((a.level || 1) - 1) * 16 }}>{a.name}</td>
+                  <td className="mono d-cell-sub">{a.code}</td>
+                  <td colSpan={8} style={{ fontWeight: 'var(--fw-x)', paddingInlineStart: 8 + ((a.level || 1) - 1) * 8 }}>{a.name}</td>
                   <td className="mono" style={{ fontWeight: 'var(--fw-x)' }}>{wbsPct[a.code] != null ? wbsPct[a.code] + '%' : ''}</td>
                   <td></td>
                   <td className="mono">{rel(a)}%</td>
@@ -292,7 +297,7 @@ function DSchedTable({ acts, wbsPct, lang, onSelect, selId, basis, amdIdx, onAmd
                   <td className="mono">{a.id}{a.critical && <span className="d-crit-dot" style={{ marginInlineStart: 6, display: 'inline-block' }}></span>}
                     {amdOf(a.id) ? <DAmdMark lang={lang} e={amdOf(a.id)} onOpen={() => onAmd && onAmd(a)} /> : null}</td>
                   <td><DSchedStatus st={st} lang={lang} /></td>
-                  <td className="d-cell-strong" style={{ whiteSpace: 'nowrap', paddingInlineStart: 8 + ((a.level || 2) - 1) * 16 }}>{a.name}</td>
+                  <td className="d-cell-strong" style={{ whiteSpace: 'nowrap', paddingInlineStart: 8 + ((a.level || 2) - 1) * 8 }}>{a.name}</td>
                   <td className="mono">{a.origDur}{AR ? 'ي' : 'd'}</td>
                   <td className="mono d-cell-sub">{a.blStart}</td>
                   <td className="mono d-cell-sub">{a.blFinish}</td>
@@ -368,12 +373,12 @@ function DImportWizard({ lang, onClose, onDone, kind, impact, totalCostImpact })
                   {fmtOpts.map(f => (
                     <button key={f.id} onClick={() => setFmt(f.id)} style={{ all: 'unset', cursor: 'pointer', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 4, padding: 12, border: '1px solid ' + (fmt === f.id ? 'var(--primary)' : 'var(--outline-variant)'), borderRadius: 'var(--r-md)', background: fmt === f.id ? 'color-mix(in srgb,var(--primary) 6%,transparent)' : 'var(--surface-container-lowest)' }}>
                       <Icon name={f.ico} size={20} style={{ color: fmt === f.id ? 'var(--primary)' : 'var(--on-surface-variant)' }} />
-                      <b style={{ fontSize: 13 }}>{f.label}</b><span className="d-cell-sub" style={{ fontSize: 11 }}>{f.sub}</span>
+                      <b style={{ fontSize: 12 }}>{f.label}</b><span className="d-cell-sub">{f.sub}</span>
                     </button>
                   ))}
                 </div>
                 <label className="d-cell-sub" style={{ marginTop: 4 }}>{AR ? 'أساس حساب وزن هيكل التجزئة (WBS)' : 'WBS weight calculation basis'}</label>
-                <div className="d-cell-sub" style={{ fontSize: 11 }}>{AR ? 'حقول مكشوفة تلقائياً من الملف: الكلفة المدرجة (BAC) · ساعات العمل المدرجة' : 'Auto-detected fields: Budgeted Cost (BAC) · Budgeted Man-Hours'}</div>
+                <div className="d-cell-sub">{AR ? 'حقول مكشوفة تلقائياً من الملف: الكلفة المدرجة (BAC) · ساعات العمل المدرجة' : 'Auto-detected fields: Budgeted Cost (BAC) · Budgeted Man-Hours'}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {[['cost', AR ? 'الكلفة المدرجة' : 'Budgeted Cost', 'payments'], ['manhours', AR ? 'ساعات العمل المدرجة' : 'Budgeted Man-Hours', 'schedule']].map(o => (
                     <button key={o[0]} onClick={() => setBasis(o[0])} style={{ all: 'unset', cursor: 'pointer', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, padding: 12, border: '1px solid ' + (basis === o[0] ? 'var(--primary)' : 'var(--outline-variant)'), borderRadius: 'var(--r-md)', background: basis === o[0] ? 'color-mix(in srgb,var(--primary) 6%,transparent)' : 'var(--surface-container-lowest)' }}>
@@ -394,7 +399,7 @@ function DImportWizard({ lang, onClose, onDone, kind, impact, totalCostImpact })
               <div className="d-fig"><div className="k">{AR ? 'أنشطة متأثرة' : 'Affected'}</div><div className="v" style={{ color: 'var(--status-suspended-tx)' }}>{imp.length}</div></div>
               <div className="d-fig"><div className="k">{AR ? 'أنشطة مضافة' : 'Added'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>+8</div></div>
               <div className="d-fig"><div className="k">{AR ? 'أثر الإنجاز' : 'Finish impact'}</div><div className="v" style={{ color: 'var(--error)' }}>+18<small>{AR ? 'يوم' : 'd'}</small></div></div>
-              <div className="d-fig"><div className="k">{AR ? 'أثر الكلفة (تقديري)' : 'Cost impact'}</div><div className="v mono" style={{ fontSize: 15, color: 'var(--error)' }}>{window.fmtNum(totalCostImpact || 0)}</div></div>
+              <div className="d-fig"><div className="k">{AR ? 'أثر الكلفة (تقديري)' : 'Cost impact'}</div><div className="v mono" style={{ fontSize: 16, color: 'var(--error)' }}>{window.fmtNum(totalCostImpact || 0)}</div></div>
             </div>
             <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-md)' }}>
               <table className="d-line-table">
@@ -404,7 +409,7 @@ function DImportWizard({ lang, onClose, onDone, kind, impact, totalCostImpact })
                 ))}</tbody>
               </table>
             </div>
-            <div className="d-callout"><span className="d-callout-ico"><Icon name="how_to_reg" size={18} /></span><div className="d-callout-tx"><span className="k">{AR ? 'مقدِّم الطلب ← المعتمِد' : 'Submitter → Approver'}</span><b style={{ fontSize: 13, fontWeight: 'var(--fw-bold)' }}>{AR ? 'أنت مقدِّم الطلب وتطّلع على الأثر قبل التقديم. الاعتماد يتم من مستخدم آخر مخوّل، ويبقى الأثر ظاهراً للطرفين.' : 'You are the submitter and review this impact before submitting. Approval is performed by another authorized user; the impact stays visible to both.'}</b></div></div>
+            <DMsgBar tone="info" icon="how_to_reg" title={AR ? 'مقدِّم الطلب ← المعتمِد' : 'Submitter → Approver'}>{AR ? 'أنت مقدِّم الطلب وتطّلع على الأثر قبل التقديم. الاعتماد يتم من مستخدم آخر مخوّل، ويبقى الأثر ظاهراً للطرفين.' : 'You are the submitter and review this impact before submitting. Approval is performed by another authorized user; the impact stays visible to both.'}</DMsgBar>
           </div>}
           {step === 3 && boq && <div className="d-card-sub" style={{ padding: 16 }}><div className="d-fig-row" style={{ margin: 0 }}>
             <div className="d-fig"><div className="k">{AR ? 'بنود مضافة' : 'Added'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>+5</div></div>
@@ -414,7 +419,7 @@ function DImportWizard({ lang, onClose, onDone, kind, impact, totalCostImpact })
           {step === 4 && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label className="d-cell-sub">{AR ? 'نوع الجدول' : 'Schedule type'}</label>
             <select className="d-form-input"><option>{AR ? 'تحديث حالي' : 'Current update'}</option><option>{AR ? 'خط أساس' : 'Baseline'}</option><option>{AR ? 'جدول استرداد' : 'Recovery schedule'}</option><option>{AR ? 'جدول منقّح' : 'Revised schedule'}</option></select>
-            <div className="d-callout" style={{ marginTop: 6 }}><span className="d-callout-ico"><Icon name="info" size={18} /></span><div className="d-callout-tx"><b style={{ fontSize: 13 }}>{AR ? 'يُقدَّم للاعتماد ولا يُستبدل الجدول السابق — يُحفظ كإصدار.' : 'Submitted for approval; the previous schedule is preserved as a version.'}</b></div></div>
+            <DMsgBar tone="info" icon="info">{AR ? 'يُقدَّم للاعتماد ولا يُستبدل الجدول السابق — يُحفظ كإصدار.' : 'Submitted for approval; the previous schedule is preserved as a version.'}</DMsgBar>
           </div>}
         </div>
         <div className="d-modal-foot">
@@ -429,20 +434,27 @@ function DImportWizard({ lang, onClose, onDone, kind, impact, totalCostImpact })
   );
 }
 
-function DModSchedule({ t, lang, d, p, showToast }) {
+function DModSchedule({ t, lang, d, p, showToast, shellTitle, frameActions }) {
   // applied change orders move activity dates; the baseline stays untouched
   const amdIdx = React.useMemo(() => (window.amendmentIndex ? window.amendmentIndex(d, lang, p) : { boq: {}, acts: {} }), [d, lang, p && p.id]);
   const sd = React.useMemo(() => window.EPM.buildScheduleData(p, lang), [p && p.id, lang]);
+  const isSupply = p && p.type === 'supply';
   const AR = lang === 'ar';
   const [view, setView] = React.useState('gantt');
   const [selId, setSelId] = React.useState(null);
   const [amdAct, setAmdAct] = React.useState(null);
   const [filterCrit, setFilterCrit] = React.useState(false);
+  /* L15 default state: expanded to WBS level 2, critical path available as a
+     filter. Relationship arrows are not drawn by DGantt, so no toggle is
+     offered for them — a switch with nothing behind it is worse than none. */
+  const [wbsLevel, setWbsLevel] = React.useState(2);
   const [showImport, setShowImport] = React.useState(false);
   const [verId, setVerId] = React.useState(sd.versions[0].id);
   const [basis, setBasis] = React.useState('cost');
-  const [acts, setActs] = React.useState(sd.activities);
-  React.useEffect(() => { setActs(sd.activities); setSelId(null); }, [sd]);
+  // persist progress edits per project; usePersistedState re-syncs when the
+  // project (key) changes, so we no longer clobber it from the sd effect
+  const [acts, setActs] = window.usePersistedState('sched.acts.' + ((p && p.id) || 'na'), function () { return sd.activities; });
+  React.useEffect(() => { setSelId(null); }, [sd]);
   const roll = React.useMemo(() => schedRollup(acts), [acts]);
   const sel = acts.find(a => a.id === selId);
   const setPct = (id, pct) => setActs(as => as.map(a => a.id === id ? { ...a, pct, remDur: a.milestone ? 0 : Math.round(a.origDur * (1 - pct / 100)) } : a));
@@ -456,85 +468,90 @@ function DModSchedule({ t, lang, d, p, showToast }) {
       blStart: a.blStart, blFinish: a.blFinish, curStart: a.curStart, curFinish: a.curFinish,
       durBefore: a.origDur, durAfter: a.origDur + a.slip,
       floatBefore: a.float + a.slip, floatAfter: a.float, slip: a.slip,
-      cost: a.cost, dailyRate, dailyOverhead, costImpact: dailyOverhead * a.slip,
-    };
+      cost: a.cost, dailyRate, dailyOverhead, costImpact: dailyOverhead * a.slip };
   });
   const totalCostImpact = impact.reduce((s, im) => s + im.costImpact, 0);
 
   const exportSchedule = () => schedCSV('schedule-' + (p ? p.id : 'demo') + '.csv', [AR ? 'المعرّف' : 'ID', AR ? 'النشاط' : 'Activity', AR ? 'الحالة' : 'Status', AR ? 'بداية أساس' : 'BL start', AR ? 'إنجاز أساس' : 'BL finish', AR ? 'بداية فعلية' : 'Act start', AR ? 'إنجاز فعلي' : 'Act finish', AR ? 'عوم' : 'TF', '%', AR ? 'كلفة' : 'Cost'], acts.filter(a => a.type === 'act').map(a => [a.id, a.name, (SCHED_STATUS[schedStatusOf(a)][lang]), a.blStart, a.blFinish, schedActualStart(a) || '-', schedActualFinish(a) || '-', a.float, a.pct, a.cost]));
   React.useEffect(() => {
-    const imp = () => setShowImport(true), exp = () => exportSchedule(), crit = () => setFilterCrit(v => !v);
-    window.addEventListener('epm:sched-import', imp); window.addEventListener('epm:sched-export', exp); window.addEventListener('epm:sched-critical', crit);
-    return () => { window.removeEventListener('epm:sched-import', imp); window.removeEventListener('epm:sched-export', exp); window.removeEventListener('epm:sched-critical', crit); };
+    /* the critical-path filter lives in Z6 now; it used to be duplicated as a
+       Z4 action firing `epm:sched-critical`, so the same filter appeared twice */
+    const imp = () => setShowImport(true), exp = () => exportSchedule();
+    window.addEventListener('epm:sched-import', imp); window.addEventListener('epm:sched-export', exp);
+    return () => { window.removeEventListener('epm:sched-import', imp); window.removeEventListener('epm:sched-export', exp); };
   });
 
   const exportImpact = () => {
     schedCSV('impact-analysis-' + (p ? p.id : 'demo') + '.csv',
       [AR ? 'المعرّف' : 'Activity ID', AR ? 'النشاط' : 'Activity', AR ? 'حرج' : 'Critical', AR ? 'بداية أساس' : 'BL start', AR ? 'إنجاز أساس' : 'BL finish', AR ? 'بداية حالية' : 'Cur start', AR ? 'إنجاز حالي' : 'Cur finish', AR ? 'مدة قبل' : 'Dur before', AR ? 'مدة بعد' : 'Dur after', AR ? 'الانزياح' : 'Slip (d)', AR ? 'كلفة النشاط' : 'Activity cost', AR ? 'عبء يومي' : 'Daily overhead', AR ? 'أثر الكلفة' : 'Cost impact'],
       impact.map(im => [im.id, im.name, im.critical ? 'Yes' : 'No', im.blStart, im.blFinish, im.curStart, im.curFinish, im.durBefore, im.durAfter, im.slip, im.cost, im.dailyOverhead, im.costImpact]));
-    showToast(AR ? 'تم تصدير Excel — تجريبي' : 'Exported to Excel — demo');
+    showToast(AR ? 'تم تصدير تحليل الأثر (CSV)' : 'Impact analysis exported (CSV)');
   };
 
   const critDetail = sel && sel.critical && !sel.milestone;
   const selStatus = sel ? schedStatusOf(sel) : null;
 
+  const VTABS = [
+    { id: 'gantt', label: AR ? 'جانت' : 'Gantt', icon: 'calendar_view_week' },
+    { id: 'table', label: AR ? 'الجدول' : 'Table', icon: 'table_rows' },
+    { id: 'compare', label: AR ? 'المقارنة والأثر' : 'Compare & impact', icon: 'difference', n: impact.length || null },
+  ];
   const amdActE = amdAct && amdIdx.acts[amdAct.id];
   return (
-    <React.Fragment>
-      {amdActE && <DAmdPanel lang={lang} kind="act" e={amdActE} code={amdAct.id} name={amdAct.name} onClose={() => setAmdAct(null)} />}
-      {showImport && <DImportWizard lang={lang} impact={impact} totalCostImpact={totalCostImpact} onClose={() => setShowImport(false)} onDone={(b) => { setShowImport(false); setView('compare'); if (b) setBasis(b); showToast(AR ? 'قُدِّم للاعتماد — راجع تحليل الأثر' : 'Submitted for approval — review impact'); }} />}
-
-      <div className="d-sched-bar">
-        <div className="d-fig-row" style={{ flex: 1, margin: 0 }}>
-          <div className="d-fig"><div className="k">{AR ? 'إنجاز المشروع (تجميعي)' : 'Project rollup'}</div><div className="v" style={{ color: 'var(--azure-600)' }}>{roll.projectPct}<small>%</small></div></div>
-          <div className="d-fig"><div className="k">{AR ? 'تاريخ البيانات' : 'Data date'}</div><div className="v mono" style={{ fontSize: 15 }}>{sd.dataDate}</div></div>
-          <div className="d-fig"><div className="k">{AR ? 'الإنجاز المخطط' : 'Baseline finish'}</div><div className="v mono" style={{ fontSize: 15 }}>{sd.baselineFinish}</div></div>
-          <div className="d-fig"><div className="k">{AR ? 'الإنجاز المتوقع' : 'Forecast finish'}</div><div className="v mono" style={{ fontSize: 15, color: sd.delayDays > 0 ? 'var(--error)' : 'var(--on-surface)' }}>{sd.forecastFinish}</div></div>
-          <div className="d-fig"><div className="k">{AR ? 'التأخر' : 'Delay'}</div><div className="v" style={{ color: sd.delayDays > 0 ? 'var(--error)' : 'var(--on-surface)' }}>{sd.delayDays > 0 ? '+' : ''}{sd.delayDays}<small>{AR ? 'يوم' : 'd'}</small></div></div>
-          <div className="d-fig"><div className="k">{AR ? 'أنشطة حرجة' : 'Critical'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>{sd.criticalCount}</div></div>
-        </div>
-      </div>
-
-      <div className="d-sched-toolbar">
-        <select className="d-form-input" style={{ width: 'auto', height: 34 }} value={verId} onChange={e => setVerId(e.target.value)}>
-          {sd.versions.map(v => <option key={v.id} value={v.id}>{v.label} · {v.date}{v.current ? (AR ? ' (الحالي)' : ' (current)') : ''}</option>)}
-        </select>
-        <div className="d-seg">
-          <button className={view === 'gantt' ? 'on' : ''} onClick={() => setView('gantt')}><Icon name="calendar_view_week" size={14} />{AR ? 'جانت' : 'Gantt'}</button>
-          <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}><Icon name="table_rows" size={14} />{AR ? 'جدول' : 'Table'}</button>
-          <button className={view === 'compare' ? 'on' : ''} onClick={() => setView('compare')}><Icon name="difference" size={14} />{AR ? 'المقارنة والأثر' : 'Compare & impact'}</button>
-        </div>
-        <div style={{ flex: 1 }}></div>
-        <div className="d-seg">
-          <button className={basis === 'cost' ? 'on' : ''} onClick={() => setBasis('cost')} title={AR ? 'أساس الوزن: الكلفة' : 'Weight basis: cost'}><Icon name="payments" size={13} />{AR ? 'الكلفة' : 'Cost'}</button>
-          <button className={basis === 'manhours' ? 'on' : ''} onClick={() => setBasis('manhours')} title={AR ? 'أساس الوزن: ساعات العمل' : 'Weight basis: man-hours'}><Icon name="schedule" size={13} />{AR ? 'ساعات العمل' : 'Man-hours'}</button>
-        </div>
-        {view !== 'compare' && <button className={`d-btn sm ${filterCrit ? 'accent' : ''}`} onClick={() => setFilterCrit(v => !v)}><Icon name="priority_high" size={15} />{AR ? 'المسار الحرج' : 'Critical path'}</button>}
-      </div>
-
-      {view === 'gantt' && (
-        <div className="d-gantt-wrap">
-          <div className="d-gantt-legend">
-            <span className="li"><i className="bl"></i>{AR ? 'الخط الأساس' : 'Baseline'}</span>
-            <span className="li"><i className="crit"></i>{AR ? 'مسار حرج' : 'Critical'}</span>
-            <span className="li"><i className="ms"></i>{AR ? 'معلم' : 'Milestone'}</span>
-            {Object.keys(SCHED_STATUS).map(k => <span className="li" key={k}><Icon name={SCHED_STATUS[k].icon} size={13} style={{ color: SCHED_STATUS[k].color }} />{SCHED_STATUS[k][lang]}</span>)}
-          </div>
-          <DGantt amdIdx={amdIdx} onAmd={a => setAmdAct(a)} sd={sd} acts={acts} wbsPct={roll.wbsPct} lang={lang} filterCrit={filterCrit} onSelect={setSelId} selId={selId} basis={basis} />
-          {sel && (
-            <div className="d-actpanel">
-              <div className="d-actpanel-head"><b style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sel.id} — {sel.name}<DSchedStatus st={selStatus} lang={lang} /></b><button className="d-icon-btn" onClick={() => setSelId(null)}><Icon name="close" size={16} /></button></div>
-              <div className="d-dl" style={{ gridTemplateColumns: 'repeat(4,1fr)', gap: '10px 18px' }}>
-                <div className="d-dl-i"><span className="k">{AR ? 'بداية الأساس' : 'Baseline start'}</span><span className="v mono">{sel.blStart}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'إنجاز الأساس' : 'Baseline finish'}</span><span className="v mono">{sel.blFinish}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'البداية الفعلية' : 'Actual start'}</span><span className="v mono">{schedActualStart(sel) || '—'}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'الإنجاز الفعلي' : 'Actual finish'}</span><span className="v mono" style={{ color: sel.slip > 0 && schedActualFinish(sel) ? 'var(--error)' : 'inherit' }}>{schedActualFinish(sel) || '—'}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'النوع' : 'Type'}</span><span className="v">{sel.actType}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'التقويم' : 'Calendar'}</span><span className="v">{sel.calendar}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'المدة الأصلية/المتبقية' : 'Orig / Rem dur'}</span><span className="v mono">{sel.origDur} / {sel.remDur} {AR ? 'يوم' : 'd'}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'العوم الكلي' : 'Total float'}</span><span className="v mono" style={{ color: sel.float === 0 ? 'var(--on-surface)' : 'inherit' }}>{sel.milestone ? '—' : sel.float + (AR ? ' يوم' : ' d')}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'هيكل التجزئة' : 'WBS'}</span><span className="v" style={{ fontSize: 12 }}>{sel.wbs}</span></div>
-                <div className="d-dl-i"><span className="k">{AR ? 'السوابق' : 'Predecessors'}</span><span className="v mono">{sel.preds.length ? sel.preds.join(', ') : '—'}</span></div>
+    <DModuleFrame
+      title={shellTitle || (AR ? 'الجدول الزمني' : 'Schedule')}
+      tabs={VTABS} tab={view} onTab={v => { setView(v); setSelId(null); }}
+      toolbar={<React.Fragment>
+        {/* L15 Z6: baseline selector · critical-path toggle · relationships
+            toggle · WBS level · weight basis */}
+        <label className="d-ctxsel"><span>{AR ? 'خط الأساس' : 'Baseline'}</span>
+          <select value={verId} onChange={e => setVerId(e.target.value)}>
+            {sd.versions.map(v => <option key={v.id} value={v.id}>{v.label} · {v.date}{v.current ? (AR ? ' (الحالي)' : ' (current)') : ''}</option>)}
+          </select></label>
+        {view !== 'compare' && <React.Fragment>
+          <button className={'d-fchip ' + (filterCrit ? 'on' : '')} onClick={() => setFilterCrit(v => !v)}
+            title={AR ? 'إظهار المسار الحرج فقط' : 'Show only the critical path'}>
+            <span className="dot crit"></span>{AR ? 'المسار الحرج' : 'Critical path'}<span className="n">{sd.criticalCount}</span></button>
+          <label className="d-ctxsel"><span>{AR ? 'المستوى' : 'Level'}</span>
+            <select value={wbsLevel} onChange={e => setWbsLevel(parseInt(e.target.value, 10))}>
+              {[1, 2, 3, 4].map(l => <option key={l} value={l}>{l}</option>)}
+            </select></label>
+        </React.Fragment>}
+        <label className="d-ctxsel"><span>{AR ? 'أساس الوزن' : 'Basis'}</span>
+          <select value={basis} onChange={e => setBasis(e.target.value)}>
+            <option value="cost">{AR ? 'الكلفة' : 'Cost'}</option>
+            <option value="manhours">{AR ? 'ساعات العمل' : 'Man-hours'}</option>
+          </select></label>
+      </React.Fragment>}
+      actions={<React.Fragment>
+        {view !== 'compare' && frameActions}
+        {view === 'compare' && <React.Fragment>
+          <button className="d-btn sm" onClick={exportImpact}><Icon name="download" size={15} />{AR ? 'تصدير تحليل الأثر' : 'Export impact'}</button>
+          <button className="d-btn sm primary" onClick={() => { window.EPM.pushEvent && window.EPM.pushEvent({ icon: 'verified', tone: 'success', txtAr: 'اعتمدتَ تحليل الأثر الزمني لـ', txtEn: 'you approved the schedule impact for', tgt: (p ? p.id : '') }); showToast(AR ? 'اعتُمد تحليل الأثر الزمني' : 'Schedule impact approved'); }}>
+            <Icon name="verified" size={15} />{AR ? 'اعتماد الأثر' : 'Approve impact'}</button>
+        </React.Fragment>}
+      </React.Fragment>}
+      aside={sel ? (
+        <DRecordPane lang={lang}
+          title={sel.name}
+          meta={[
+            { k: AR ? 'المعرّف' : 'ID', v: sel.id, num: true },
+            { k: AR ? 'الحالة' : 'Status', v: <DSchedStatus st={selStatus} lang={lang} /> },
+            { k: AR ? 'العوم الكلي' : 'Total float', v: sel.milestone ? '—' : sel.float + (AR ? ' يوم' : 'd'), num: true },
+            { k: AR ? 'الإنجاز' : 'Progress', v: sel.pct + '%', num: true },
+          ]}
+          onClose={() => setSelId(null)}>
+              <div className="d-form-grid">
+                <div className="d-form-i"><span className="k">{AR ? 'بداية الأساس' : 'Baseline start'}</span><span className="v mono">{sel.blStart}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'إنجاز الأساس' : 'Baseline finish'}</span><span className="v mono">{sel.blFinish}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'البداية الفعلية' : 'Actual start'}</span><span className="v mono">{schedActualStart(sel) || '—'}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'الإنجاز الفعلي' : 'Actual finish'}</span><span className="v mono" style={{ color: sel.slip > 0 && schedActualFinish(sel) ? 'var(--error)' : 'inherit' }}>{schedActualFinish(sel) || '—'}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'النوع' : 'Type'}</span><span className="v">{sel.actType}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'التقويم' : 'Calendar'}</span><span className="v">{sel.calendar}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'المدة الأصلية/المتبقية' : 'Orig / Rem dur'}</span><span className="v mono">{sel.origDur} / {sel.remDur} {AR ? 'يوم' : 'd'}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'العوم الكلي' : 'Total float'}</span><span className="v mono" style={{ color: sel.float === 0 ? 'var(--on-surface)' : 'inherit' }}>{sel.milestone ? '—' : sel.float + (AR ? ' يوم' : ' d')}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'هيكل التجزئة' : 'WBS'}</span><span className="v" style={{ fontSize: 12 }}>{sel.wbs}</span></div>
+                <div className="d-form-i"><span className="k">{AR ? 'السوابق' : 'Predecessors'}</span><span className="v mono">{sel.preds.length ? sel.preds.join(', ') : '—'}</span></div>
               </div>
 
               {amdIdx.acts[sel.id] && amdIdx.acts[sel.id].srcs.length ? (() => {
@@ -546,22 +563,22 @@ function DModSchedule({ t, lang, d, p, showToast }) {
                     <button className="d-btn sm" onClick={() => setAmdAct(sel)}>{AR ? 'تسلسل التعديلات' : 'History'}</button>
                     <span className="d-cell-sub">{e.applied ? (AR ? 'نافذ — طُبِّق على الجدول' : 'Effective — applied to the schedule')
                       : (AR ? 'معتمد — لم يُطبَّق بعد' : 'Approved — not yet applied')}</span></div>
-                  <div className="d-dl" style={{ gridTemplateColumns: 'repeat(4,1fr)', gap: '10px 18px' }}>
-                    <div className="d-dl-i"><span className="k">{AR ? 'النهاية قبل التعديل' : 'Finish before'}</span><span className="v mono">{e.origFinish}</span></div>
-                    <div className="d-dl-i"><span className="k">{AR ? 'النهاية النافذة' : 'Effective finish'}</span><span className="v mono">{e.applied ? e.effFinish : '—'}</span></div>
-                    <div className="d-dl-i"><span className="k">{AR ? 'المتبقي قبل / بعد' : 'Remaining before / after'}</span><span className="v mono">{e.origRem} / {e.applied ? e.effRem : (last.remTo != null ? last.remTo : '—')} {AR ? 'يوم' : 'd'}</span></div>
-                    <div className="d-dl-i"><span className="k">{AR ? 'مقدار التمديد' : 'Extension'}</span><span className="v mono">+{(e.applied ? e.effRem : (last.remTo || 0)) - e.origRem} {AR ? 'يوم' : 'd'}</span></div>
+                  <div className="d-form-grid">
+                    <div className="d-form-i"><span className="k">{AR ? 'النهاية قبل التعديل' : 'Finish before'}</span><span className="v mono">{e.origFinish}</span></div>
+                    <div className="d-form-i"><span className="k">{AR ? 'النهاية النافذة' : 'Effective finish'}</span><span className="v mono">{e.applied ? e.effFinish : '—'}</span></div>
+                    <div className="d-form-i"><span className="k">{AR ? 'المتبقي قبل / بعد' : 'Remaining before / after'}</span><span className="v mono">{e.origRem} / {e.applied ? e.effRem : (last.remTo != null ? last.remTo : '—')} {AR ? 'يوم' : 'd'}</span></div>
+                    <div className="d-form-i"><span className="k">{AR ? 'مقدار التمديد' : 'Extension'}</span><span className="v mono">+{(e.applied ? e.effRem : (last.remTo || 0)) - e.origRem} {AR ? 'يوم' : 'd'}</span></div>
                   </div>
-                  <div className="d-vow-note" style={{ marginTop: 10 }}><Icon name="info" size={15} />
-                    <span>{AR ? 'تاريخ الأساس لم يتغيّر — هو المرجع التعاقدي الذي تُحتسب عليه الغرامات التأخيرية. التمديد يحرّك التاريخ التعاقدي في ملحق العقد.'
-                      : 'The baseline is unchanged — it is the contractual reference the delay penalty is measured against. The extension moves the contractual date in the contract amendment.'}</span></div>
+                  <DMsgBar tone="info" title={AR ? 'خط الأساس لم يتغيّر' : 'The baseline is unchanged'}>
+                    {AR ? 'هو المرجع التعاقدي الذي تُحتسب عليه الغرامات التأخيرية، والتمديد يحرّك التاريخ التعاقدي في ملحق العقد.'
+                        : 'It is the contractual reference the delay penalty is measured against; the extension moves the contractual date in the contract amendment.'}</DMsgBar>
                 </div>); })() : null}
 
               {!sel.milestone && (
-                <div style={{ marginTop: 14, padding: 14, border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-md)', background: 'var(--surface-container-lowest)' }}>
+                <div style={{ marginTop: 12, padding: 12, border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-md)', background: 'var(--surface-container-lowest)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <b style={{ fontSize: 13 }}>{AR ? 'تحديث الإنجاز' : 'Update progress'}</b>
-                    <span className="mono" style={{ fontSize: 15, fontWeight: 'var(--fw-x)', color: 'var(--azure-600)' }}>{sel.pct}%</span>
+                    <b style={{ fontSize: 12 }}>{AR ? 'تحديث الإنجاز' : 'Update progress'}</b>
+                    <span className="mono" style={{ fontSize: 16, fontWeight: 'var(--fw-x)', color: 'var(--azure-600)' }}>{sel.pct}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={sel.pct} onChange={e => setPct(sel.id, parseInt(e.target.value, 10))} style={{ width: '100%', accentColor: 'var(--primary)' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -569,74 +586,110 @@ function DModSchedule({ t, lang, d, p, showToast }) {
                     <div style={{ flex: 1 }}></div>
                     <button className="d-btn sm primary" onClick={() => showToast(AR ? 'حُدِّث الإنجاز — أُعيد حساب التجميع' : 'Progress saved — rollup recalculated')}><Icon name="check" size={14} />{AR ? 'حفظ التحديث' : 'Save update'}</button>
                   </div>
-                  <div className="d-cell-sub" style={{ marginTop: 8, fontSize: 11.5 }}><Icon name="functions" size={12} style={{ verticalAlign: -2 }} /> {AR ? 'يُرحَّل إلى تجميع كل مستويات هيكل التجزئة والمشروع تلقائياً.' : 'Rolls up through every WBS level to the project automatically.'}</div>
+                  <div className="d-cell-sub" style={{ marginTop: 8 }}><Icon name="functions" size={12} style={{ verticalAlign: -2 }} /> {AR ? 'يُرحَّل إلى تجميع كل مستويات هيكل التجزئة والمشروع تلقائياً.' : 'Rolls up through every WBS level to the project automatically.'}</div>
                 </div>
               )}
 
               {critDetail && (
                 <React.Fragment>
-                  <div className="d-section-title" style={{ marginTop: 16 }}>{AR ? 'أثر النشاط الحرج' : 'Critical-path impact'}</div>
-                  <div className="d-fig-row" style={{ margin: 0 }}>
-                    <div className="d-fig"><div className="k">{AR ? 'أثر التسليم' : 'Delivery impact'}</div><div className="v" style={{ color: 'var(--error)' }}>+{sel.slip}<small>{AR ? ' يوم على إنجاز المشروع' : 'd to project finish'}</small></div></div>
-                    <div className="d-fig"><div className="k">{AR ? 'الإنجاز' : 'Progress'}</div><div className="v">{sel.pct}%<small> · {AR ? 'متبقٍ' : 'rem'} {sel.remDur}{AR ? 'ي' : 'd'}</small></div></div>
-                    <div className="d-fig"><div className="k">{AR ? 'الأثر المالي' : 'Financial'}</div><div className="v mono" style={{ fontSize: 15 }}>{window.fmtNum(Math.round(sel.cost / (sel.origDur || 1) * 0.15 * sel.slip))}<small> IQD</small></div></div>
+                  
+                  <div className="d-form-grid">
+                    <div className="d-form-i"><span className="k">{AR ? 'أثر التسليم على إنجاز المشروع' : 'Delivery impact on project finish'}</span><span className="v" style={{ color: 'var(--error)' }}>+{sel.slip}{AR ? ' يوم' : 'd'}</span></div>
+                    <div className="d-form-i"><span className="k">{AR ? 'الإنجاز' : 'Progress'}</span><span className="v">{sel.pct}% · {AR ? 'متبقٍ ' : 'rem '}{sel.remDur}{AR ? 'ي' : 'd'}</span></div>
+                    <div className="d-form-i"><span className="k">{AR ? 'الأثر المالي' : 'Financial impact'}</span><span className="v"><DMoney v={Math.round(sel.cost / (sel.origDur || 1) * 0.15 * sel.slip)} lang={lang} size="sm" /></span></div>
                   </div>
-                  <div className="d-card-sub" style={{ marginTop: 10 }}><table className="d-line-table">
+                  <table className="d-line-table"><thead><tr><th>{AR ? 'البند' : 'Measure'}</th><th className="r">{AR ? 'المبلغ' : 'Amount'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th></tr></thead>
                     <tbody>
-                      <tr><td>{AR ? 'كلفة النشاط' : 'Activity cost'}</td><td className="mono">{window.fmtNum(sel.cost)} IQD</td></tr>
-                      <tr><td>{AR ? 'القيمة المكتسبة (النشاط)' : 'Earned value (activity)'}</td><td className="mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(Math.round(sel.cost * sel.pct / 100))} IQD</td></tr>
-                      <tr><td>{AR ? 'المتبقي المالي' : 'Remaining value'}</td><td className="mono">{window.fmtNum(Math.round(sel.cost * (1 - sel.pct / 100)))} IQD</td></tr>
+                      <tr><td>{AR ? 'كلفة النشاط' : 'Activity cost'}</td><td className="r"><DMoney v={sel.cost} lang={lang} size="sm" bare /></td></tr>
+                      <tr><td>{AR ? 'القيمة المكتسبة' : 'Earned value'}</td><td className="r"><DMoney v={Math.round(sel.cost * sel.pct / 100)} lang={lang} size="sm" bare /></td></tr>
+                      <tr><td>{AR ? 'المتبقي المالي' : 'Remaining value'}</td><td className="r"><DMoney v={Math.round(sel.cost * (1 - sel.pct / 100))} lang={lang} size="sm" bare /></td></tr>
                     </tbody>
-                  </table></div>
+                  </table>
                 </React.Fragment>
               )}
 
-              <div className="d-actpanel-links">
-                <button className="d-btn sm ghost" onClick={() => showToast('Demo')}><Icon name="list_alt" size={14} />{AR ? 'بنود الكميات' : 'BOQ'}</button>
-                <button className="d-btn sm ghost" onClick={() => showToast('Demo')}><Icon name="deployed_code" size={14} />{AR ? 'كائنات النموذج' : 'Model'}</button>
-                <button className="d-btn sm ghost" onClick={() => showToast('Demo')}><Icon name="folder_open" size={14} />{AR ? 'الوثائق' : 'Docs'}</button>
+              <div className="d-recl">
+                <button className="d-btn sm ghost" onClick={() => showToast(isSupply ? (AR ? 'الفقرات التجهيزية المرتبطة بالنشاط ' + sel.id : 'Supply items linked to ' + sel.id) : (AR ? 'الانتقال إلى بنود الكميات المرتبطة بالنشاط ' + sel.id : 'Open BOQ items linked to ' + sel.id))}><Icon name="list_alt" size={14} />{isSupply ? (AR ? 'الفقرات المرتبطة' : 'Linked items') : (AR ? 'بنود الكميات' : 'BOQ')}</button>
+                {!isSupply && <button className="d-btn sm ghost" onClick={() => showToast(AR ? 'عناصر النموذج المرتبطة بالنشاط ' + sel.id : 'Model objects linked to ' + sel.id)}><Icon name="deployed_code" size={14} />{AR ? 'كائنات النموذج' : 'Model'}</button>}
+                <button className="d-btn sm ghost" onClick={() => showToast(AR ? 'وثائق النشاط ' + sel.id : 'Documents for ' + sel.id)}><Icon name="folder_open" size={14} />{AR ? 'الوثائق' : 'Docs'}</button>
               </div>
-            </div>
-          )}
+        </DRecordPane>
+      ) : null}
+      status={<DZ10 lang={lang} asOf={sd.dataDate} stats={[
+        { k: AR ? 'الأنشطة' : 'Activities', v: acts.filter(a => a.type === 'act').length },
+        { k: AR ? 'على المسار الحرج' : 'Critical', v: sd.criticalCount },
+        { k: AR ? 'أدنى عوم كلي' : 'Min total float', v: (() => {
+          const fs = acts.filter(a => a.type === 'act' && !a.milestone).map(a => a.float);
+          return fs.length ? Math.min.apply(null, fs) + (AR ? ' يوم' : 'd') : '—'; })() },
+      ]} />}>
+      {amdActE && <DAmdPanel lang={lang} kind="act" e={amdActE} code={amdAct.id} name={amdAct.name} onClose={() => setAmdAct(null)} />}
+      {showImport && <DImportWizard lang={lang} impact={impact} totalCostImpact={totalCostImpact} onClose={() => setShowImport(false)} onDone={(b) => { setShowImport(false); setView('compare'); if (b) setBasis(b); showToast(AR ? 'قُدِّم للاعتماد — راجع تحليل الأثر' : 'Submitted for approval — review impact'); }} />}
+
+      {/* the schedule's headline: baseline vs forecast is the comparison the
+          whole page exists to make, so it stays in view while the grid scrolls */}
+      <div className="d-fsheet-recon">
+        <span className="tm"><em>{AR ? 'إنجاز المشروع (تجميعي)' : 'Project rollup'}</em><b className="num">{roll.projectPct}%</b></span>
+        <span className="op">·</span>
+        <span className="tm"><em>{AR ? 'الإنجاز المخطط (خط الأساس)' : 'Baseline finish'}</em><b className="num">{sd.baselineFinish}</b></span>
+        <span className="op">→</span>
+        <span className="tm strong"><em>{AR ? 'الإنجاز المتوقع' : 'Forecast finish'}</em><b className="num">{sd.forecastFinish}</b></span>
+        <span className="op">=</span>
+        <span className={'tm ' + (sd.delayDays > 0 ? 'bad' : 'good')}>
+          <em>{AR ? 'التأخر' : 'Delay'}</em><b className="num">{(sd.delayDays > 0 ? '+' : '') + sd.delayDays}{AR ? ' يوم' : 'd'}</b></span>
+      </div>
+
+      {sd.frozen && (
+        <DMsgBar tone="warning" icon="lock"
+          title={AR ? 'عدّاد مدة المقاولة مُجمّد بأمر إداري' : 'Contract-duration counter frozen by administrative order'}>
+          {AR ? 'اعتباراً من ' + sd.freezeDate + ' — لا تُحتسب أيام التأخير خلال فترة الإيقاف (المادة 2.1.2).'
+              : 'As of ' + sd.freezeDate + ' — delay days do not accrue while suspended (\u00a72.1.2).'}
+        </DMsgBar>
+      )}
+
+      {view === 'gantt' && (
+        <div className="d-gantt-wrap">
+          <div className="d-gantt-legend">
+            <span className="li"><i className="bl"></i>{AR ? 'الخط الأساس' : 'Baseline'}</span>
+            <span className="li"><i className="crit"></i>{AR ? 'مسار حرج' : 'Critical'}</span>
+            <span className="li"><i className="ms"></i>{AR ? 'معلم' : 'Milestone'}</span>
+            {Object.keys(SCHED_STATUS).map(k => <span className="li" key={k}><Icon name={SCHED_STATUS[k].icon} size={13} style={{ color: SCHED_STATUS[k].color }} />{SCHED_STATUS[k][lang]}</span>)}
+          </div>
+          <DGantt amdIdx={amdIdx} onAmd={a => setAmdAct(a)} sd={sd} acts={acts} wbsPct={roll.wbsPct} lang={lang} filterCrit={filterCrit} onSelect={setSelId} selId={selId} basis={basis} wbsLevel={wbsLevel} />
         </div>
       )}
 
-      {view === 'table' && <DSchedTable amdIdx={amdIdx} onAmd={a => setAmdAct(a)} acts={filterCrit ? acts.filter(a => a.type === 'wbs' || a.critical) : acts} wbsPct={roll.wbsPct} lang={lang} onSelect={id => { setSelId(id); setView('gantt'); }} selId={selId} basis={basis} />}
+      {view === 'table' && <DSchedTable amdIdx={amdIdx} onAmd={a => setAmdAct(a)} acts={filterCrit ? acts.filter(a => a.type === 'wbs' || a.critical) : acts} wbsPct={roll.wbsPct} lang={lang} onSelect={setSelId} selId={selId} basis={basis} />}
 
       {view === 'compare' && (
         <React.Fragment>
-          <div className="d-model-topbar">
-            <div className="d-section-title" style={{ margin: 0 }}>{AR ? 'تحليل الأثر' : 'Impact analysis'} — {AR ? 'الأساس ↔ الحالي' : 'Baseline ↔ Current'}</div>
-            <div style={{ flex: 1 }}></div>
-            <button className="d-btn sm" onClick={exportImpact}><Icon name="download" size={15} />{AR ? 'تصدير إلى Excel' : 'Export to Excel'}</button>
-            <button className="d-btn sm primary" onClick={() => showToast(AR ? 'اعتُمد الأثر — تجريبي' : 'Impact approved — demo')}><Icon name="verified" size={15} />{AR ? 'اعتماد الأثر' : 'Approve impact'}</button>
-          </div>
+          <div className="d-section-title">{AR ? 'تحليل الأثر — الأساس ↔ الحالي' : 'Impact analysis — baseline ↔ current'}</div>
+
           <div className="d-fig-row" >
             <div className="d-fig"><div className="k">{AR ? 'أنشطة متأثرة' : 'Affected activities'}</div><div className="v" style={{ color: 'var(--status-suspended-tx)' }}>{impact.length}</div></div>
             <div className="d-fig"><div className="k">{AR ? 'مضافة' : 'Added'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>{sd.comparison.added.length}</div></div>
             <div className="d-fig"><div className="k">{AR ? 'أصبحت حرجة' : 'Now critical'}</div><div className="v" style={{ color: 'var(--on-surface)' }}>{sd.comparison.nowCritical.length}</div></div>
-            <div className="d-fig"><div className="k">{AR ? 'أثر الكلفة (تقديري)' : 'Cost impact (est.)'}</div><div className="v mono" style={{ fontSize: 15, color: 'var(--error)' }}>{window.fmtNum(totalCostImpact)}<small> IQD</small></div></div>
+            <div className="d-fig"><div className="k">{AR ? 'أثر الكلفة (تقديري)' : 'Cost impact (est.)'}</div><div className="v mono" style={{ fontSize: 16, color: 'var(--error)' }}><DMoney v={totalCostImpact} lang={lang} size="sm" /></div></div>
           </div>
 
-          <div className="d-callout" style={{ marginTop: 4 }}><span className="d-callout-ico"><Icon name="functions" size={18} /></span><div className="d-callout-tx"><span className="k">{AR ? 'طريقة احتساب أثر الكلفة' : 'How cost impact is calculated'}</span><b style={{ fontSize: 12, fontWeight: 'var(--fw-bold)' }}>{AR ? 'المعدل اليومي = كلفة النشاط ÷ المدة الأصلية · العبء اليومي = المعدل × ١٥٪ · أثر الكلفة = العبء اليومي × أيام الانزياح.' : 'Daily rate = activity cost ÷ original duration · Daily overhead = rate × 15% · Cost impact = daily overhead × slip days.'}</b></div></div>
+          <DMsgBar tone="info" icon="functions" title={AR ? 'طريقة احتساب أثر الكلفة' : 'How cost impact is calculated'}>{AR ? 'المعدل اليومي = كلفة النشاط ÷ المدة الأصلية · العبء اليومي = المعدل × ١٥٪ · أثر الكلفة = العبء اليومي × أيام الانزياح.' : 'Daily rate = activity cost ÷ original duration · Daily overhead = rate × 15% · Cost impact = daily overhead × slip days.'}</DMsgBar>
 
           <div className="d-section-title">{AR ? 'الأنشطة المتأثرة — قبل / بعد' : 'Affected activities — before / after'}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {impact.map((im, i) => (
               <div key={i} className="d-card-sub" style={{ padding: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--surface-container-high)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--surface-container-high)' }}>
                   <span className="mono d-cell-sub">{im.id}</span>
-                  <b style={{ fontSize: 13 }}>{im.name}</b>
+                  <b style={{ fontSize: 12 }}>{im.name}</b>
                   <DSchedStatus st={im.status} lang={lang} />
                   {im.critical && <span className="d-pill stalled">{AR ? 'حرج' : 'Critical'}</span>}
                   <div style={{ flex: 1 }}></div>
                   <span className="mono" style={{ color: 'var(--error)', fontWeight: 'var(--fw-bold)' }}>+{im.slip}{AR ? ' يوم' : 'd'}</span>
-                  <span className="mono d-cell-sub">· {window.fmtNum(im.costImpact)} IQD</span>
+                  <span className="d-cell-sub">· <DMoney v={im.costImpact} lang={lang} size="xs" /></span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
                   {[0, 1].map(ci => (
-                    <div key={ci} style={{ padding: '10px 14px', borderInlineStart: ci === 1 ? '1px solid var(--surface-container-high)' : 'none', background: ci === 1 ? 'color-mix(in srgb,var(--error) 4%,transparent)' : 'transparent' }}>
-                      <div className="d-cell-sub" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 6 }}>{ci === 0 ? (AR ? 'الأساس' : 'Baseline') : (AR ? 'الحالي' : 'Current')}</div>
+                    <div key={ci} style={{ padding: '10px 12px', borderInlineStart: ci === 1 ? '1px solid var(--surface-container-high)' : 'none', background: ci === 1 ? 'color-mix(in srgb,var(--error) 4%,transparent)' : 'transparent' }}>
+                      <div className="d-cell-sub" style={{ marginBottom: 6 }}>{ci === 0 ? (AR ? 'الأساس' : 'Baseline') : (AR ? 'الحالي' : 'Current')}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '2px 0' }}><span className="d-cell-sub">{AR ? 'البداية' : 'Start'}</span><span className="mono">{ci === 0 ? im.blStart : im.curStart}</span></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '2px 0' }}><span className="d-cell-sub">{AR ? 'الإنجاز' : 'Finish'}</span><span className="mono" style={ci === 1 ? { color: 'var(--error)' } : null}>{ci === 0 ? im.blFinish : im.curFinish}</span></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '2px 0' }}><span className="d-cell-sub">{AR ? 'المدة' : 'Duration'}</span><span className="mono">{(ci === 0 ? im.durBefore : im.durAfter)} {AR ? 'يوم' : 'd'}</span></div>
@@ -644,7 +697,7 @@ function DModSchedule({ t, lang, d, p, showToast }) {
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px', padding: '8px 14px', borderTop: '1px dashed var(--outline-variant)', fontSize: 11.5 }} className="d-cell-sub">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px', padding: '8px 12px', borderTop: '1px dashed var(--outline-variant)' }} className="d-cell-sub">
                   <span>{AR ? 'كلفة النشاط' : 'Activity cost'}: <b className="mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(im.cost)}</b></span>
                   <span>{AR ? 'المعدل اليومي' : 'Daily rate'}: <b className="mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(im.dailyRate)}</b></span>
                   <span>{AR ? 'عبء يومي (١٥٪)' : 'Daily overhead (15%)'}: <b className="mono" style={{ color: 'var(--on-surface)' }}>{window.fmtNum(im.dailyOverhead)}</b></span>
@@ -655,11 +708,11 @@ function DModSchedule({ t, lang, d, p, showToast }) {
           </div>
 
           {sd.comparison.nowCritical.length > 0 && (
-            <div className="d-callout" style={{ marginTop: 14 }}><span className="d-callout-ico"><Icon name="priority_high" size={18} /></span><div className="d-callout-tx"><span className="k">{AR ? 'أنشطة أصبحت على المسار الحرج' : 'Newly critical activities'}</span><b>{sd.comparison.nowCritical.map(c => c.name).join(' · ')}</b></div></div>
+            <DMsgBar tone="info" icon="priority_high" title={AR ? 'أنشطة أصبحت على المسار الحرج' : 'Newly critical activities'}>{sd.comparison.nowCritical.map(c => c.name).join(' · ')}</DMsgBar>
           )}
         </React.Fragment>
       )}
-    </React.Fragment>
+    </DModuleFrame>
   );
 }
 

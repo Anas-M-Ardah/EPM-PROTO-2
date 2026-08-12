@@ -31,8 +31,15 @@ import { ICONS } from './icons';
        Making the host an inline-flex box collapses it to the glyph's own
        size, so every align-items:center in the sheets acts on the icon
        itself. One rule here rather than a nudge per button: the defect is the
-       host box, and it is the same host box everywhere. */
-    :host { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+       host box, and it is the same host box everywhere.
+
+       :host(.mi) repeats the rule at higher specificity for one reason: the
+       copied sheets carry the reference's Material-Symbols base rule
+       (components.css:147), which sets display:inline-block on .mi. An icon
+       that opts into .mi — to pick up ".au-input .mi", ".au-secure .mi" and
+       the rest of the sheets' icon colouring — must not lose the box fix
+       above to it. Same declarations, deliberately duplicated. */
+    :host, :host(.mi) { display: inline-flex; align-items: center; justify-content: center; flex: none; }
     .epm-icon { display: inline-grid; place-items: center; line-height: 0; flex: none; }
     .epm-icon svg { display: block; }
     :host-context([dir="rtl"]) .epm-icon-flip svg { transform: scaleX(-1); }
