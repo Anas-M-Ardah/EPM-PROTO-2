@@ -668,6 +668,50 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-ws-f > small { font-size: 11px; color: var(--on-surface-variant); }
 .epm-ws-f2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
 
+/* ── المسار 1 project form ────────────────────────────────────────────────
+   The same three classes above carry the project definition card; these two
+   are the only things it needs that the drawer did not. A field that failed
+   المسار 1 step 3 states WHY, under the control, and marks the control —
+   never colour alone (05 §7.6), which is why the message is always rendered
+   with the border. */
+.d-form-input.epm-invalid { border-color: var(--error); }
+.epm-ws-f > small.epm-f-err { color: var(--error); }
+
+/* ── «العرض بصفة» in the topbar (epm-role-switch) ─────────────────────────
+   A global scope control, beside the workspace crumb it belongs with. Visible
+   rather than menu-deep — the demonstrator changes capacity constantly — but a
+   DROPDOWN, not a chip row: eight capacities of long Arabic role names would
+   wrap the command bar onto a second line.
+
+   The topbar is the charcoal plane and carries its own foreground tokens, so
+   this uses `--topbar-fg*` and never the canvas ones (05 §7). */
+.epm-roleswitch {
+  display: flex; align-items: center; gap: var(--space-6, 6px);
+  flex: none; min-width: 0;
+}
+.epm-roleswitch > .lbl {
+  font-size: 11.5px; color: var(--topbar-fg-dim); white-space: nowrap;
+}
+.epm-role-select {
+  max-width: 220px;
+  padding: 5px var(--space-8, 8px);
+  border: 1px solid var(--topbar-border); border-radius: var(--r-sm, 6px);
+  background: transparent; color: var(--topbar-fg);
+  font-family: inherit; font-size: 12px; line-height: 1.4;
+  cursor: pointer;
+}
+.epm-role-select:hover { border-color: var(--topbar-fg-dim); }
+/* The menu itself is painted by the OS on the light plane, so its options need
+   canvas colours — without this they inherit the topbar's light-on-dark and
+   render white on white when the menu opens. */
+.epm-role-select option { background: var(--surface); color: var(--on-surface); }
+
+/* The "fields marked with a star are required" line above the sections. */
+.epm-form-note {
+  display: flex; align-items: center; gap: var(--space-6, 6px);
+  margin-block: 0 var(--space-12); font-size: 12px;
+}
+
 /* REMOVED: .epm-ws-swatches / .epm-ws-swatch. The create drawer no longer asks
    for an emblem colour — it derives one from the entity's code. The preview
    below is the only thing that shows it. */

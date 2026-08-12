@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
+import { Component, inject, signal, computed, effect, untracked, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -10,6 +10,7 @@ import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { WorkspacesService } from '../../core/workspaces';
+import { PersonaService, canDefineProjects } from '../../core/persona';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ProjectsApi } from './projects.api';
@@ -50,7 +51,8 @@ export class ProjectsPage {
   lang = inject(LangService);
   lookups = inject(LookupsService);
   workspaces = inject(WorkspacesService);
-  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  persona = inject(PersonaService);
+  /** Export is still a demo stub and says so — ToastService.demo(). */
   toast = inject(ToastService);
   fmt = fmt;
 
@@ -92,6 +94,24 @@ export class ProjectsPage {
     const ws = this.workspace();
     this.router.navigate(['/projects', id, 'overview'], { queryParams: ws ? { ws } : {} });
   }
+
+  /**
+   * المسار 1 — «فتح مساحة عمل الجهة وإنشاء سجل مشروع». The workspace rides
+   * along as `?ws=`, which is how the form knows which تشكيل the project
+   * belongs to; the enterprise view has none, and the form says so rather than
+   * guessing one.
+   */
+  newProject() {
+    const ws = this.workspace();
+    this.router.navigate(['/projects/new'], { queryParams: ws ? { ws } : {} });
+  }
+
+  /**
+   * §23 — project definition belongs to «المستخدم المختص», so a resident
+   * engineer never sees «مشروع جديد». Re-evaluates on its own when the shell's
+   * capacity switcher moves, because it reads the persona signal.
+   */
+  canDefine = computed(() => canDefineProjects(this.persona.current()));
 
   /** Enter on a focused row does what clicking it does (05 §7.7). */
   onRowKey(e: KeyboardEvent, id: string) {
@@ -188,6 +208,22 @@ export class ProjectsPage {
     this.route.queryParamMap.subscribe(p => {
       this.workspace.set(p.get('ws') ?? '');
       this.load();
+    });
+
+    // The shell owns the capacity switcher, so this page REACTS to it. A
+    // re-read, not a client-side re-filter: BR-15 is resolved on the server
+    // from the persona, so rows fetched for one capacity are the wrong set for
+    // the next — unscoped, مدير عام sees seven projects where المستخدم المختص
+    // sees five. Same pattern as change-orders.page.ts, for the same reason.
+    //
+    // `untracked` keeps `load()`'s own signal writes out of the dependency set,
+    // which would otherwise re-enter this effect.
+    let first = true;
+    effect(() => {
+      this.persona.currentId();
+      // The queryParamMap subscription above already fires the initial load.
+      if (first) { first = false; return; }
+      untracked(() => this.load());
     });
   }
 

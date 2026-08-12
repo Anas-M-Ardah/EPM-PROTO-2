@@ -61,8 +61,13 @@ public static class Fixture
         db.Projects.AddRange(
             new Project
             {
-                Id = "PRJ-0279", WorkspaceCode = "ub",
+                Id = "PRJ-0279", WorkspaceCode = "ub", Code = "PC-0279",
                 NameAr = "مجمع الكليات الطبية", NameEn = "Medical Colleges Complex",
+                RegistrationYear = 2025, PlannedCost = 340_000_000m,
+                ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2501",
+                Coordinates = "33.27,44.36", Formation = "وزارة التعليم العالي والبحث العلمي",
+                OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
+                Description = "إنشاء مجمع للكليات الطبية يضم قاعات دراسية ومختبرات وعيادات تعليمية.",
                 Status = "ongoing", Type = "new-build", ExecutionStage = "structure",
                 FundingType = "federal-budget", Region = "بغداد", Priority = "عالية",
                 Branch = "شعبة الأبنية", Executor = "شركة الفاو الهندسية",
@@ -73,8 +78,13 @@ public static class Fixture
             },
             new Project
             {
-                Id = "PRJ-0148", WorkspaceCode = "ub",
+                Id = "PRJ-0148", WorkspaceCode = "ub", Code = "PC-0148",
                 NameAr = "إنشاء مكتبة كلية الهندسة", NameEn = "Engineering Library",
+                RegistrationYear = 2025, PlannedCost = 80_000_000m,
+                ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2514",
+                Coordinates = "33.28,44.37", Formation = "وزارة التعليم العالي والبحث العلمي",
+                OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
+                Description = "بناء مكتبة مركزية لكلية الهندسة بطاقة استيعابية ٤٠٠ مقعد.",
                 Status = "ongoing", Type = "new-build", ExecutionStage = "finishes",
                 FundingType = "federal-budget", Region = "بغداد", Priority = "متوسطة",
                 Branch = "شعبة الأبنية", Executor = "شركة بغداد للمقاولات",
@@ -84,8 +94,13 @@ public static class Fixture
             },
             new Project
             {
-                Id = "PRJ-0159", WorkspaceCode = "ub",
+                Id = "PRJ-0159", WorkspaceCode = "ub", Code = "PC-0159",
                 NameAr = "تأهيل مختبرات الحاسوب", NameEn = "Computer Labs Rehabilitation",
+                RegistrationYear = 2024, PlannedCost = 45_000_000m,
+                ExpenditureCategory = "maintenance", BudgetApprovalNumber = "BA-2417",
+                Coordinates = "33.28,44.36", Formation = "وزارة التعليم العالي والبحث العلمي",
+                OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الصيانة",
+                Description = "تأهيل ثلاثة مختبرات حاسوب وتحديث منظومة التبريد والتغذية الكهربائية.",
                 Status = "completed", Type = "rehabilitation", ExecutionStage = "handover",
                 FundingType = "grant", Region = "بغداد", Priority = "متوسطة",
                 Branch = "شعبة الصيانة", Executor = "شركة النهرين",
@@ -99,8 +114,13 @@ public static class Fixture
                 // الجامعة المستنصرية in Baghdad, not Mosul. A project whose
                 // region contradicts its own entity is the kind of detail that
                 // makes a reviewer stop trusting the rest of the dataset.
-                Id = "PRJ-0207", WorkspaceCode = "nu",
+                Id = "PRJ-0207", WorkspaceCode = "nu", Code = "PC-0207",
                 NameAr = "صيانة شبكة المياه", NameEn = "Water Network Maintenance",
+                RegistrationYear = 2025, PlannedCost = 62_000_000m,
+                ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2533",
+                Coordinates = "33.34,44.40", Formation = "وزارة التعليم العالي والبحث العلمي",
+                OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › البنى التحتية",
+                Description = "استبدال شبكة المياه الرئيسية داخل الحرم الجامعي ومعالجة نقاط التسرب.",
                 Status = "delayed", Type = "infrastructure", ExecutionStage = "mep-first-fix",
                 FundingType = "reconstruction-fund", Region = "بغداد", Priority = "عالية",
                 Branch = "شعبة البنى التحتية", Executor = "شركة الرافدين للمقاولات",
@@ -110,8 +130,13 @@ public static class Fixture
             },
             new Project
             {
-                Id = "PRJ-0277", WorkspaceCode = "tu",
+                Id = "PRJ-0277", WorkspaceCode = "tu", Code = "PC-0277",
                 NameAr = "توسعة قاعة المؤتمرات", NameEn = "Conference Hall Expansion",
+                RegistrationYear = 2026, PlannedCost = 51_200_000m,
+                ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2604",
+                Coordinates = "33.31,44.38", Formation = "وزارة التعليم العالي والبحث العلمي",
+                OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
+                Description = "توسعة قاعة المؤتمرات لتستوعب ٦٠٠ مقعد مع تحديث المنظومة الصوتية.",
                 Status = "suspended", Type = "extension", ExecutionStage = "foundations",
                 FundingType = "self-funding", Region = "بغداد", Priority = "منخفضة",
                 Branch = "شعبة الأبنية", Executor = "شركة الخليج للإنشاءات",

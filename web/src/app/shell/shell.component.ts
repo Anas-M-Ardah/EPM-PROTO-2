@@ -14,6 +14,7 @@ import { ToastService } from '../shared/toast.service';
 import { ToastComponent } from '../shared/toast.component';
 import { PopoverComponent } from '../shared/popover.component';
 import { CommandPaletteComponent, CommandAction } from '../shared/command-palette.component';
+import { RoleSwitchComponent } from '../shared/role-switch.component';
 import { AppFooterComponent } from './app-footer.component';
 
 interface NavItem {
@@ -38,7 +39,21 @@ function read(url: string): string {
 function readProject(url: string): string {
   const path = url.split('?')[0];
   const m = /^\/projects\/([^/]+)/.exec(path);
-  return m ? decodeURIComponent(m[1]) : '';
+  if (!m) return '';
+
+  // `/projects/...` is not automatically the project WORKSPACE. The المسار 1
+  // definition form lives under the same prefix and is an ordinary enterprise
+  // page: it belongs inside `.d-canvas`, which is the only scrolling container
+  // in the frame, and it has no project to put in the topbar picker.
+  //
+  // Both were measured before this guard existed: the six-section form was
+  // CLIPPED at the fold with no way to reach الجهة or الاستشاري, and the picker
+  // offered a project called "new".
+  const id = decodeURIComponent(m[1]);
+  if (id === 'new') return '';
+  if (/^\/projects\/[^/]+\/edit\/?$/.test(path)) return '';
+
+  return id;
 }
 
 /**
@@ -67,6 +82,7 @@ function readProject(url: string): string {
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive, IconComponent, StatusPillComponent,
     ToastComponent, PopoverComponent, CommandPaletteComponent, AppFooterComponent,
+    RoleSwitchComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './shell.component.html',

@@ -39,3 +39,107 @@ public record ProjectsResponse(
     int Total,
     IReadOnlyDictionary<string, int> CountByStatus
 );
+
+// ─────────────────────────────────────────────────────────────────────────
+// المسار 1 — تعريف المشروع وربطه بالجامعة
+//
+// The definition card of الشكل 5 and the workflow around it. MEMBER NAMES
+// MATCH web/src/app/features/projects/projects.types.ts exactly.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// What the specialist enters — الشكل 5's six sections, in its order:
+/// هوية المشروع · الموقع · التمويل والموازنة · الوصف · الجهة · الاستشاري.
+///
+/// Members are nullable AT THIS LAYER so that a missing field arrives as null
+/// and is reported by Domain/ProjectDefinition with a message the user can act
+/// on — rather than being rejected by the JSON binder with one that says
+/// nothing. Completeness is a business rule, checked in one place.
+/// </summary>
+public record ProjectDefinitionInput(
+    // هوية المشروع
+    string? NameAr,
+    string? NameEn,
+    string? Code,
+    string? Type,
+    int? RegistrationYear,
+    string? ExecutionStage,
+    string? Status,
+    // الموقع
+    string? Coordinates,
+    string? Region,
+    // التمويل والموازنة
+    string? FundingType,
+    string? Priority,
+    string? ExpenditureCategory,
+    string? BudgetApprovalNumber,
+    decimal? PlannedCost,
+    // الوصف
+    string? Description,
+    // الجهة
+    string? Formation,
+    string? BeneficiaryCodes,
+    string? OrgStructure,
+    string? Branch,
+    // الاستشاري
+    string? ConsultantParty,
+    string? DesignerParty,
+    string? Executor
+);
+
+/// <summary>
+/// POST /api/projects. The workspace is a SEPARATE member from the definition
+/// because it is not a field the specialist types — it is the context they are
+/// standing in (الشكل 3 is «مساحة العمل › المشاريع»), and المسار 1 validates
+/// «انتماء المشروع إلى تشكيل واحد» against it.
+/// </summary>
+public record CreateProjectRequest(string? WorkspaceCode, ProjectDefinitionInput Definition);
+
+/// <summary>
+/// One violation from Domain/ProjectDefinition, on the wire. `Field` matches the
+/// input member name so the form can put the message on the control that caused it.
+/// </summary>
+public record ProjectViolation(string Field, string MessageAr, string MessageEn);
+
+/// <summary>
+/// A value the system SUGGESTED rather than one the user typed — الشكل 5's
+/// «مقترح» tag. The card renders the tag from this list, which is what makes
+/// «تفصل بين ما هو مُدخَل معتمد وما هو مقترح من النظام» true on screen.
+/// </summary>
+public record ProjectSuggestion(string Field, string Value);
+
+/// <summary>سجل النشاط — one row of الشكل 5's second tab. An EDIT, not a workflow step.</summary>
+public record ProjectEvent(
+    int Id,
+    string Action,
+    string ActorName,
+    string ActorRole,
+    string ActorParty,
+    string At
+);
+
+/// <summary>
+/// GET /api/projects/{id}/definition — the whole card, its activity log, and
+/// what the CURRENT persona may do with it.
+/// </summary>
+public record ProjectDefinitionResponse(
+    string Id,
+    string WorkspaceCode,
+    string WorkspaceNameAr,
+    string WorkspaceNameEn,
+    ProjectDefinitionInput Definition,
+    IReadOnlyList<ProjectSuggestion> Suggestions,
+    IReadOnlyList<ProjectEvent> Events,
+    /// <summary>
+    /// Resolved SERVER-SIDE from the persona. The UI renders actions from this
+    /// rather than deciding for itself, so the button and the endpoint cannot
+    /// disagree about who may edit.
+    /// </summary>
+    ProjectPermissions Can
+);
+
+/// <param name="Edit">
+/// «المستخدم المختص» — §23 gives project definition to the specialist. The only
+/// capacity left now that the review step is gone.
+/// </param>
+public record ProjectPermissions(bool Edit);

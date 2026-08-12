@@ -170,6 +170,14 @@
         </div>
 
         <!--
+          «العرض بصفة» — beside the workspace crumb because they are the two
+          GLOBAL scope controls: which entity's data you are looking at, and in
+          what capacity. Both belong to the shell; neither belongs to a page.
+          Every screen reacts to this one rather than hosting a copy of it.
+        -->
+        <epm-role-switch />
+
+        <!--
           The project picker. v1.1 collapsed the workspace's queue PANE into
           this menu (desktop-workspace.jsx:62) — the topbar sheet styles
           `.d-topbar .d-projpick-btn` for exactly this slot. It renders only
@@ -355,11 +363,18 @@
     <!--
       THE LIST SCROLLS, NOT THE MENU. `.d-pop` is capped at 70vh by the
       reference's own sheet, and the reference's menu never reaches it — it has
-      six rows. Ours has the seven personas on top of them, which overran the
-      cap and pushed SIGN OUT, the last row, below an internal scroll where it
-      could not be found. The furniture around this list is now always visible
-      and only the personas scroll, so the menu's terminal action never leaves
-      the box however many personas 03 §7 grows to.
+      six rows. Ours has the capacities on top of them, which overran the cap
+      and pushed SIGN OUT, the last row, below an internal scroll where it could
+      not be found. The furniture around this list is now always visible and
+      only the capacities scroll, so the menu's terminal action never leaves the
+      box however many 03 §7 grows to.
+
+      ── THESE ARE CAPACITIES, NOT COLLEAGUES ─────────────────────────────
+      There is ONE user. Each row is a صفة that one person acts in, so the row
+      leads with the ROLE and names the PARTY beneath it. It used to lead with
+      a different personal name per row, which read as eight separate employees
+      and was the confusion this list now avoids — «العرض بصفة» means *viewing
+      as*, and the name never changes.
     -->
     <div class="epm-persona-list">
       @for (p of persona.all(); track p.id) {
@@ -367,8 +382,8 @@
                 [class.on]="persona.currentId() === p.id"
                 (click)="onPersona(p.id)">
           <span class="d-pop-row-tx">
-            <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
-            <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
+            <b>{{ lang.pick(p.roleAr, p.roleEn) }}</b>
+            <span>{{ p.party }}</span>
           </span>
           @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
         </button>

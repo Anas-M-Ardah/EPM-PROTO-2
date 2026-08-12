@@ -10,12 +10,18 @@ export interface InfoField {
   value: string | null;
   /** The `06` value list this code belongs to, or null for free text. */
   lookupKind: string | null;
-  /** text · date */
+  /** text · date · money */
   kind: string;
+  /** الشكل 5's «مقترح» tag — a value the system derived, not one that was typed. */
+  proposed: boolean;
 }
 
 export interface InfoGroup {
-  /** identity · location · funding · parties — labelled from `inf_group_<id>`. */
+  /**
+   * الشكل 5's six: identity · location · funding · description · entity ·
+   * consultant — labelled from `inf_group_<id>`. Same six the project form
+   * writes; they are one card seen twice.
+   */
   id: string;
   fields: InfoField[];
 }

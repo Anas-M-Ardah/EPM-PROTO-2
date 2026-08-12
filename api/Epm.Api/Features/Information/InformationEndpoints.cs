@@ -56,15 +56,28 @@ public static class InformationEndpoints
             // blank cell is indistinguishable from a rendering bug.
             static string? V(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
+            // ── الشكل 5's SIX SECTIONS ───────────────────────────────────
+            // «ستة أقسام قابلة للطي (هوية المشروع · الموقع · التمويل والموازنة ·
+            // الوصف · الجهة · الاستشاري)».
+            //
+            // THIS IS THE SAME SIX, IN THE SAME ORDER, OVER THE SAME FIELDS AS
+            // THE PROJECT FORM (features/projects/project-form.page.html). They
+            // are one card seen twice — read here, written there — and letting
+            // them diverge is how a field becomes enterable but invisible. It
+            // had already happened once: the form wrote ten columns this screen
+            // did not show.
             var groups = new List<InfoGroup>
             {
-                // The registration data, in the order 06 §12 lists it.
                 new("identity",
                 [
                     new InfoField("id", p.Id, null, "text"),
                     new InfoField("nameAr", V(p.NameAr), null, "text"),
                     new InfoField("nameEn", V(p.NameEn), null, "text"),
+                    // «مقترح» — المسار 1 step 4 derives it and الشكل 5 tags it,
+                    // so the reader can tell a system suggestion from an entry.
+                    new InfoField("code", V(p.Code), null, "text", Proposed: !string.IsNullOrWhiteSpace(p.Code)),
                     new InfoField("type", V(p.Type), "project-type", "text"),
+                    new InfoField("registrationYear", p.RegistrationYear?.ToString(), null, "text"),
                     new InfoField("status", V(p.Status), "project-status", "text"),
                     new InfoField("executionStage", V(p.ExecutionStage), "execution-stage", "text"),
                     new InfoField("updatedAt", p.UpdatedAt?.ToString("yyyy-MM-dd"), null, "date"),
@@ -72,14 +85,17 @@ public static class InformationEndpoints
 
                 new("location",
                 [
-                    new InfoField("workspaceCode", V(p.WorkspaceCode), null, "text"),
+                    new InfoField("coordinates", V(p.Coordinates), null, "text"),
                     new InfoField("region", V(p.Region), null, "text"),
-                    new InfoField("branch", V(p.Branch), null, "text"),
                 ]),
 
                 new("funding",
                 [
                     new InfoField("fundingType", V(p.FundingType), "funding-type", "text"),
+                    new InfoField("plannedCost", p.PlannedCost?.ToString("0.##"), null, "money"),
+                    new InfoField("expenditureCategory", V(p.ExpenditureCategory), "expenditure-category", "text",
+                        Proposed: !string.IsNullOrWhiteSpace(p.ExpenditureCategory)),
+                    new InfoField("budgetApprovalNumber", V(p.BudgetApprovalNumber), null, "text"),
                     new InfoField("priority", V(p.Priority), null, "text"),
                     // The project's own "now" (D-06). It belongs on this screen
                     // because every date the system shows for this project is
@@ -87,15 +103,29 @@ public static class InformationEndpoints
                     new InfoField("dataDate", p.DataDate?.ToString("yyyy-MM-dd"), null, "date"),
                 ]),
 
-                // The three parties on the project itself. The CONTRACTOR is
+                new("description",
+                [
+                    new InfoField("description", V(p.Description), null, "text"),
+                ]),
+
+                new("entity",
+                [
+                    new InfoField("workspaceCode", V(p.WorkspaceCode), null, "text"),
+                    new InfoField("beneficiaryCodes", V(p.BeneficiaryCodes), null, "text"),
+                    new InfoField("branch", V(p.Branch), null, "text"),
+                    new InfoField("formation", V(p.Formation), null, "text"),
+                    new InfoField("orgStructure", V(p.OrgStructure), null, "text"),
+                ]),
+
+                // The parties on the project itself. The CONTRACTOR is
                 // deliberately absent: a contractor belongs to a contract, not
                 // to a project, and one project may run several (01 §2.3,
                 // non-negotiable #1). SCR-W1 shows it per contract.
-                new("parties",
+                new("consultant",
                 [
-                    new InfoField("executor", V(p.Executor), null, "text"),
-                    new InfoField("designerParty", V(p.DesignerParty), null, "text"),
                     new InfoField("consultantParty", V(p.ConsultantParty), null, "text"),
+                    new InfoField("designerParty", V(p.DesignerParty), null, "text"),
+                    new InfoField("executor", V(p.Executor), null, "text"),
                 ]),
             };
 
