@@ -11,7 +11,14 @@
 //   BOQ      → approved quantities/rates become the effective quantities
 //   schedule → approved activity dates become the effective dates
 
-const PENALTY = { rate: 0.001, capPct: 10 };   // 0.1%/day of contract value, capped at 10%
+// Liquidated damages per Gov. Contract Execution Regs No. 2/2014 (rev. Jul 2017),
+// Gazette 4325 p.13: the penalty rate is fixed per contract in the tender conditions
+// within a statutory 10%–25% band of contract value.
+//   daily penalty = (contract amount ± Δamount) / (total duration ± Δduration) × rate
+// Because it divides the rated amount by the full duration, a delay equal to the
+// whole contract duration equals rate% of the contract value — i.e. the rate is the
+// effective cap on the total penalty.
+const PENALTY_BAND = { min: 0.10, max: 0.25, def: 0.10 };
 
 const AMD_STATE = {
   original: { ar: 'العقد الأصلي', en: 'Original contract', cls: '' },
@@ -31,13 +38,18 @@ function voContractKey(v, contracts) {
   return window.contractKeyOfBoq({ code: first.code }, contracts);
 }
 
-// delay penalty at a given contract value against a given contractual finish
-function penaltyOf(value, contractualFinish, forecastFinish) {
+// Delay penalty per Regs 2/2014: daily = (value ± Δ) / (duration ± Δ) × rate.
+// `value` and `duration` are the EFFECTIVE (amended) contract amount and total
+// duration; `rate` is the per-contract band rate (10%–25%). The total is capped at
+// rate% of the contract value (reached when delay = full duration).
+function penaltyOf(value, duration, contractualFinish, forecastFinish, rate) {
+  const r = rate || PENALTY_BAND.def;
+  const dur = Math.max(1, duration || 1);
   const days = Math.max(0, dayDiff(forecastFinish, contractualFinish));
-  const perDay = Math.round(value * PENALTY.rate);
-  const cap = Math.round(value * PENALTY.capPct / 100);
+  const perDay = Math.round(value * r / dur);
+  const cap = Math.round(value * r);           // total LD ceiling = rate% of contract value
   const gross = perDay * days;
-  return { days, perDay, cap, amount: Math.min(gross, cap), capped: gross > cap };
+  return { days, perDay, cap, amount: Math.min(gross, cap), capped: gross > cap, rate: r, duration: dur };
 }
 
 function contractAmendments(c, d, lang, p) {
@@ -94,8 +106,9 @@ function contractAmendments(c, d, lang, p) {
   // what the contract would become if every approved-but-unapplied order were applied
   const projected = pending.reduce((a, x) => ({ value: a.value + x.dValue, days: a.days + x.dDays }), { value, days: 0 });
 
-  const before = penaltyOf(origValue, origFinish, forecastFinish);
-  const after = penaltyOf(effective.value, effective.finish, forecastFinish);
+  const penaltyRate = (raw.penaltyRate != null ? raw.penaltyRate : PENALTY_BAND.def);
+  const before = penaltyOf(origValue, origDuration, origFinish, forecastFinish, penaltyRate);
+  const after = penaltyOf(effective.value, effective.duration, effective.finish, forecastFinish, penaltyRate);
 
   // effective quantity / activity changes, from applied amendments only
   const boqEffect = [];
@@ -106,7 +119,7 @@ function contractAmendments(c, d, lang, p) {
   });
 
   return { versions, effective, original: versions[0], pending, projected, forecastFinish,
-    penalty: { before, after, waived: before.amount - after.amount, rate: PENALTY.rate, capPct: PENALTY.capPct },
+    penalty: { before, after, waived: before.amount - after.amount, rate: penaltyRate },
     boqEffect, actEffect, orders: mine.map(x => x.v) };
 }
 
@@ -285,12 +298,19 @@ function DAmdPanel({ lang, e, kind, code, name, unit, onClose }) {
 }
 
 // ---------- the contract tab ----------
-function DContractAmendments({ lang, c, d, p, showToast }) {
+function DContractAmendments({ lang, c, d, p, showToast, openAmd, onOpenAmd }) {
   const AR = lang === 'ar';
   const a = React.useMemo(() => contractAmendments(c, d, lang, p), [c.key, d, lang, p && p.id]);
-  const [openAmd, setOpenAmd] = React.useState(null);
+  /* The record opens in the page's docked Z8 pane, so the owner of the frame
+     holds the selection; the local state is only the standalone fallback. */
+  const [localAmd, setLocalAmd] = React.useState(null);
+  const hoisted = typeof onOpenAmd === 'function';
+  const setOpenAmd = hoisted ? onOpenAmd : setLocalAmd;
   const kv = (k, v, mono, sub) => <div className="d-form-i"><span className="k">{k}</span>
     <span className={'v' + (mono ? ' mono' : '')}>{v}</span>{sub ? <span className="d-cell-sub">{sub}</span> : null}</div>;
+  /* amounts go through the shared money component, never bare mono text */
+  const kvm = (k, v, sub) => <div className="d-form-i"><span className="k">{k}</span>
+    <span className="v"><DMoney v={v} lang={lang} size="sm" /></span>{sub ? <span className="d-cell-sub">{sub}</span> : null}</div>;
   const secH = (ico, txt, right) => <div className="d-vow-sech"><Icon name={ico} size={16} />
     <div className="d-section-title" style={{ margin: 0 }}>{txt}</div><div style={{ flex: 1 }}></div>{right}</div>;
   const pill = k => { const s = AMD_STATE[k]; return <span className={'d-pill ' + s.cls}>{AR ? s.ar : s.en}</span>; };
@@ -299,139 +319,205 @@ function DContractAmendments({ lang, c, d, p, showToast }) {
 
   return (
     <React.Fragment>
-      {openAmd && <DAmendmentPanel lang={lang} amd={openAmd} onClose={() => setOpenAmd(null)} />}
+      {!hoisted && localAmd && <DAmendmentPanel lang={lang} amd={localAmd} onClose={() => setLocalAmd(null)} />}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
-        <div>{secH('verified_user', AR ? 'العقد النافذ' : 'Effective contract',
-          <span className="d-cell-sub">{a.versions.length > 1
+      <div className="d-amdstack">
+        {/* effective contract — L11 field group, the same card every page uses */}
+        <DFGroup id="amd-eff" title={AR ? 'العقد النافذ' : 'Effective contract'}
+          sub={a.versions.length > 1
             ? (AR ? 'بعد ' : 'after ') + (a.versions.length - 1) + (AR ? ' ملحق مطبَّق' : ' applied amendment(s)')
-            : (AR ? 'لا ملاحق مطبَّقة' : 'no applied amendments')}</span>)}
+            : (AR ? 'لا ملاحق مطبَّقة' : 'no applied amendments')}>
           <div className="d-form-grid">
             {kv(AR ? 'الإصدار النافذ' : 'Effective version', a.effective.label, false, a.effective.source || '—')}
-            {kv(AR ? 'قيمة العقد النافذة' : 'Effective contract value', window.fmtNum(a.effective.value), true,
+            {kvm(AR ? 'قيمة العقد النافذة' : 'Effective contract value', a.effective.value,
               a.effective.value !== a.original.value ? (AR ? 'الأصلية ' : 'original ') + window.fmtNum(a.original.value) : null)}
             {kv(AR ? 'تاريخ الإنجاز التعاقدي' : 'Contractual completion', a.effective.finish, true,
               a.effective.finish !== a.original.finish ? (AR ? 'الأصلي ' : 'original ') + a.original.finish : null)}
             {kv(AR ? 'مدة العقد' : 'Contract duration', a.effective.duration + (AR ? ' يوم' : ' days'), true,
               a.effective.duration !== a.original.duration ? sign(a.effective.duration - a.original.duration) + (AR ? ' يوم' : ' days') : null)}
-            {kv(AR ? 'صافي التعديل المطبَّق' : 'Net applied change', sign(a.effective.value - a.original.value), true)}
+            {kv(AR ? 'صافي التعديل المطبَّق' : 'Net applied change',
+              <DMoney v={a.effective.value - a.original.value} lang={lang} size="sm" signed />, false)}
             {kv(AR ? 'ملاحق بانتظار التطبيق' : 'Amendments awaiting application', a.pending.length, true,
-              a.pending.length ? sign(a.projected.value - a.effective.value) + ' · ' + a.projected.days + (AR ? ' يوم' : 'd') : null)}
+              a.pending.length ? sign(a.projected.value - a.effective.value) + (AR ? ' د.ع · ' : ' IQD · ') + a.projected.days + (AR ? ' يوم' : 'd') : null)}
           </div>
-          {a.pending.length > 0 && <div className="d-vow-note warn" style={{ marginTop: 12 }}><Icon name="warning" size={16} />
-            <span>{AR ? 'توجد أوامر معتمدة لم تُطبَّق بعد — لم تُدرج قيمها في العقد النافذ. القيمة المتوقعة بعد التطبيق '
-              : 'There are approved orders not yet applied — their values are excluded from the effective contract. Projected value after application '}
-              <b className="mono">{window.fmtNum(a.projected.value)}</b>{AR ? ' وتاريخ إنجاز ' : ', completion '}
-              <b className="mono">{addDays(a.effective.finish, a.projected.days)}</b>.</span></div>}
-        </div>
+          {a.pending.length > 0 && (
+            <DMsgBar tone="warning" title={AR ? 'أوامر معتمدة لم تُطبَّق بعد' : 'Approved orders not yet applied'}>
+              {AR ? 'لم تُدرج قيمها في العقد النافذ. القيمة المتوقعة بعد التطبيق '
+                  : 'Their values are excluded from the effective contract. Projected value after application '}
+              <DMoney v={a.projected.value} lang={lang} size="sm" />
+              {AR ? ' وتاريخ إنجاز ' : ', completion '}
+              <b className="mono">{addDays(a.effective.finish, a.projected.days)}</b>.
+            </DMsgBar>
+          )}
+        </DFGroup>
 
-        <div>{secH('history', AR ? 'سجل التعديلات التعاقدية' : 'Contract amendment history')}
-          <div className="d-vow-tw"><table className="d-line-table"><thead><tr>
-            <th style={{ width: 150 }}>{AR ? 'الإصدار' : 'Version'}</th>
-            <th style={{ width: 96 }}>{AR ? 'المصدر' : 'Source'}</th>
+        {/* amendment history — the register of contractual versions */}
+        <DFGroup id="amd-hist" title={AR ? 'سجل التعديلات التعاقدية' : 'Contract amendment history'}
+          sub={AR ? 'اضغط أي ملحق لعرض البنود والأنشطة التي عدّلها' : 'Select an amendment to see the items and activities it changed'}>
+          <div className="d-vow-tw wide-amd"><table className="d-line-table"><thead><tr>
+            <th style={{ width: 96 }}>{AR ? 'الرمز' : 'Code'}</th>
+            <th style={{ width: 190 }}>{AR ? 'الإصدار' : 'Version'}</th>
             <th style={{ width: 104 }}>{AR ? 'التاريخ' : 'Date'}</th>
-            <th style={{ width: 128 }}>{AR ? 'قيمة العقد' : 'Contract value'}</th>
-            <th style={{ width: 110 }}>{AR ? 'التغيير' : 'Change'}</th>
-            <th style={{ width: 104 }}>{AR ? 'المدة' : 'Duration'}</th>
+            <th className="r" style={{ width: 132 }}>{AR ? 'قيمة العقد' : 'Contract value'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+            <th className="r" style={{ width: 120 }}>{AR ? 'التغيير' : 'Change'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+            <th className="r" style={{ width: 88 }}>{AR ? 'المدة' : 'Duration'}</th>
             <th style={{ width: 108 }}>{AR ? 'تاريخ الإنجاز' : 'Completion'}</th>
-            <th style={{ width: 62 }}>{AR ? 'بنود' : 'BOQ'}</th><th style={{ width: 62 }}>{AR ? 'أنشطة' : 'Acts'}</th>
-            <th style={{ width: 170 }}>{AR ? 'الحالة' : 'State'}</th></tr></thead>
+            <th className="r" style={{ width: 60 }}>{AR ? 'بنود' : 'BOQ'}</th>
+            <th className="r" style={{ width: 60 }}>{AR ? 'أنشطة' : 'Acts'}</th>
+            <th style={{ width: 136 }}>{AR ? 'الحالة' : 'State'}</th></tr></thead>
             <tbody>{a.versions.concat(a.pending).map((x, k) => (
-              <tr key={k} onClick={() => x.source && setOpenAmd(x)} style={{ cursor: x.source ? 'pointer' : 'default' }}>
-                <td><b>{x.label}</b>{x.sourceTitle ? <div className="d-cell-sub">{x.sourceTitle}</div> : null}</td>
-                <td className="mono">{x.source || '—'}</td><td className="mono">{x.date}</td>
-                <td className="mono">{window.fmtNum(x.value)}</td>
-                <td className={'mono' + (x.dValue ? ' chg' : '')}>{x.no === 0 ? '—' : sign(x.dValue)}</td>
-                <td className="mono">{x.duration}{AR ? ' يوم' : 'd'}</td>
+              <tr key={k} onClick={() => x.source && setOpenAmd(x)} style={{ cursor: x.source ? 'pointer' : 'default' }}
+                className={openAmd && openAmd.label === x.label ? 'sel' : ''}>
+                <td className="code">{x.source || '—'}</td>
+                <td className="name wrap">{x.label}{x.sourceTitle ? <div className="d-cell-sub">{x.sourceTitle}</div> : null}</td>
+                <td className="mono">{x.date}</td>
+                <td className="r"><DMoney v={x.value} lang={lang} size="sm" bare /></td>
+                <td className={'r' + (x.dValue ? ' chg' : '')}>{x.no === 0 ? '—' : <DMoney v={x.dValue} lang={lang} size="sm" signed bare />}</td>
+                <td className="r num">{x.duration}{AR ? ' يوم' : 'd'}</td>
                 <td className="mono">{x.finish}</td>
-                <td className="mono">{x.no === 0 ? '—' : x.boqCount}</td><td className="mono">{x.no === 0 ? '—' : x.actCount}</td>
+                <td className="r num">{x.no === 0 ? '—' : x.boqCount}</td>
+                <td className="r num">{x.no === 0 ? '—' : x.actCount}</td>
                 <td>{pill(x.state)}</td></tr>))}</tbody></table></div>
-          <div className="d-cell-sub" style={{ marginTop: 8 }}>{AR ? 'اضغط أي ملحق لعرض البنود والأنشطة التي عدّلها.' : 'Select an amendment to see the items and activities it changed.'}</div>
-        </div>
+        </DFGroup>
 
-        <div>{secH('difference', AR ? 'أثر التعديلات على الغرامات التأخيرية' : 'Effect on delay penalties')}
-          <div className="d-form-grid" style={{ marginBottom: 12 }}>
-            {kv(AR ? 'نسبة الغرامة' : 'Penalty rate', (P.rate * 100).toFixed(1) + (AR ? '% من قيمة العقد لكل يوم تأخير' : '% of contract value per day of delay'))}
-            {kv(AR ? 'الحد الأقصى' : 'Cap', P.capPct + (AR ? '% من قيمة العقد' : '% of contract value'))}
+        {/* penalties — before / after / difference reconciliation */}
+        <DFGroup id="amd-pen" title={AR ? 'أثر التعديلات على الغرامات التأخيرية' : 'Effect on delay penalties'}
+          sub={AR ? 'تُحتسب من القيمة والمدة النافذتين' : 'computed from the effective value and duration'}>
+          <div className="d-form-grid">
+            {kv(AR ? 'نسبة الغرامة التأخيرية' : 'Penalty rate', (P.rate * 100).toFixed(0) + '%', false, AR ? 'ضمن النطاق القانوني 10%–25% (تعليمات 2/2014)' : 'within the statutory 10%–25% band (Regs 2/2014)')}
+            {kvm(AR ? 'الغرامة اليومية النافذة' : 'Effective daily penalty', P.after.perDay, AR ? '= القيمة ÷ المدة × النسبة' : '= value ÷ duration × rate')}
+            {kvm(AR ? 'الحد الأقصى للغرامة' : 'Penalty ceiling', P.after.cap, AR ? 'النسبة × قيمة العقد النافذة' : 'rate × effective contract value')}
             {kv(AR ? 'تاريخ الإنجاز المتوقع' : 'Forecast completion', a.forecastFinish, true)}
           </div>
-          <table className="d-line-table"><thead><tr>
-            <th style={{ minWidth: 190 }}></th>
-            <th style={{ width: 150 }}>{AR ? 'قبل التعديلات' : 'Before amendments'}</th>
-            <th style={{ width: 150 }}>{AR ? 'بعد التعديلات' : 'After amendments'}</th>
-            <th style={{ width: 130 }}>{AR ? 'الفرق' : 'Difference'}</th></tr></thead>
-            <tbody>
-              <tr><td>{AR ? 'تاريخ الإنجاز التعاقدي' : 'Contractual completion'}</td>
-                <td className="mono">{a.original.finish}</td>
-                <td className={'mono' + (a.effective.finish !== a.original.finish ? ' chg' : '')}>{a.effective.finish}</td>
-                <td className="mono">{sign(dayDiff(a.effective.finish, a.original.finish))}{AR ? ' يوم' : 'd'}</td></tr>
-              <tr><td>{AR ? 'أيام التأخير' : 'Days of delay'}</td>
-                <td className="mono">{P.before.days}</td>
-                <td className={'mono' + (P.after.days !== P.before.days ? ' chg' : '')}>{P.after.days}</td>
-                <td className="mono">{sign(P.after.days - P.before.days)}</td></tr>
-              <tr><td>{AR ? 'الغرامة اليومية' : 'Penalty per day'}</td>
-                <td className="mono">{window.fmtNum(P.before.perDay)}</td>
-                <td className={'mono' + (P.after.perDay !== P.before.perDay ? ' chg' : '')}>{window.fmtNum(P.after.perDay)}</td>
-                <td className="mono">{sign(P.after.perDay - P.before.perDay)}</td></tr>
-              <tr><td>{AR ? 'الحد الأقصى للغرامة' : 'Penalty cap'}</td>
-                <td className="mono">{window.fmtNum(P.before.cap)}</td>
-                <td className="mono">{window.fmtNum(P.after.cap)}</td>
-                <td className="mono">{sign(P.after.cap - P.before.cap)}</td></tr>
-            </tbody>
-            <tfoot><tr><td>{AR ? 'الغرامة المستحقة' : 'Penalty due'}</td>
-              <td className="mono">{window.fmtNum(P.before.amount)}</td>
-              <td className="mono">{window.fmtNum(P.after.amount)}</td>
-              <td className="mono chg">{sign(P.after.amount - P.before.amount)}</td></tr></tfoot></table>
-          <div className="d-vow-note" style={{ marginTop: 10 }}><Icon name="info" size={16} />
-            <span>{P.waived > 0
-              ? (AR ? 'التمديد المعتمد نقل تاريخ الإنجاز التعاقدي، فسقطت غرامة قدرها ' : 'The approved extension moved the contractual completion date, waiving a penalty of ')
-                + window.fmtNum(P.waived) + (AR ? '. زيادة قيمة العقد ترفع الغرامة اليومية، لكن أثر التمديد أكبر.' : '. The contract-value increase raises the daily penalty, but the extension outweighs it.')
-              : (AR ? 'لا غرامة مستحقة على تاريخ الإنجاز التعاقدي النافذ.' : 'No penalty is due against the effective contractual completion date.')}</span></div>
-          {P.after.capped && <div className="d-vow-note warn" style={{ marginTop: 8 }}><Icon name="warning" size={16} />
-            <span>{AR ? 'الغرامة بلغت الحد الأقصى المسموح به.' : 'The penalty has reached its contractual cap.'}</span></div>}
-        </div>
 
-        <div>{secH('list_alt', AR ? 'الكميات النافذة بعد التعديل' : 'Effective quantities after amendment',
-          <span className="d-cell-sub">{a.boqEffect.length + (AR ? ' بند' : ' item(s)')}</span>)}
+          <DMsgBar tone="info" icon="gavel" title={AR ? 'كيف تُحتسب الغرامة' : 'How the penalty is computed'}>
+            {AR ? 'غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷ (مدة العقد ± تغيّر المدة) × نسبة الغرامة — لذلك يُعاد الاحتساب تلقائياً عند كل أمر تغييري يغيّر المبلغ أو المدة.'
+                : 'Daily penalty = (contract value ± amount change) ÷ (duration ± duration change) × rate — so it recomputes automatically on any change order that alters the amount or the duration.'}
+          </DMsgBar>
+
+          <div className="d-vow-tw"><table className="d-line-table"><thead><tr>
+            <th style={{ minWidth: 200 }}>{AR ? 'البند' : 'Measure'}</th>
+            <th className="r" style={{ width: 150 }}>{AR ? 'قبل التعديلات' : 'Before amendments'}</th>
+            <th className="r" style={{ width: 150 }}>{AR ? 'بعد التعديلات' : 'After amendments'}</th>
+            <th className="r" style={{ width: 140 }}>{AR ? 'الفرق' : 'Difference'}</th></tr></thead>
+            <tbody>
+              <tr><td className="name">{AR ? 'تاريخ الإنجاز التعاقدي' : 'Contractual completion'}</td>
+                <td className="r mono">{a.original.finish}</td>
+                <td className={'r mono' + (a.effective.finish !== a.original.finish ? ' chg' : '')}>{a.effective.finish}</td>
+                <td className="r num">{sign(dayDiff(a.effective.finish, a.original.finish))}{AR ? ' يوم' : 'd'}</td></tr>
+              <tr><td className="name">{AR ? 'أيام التأخير' : 'Days of delay'}</td>
+                <td className="r num">{P.before.days}</td>
+                <td className={'r num' + (P.after.days !== P.before.days ? ' chg' : '')}>{P.after.days}</td>
+                <td className="r num">{sign(P.after.days - P.before.days)}</td></tr>
+              <tr><td className="name">{AR ? 'الغرامة اليومية (د.ع)' : 'Penalty per day (IQD)'}</td>
+                <td className="r"><DMoney v={P.before.perDay} lang={lang} size="sm" bare /></td>
+                <td className={'r' + (P.after.perDay !== P.before.perDay ? ' chg' : '')}><DMoney v={P.after.perDay} lang={lang} size="sm" bare /></td>
+                <td className="r"><DMoney v={P.after.perDay - P.before.perDay} lang={lang} size="sm" signed bare /></td></tr>
+              <tr><td className="name">{AR ? 'الحد الأقصى للغرامة (د.ع)' : 'Penalty cap (IQD)'}</td>
+                <td className="r"><DMoney v={P.before.cap} lang={lang} size="sm" bare /></td>
+                <td className="r"><DMoney v={P.after.cap} lang={lang} size="sm" bare /></td>
+                <td className="r"><DMoney v={P.after.cap - P.before.cap} lang={lang} size="sm" signed bare /></td></tr>
+            </tbody>
+            <tfoot><tr><td>{AR ? 'الغرامة المستحقة (د.ع)' : 'Penalty due (IQD)'}</td>
+              <td className="r"><DMoney v={P.before.amount} lang={lang} size="sm" bare /></td>
+              <td className="r"><DMoney v={P.after.amount} lang={lang} size="sm" bare /></td>
+              <td className="r chg"><DMoney v={P.after.amount - P.before.amount} lang={lang} size="sm" signed bare /></td></tr></tfoot></table></div>
+
+          <DMsgBar tone={P.after.capped ? 'danger' : 'info'}
+            title={P.after.capped ? (AR ? 'الغرامة بلغت حدها الأقصى' : 'The penalty has reached its cap')
+              : (P.waived > 0 ? (AR ? 'التمديد أسقط جزءاً من الغرامة' : 'The extension waived part of the penalty')
+                              : (AR ? 'لا غرامة مستحقة' : 'No penalty due'))}>
+            {P.waived > 0
+              ? <React.Fragment>{AR ? 'التمديد المعتمد نقل تاريخ الإنجاز التعاقدي، فسقطت غرامة قدرها ' : 'The approved extension moved the contractual completion date, waiving '}
+                  <DMoney v={P.waived} lang={lang} size="sm" />
+                  {AR ? '. زيادة قيمة العقد ترفع الغرامة اليومية، لكن أثر التمديد أكبر.' : '. The contract-value increase raises the daily penalty, but the extension outweighs it.'}</React.Fragment>
+              : (AR ? 'لا غرامة مستحقة على تاريخ الإنجاز التعاقدي النافذ.' : 'No penalty is due against the effective contractual completion date.')}
+          </DMsgBar>
+        </DFGroup>
+
+        {/* effective quantities */}
+        <DFGroup id="amd-boq" title={AR ? 'الكميات النافذة بعد التعديل' : 'Effective quantities after amendment'}
+          sub={a.boqEffect.length + (AR ? ' بند' : ' item(s)')}>
           {a.boqEffect.length ? <div className="d-vow-tw"><table className="d-line-table"><thead><tr>
-            <th style={{ width: 88 }}>{AR ? 'الكود' : 'Code'}</th><th style={{ minWidth: 170 }}>{AR ? 'الوصف' : 'Description'}</th>
-            <th style={{ width: 52 }}>{AR ? 'الوحدة' : 'Unit'}</th>
-            <th style={{ width: 106 }}>{AR ? 'الكمية الأصلية' : 'Original qty'}</th>
-            <th style={{ width: 106 }}>{AR ? 'الكمية النافذة' : 'Effective qty'}</th>
-            <th style={{ width: 96 }}>{AR ? 'الفرق' : 'Delta'}</th>
-            <th style={{ width: 120 }}>{AR ? 'القيمة النافذة' : 'Effective value'}</th>
-            <th style={{ width: 88 }}>{AR ? 'الوزن' : 'Weight'}</th>
+            <th style={{ width: 88 }}>{AR ? 'الرمز' : 'Code'}</th>
+            <th style={{ minWidth: 180 }}>{AR ? 'الوصف' : 'Description'}</th>
+            <th style={{ width: 56 }}>{AR ? 'الوحدة' : 'Unit'}</th>
+            <th className="r" style={{ width: 106 }}>{AR ? 'الكمية الأصلية' : 'Original qty'}</th>
+            <th className="r" style={{ width: 106 }}>{AR ? 'الكمية النافذة' : 'Effective qty'}</th>
+            <th className="r" style={{ width: 96 }}>{AR ? 'الفرق' : 'Delta'}</th>
+            <th className="r" style={{ width: 128 }}>{AR ? 'القيمة النافذة' : 'Effective value'} <span className="cur">({AR ? 'د.ع' : 'IQD'})</span></th>
+            <th className="r" style={{ width: 80 }}>{AR ? 'الوزن' : 'Weight'}</th>
             <th style={{ width: 96 }}>{AR ? 'الملحق' : 'Amendment'}</th></tr></thead>
             <tbody>{a.boqEffect.map((l, k) => (
-              <tr key={k}><td className="mono">{l.code}</td><td>{l.desc}</td><td>{l.unit}</td>
-                <td className="mono">{window.fmtNum(l.qtyBefore)}</td>
-                <td className="mono chg">{window.fmtNum(l.qtyApproved != null ? l.qtyApproved : l.qtyProposed)}</td>
-                <td className="mono">{sign((l.qtyApproved != null ? l.qtyApproved : l.qtyProposed) - l.qtyBefore)}</td>
-                <td className="mono">{window.fmtNum(Math.round(l.valAfter))}</td>
-                <td className="mono">{l.wApplied != null ? l.wApplied + '%' : (l.wApproved != null ? l.wApproved + '%' : '—')}</td>
-                <td className="mono">{l.src}</td></tr>))}</tbody></table></div>
+              <tr key={k}><td className="code">{l.code}</td>
+                <td className="name wrap">{l.desc}</td><td className="d-cell-sub">{l.unit}</td>
+                <td className="r num">{window.fmtNum(l.qtyBefore)}</td>
+                <td className="r num chg">{window.fmtNum(l.qtyApproved != null ? l.qtyApproved : l.qtyProposed)}</td>
+                <td className="r num">{sign((l.qtyApproved != null ? l.qtyApproved : l.qtyProposed) - l.qtyBefore)}</td>
+                <td className="r"><DMoney v={Math.round(l.valAfter)} lang={lang} size="sm" bare /></td>
+                <td className="r num">{l.wApplied != null ? l.wApplied + '%' : (l.wApproved != null ? l.wApproved + '%' : '—')}</td>
+                <td className="code">{l.src}</td></tr>))}</tbody></table></div>
             : <div className="d-cell-sub">{AR ? 'لم تُعدَّل أي كميات بملاحق مطبَّقة.' : 'No quantities changed by an applied amendment.'}</div>}
-        </div>
+        </DFGroup>
 
-        <div>{secH('calendar_month', AR ? 'الأنشطة النافذة بعد التعديل' : 'Effective activities after amendment',
-          <span className="d-cell-sub">{a.actEffect.length + (AR ? ' نشاط' : ' activity(ies)')}</span>)}
+        {/* effective activities */}
+        <DFGroup id="amd-act" title={AR ? 'الأنشطة النافذة بعد التعديل' : 'Effective activities after amendment'}
+          sub={a.actEffect.length + (AR ? ' نشاط' : ' activity(ies)')}>
           {a.actEffect.length ? <div className="d-vow-tw"><table className="d-line-table"><thead><tr>
-            <th style={{ width: 78 }}>Activity ID</th><th style={{ minWidth: 180 }}>{AR ? 'اسم النشاط' : 'Activity name'}</th>
-            <th style={{ width: 104 }}>{AR ? 'المتبقي قبل' : 'Remaining before'}</th>
-            <th style={{ width: 104 }}>{AR ? 'المتبقي النافذ' : 'Effective remaining'}</th>
+            <th style={{ width: 88 }}>{AR ? 'الرمز' : 'Code'}</th>
+            <th style={{ minWidth: 190 }}>{AR ? 'اسم النشاط' : 'Activity name'}</th>
+            <th className="r" style={{ width: 104 }}>{AR ? 'المتبقي قبل' : 'Remaining before'}</th>
+            <th className="r" style={{ width: 104 }}>{AR ? 'المتبقي النافذ' : 'Effective remaining'}</th>
             <th style={{ width: 110 }}>{AR ? 'النهاية قبل' : 'Finish before'}</th>
             <th style={{ width: 110 }}>{AR ? 'النهاية النافذة' : 'Effective finish'}</th>
             <th style={{ width: 96 }}>{AR ? 'الملحق' : 'Amendment'}</th></tr></thead>
             <tbody>{a.actEffect.map((x, k) => (
-              <tr key={k}><td className="mono">{x.id}</td><td>{x.name}</td>
-                <td className="mono">{x.remBefore}</td>
-                <td className="mono chg">{x.remApproved != null ? x.remApproved : x.remProposed}</td>
+              <tr key={k}><td className="code">{x.id}</td><td className="name wrap">{x.name}</td>
+                <td className="r num">{x.remBefore}</td>
+                <td className="r num chg">{x.remApproved != null ? x.remApproved : x.remProposed}</td>
                 <td className="mono">{x.finishBefore}</td>
                 <td className="mono chg">{x.finishApproved || '—'}</td>
-                <td className="mono">{x.src}</td></tr>))}</tbody></table></div>
+                <td className="code">{x.src}</td></tr>))}</tbody></table></div>
             : <div className="d-cell-sub">{AR ? 'لم تُعدَّل أي أنشطة بملاحق مطبَّقة.' : 'No activities changed by an applied amendment.'}</div>}
-        </div>
+        </DFGroup>
       </div>
+    </React.Fragment>
+  );
+}
+
+/* Amendment record — body only, so the page's docked Z8 pane owns the
+   header, actions and footer exactly as it does for a payment record. */
+function DAmendmentRecord({ lang, amd }) {
+  const AR = lang === 'ar';
+  const F = (k, v, mono) => <div className="d-form-i"><span className="k">{k}</span><span className={'v' + (mono ? ' mono' : '')}>{v}</span></div>;
+  return (
+    <React.Fragment>
+      <DRecordGrp label={AR ? 'أثر الملحق على العقد' : 'Effect on the contract'}>
+        <div className="d-form-grid">
+          {F(AR ? 'تغيير القيمة' : 'Value change', <DMoney v={amd.dValue} lang={lang} size="sm" signed />, false)}
+          {F(AR ? 'قيمة العقد بعده' : 'Contract value after', <DMoney v={amd.value} lang={lang} size="sm" />, false)}
+          {F(AR ? 'تمديد المدة' : 'Duration extension', amd.dDays + (AR ? ' يوم' : ' days'), true)}
+          {F(AR ? 'تاريخ الإنجاز بعده' : 'Completion after', amd.finish, true)}
+          {F(AR ? 'الحالة' : 'State', <span className={'d-pill ' + AMD_STATE[amd.state].cls}>{AR ? AMD_STATE[amd.state].ar : AMD_STATE[amd.state].en}</span>)}
+        </div>
+      </DRecordGrp>
+      {(amd.lines || []).length > 0 && (
+        <DRecordGrp label={AR ? 'البنود المعدَّلة' : 'Amended items'}>
+          <table className="d-line-table"><thead><tr><th>{AR ? 'الكود' : 'Code'}</th>
+            <th style={{ width: 92 }}>{AR ? 'قبل' : 'Before'}</th><th style={{ width: 92 }}>{AR ? 'بعد' : 'After'}</th></tr></thead>
+            <tbody>{amd.lines.map(l => (<tr key={l.code}><td className="mono">{l.code}<div className="d-cell-sub">{l.desc}</div></td>
+              <td className="mono">{window.fmtNum(l.qtyBefore)}</td>
+              <td className="mono chg">{window.fmtNum(l.qtyApproved != null ? l.qtyApproved : l.qtyProposed)}</td></tr>))}</tbody></table>
+        </DRecordGrp>
+      )}
+      {(amd.activities || []).length > 0 && (
+        <DRecordGrp label={AR ? 'الأنشطة المعدَّلة' : 'Amended activities'}>
+          <table className="d-line-table"><thead><tr><th>{AR ? 'النشاط' : 'Activity'}</th>
+            <th style={{ width: 92 }}>{AR ? 'قبل' : 'Before'}</th><th style={{ width: 92 }}>{AR ? 'بعد' : 'After'}</th></tr></thead>
+            <tbody>{amd.activities.map(x => (<tr key={x.id}><td className="mono">{x.id}<div className="d-cell-sub">{x.name}</div></td>
+              <td className="mono">{x.finishBefore}</td><td className="mono chg">{x.finishApproved || '—'}</td></tr>))}</tbody></table>
+        </DRecordGrp>
+      )}
     </React.Fragment>
   );
 }
@@ -449,7 +535,7 @@ function DAmendmentPanel({ lang, amd, onClose }) {
         <div className="d-drawer-body">
           <div className="d-drawer-grp"><span className="lbl">{AR ? 'أثر الملحق على العقد' : 'Effect on the contract'}</span>
             <div className="d-form-grid">
-              {F(AR ? 'تغيير القيمة' : 'Value change', sign(amd.dValue), true)}
+              {F(AR ? 'تغيير القيمة' : 'Value change', <DMoney v={amd.dValue} lang={lang} size="sm" signed />, false)}
               {F(AR ? 'قيمة العقد بعده' : 'Contract value after', window.fmtNum(amd.value), true)}
               {F(AR ? 'تمديد المدة' : 'Duration extension', amd.dDays + (AR ? ' يوم' : ' days'), true)}
               {F(AR ? 'تاريخ الإنجاز بعده' : 'Completion after', amd.finish, true)}
@@ -473,4 +559,4 @@ function DAmendmentPanel({ lang, amd, onClose }) {
   );
 }
 
-Object.assign(window, { contractAmendments, DContractAmendments, DAmendmentPanel, voContractKey, penaltyOf, AMD_STATE, amendmentIndex, DAmdMark, DAmdBands, DAmdPanel, DAmdDelta });
+Object.assign(window, { contractAmendments, DContractAmendments, DAmendmentPanel, DAmendmentRecord, voContractKey, penaltyOf, AMD_STATE, amendmentIndex, DAmdMark, DAmdBands, DAmdPanel, DAmdDelta });

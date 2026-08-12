@@ -88,7 +88,10 @@
         </div>
       </div>
 
-      <!-- What the row will look like, before it exists. -->
+      <!-- The MARK this workspace will carry, before it exists. It previews the
+           sidebar switcher and the switcher popover, which is where the emblem
+           and its colour actually appear — the register itself shows the code
+           as plain mono text, the way DSpaces does. -->
       <div class="epm-ws-preview">
         <span class="epm-ws-emblem" [style.background]="fColor()">
           <bdi>{{ fDisplayCode() || '—' }}</bdi>
@@ -144,6 +147,8 @@
 } @else {
   <div class="d-tablewrap">
 
+    <!-- Toolbar INSIDE the wrapper, chips inside `.grp`, then `.sp`, the clear
+         button and the count — DSpaces' own order (desktop-views.jsx:421). -->
     <div class="d-toolbar">
       <div class="d-field">
         <epm-icon name="search" [size]="16" />
@@ -167,19 +172,21 @@
         }
       </div>
 
-      <span class="sp"></span>
+      <div class="sp"></div>
 
       @if (!isUnfiltered()) {
-        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button class="d-btn sm ghost" (click)="clearFilters()">
+          <epm-icon name="close" [size]="13" />{{ lang.t('clear') }}
+        </button>
       }
-      <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
+      <span class="d-cell-sub"><bdi>{{ resultLabel() }}</bdi></span>
     </div>
 
     @if (rows().length === 0) {
       <div class="d-empty">
-        <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
-        <b>{{ lang.t('empty_filter_t') }}</b>
-        <span>{{ lang.t('empty_filter_b') }}</span>
+        <span class="d-empty-ico"><epm-icon name="search_off" [size]="28" /></span>
+        <b>{{ lang.t('ws_no_results') }}</b>
+        <span>{{ lang.t('ws_no_results_b') }}</span>
         <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
@@ -189,10 +196,26 @@
         control: tabbable, Enter/Space activated, and it says where it goes in
         the last column rather than relying on a hover the keyboard never sees.
       -->
+      <!--
+        COLUMNS AND WIDTHS ARE DSpaces' OWN (desktop-views.jsx:440-448):
+        code 92 · workspace · type · active 130 · projects 110 · completion 190.
+        Two deliberate departures, both recorded:
+
+        · no SELECT column and no `.d-bulkbar`. The reference has both; every
+          action on its bulk bar is a demo toast, so this is design without
+          capability and the client chose to leave it out.
+        · no ENTER column. The reference's row is click-only and so is ours now.
+          The row keeps `tabindex`/`role`/`aria-label`, which paint nothing —
+          see the row itself.
+
+        The VALUE column is ours, not the reference's. It is the only place Σ
+        effective contract value (BR-09) is visible per entity, and the client
+        chose to keep it.
+      -->
       <table class="d-table epm-ws-table">
         <thead>
           <tr>
-            <th style="width:78px">{{ lang.t('col_code') }}</th>
+            <th style="width:92px">{{ lang.t('col_code') }}</th>
             <!-- The name is the column that must not wrap: it is the longest
                  value in the table («المديرية العامة للتجهيز والمشتريات») and
                  everything else here is a short label or a figure. It takes
@@ -200,41 +223,50 @@
             <th class="sortable epm-ws-name" (click)="toggleSort('name')">
               {{ lang.t('col_entity') }}<epm-icon class="s-ico" [name]="sortIcon('name')" [size]="14" />
             </th>
-            <th style="width:128px">{{ lang.t('col_type') }}</th>
-            <th class="sortable num" (click)="toggleSort('activeCount')">
+            <th>{{ lang.t('col_type') }}</th>
+            <th class="sortable num r" style="width:130px" (click)="toggleSort('activeCount')">
               {{ lang.t('col_active') }}<epm-icon class="s-ico" [name]="sortIcon('activeCount')" [size]="14" />
             </th>
-            <th class="sortable num" (click)="toggleSort('projectCount')">
+            <th class="sortable num r" style="width:110px" (click)="toggleSort('projectCount')">
               {{ lang.t('nav_projects') }}<epm-icon class="s-ico" [name]="sortIcon('projectCount')" [size]="14" />
             </th>
-            <th class="sortable num" (click)="toggleSort('value')">
-              {{ lang.t('col_value') }}<epm-icon class="s-ico" [name]="sortIcon('value')" [size]="14" />
+            <!-- `col_value` («قيمة العقد») is SCR-E3's header — one contract's
+                 awarded figure. This column is Σ of the EFFECTIVE values under
+                 the entity (BR-09), which is a different quantity and has its
+                 own name already. -->
+            <th class="sortable num r" (click)="toggleSort('value')">
+              {{ lang.t('col_effective_value') }}<epm-icon class="s-ico" [name]="sortIcon('value')" [size]="14" />
             </th>
-            <th style="width:150px">{{ lang.t('col_completion') }}</th>
-            <th style="width:92px"><span class="epm-sr-only">{{ lang.t('ws_enter_full') }}</span></th>
+            <th style="width:190px">{{ lang.t('col_completion') }}</th>
           </tr>
         </thead>
         <tbody>
           @for (e of sorted(); track e.code) {
+            <!--
+              `tabindex`/`role`/`aria-label` stay although the reference's row
+              has none. They render NOTHING — the row looks exactly like the
+              reference's — but without them the register is unreachable by
+              keyboard, and 05 §7 is a contract rather than advice. The visible
+              «دخول» affordance that used to sit in a column of its own is what
+              went; the keyboard path it stood for did not.
+            -->
             <tr class="epm-ws-tr"
                 tabindex="0"
                 role="button"
                 [attr.aria-label]="lang.t('ws_enter_full') + ': ' + lang.pick(e.nameAr, e.nameEn)"
                 (click)="open(e.code)"
                 (keydown)="onRowKey($event, e.code)">
-              <td>
-                <!-- The emblem carries the workspace's own colour and its
-                     DISPLAY code (UOB), not the url slug (ub) — same mark as
-                     the sidebar switcher, so one workspace looks like itself
-                     wherever it appears. -->
-                <span class="epm-ws-emblem" [style.background]="e.color"><bdi>{{ e.displayCode }}</bdi></span>
-              </td>
+              <!-- The reference's code cell is plain mono text, not an emblem
+                   (desktop-views.jsx:454) — `w.code`, the short badge the
+                   switcher also shows, which is `displayCode` here. The url
+                   slug is not in this table at all. -->
+              <td class="mono d-cell-sub"><bdi>{{ e.displayCode }}</bdi></td>
               <td class="d-cell-strong">{{ lang.pick(e.nameAr, e.nameEn) }}</td>
               <td class="d-cell-sub">{{ kindLabel(e.kind) }}</td>
-              <td class="num"><bdi>{{ e.activeCount }}</bdi></td>
-              <td class="num"><bdi>{{ e.projectCount }}</bdi></td>
+              <td class="num r"><bdi>{{ e.activeCount }}</bdi></td>
+              <td class="num r"><bdi>{{ e.projectCount }}</bdi></td>
               <!-- Σ EFFECTIVE contract values under this entity (BR-00 → BR-09) -->
-              <td class="num mono"><bdi>{{ fmt.money(e.value) }}</bdi></td>
+              <td class="num r mono"><bdi>{{ fmt.money(e.value) }}</bdi></td>
               <td>
                 @if (e.completionPct !== null) {
                   <div class="d-progress">
@@ -246,14 +278,6 @@
                        A 0% bar would assert nothing has been built (P-09). -->
                   <span class="d-cell-sub">—</span>
                 }
-              </td>
-              <td>
-                <!-- tabindex -1: the ROW is the tab stop, so this would be a
-                     second stop onto the same destination. -->
-                <span class="epm-ws-open" tabindex="-1" aria-hidden="true">
-                  {{ lang.t('ws_enter') }}
-                  <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
-                </span>
               </td>
             </tr>
           }

@@ -120,8 +120,9 @@ export class EntitiesPage {
     return this.lang.isAr() ? `${n} ${this.lang.t('entities_showing')}` : `${n} ${this.lang.t('entities_showing')}`;
   });
 
-  /** code · name · type · active · projects · value · completion · open */
-  readonly colCount = 8;
+  /** code · name · type · active · projects · value · completion — DSpaces'
+   *  six (desktop-views.jsx:441) with ours added. */
+  readonly colCount = 7;
 
   constructor() {
     this.load();

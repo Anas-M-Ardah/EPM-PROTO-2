@@ -120,7 +120,6 @@ function MTabBar({ tab, setTab, t }) {
   const tabs = [
     { id: 'home',    icon: 'dashboard', label: t('nav_home') },
     { id: 'spaces',  icon: 'apartment', label: t('adm_ws') },
-    { id: 'activity',icon: 'bolt',      label: t('recent'), dot: true },
     { id: 'profile', icon: 'person',    label: t('profile') },
   ];
   return (
@@ -225,9 +224,6 @@ function MobileApp({ t, lang, setLang, theme, setTheme, user, fill, onSignout })
     header = null; // home renders its own brand hero
   } else if (tab === 'spaces') {
     screenNode = <window.MSpaces key={'sp' + refreshKey} {...ctx} />;
-    header = null;
-  } else if (tab === 'activity') {
-    screenNode = <window.MActivity key={'ac' + refreshKey} {...ctx} />;
     header = null;
   } else {
     screenNode = <window.MProfile key={'pf' + refreshKey} {...ctx} />;

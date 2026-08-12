@@ -100,8 +100,16 @@ const STR = {
   entities_showing:{ ar: 'مساحة عمل',                      en: 'workspaces' },
   col_entity:      { ar: 'مساحة العمل',                    en: 'Workspace' },
   col_type:        { ar: 'النوع',                          en: 'Type' },
-  col_active:      { ar: 'النشطة',                         en: 'Active' },
-  col_completion:  { ar: 'نسبة الإنجاز',                   en: 'Completion' },
+  /** VERBATIM — the reference's `kpi_active` / `kpi_completion` (data.jsx:57,
+   *  :60), which is what DSpaces puts in these two headers. Ours said «النشطة»
+   *  and «نسبة الإنجاز». Used by this register only. */
+  col_active:      { ar: 'مشاريع نشطة',                    en: 'Active projects' },
+  col_completion:  { ar: 'متوسط الإنجاز',                  en: 'Avg. completion' },
+  /** VERBATIM (data.jsx:74) — DSpaces' own filtered-empty title. The register
+   *  used the generic `empty_filter_t` («لا نتائج مطابقة»); the reference names
+   *  the thing that is missing. Its body is inline there, so it is here too. */
+  ws_no_results:   { ar: 'لا توجد مساحات عمل مطابقة',      en: 'No matching workspaces' },
+  ws_no_results_b: { ar: 'جرّب اسماً أو رمزاً أو نوعاً آخر', en: 'Try another name, code or type' },
   empty_entities_t:{ ar: 'لا توجد مساحات عمل بعد',         en: 'No workspaces yet' },
   empty_entities_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
   /** BR-15 — assigned to nothing is a real state, not an empty database. */
@@ -390,6 +398,10 @@ const STR = {
   empty_filter_t:  { ar: 'لا نتائج مطابقة',                en: 'No matching projects' },
   empty_filter_b:  { ar: 'جرّب مصطلحاً آخر أو امسح المرشّحات.', en: 'Try another term or clear the filters.' },
   clear_filters:   { ar: 'مسح المرشّحات',                  en: 'Clear filters' },
+  /** The register toolbar's own clear button is just «مسح» with a close icon
+   *  in the reference (desktop-views.jsx:432) — the long form is for the
+   *  empty-state button, where there is room for it. */
+  clear:           { ar: 'مسح',                            en: 'Clear' },
   load_fixture:    { ar: 'تحميل بيانات العرض',             en: 'Load demo fixture' },
   loading:         { ar: 'جارٍ التحميل…',                  en: 'Loading…' },
   error_t:         { ar: 'تعذّر تحميل البيانات',           en: 'Could not load data' },

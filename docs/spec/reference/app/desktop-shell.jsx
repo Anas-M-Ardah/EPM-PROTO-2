@@ -167,7 +167,6 @@ function DSidebar({ t, lang, user, scope, view, ws, collapsed, onToggleSide, onS
     { id: 'schedule', icon: 'calendar_month', label: t('nav_schedule_control') },
     { id: 'alerts', icon: 'notifications', label: t('nav_alerts_center') },
     { id: 'reports', icon: 'insights', label: t('nav_reports') },
-    { id: 'activity', icon: 'bolt', label: t('recent') },
   ];
   const wsNav = [
     { id: 'overview', icon: 'dashboard', label: t('ws_overview') },
@@ -176,7 +175,6 @@ function DSidebar({ t, lang, user, scope, view, ws, collapsed, onToggleSide, onS
     { id: 'schedule', icon: 'calendar_month', label: t('nav_schedule_control') },
     { id: 'alerts', icon: 'notifications', label: t('nav_alerts_center') },
     { id: 'reports', icon: 'insights', label: t('nav_reports') },
-    { id: 'activity', icon: 'bolt', label: t('recent') },
   ];
   const admNav = [
     { id: 'overview', icon: 'space_dashboard', label: lang === 'ar' ? 'مركز التحكّم' : 'Control center' },
@@ -285,7 +283,7 @@ function DSidebar({ t, lang, user, scope, view, ws, collapsed, onToggleSide, onS
 function DesktopApp({ t, lang, setLang, theme, setTheme, user, onAdmin, onSignout }) {
   const WS = window.EPM.WORKSPACES;
   const [scope, setScope] = dS('enterprise');
-  const [view, setView] = dS('dashboard');        // ent: dashboard|spaces|projects|contracts|schedule|alerts|reports|activity · ws: overview|projects|project|contracts|schedule|alerts|reports|activity
+  const [view, setView] = dS('dashboard');        // ent: dashboard|spaces|projects|contracts|schedule|alerts|reports · ws: overview|projects|project|contracts|schedule|alerts|reports
   const [ws, setWs] = dS(WS[0]);
   const [focusProj, setFocusProj] = dS(null);
   const [profile, setProfile] = dS(false);
@@ -325,7 +323,6 @@ function DesktopApp({ t, lang, setLang, theme, setTheme, user, onAdmin, onSignou
   const cmdActions = [
     { id: 'dash', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'dashboard', label: t('nav_home'), run: goEnterprise },
     { id: 'spaces', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'apartment', label: t('adm_ws'), run: () => { goEnterprise(); setView('spaces'); } },
-    { id: 'activity', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'bolt', label: t('recent'), run: () => { goEnterprise(); setView('activity'); } },
     { id: 'reports', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'insights', label: t('nav_reports'), run: () => { goEnterprise(); setView('reports'); } },
     { id: 'schedctl', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'calendar_month', label: t('nav_schedule_control'), run: () => { goEnterprise(); setView('schedule'); } },
     { id: 'projectsall', group: lang === 'ar' ? 'تنقّل' : 'Navigate', icon: 'projects', label: t('nav_projects_all'), run: () => { goEnterprise(); setView('projects'); } },
@@ -351,14 +348,12 @@ function DesktopApp({ t, lang, setLang, theme, setTheme, user, onAdmin, onSignou
   else if (scope === 'workspace' && view === 'schedule') content = <window.DScheduleControl {...ctx} scopeWs={ws} onOpenProject={openProjectDetail} />;
   else if (scope === 'workspace' && view === 'alerts') content = <window.DAlertsCenter {...ctx} scopeWs={ws} onOpenProject={openProjectDetail} />;
   else if (scope === 'workspace' && view === 'reports') content = <window.DReports {...ctx} scopeWs={ws} onOpenProject={openProjectDetail} />;
-  else if (scope === 'workspace' && view === 'activity') content = <window.DActivity {...ctx} scoped />;
   else if (view === 'spaces') content = <window.DSpaces {...ctx} />;
   else if (view === 'projects' && scope === 'enterprise') content = <window.DProjectsAll {...ctx} onOpenProject={openProjectDetail} />;
   else if (view === 'contracts') content = <window.DContractsAll {...ctx} onOpenProject={openProjectDetail} />;
   else if (view === 'schedule') content = <window.DScheduleControl {...ctx} onOpenProject={openProjectDetail} />;
   else if (view === 'alerts') content = <window.DAlertsCenter {...ctx} onOpenProject={openProjectDetail} />;
   else if (view === 'reports') content = <window.DReports {...ctx} onOpenProject={openProjectDetail} />;
-  else if (view === 'activity') content = <window.DActivity {...ctx} />;
   else content = <window.DDashboard {...ctx} />;
 
   return (
@@ -370,6 +365,7 @@ function DesktopApp({ t, lang, setLang, theme, setTheme, user, onAdmin, onSignou
           onSwitch={(a) => setPop({ type: 'switcher', anchor: a })}
           onNav={goNav} onAccount={(a) => setPop({ type: 'account', anchor: a })} onAdmin={enterAdmin} />
         {content}
+        <DAppFooter lang={lang} />
       </div>
 
       {/* command palette */}
@@ -471,4 +467,456 @@ function DTopbar({ t, lang, crumbs, actions, onSearch }) {
   );
 }
 
-Object.assign(window, { DesktopApp, DDonut, DPill, DCheck, useDeskLoad, DPopover, DContextMenu, DTopbar, fmtNum, STATUS_VAR });
+// Standard page header — Z2 identity bar (EPM design standards v1.1 §08):
+// breadcrumb → title (+ optional status) + sub → action cluster (Z4) inline-end.
+// crumbs: array of strings, or {label, onClick} objects; last is current (bold).
+function DPageHead({ crumbs, title, status, sub, actions, lang }) {
+  const AR = lang === 'ar';
+  return (
+    <div className="d-page-head">
+      <div className="idtx">
+        {crumbs && crumbs.length > 0 && (
+          <div className="d-crumbs">
+            {crumbs.map((c, i) => {
+              const label = (c && c.label != null) ? c.label : c;
+              const last = i === crumbs.length - 1;
+              return (
+                <React.Fragment key={i}>
+                  {i > 0 && <Icon name={AR ? 'chevron_left' : 'chevron_right'} size={13} className="sepr" />}
+                  {last ? <span className="cur">{label}</span>
+                    : (c && c.onClick) ? <button className="lnk" onClick={c.onClick}>{label}</button>
+                    : <span>{label}</span>}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h1>{title}</h1>
+          {status}
+        </div>
+        {sub && <p>{sub}</p>}
+      </div>
+      {actions && <div className="d-pacts">{actions}</div>}
+    </div>
+  );
+}
+
+// Standard grid pager — bottom strip of a grid card (EPM design standards v1.1 §14 .pager)
+function DPager({ page, pageCount, total, pageSize, onPage, onPageSize, lang }) {
+  const AR = lang === 'ar';
+  if (pageCount <= 1 && !onPageSize) return null;
+  const nums = []; const win = 1;
+  for (let i = 1; i <= pageCount; i++) {
+    if (i === 1 || i === pageCount || (i >= page - win && i <= page + win)) nums.push(i);
+    else if (nums[nums.length - 1] !== '…') nums.push('…');
+  }
+  const prevIco = AR ? 'chevron_right' : 'chevron_left';
+  const nextIco = AR ? 'chevron_left' : 'chevron_right';
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1, to = Math.min(page * pageSize, total);
+  return (
+    <div className="d-pager">
+      <span>{AR ? `${from}–${to} من ${total}` : `${from}–${to} of ${total}`}</span>
+      <span className="sp"></span>
+      {onPageSize && <select className="psize" value={pageSize} onChange={e => onPageSize(+e.target.value)}>{[15, 30, 60].map(n => <option key={n} value={n}>{n} / {AR ? 'صفحة' : 'page'}</option>)}</select>}
+      <button className="pg" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label={AR ? 'السابق' : 'Previous'}><Icon name={prevIco} size={15} /></button>
+      {nums.map((n, i) => n === '…' ? <span key={'e' + i} style={{ padding: '0 2px' }}>…</span> : <button key={n} className={`pg ${n === page ? 'on' : ''}`} onClick={() => onPage(n)}>{n}</button>)}
+      <button className="pg" disabled={page >= pageCount} onClick={() => onPage(page + 1)} aria-label={AR ? 'التالي' : 'Next'}><Icon name={nextIco} size={15} /></button>
+    </div>
+  );
+}
+
+Object.assign(window, { DesktopApp, DDonut, DPill, DCheck, useDeskLoad, DPopover, DContextMenu, DTopbar, DPageHead, DPager, fmtNum, STATUS_VAR });
+
+/* ============================================================
+   Unified project page zones — design standards Part 2.
+   Z2 identity · Z3 vital signs · Z4 actions live on the shell and
+   are identical on every module page. Z5/Z6/Z7/Z8/Z10 are supplied
+   per module through DModuleFrame so the assembly never varies.
+   ============================================================ */
+
+/* Z4 — overflow · secondary (max 3) · exactly one primary. */
+function DZ4({ actions, lang }) {
+  const [open, setOpen] = React.useState(false);
+  const AR = lang === 'ar';
+  const primary = actions.find(a => a.primary);
+  const rest = actions.filter(a => a !== primary);
+  const secondary = rest.slice(0, 3);
+  const overflow = rest.slice(3);
+  React.useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+  return (
+    <div className="d-pz4">
+      {overflow.length > 0 && (
+        <span className="z4-more" onClick={e => e.stopPropagation()}>
+          <button className="d-btn sm icon" title={AR ? 'إجراءات أخرى' : 'More actions'} onClick={() => setOpen(o => !o)}>
+            <Icon name="more_horiz" size={16} />
+          </button>
+          {open && (
+            <div className="z4-menu">
+              {overflow.map((a, i) => (
+                <button key={i} onClick={() => { setOpen(false); a.onClick && a.onClick(); }}>
+                  <Icon name={a.icon} size={15} />{a.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+      )}
+      {secondary.map((a, i) => (
+        <button key={i} className="d-btn sm" onClick={a.onClick} title={a.label}>
+          <Icon name={a.icon} size={15} /><span className="lbl">{a.label}</span>
+        </button>
+      ))}
+      {primary && (
+        <button className="d-btn sm primary" onClick={primary.onClick} title={primary.label}>
+          <Icon name={primary.icon} size={15} /><span className="lbl">{primary.label}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Z2 + Z3 — HDR-B object header. One Z2 per page; the object number
+   always comes first and is copyable; status sits on the title line. */
+function DProjectHeader({ lang, crumbs, num, title, status, revision, vitals, actions, onCopy }) {
+  return (
+    <React.Fragment>
+      <div className="d-pz2">
+        <nav className="z2-crumbs">
+          {crumbs.map((c, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <span className="sep">{lang === 'ar' ? '‹' : '›'}</span>}
+              {c.onClick ? <button onClick={c.onClick} title={c.label}>{c.label}</button> : <span className="cur" title={c.label}>{c.label}</span>}
+            </React.Fragment>
+          ))}
+        </nav>
+        <div className="z2-title">
+          {num && <span className="num" title={lang === 'ar' ? 'نسخ الرقم' : 'Copy number'}
+            onClick={() => { try { navigator.clipboard.writeText(num); } catch (e) { } onCopy && onCopy(); }}>{num}</span>}
+          <h2 title={title}>{title}</h2>
+          {status}
+          {/* the object number rides here as a copyable chip */}
+          {revision && <button className="rev" title={lang === 'ar' ? 'نسخ الرقم' : 'Copy number'}
+            onClick={() => { try { navigator.clipboard.writeText(revision); } catch (e) { } onCopy && onCopy(); }}>{revision}</button>}
+          <span className="sp"></span>
+          <DZ4 actions={actions} lang={lang} />
+        </div>
+      </div>
+      {vitals && vitals.length > 0 && (
+        <div className="d-pz3">
+          {vitals.filter(v => v && v.v != null && v.v !== '').map((v, i) => (
+            <span className="vs" key={i}>
+              <span className="k">{v.k}</span>
+              <span className={'v' + (v.tone ? ' ' + v.tone : '') + (v.num ? ' num' : '')}>{v.v}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
+/* Z5 + Z6 + Z7 + Z8 + Z10 — the per-module frame. Every module page
+   renders through this, so the assembly is identical everywhere:
+   sub-tabs, toolbar, scrolling content, docked 320px panel, status bar. */
+/* Z6 is one shared assembly on every page: the view's title at the
+   inline-start, its controls next to it, and its actions at the
+   inline-end. Pages fill the slots; they never lay the row out. */
+function DModuleFrame({ tabs, tab, onTab, back, title, sub, toolbar, actions, aside, asideWide, asideClass, commit, status, children }) {
+  /* Chrome is flat at rest (per the doc) and lifts only once content has
+     scrolled under it — the elevation states the fixed/scrolling relationship
+     exactly when it is true, instead of asserting it permanently. */
+  const [scrolled, setScrolled] = React.useState(false);
+  const onScroll = e => {
+    const past = e.currentTarget.scrollTop > 2;
+    setScrolled(v => (v === past ? v : past));
+  };
+  /* an actions fragment can render nothing once its tab-gates fail, so
+     test for real children rather than for the prop being present */
+  const hasKids = el => {
+    if (!el) return false;
+    if (el.type === React.Fragment) return React.Children.toArray(el.props.children).some(Boolean);
+    return true;
+  };
+  const hasZ6 = hasKids(back) || title || hasKids(toolbar) || hasKids(actions);
+  return (
+    <div className={'d-pframe' + (scrolled ? ' scrolled' : '')}>
+      {hasZ6 && (
+        <div className="d-pz6">
+          {back}
+          {title && <span className="z6-t">{title}{sub && <em>{sub}</em>}</span>}
+          {toolbar}
+          <span className="sp"></span>
+          {actions}
+        </div>
+      )}
+      {tabs && tabs.length > 0 && (
+        <div className="d-pz5">
+          {tabs.map(tb => (
+            <button key={tb.id} className={tab === tb.id ? 'on' : ''} onClick={() => onTab && onTab(tb.id)}>
+              {tb.icon && <Icon name={tb.icon} size={14} />}
+              {tb.label}
+              {tb.n != null && <span className="n">{tb.n}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* `asideClass` lets one archetype widen Z8 where its own spec calls for
+          it (L18 asks for 420px) without every page drifting off the 320/480
+          the rest of the system shares */}
+      <div className={'d-pbody' + (aside ? (asideWide ? ' aside-wide' : '') + (asideClass ? ' ' + asideClass : '') : ' no-aside')}>
+        <div className="d-pz7" onScroll={onScroll}>{children}</div>
+        {aside && <div className="d-pz8">{aside}</div>}
+      </div>
+      {/* Z9 — the sticky commit bar. Batched-edit screens (L17 makes it
+          mandatory) put cancel/save here with a summary of what will change. */}
+      {commit && <div className="d-z9">{commit}</div>}
+      {status && <div className="d-pz10">{status}</div>}
+    </div>
+  );
+}
+
+/* Z10 helpers — record count · selection · totals · "as of" timestamp.
+   The doc requires the data date on anything derived. */
+function DZ10({ lang, stats, asOf }) {
+  const AR = lang === 'ar';
+  return (
+    <React.Fragment>
+      {stats.filter(Boolean).map((s, i) => (
+        <span className="st" key={i}>
+          <span>{s.k}</span>
+          {s.money ? <DMoney v={s.v} lang={lang} size="sm" /> : <b className="num">{s.v}</b>}
+        </span>
+      ))}
+      <span className="sp"></span>
+      <span className="asof">{(AR ? 'البيانات حتى ' : 'Data as of ') + (asOf || new Date().toISOString().slice(0, 10))}</span>
+    </React.Fragment>
+  );
+}
+
+
+/* d.contractor is a field bag ({fields:[{label,value}]}), not a {name} object —
+   resolve the display name from the labelled field. */
+function epmContractorName(d, lang) {
+  const f = d && d.contractor && d.contractor.fields;
+  if (!f || !f.length) return null;
+  const hit = f.find(x => /contractor name|executing entity/i.test((x.label && x.label.en) || '')) || f[0];
+  return hit && hit.value;
+}
+
+
+/* App footer — global shell chrome. Content follows L01: organisation
+   identity, system version and support contact. Kept to one 28px line so
+   it never competes with a page's own Z10 status bar. */
+function DAppFooter({ lang }) {
+  const AR = lang === 'ar';
+  return (
+    <footer className="d-appfoot">
+      <span className="org">
+        <Icon name="account_balance" size={13} />
+        <b>{AR ? 'وزارة التعليم العالي والبحث العلمي' : 'Ministry of Higher Education & Scientific Research'}</b>
+        <span className="hide-sm">{AR ? '— نظام إدارة المشاريع الهندسية' : '— Engineering Projects Management'}</span>
+      </span>
+      <span className="sp"></span>
+      <span className="it"><span className="env">{AR ? 'بيئة تجريبية' : 'PROTOTYPE'}</span></span>
+      <span className="it hide-sm">
+        <Icon name="support_agent" size={13} />
+        {AR ? 'الدعم الفني' : 'Support'}
+        <a href="tel:+9647701002440">2440</a>
+        <a href="mailto:support@mohe.gov.iq">support@mohe.gov.iq</a>
+      </span>
+      <span className="it">{AR ? 'الإصدار' : 'Version'}<span className="ver num">1.4.0</span></span>
+    </footer>
+  );
+}
+
+
+/* Actor directory — in a ministry with many users a bare name is ambiguous,
+   so every audit/activity line resolves to name + role + entity. Seeded for
+   the known actors; unknown names get a stable assignment (hashed on the
+   name) so the same person always reads the same way. */
+const EPM_ACTORS = {
+  'أحمد فؤاد':      { role: { ar: 'مهندس مشروع', en: 'Project engineer' },       org: { ar: 'دائرة الإعمار والمشاريع', en: 'Reconstruction & Projects Dept.' } },
+  'ليلى حسن':       { role: { ar: 'محللة موازنة', en: 'Budget analyst' },        org: { ar: 'الدائرة المالية', en: 'Finance Dept.' } },
+  'سارة كريم':      { role: { ar: 'مسؤولة عقود', en: 'Contracts officer' },      org: { ar: 'قسم العقود', en: 'Contracts Section' } },
+  'مصطفى علي':      { role: { ar: 'رئيس التشكيل', en: 'Formation head' },        org: { ar: 'جامعة بغداد', en: 'University of Baghdad' } },
+  'م. سالم الجبوري': { role: { ar: 'مهندس مقيم', en: 'Resident engineer' },       org: { ar: 'القسم الهندسي', en: 'Engineering Section' } },
+  'أ. هدى الركابي':  { role: { ar: 'مهندسة تخطيط', en: 'Planning engineer' },     org: { ar: 'دائرة الإعمار والمشاريع', en: 'Reconstruction & Projects Dept.' } },
+};
+const EPM_ACTOR_FALLBACK = [
+  { role: { ar: 'مستخدم التشكيل', en: 'Formation user' },  org: { ar: 'دائرة الإعمار والمشاريع', en: 'Reconstruction & Projects Dept.' } },
+  { role: { ar: 'مستخدم الدائرة', en: 'Department user' }, org: { ar: 'القسم الهندسي', en: 'Engineering Section' } },
+  { role: { ar: 'مهندس مشروع', en: 'Project engineer' },   org: { ar: 'قسم المشاريع', en: 'Projects Section' } },
+];
+function epmActor(name, lang) {
+  const AR = lang === 'ar';
+  if (!name) return null;
+  if (/^النظام$|^system$/i.test(name)) {
+    return { name: AR ? 'النظام' : 'System', role: AR ? 'حدث آلي' : 'Automated', org: AR ? 'نظام إدارة المشاريع' : 'EPM system', system: true };
+  }
+  let hit = EPM_ACTORS[name];
+  if (!hit) {
+    const key = Object.keys(EPM_ACTORS).find(k => name.indexOf(k) === 0 || k.indexOf(name) === 0);
+    if (key) hit = EPM_ACTORS[key];
+  }
+  if (!hit) {
+    let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    hit = EPM_ACTOR_FALLBACK[h % EPM_ACTOR_FALLBACK.length];
+  }
+  return { name: name, role: hit.role[AR ? 'ar' : 'en'], org: hit.org[AR ? 'ar' : 'en'] };
+}
+
+
+/* Money renders one way everywhere: mono tabular figures + the currency
+   as a muted unit, isolated so it stays LTR inside RTL text. Size is tied
+   to role (hero / figure / fact / legend), never chosen ad hoc — the page
+   had 11 money renderings in 9 different styles before this existed. */
+function DMoney({ v, lang, size, tone, cur, signed, bare }) {
+  const num = typeof v === 'number' ? Math.round(v) : null;
+  let n = num != null ? window.fmtNum(Math.abs(num)) : v;
+  /* A delta is money too: it carries the sign, but never loses the currency. */
+  if (signed && num != null) n = (num > 0 ? '+' : num < 0 ? '−' : '') + n;
+  return (
+    <span className={'d-money' + (size ? ' ' + size : '') + (tone ? ' ' + tone : '')
+      + (bare ? ' bare' : '') + (signed && num ? (num > 0 ? ' up' : ' down') : '')}>
+      <b className="num">{n}</b>
+      {/* in a table the currency lives in the column header, so the figure
+          keeps the shared treatment without repeating the unit on every row */}
+      {!bare && <i>{cur || (lang === 'ar' ? 'د.ع' : 'IQD')}</i>}
+    </span>
+  );
+}
+
+
+/* Message bar — the doc's page-level state notice: icon, one semibold
+   title line, an optional supporting line. Four tones, never invented
+   per page. Sits at the top of the region whose state it describes. */
+function DMsgBar({ tone, title, children, icon }) {
+  const ICO = { info: 'info', success: 'check_circle', warning: 'warning', danger: 'error' };
+  const t = tone || 'info';
+  return (
+    <div className={'d-msgbar ' + t} role={t === 'danger' ? 'alert' : 'status'}>
+      <Icon name={icon || ICO[t]} size={16} className="mgi" />
+      <div className="mtx">
+        {title && <div className="mtitle">{title}</div>}
+        {children && <div className="mbody">{children}</div>}
+      </div>
+    </div>
+  );
+}
+
+
+/* Shared record-detail pane — the one way any tab opens a record's detail.
+   Modelled on the BOQ record panel that proved the pattern: identity row
+   (code + status), title, and an action cluster of edit / expand / close,
+   then optional facet tabs, a scrolling body and an optional footer.
+   Docks into Z8 at 320px per the doc and expands to 480px on demand. */
+function DRecordPane({ lang, title, meta, tabs, tab, onTab,
+                       wide, onExpand, onEdit, onClose, footer, children }) {
+  const AR = lang === 'ar';
+  return (
+    <aside className={'d-rpane' + (wide ? ' wide' : '')}>
+      {/* the header carries the record's name and its actions — nothing else.
+          Identifying attributes belong in the body with the rest of the data. */}
+      <header className="rp-h">
+        <b className="tx" title={typeof title === 'string' ? title : undefined}>{title}</b>
+        <div className="acts">
+          {onEdit && (
+            <button className="d-icon-btn sm" title={AR ? 'تعديل' : 'Edit'}
+              aria-label={AR ? 'تعديل السجل' : 'Edit record'} onClick={onEdit}><Icon name="edit" size={16} /></button>
+          )}
+          {onExpand && (
+            <button className="d-icon-btn sm" title={wide ? (AR ? 'تصغير' : 'Collapse') : (AR ? 'توسيع' : 'Expand')}
+              aria-label={AR ? 'توسيع اللوحة' : 'Expand panel'} onClick={onExpand}>
+              <Icon name={wide ? 'close_fullscreen' : 'open_in_full'} size={16} /></button>
+          )}
+          {onClose && (
+            <button className="d-icon-btn sm" title={AR ? 'إغلاق' : 'Close'}
+              aria-label={AR ? 'إغلاق اللوحة' : 'Close panel'} onClick={onClose}><Icon name="close" size={17} /></button>
+          )}
+        </div>
+      </header>
+
+      {tabs && tabs.length > 0 && (
+        <div className="rp-tabs">
+          {tabs.map(tb => (
+            <button key={tb.id} className={tab === tb.id ? 'on' : ''} onClick={() => onTab && onTab(tb.id)}>
+              {tb.label}{tb.n != null && <span className="n">{tb.n}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="rp-b">
+        {meta && meta.length > 0 && (
+          <dl className="d-meta rp-meta">
+            {meta.filter(m => m && m.v != null).map((m, i) => (
+              <div className="d-meta-i" key={i}>
+                <dt>{m.k}</dt>
+                <dd className={m.num ? 'num' : ''}>{m.money ? <DMoney v={m.v} lang={lang} size="sm" /> : m.v}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {children}
+      </div>
+      {footer && <div className="rp-f">{footer}</div>}
+    </aside>
+  );
+}
+
+/* A titled block inside a record pane. */
+function DRecordGrp({ label, children }) {
+  return <div className="rp-grp">{label && <span className="lbl">{label}</span>}{children}</div>;
+}
+
+/* ---------- L04 analytical dashboard ----------
+   The doc is strict about what a tile is: "Every tile must state metric
+   label · value · comparison (target, plan, prior period) · threshold state ·
+   drill-through target." A tile that shows only a number is not a tile, it is
+   a figure — which is why the old progress page's `.d-fig` rows could not be
+   promoted in place. Spans are 3 (KPI), 6 (chart) or 12 (table); nothing
+   free-floats and nothing overlaps. */
+function DTileGrid({ children }) { return <div className="d-l04">{children}</div>; }
+
+function DTile({ lang, span, label, value, unit, cmp, delta, state, note, to, period, flush, children }) {
+  const AR = lang === 'ar';
+  const st = state || 'none';
+  /* the threshold has to survive being read aloud, printed in greyscale, or
+     heard — a 2px coloured edge is the visual half of it, not the whole */
+  const STATE_TX = { ok: { ar: 'ضمن الحد', en: 'within threshold' },
+    warn: { ar: 'قرب الحد', en: 'near threshold' }, bad: { ar: 'تجاوز الحد', en: 'past threshold' } };
+  const tid = 'tile-' + String(label).replace(/[^\w\u0600-\u06FF]/g, '').slice(0, 24) + (span || 3);
+  return (
+    <section className={'d-tile s' + (span || 3) + (st !== 'none' ? ' ' + st : '') + (flush ? ' flush' : '')}
+      role="group" aria-labelledby={tid}>
+      <header className="th">
+        <span className="lbl" id={tid}>{label}
+          {STATE_TX[st] && <span className="sr">{' — ' + (AR ? STATE_TX[st].ar : STATE_TX[st].en)}</span>}</span>
+        {period && <span className="per" title={AR ? 'لهذه البطاقة فترة خاصة' : 'This tile has its own period'}>
+          <Icon name="schedule" size={12} />{period}</span>}
+      </header>
+      {value != null && <div className="tv"><b>{value}</b>{unit && <i>{unit}</i>}</div>}
+      {(delta || cmp) && <div className="tc">
+        {delta && <span className={'dl ' + (delta.dir || 'flat')}>
+          <Icon name={delta.dir === 'up' ? 'arrow_upward' : delta.dir === 'down' ? 'arrow_downward' : 'remove'} size={13} />
+          {delta.v}{delta.unit ? ' ' + delta.unit : ''}</span>}
+        {cmp && <span className="cm">{cmp.label} <b>{cmp.value}</b></span>}
+      </div>}
+      {children}
+      {note && <div className="tn">{note}</div>}
+      {/* a tile without a drill-through is a dead end — the doc requires one */}
+      {to && <button type="button" className="tt" onClick={to.fn}
+        aria-label={(AR ? 'التفصيل في ' : 'Detail in ') + to.label + ' — ' + label}>
+        {AR ? 'التفصيل في ' : 'Detail in '}{to.label}
+        <Icon name="chevron_right" size={14} /></button>}
+    </section>
+  );
+}
+
+Object.assign(window, { DZ4, DProjectHeader, DModuleFrame, DZ10, DMoney, DMsgBar, DRecordPane, DRecordGrp, DTileGrid, DTile, DAppFooter, epmContractorName, epmActor });

@@ -94,19 +94,15 @@ function DWorkspace({ t, lang, ws, openCmdk, showToast, setCtxMenu, setPop, goNa
               </React.Fragment>
             )}
           </div>
-          {sel && tabHasActions(tab) && <button className={`d-btn sm d-ctx-toggle ${ctxOn ? 'on' : 'ghost'}`} onClick={() => setCtxOn(v => !v)} title={lang === 'ar' ? 'لوحة الإجراءات' : 'Actions panel'}><Icon name="bolt" size={17} />{lang === 'ar' ? 'إجراءات' : 'Actions'}</button>}
         </React.Fragment>} />
 
-      <div className="d-three" data-ctx={ctxOn && sel && tabHasActions(tab) ? 'on' : 'off'} style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        {/* DETAIL */}
+      <div className="d-three" data-ctx="off" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        {/* DETAIL — actions now live in the page header, no side pane */}
         <div className="d-pane d-detail">
-          {sel ? <DProjectDetail t={t} lang={lang} p={sel} tab={tab} setTab={setTab} editMode={editMode} setEditMode={setEditMode} contractSelKey={contractSelKey} setContractSelKey={setContractSelKey} showToast={showToast} /> : (
+          {sel ? <DProjectDetail t={t} lang={lang} ws={ws} goNav={goNav} p={sel} tab={tab} setTab={setTab} editMode={editMode} setEditMode={setEditMode} contractSelKey={contractSelKey} setContractSelKey={setContractSelKey} showToast={showToast} /> : (
             <div className="d-empty" style={{ margin: 'auto' }}><span className="d-empty-ico"><Icon name="ads_click" size={28} /></span><b>{t('select_project')}</b></div>
           )}
         </div>
-
-        {/* CONTEXT */}
-        {ctxOn && sel && tabHasActions(tab) && <DProjectContext t={t} lang={lang} p={sel} tab={tab} editMode={editMode} setEditMode={setEditMode} contractSelKey={contractSelKey} setContractSelKey={setContractSelKey} showToast={showToast} />}
       </div>
     </div>
   );
@@ -119,14 +115,68 @@ const MOD_GROUPS = [
   { label: { ar: 'السجلات والوثائق', en: 'Records' }, ids: ['model', 'meetings', 'documents'] },
   { label: { ar: 'الرقابة', en: 'Oversight' }, ids: ['alerts', 'reports', 'audit'] },
 ];
-function DProjectDetail({ t, lang, p, tab, setTab, editMode, setEditMode, contractSelKey, setContractSelKey, showToast }) {
-  const d = React.useMemo(() => window.EPM.buildProjectDetail(p, lang), [p.id, lang]);
-  const MODS = window.EPM.PROJECT_MODULES;
+// Supply projects use the SAME module set; the `boq` module carries the supply
+// line items, receipts and inquiry as internal facets (no separate nav entries).
+const MOD_GROUPS_SUPPLY = [
+  { label: { ar: 'التعريف', en: 'Definition' }, ids: ['information', 'contract', 'boq', 'financial'] },
+  { label: { ar: 'التجهيز والمتابعة', en: 'Supply & follow-up' }, ids: ['schedule', 'progress', 'changeorders', 'risk'] },
+  { label: { ar: 'السجلات والوثائق', en: 'Records' }, ids: ['meetings', 'documents'] },
+  { label: { ar: 'الرقابة', en: 'Oversight' }, ids: ['alerts', 'reports', 'audit'] },
+];
+function DProjectDetail({ t, lang, ws, goNav, p, tab, setTab, editMode, setEditMode, contractSelKey, setContractSelKey, showToast }) {
+  // Stamp the active project so field-edit helpers resolve to the right scope,
+  // then overlay persisted collections + field edits onto the rebuilt detail so
+  // every module reads a single, consistent source of truth (survives reload).
+  window.__epmPid = p.id;
+  const d = React.useMemo(() => {
+    const built = window.epmOverlayD(window.EPM.buildProjectDetail(p, lang), p.id);
+    return window.EPM.deriveDetail ? window.EPM.deriveDetail(built, p, lang) : built;
+  }, [p.id, lang, tab, editMode]);
+  const MODS = window.EPM.modulesFor ? window.EPM.modulesFor(p) : window.EPM.PROJECT_MODULES;
   const byId = React.useMemo(() => Object.fromEntries(MODS.map(m => [m.id, m])), [MODS]);
-  const READY = React.useMemo(() => window.EPM.buildReadiness(p), [p.id]);
-  const EDITABLE = ['information', 'contract', 'financial', 'progress'];
+  // readiness dots derive from each module's real data (pass the built detail)
+  const READY = React.useMemo(() => window.EPM.buildReadiness(p, lang, d), [p.id, lang, tab, editMode]);
+  /* L04 forbids inline editing and the progress dashboard is derived, so it
+     is not an edit context — leaving it here also leaked editMode into the
+     next tab the user opened. */
+  const EDITABLE = ['information', 'contract', 'financial'];
   const canEdit = tab === 'contract' ? (EDITABLE.includes(tab) && !!contractSelKey) : EDITABLE.includes(tab);
   const ov = byId.overview;
+  // Per-tab primary actions live in the PAGE HEADER (Foundation: actions in the
+  // header/toolbar, never a dedicated side pane). BOQ is omitted — its own module
+  // toolbar carries add/import inline with the grid controls.
+  const AR = lang === 'ar';
+  const ACTIONS_BY_TAB = {
+    schedule: [{ icon: 'ios_share', label: AR ? 'تصدير' : 'Export', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-export')) }, { icon: 'upload_file', label: AR ? 'استيراد P6' : 'Import P6', primary: true, onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-import')) }],
+    changeorders: [{ icon: 'add', label: AR ? 'إنشاء أمر تغييري' : 'Create change order', primary: true, onClick: () => window.dispatchEvent(new CustomEvent('epm:vo-create')) }],
+    documents: [{ icon: 'upload_file', label: AR ? 'رفع وثيقة' : 'Upload a document', primary: true,
+      onClick: () => showToast(AR ? 'رفع وثيقة جديدة إلى السجل — كل ملف يصبح مراجعة' : 'Uploading a new document — every file becomes a revision') }],
+    financial: [{ icon: 'payments', label: AR ? 'تسجيل دفعة' : 'Record payment', primary: true, onClick: () => window.dispatchEvent(new CustomEvent('epm:pay-register')) }],
+    progress: [
+      { icon: 'download', label: AR ? 'تصدير PDF' : 'Export PDF',
+        onClick: () => showToast(AR ? 'تحضير ملف PDF للوحة الإنجاز' : 'Preparing the progress dashboard as PDF') },
+      { icon: 'trending_up', label: AR ? 'تحديث نسبة الإنجاز' : 'Update progress', primary: true,
+        onClick: () => showToast(AR ? 'يُحدَّث الإنجاز من الجدول الزمني والموقف المالي' : 'Progress is updated from the schedule and the financial position') }],
+    meetings: [{ icon: 'groups', label: AR ? 'محضر اجتماع جديد' : 'New meeting minutes', primary: true, onClick: () => showToast('Demo') }],
+    alerts: [{ icon: 'notifications_active', label: AR ? 'ضبط قواعد التنبيه' : 'Configure alert rules', onClick: () => showToast(AR ? 'قواعد التنبيه — تُضبط في وحدة الإدارة' : 'Alert rules — configured in Administration') }],
+  };
+  const contractEditGate = tab !== 'contract' || !!contractSelKey;
+  /* module-scoped actions live in Z6 next to the view they act on;
+     Z4 is reserved for actions on the project itself. */
+  const moduleActions = [
+    ...(EDITABLE.includes(tab) && contractEditGate && !editMode ? [{ icon: 'edit', label: AR ? 'تعديل' : 'Edit', onClick: () => setEditMode(true) }] : []),
+    ...(ACTIONS_BY_TAB[tab] || []),
+  ];
+  const moduleActionEls = moduleActions.length ? (
+    <React.Fragment>
+      {moduleActions.map((a, i) => (
+        <button key={i} className={'d-btn sm' + (a.primary ? ' primary' : '')} onClick={a.onClick} title={a.label}>
+          <Icon name={a.icon} size={15} /><span className="lbl">{a.label}</span>
+        </button>
+      ))}
+    </React.Fragment>
+  ) : null;
+  const headerActions = [];
   const READY_TABS = ['information', 'contract', 'boq', 'financial', 'schedule', 'progress', 'changeorders', 'risk'];
   const modBtn = (m) => {
     const R = READY_TABS.includes(m.id) ? window.EPM.READINESS[READY[m.id]] : null;
@@ -134,16 +184,69 @@ function DProjectDetail({ t, lang, p, tab, setTab, editMode, setEditMode, contra
       <button key={m.id} className={`d-modnav-item ${tab === m.id ? 'on' : ''} ${!m.perm ? 'locked' : ''}`} onClick={() => m.perm ? setTab(m.id) : showToast(t('no_access'))}>
         <Icon name={!m.perm ? 'lock' : m.icon} size={17} />
         <span className="ml">{t(m.key)}</span>
-        {R && <span className={`d-tab-ready ${R.cls}`} title={R[lang]}></span>}
+        {R && <span className={`d-tab-ready ${R.cls}`} title={window.EPM.readinessLabel ? window.EPM.readinessLabel(m.id, READY[m.id], lang) : R[lang]}></span>}
       </button>
     );
   };
+
+  /* Z2 breadcrumb — always the full path from workspace root */
+  const crumbs = [
+    ...(ws ? [{ label: ws[lang], onClick: goNav ? () => goNav('overview') : null }] : []),
+    { label: t('nav_projects'), onClick: goNav ? () => goNav('projects') : null },
+    { label: p.name[lang], onClick: tab === 'overview' ? null : () => setTab('overview') },
+    ...(tab === 'overview' ? [] : [{ label: t(byId[tab] ? byId[tab].key : 'mod_overview') }]),
+  ];
+
+  /* every module renders through DModuleFrame so the assembly (Z5 tabs ·
+     Z6 toolbar · Z7 content · Z8 panel · Z10 status) never varies. Modules
+     that supply their own frame pass it through untouched. */
+  /* modules that render their own DModuleFrame. BOQ only does so for the
+     works flow — the supply variant still uses the default frame, and
+     wrapping a self-framed module doubles every zone. */
+  /* SELF_FRAMED is keyed by TAB, not by component — and two tabs render a
+     different component for supply projects, whose variants are not framed.
+     Listing the tab unconditionally would leave those pages with no frame. */
+  /* both BOQ variants now render their own frame, as do both progress ones */
+  const SELF_FRAMED = ['information', 'contract', 'financial', 'schedule', 'risk', 'changeorders', 'progress', 'boq',
+    'supplyitems', 'receipts', 'inquiry', 'documents', 'alerts'];
+  const body = (
+    <React.Fragment>
+      {tab === 'overview' && <DModOverview t={t} lang={lang} p={p} d={d} goTab={setTab} />}
+      {tab === 'information' && <DModInformation t={t} lang={lang} d={d} editMode={editMode} frameTitle={t('mod_information')} frameActions={moduleActionEls} />}
+      {tab === 'contract' && <DModContractNew t={t} lang={lang} d={d} p={p} editMode={editMode} selKey={contractSelKey} setSelKey={setContractSelKey} showToast={showToast} frameActions={moduleActionEls} />}
+      {(tab === 'boq' || tab === 'supplyitems' || tab === 'receipts' || tab === 'inquiry') && (p.type === 'supply'
+        ? <DModSupplyBOQ t={t} lang={lang} d={d} p={p} showToast={showToast}
+            initialSub={tab === 'receipts' ? 'receipts' : tab === 'inquiry' ? 'inquiry' : 'items'}
+            frameTitle={t(byId[tab] ? byId[tab].key : 'mod_boq')} frameActions={moduleActionEls} />
+        : <DBoqWorkspace t={t} lang={lang} d={d} p={p} showToast={showToast} />)}
+      {tab === 'schedule' && <DModSchedule t={t} lang={lang} d={d} p={p} showToast={showToast}
+        shellTitle={t('mod_schedule')} frameActions={moduleActionEls} />}
+      {tab === 'progress' && (p.type === 'supply'
+        ? <DModSupplyProgress t={t} lang={lang} d={d} p={p} asOf={d.asOf} goTab={setTab}
+            frameTitle={t('mod_progress')} frameActions={moduleActionEls} />
+        : <DModProgress t={t} lang={lang} d={d} p={p} asOf={d.asOf} goTab={setTab}
+            frameTitle={t('mod_progress')} frameActions={moduleActionEls} />)}
+      {tab === 'risk' && <DModRisk t={t} lang={lang} d={d} asOf={d.asOf}
+        frameTitle={t('mod_risk')} frameActions={moduleActionEls} />}
+      {tab === 'financial' && <DModFinancialNew t={t} lang={lang} d={d} p={p} editMode={editMode} showToast={showToast} frameActions={moduleActionEls} />}
+      {tab === 'changeorders' && <DModVO t={t} lang={lang} d={d} p={p} showToast={showToast}
+        perm={byId.changeorders ? byId.changeorders.perm : true} />}
+      {tab === 'model' && <DModModel3D t={t} lang={lang} />}
+      {tab === 'meetings' && <DModMeetings t={t} lang={lang} d={d} />}
+      {tab === 'documents' && <DModDrawings t={t} lang={lang} d={d} showToast={showToast} asOf={d.asOf}
+        frameTitle={t('mod_documents')} frameActions={moduleActionEls} />}
+      {tab === 'alerts' && <DModAlerts t={t} lang={lang} p={p} showToast={showToast} asOf={d.asOf} goTab={setTab}
+        frameTitle={t('mod_alerts')} frameActions={moduleActionEls} />}
+      {tab === 'reports' && <DModReports t={t} lang={lang} p={p} showToast={showToast} />}
+      {tab === 'audit' && <DModAudit t={t} lang={lang} />}
+    </React.Fragment>
+  );
 
   return (
     <div className="d-detail-layout">
       <nav className="d-modnav">
         {ov && modBtn(ov)}
-        {MOD_GROUPS.map(g => (
+        {(p.type === 'supply' ? MOD_GROUPS_SUPPLY : MOD_GROUPS).map(g => (
           <div className="d-modnav-group" key={g.label.en}>
             <span className="gl">{g.label[lang]}</span>
             {g.ids.map(id => byId[id] && modBtn(byId[id]))}
@@ -151,44 +254,22 @@ function DProjectDetail({ t, lang, p, tab, setTab, editMode, setEditMode, contra
         ))}
       </nav>
       <div className="d-detail-main">
-        <div className="d-detail-head">
-          <div className="d-detail-titlerow">
-            <div className="d-detail-title">
-              <DPill status={p.status} lang={lang} />
-              <h2>{p.name[lang]}</h2>
-              <div className="d-detail-meta"><span>{p.id}</span><span className="sep">·</span><span>{d.contract.code}</span><span className="sep">·</span><span>{window.EPM.BRANCHES[lang][p.branchIdx]}</span></div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <DDonut value={p.tech} size={58} stroke={6} />
-            </div>
-          </div>
-        </div>
+        <DProjectHeader lang={lang} crumbs={crumbs} title={p.name[lang]}
+          status={<DPill status={p.status} lang={lang} />} revision={p.id}
+          actions={headerActions}
+          onCopy={() => showToast(AR ? 'نُسخ رقم المشروع' : 'Project number copied')} />
+        {SELF_FRAMED.includes(tab) ? body : (
+          <DModuleFrame title={t(byId[tab] ? byId[tab].key : 'mod_overview')} actions={moduleActionEls}>{body}</DModuleFrame>
+        )}
         {editMode && canEdit && (
-          <div className="d-edit-bar">
-            <Icon name="edit_note" size={16} />
-            <span>{lang === 'ar' ? 'وضع التعديل — التغييرات للمراجعة فقط' : 'Edit mode — changes are for review only'}</span>
-            <div style={{ flex: 1 }}></div>
-            <button className="d-btn sm ghost" onClick={() => setEditMode(false)}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
-            <button className="d-btn sm primary" onClick={() => { setEditMode(false); showToast(lang === 'ar' ? 'تم الحفظ — تجريبي' : 'Saved — demo'); }}><Icon name="check" size={14} />{t('save')}</button>
+          <div className="d-z9">
+            <span className="saved"><Icon name="cloud_done" size={14} />{AR ? 'حُفظت المسودة تلقائياً' : 'Draft saved automatically'}</span>
+            <span className="sp"></span>
+            <button className="d-btn sm" onClick={() => setEditMode(false)}>{AR ? 'إلغاء' : 'Cancel'}</button>
+            <button className="d-btn sm" onClick={() => showToast(AR ? 'حُفظت المسودة — تجريبي' : 'Draft saved — demo')}>{AR ? 'حفظ كمسودة' : 'Save draft'}</button>
+            <button className="d-btn sm primary" onClick={() => { setEditMode(false); showToast(AR ? 'تم الإرسال — تجريبي' : 'Submitted — demo'); }}><Icon name="check" size={14} />{AR ? 'إرسال' : 'Submit'}</button>
           </div>
         )}
-        <div className="d-detail-body">
-          {tab === 'overview' && <DModOverview t={t} lang={lang} p={p} d={d} goTab={setTab} />}
-          {tab === 'information' && <DModInformation t={t} lang={lang} d={d} editMode={editMode} />}
-          {tab === 'contract' && <DModContractNew t={t} lang={lang} d={d} p={p} editMode={editMode} selKey={contractSelKey} setSelKey={setContractSelKey} />}
-          {tab === 'boq' && <DModBOQ t={t} lang={lang} d={d} p={p} showToast={showToast} />}
-          {tab === 'schedule' && <DModSchedule t={t} lang={lang} d={d} p={p} showToast={showToast} />}
-          {tab === 'progress' && <DModProgress t={t} lang={lang} d={d} p={p} />}
-          {tab === 'risk' && <DModRisk t={t} lang={lang} d={d} />}
-          {tab === 'financial' && <DModFinancialNew t={t} lang={lang} d={d} editMode={editMode} showToast={showToast} />}
-          {tab === 'changeorders' && <DModVO t={t} lang={lang} d={d} p={p} showToast={showToast} />}
-          {tab === 'model' && <DModModel3D t={t} lang={lang} />}
-          {tab === 'meetings' && <DModMeetings t={t} lang={lang} d={d} />}
-          {tab === 'documents' && <DModDrawings t={t} lang={lang} d={d} showToast={showToast} />}
-          {tab === 'alerts' && <DModAlerts t={t} lang={lang} p={p} showToast={showToast} />}
-          {tab === 'reports' && <DModReports t={t} lang={lang} p={p} showToast={showToast} />}
-          {tab === 'audit' && <DModAudit t={t} lang={lang} />}
-        </div>
       </div>
     </div>
   );
@@ -202,15 +283,23 @@ function DProjectContext({ t, lang, p, tab, editMode, setEditMode, contractSelKe
 
   const ACTIONS_BY_TAB = {
     boq: [{ icon: 'add', label: t('add_boq_row'), onClick: () => showToast('Demo') }, { icon: 'upload_file', label: lang === 'ar' ? 'استيراد BOQ' : 'Import BOQ', onClick: () => window.dispatchEvent(new CustomEvent('epm:boq-import')) }],
-    schedule: [{ icon: 'priority_high', label: lang === 'ar' ? 'المسار الحرج' : 'Critical path', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-critical')) }, { icon: 'ios_share', label: lang === 'ar' ? 'تصدير' : 'Export', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-export')) }, { icon: 'upload_file', label: lang === 'ar' ? 'استيراد P6' : 'Import P6', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-import')) }],
+    schedule: [{ icon: 'ios_share', label: lang === 'ar' ? 'تصدير' : 'Export', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-export')) }, { icon: 'upload_file', label: lang === 'ar' ? 'استيراد P6' : 'Import P6', onClick: () => window.dispatchEvent(new CustomEvent('epm:sched-import')) }],
     changeorders: [{ icon: 'add', label: lang === 'ar' ? 'إنشاء أمر تغييري' : 'Create change order', onClick: () => window.dispatchEvent(new CustomEvent('epm:vo-create')) }],
-    documents: [{ icon: 'upload_file', label: t('upload_revision'), onClick: () => showToast('Demo') }],
+    documents: [{ icon: 'upload_file', label: lang === 'ar' ? 'رفع وثيقة' : 'Upload a document',
+      onClick: () => showToast(lang === 'ar' ? 'رفع وثيقة جديدة إلى السجل' : 'Uploading a new document to the register') }],
     financial: [{ icon: 'payments', label: lang === 'ar' ? 'تسجيل دفعة' : 'Record payment', onClick: () => window.dispatchEvent(new CustomEvent('epm:pay-register')) }],
-    progress: [{ icon: 'trending_up', label: lang === 'ar' ? 'تحديث نسبة الإنجاز' : 'Update progress', onClick: () => showToast('Demo') }],
+    progress: [
+      { icon: 'download', label: lang === 'ar' ? 'تصدير PDF' : 'Export PDF',
+        onClick: () => showToast(lang === 'ar' ? 'تحضير ملف PDF للوحة الإنجاز' : 'Preparing the progress dashboard as PDF') },
+      { icon: 'trending_up', label: lang === 'ar' ? 'تحديث نسبة الإنجاز' : 'Update progress',
+        onClick: () => showToast(lang === 'ar' ? 'يُحدَّث الإنجاز من الجدول الزمني والموقف المالي' : 'Progress is updated from the schedule and the financial position') }],
     meetings: [{ icon: 'groups', label: lang === 'ar' ? 'محضر اجتماع جديد' : 'New meeting minutes', onClick: () => showToast('Demo') }],
-    alerts: [{ icon: 'notifications_active', label: lang === 'ar' ? 'ضبط قواعد التنبيه' : 'Configure alert rules', onClick: () => showToast('Demo') }],
+    alerts: [{ icon: 'notifications_active', label: lang === 'ar' ? 'ضبط قواعد التنبيه' : 'Configure alert rules', onClick: () => showToast(lang === 'ar' ? 'قواعد التنبيه — قيد الإعداد في وحدة الإدارة' : 'Alert rules — configured in Administration') }],
   };
-  const EDITABLE = ['information', 'contract', 'financial', 'progress'];
+  /* L04 forbids inline editing and the progress dashboard is derived, so it
+     is not an edit context — leaving it here also leaked editMode into the
+     next tab the user opened. */
+  const EDITABLE = ['information', 'contract', 'financial'];
   const contractEditGate = tab !== 'contract' || !!contractSelKey;
   const actions = [
     ...(EDITABLE.includes(tab) && contractEditGate ? [editMode
@@ -242,7 +331,7 @@ function DProjectContext({ t, lang, p, tab, editMode, setEditMode, contractSelKe
   const events = history && history.length ? history : fallbackTl;
   const visible = expanded ? events : events.slice(0, 2);
 
-  const MOD = window.EPM.PROJECT_MODULES.find(m => m.id === tab);
+  const MOD = (window.EPM.modulesFor ? window.EPM.modulesFor(p) : window.EPM.PROJECT_MODULES).find(m => m.id === tab);
   const histTitle = lang === 'ar' ? `سجل تعديلات — ${t(MOD ? MOD.key : 'mod_overview')}` : `Edit history — ${t(MOD ? MOD.key : 'mod_overview')}`;
 
   return (
@@ -262,38 +351,241 @@ function DProjectContext({ t, lang, p, tab, editMode, setEditMode, contractSelKe
 /* ============================================================
    WORKSPACE OVERVIEW (workspace-scoped dashboard)
    ============================================================ */
-function DWorkspaceOverview({ t, lang, ws, openCmdk, goNav, showToast }) {
-  const all = React.useMemo(() => window.EPM.buildProjects(ws.id, ws.projects), [ws.id]);
-  const recent = [...all].sort((a, b) => b.updated.localeCompare(a.updated)).slice(0, 6);
-  const dueSoon = Math.max(2, Math.round(ws.active * 0.4));
+function DWorkspaceOverview({ t, lang, ws, openCmdk, goNav, showToast, openProjectDetail }) {
+  const AR = lang === 'ar';
   const B = window.EPM.BRANCHES;
+  const all = React.useMemo(() => window.EPM.buildProjects(ws.id, ws.projects).map(p => ({ ...p, ws })), [ws.id]);
+
+  const [stFilter, setStFilter] = React.useState('all');
+  const [branch, setBranch] = React.useState('all');
+  const statusKeys = ['ongoing', 'completed', 'stalled', 'suspended', 'withdrawn'];
+  const portfolio = all.filter(p => (stFilter === 'all' || p.status === stFilter) && (branch === 'all' || String(p.branchIdx) === branch));
+
+  // ---- workspace-scoped answers (same model as the ministry board) ----
+  const plannedTotal = portfolio.reduce((a, p) => a + p.plannedCost, 0);
+  const revisedTotal = portfolio.reduce((a, p) => a + p.cost, 0) || 1;
+  const cumulativeTotal = portfolio.reduce((a, p) => a + Math.round(p.cost * (p.financialPct / 100)), 0);
+  const physicalPct = Math.round(portfolio.reduce((a, p) => a + p.tech * p.cost, 0) / revisedTotal);
+  const financialPct = Math.round(cumulativeTotal / revisedTotal * 100);
+  const NOW_FRAC = 0.66;
+  const smooth = f => f <= 0 ? 0 : f >= 1 ? 1 : f * f * (3 - 2 * f);
+  const plannedToDate = Math.round(smooth(NOW_FRAC) * 100);
+  const physVariance = physicalPct - plannedToDate;
+  const spi = plannedToDate ? (physicalPct / plannedToDate) : 0;
+  const burnVariance = financialPct - physicalPct;
+  const earnedValue = revisedTotal * physicalPct / 100;
+  const cpi = cumulativeTotal ? earnedValue / cumulativeTotal : 0;
+  const curve = (pctNow) => {
+    const rows = [], months = 12;
+    for (let i = 1; i <= months; i++) {
+      const f = i / months, planCum = Math.round(smooth(f) * 100);
+      const actCum = f <= NOW_FRAC + 1e-6 ? Math.round(smooth(f / NOW_FRAC) * pctNow) : null;
+      const prev = rows[rows.length - 1];
+      rows.push({ label: (AR ? 'ش' : 'M') + i, planCum, actCum,
+        planPeriod: planCum - (prev ? prev.planCum : 0),
+        actPeriod: actCum == null ? 0 : actCum - (prev && prev.actCum != null ? prev.actCum : 0) });
+    }
+    return rows;
+  };
+  const scurve = React.useMemo(() => curve(physicalPct), [physicalPct, AR]);
+  const costCurve = React.useMemo(() => curve(financialPct), [financialPct, AR]);
+  const signalOf = p => window.EPM.execSignal(p);
+  const watchlist = portfolio.filter(p => signalOf(p) !== 'green').sort((a, b) => b.cost - a.cost).slice(0, 6)
+    .map(p => ({ p, s: window.EPM.buildSchedule(p) }));
+  const statusColors = { ongoing: 'var(--status-ongoing)', completed: 'var(--status-completed)', stalled: 'var(--status-delayed)', suspended: 'var(--status-suspended)', withdrawn: 'var(--status-cancelled)' };
+  const statusCounts = statusKeys.map(k => ({ key: k, value: portfolio.filter(p => p.status === k).length, color: statusColors[k], label: window.EPM.STATUS[k][lang] }));
+  const milestones = [...portfolio].filter(p => p.status === 'ongoing').sort((a, b) => b.tech - a.tech).slice(0, 4).map(p => ({ p, s: window.EPM.buildSchedule(p) }));
+  const musd = v => Math.round(v / 1000000).toLocaleString('en-US') + (AR ? ' م.د.ع' : ' M IQD');
+  const openP = p => openProjectDetail ? openProjectDetail(p) : goNav('projects');
+  const branches = Array.from(new Set(all.map(p => p.branchIdx)));
+
   return (
     <div className="d-main">
-      <DTopbar t={t} lang={lang} crumbs={[ws[lang], t('ws_overview')]} onSearch={openCmdk}
-        actions={<button className="d-btn accent" onClick={() => goNav('projects')}><Icon name="projects" size={18} />{t('view_projects')}</button>} />
+      <DTopbar t={t} lang={lang} crumbs={[ws[lang]]} onSearch={openCmdk} />
       <div className="d-canvas">
         <div className="d-canvas-pad">
           <div className="d-canvas-wrap">
-            <div className="d-page-head"><div><h1>{ws[lang]}</h1><p>{ws.kind[lang]} · {t('ws_scoped_sub')}</p></div></div>
-            <div className="d-grid stats" style={{ marginBottom: 16 }}>
-              <DStat icon="engineering" val={ws.active} lbl={t('kpi_active')} />
-              <DStat icon="folder" val={ws.projects} lbl={lang === 'ar' ? 'إجمالي المشاريع' : 'Total projects'} />
-              <DStat icon="schedule" tone="w" val={dueSoon} lbl={t('kpi_due')} />
-              <DStat icon="donut_large" tone="g" val={ws.completion} suffix="%" lbl={t('kpi_completion')} />
+            <DPageHead lang={lang}
+              crumbs={[ws[lang], t('ws_overview')]}
+              title={ws[lang]}
+              sub={`${ws.kind[lang]} · ${portfolio.length} ${AR ? 'مشروعاً ضمن النطاق' : 'projects in scope'} · ${AR ? 'بيانات حتى' : 'data as of'} ${new Date().toISOString().slice(0, 10)}`}
+              actions={<React.Fragment>
+                <button className="d-btn" onClick={() => showToast && showToast(AR ? 'تصدير — تجريبي' : 'Export — demo')}><Icon name="ios_share" size={16} />{t('export')}</button>
+                <button className="d-btn primary" onClick={() => goNav('projects')}><Icon name="projects" size={16} />{t('view_projects')}</button>
+              </React.Fragment>} />
+
+            <div className="d-toolbar">
+              <div className="grp">
+                {['all', ...statusKeys].map(f => <button key={f} className={`d-fchip ${stFilter === f ? 'on' : ''}`} onClick={() => setStFilter(f)}>{f === 'all' ? t('all') : window.EPM.STATUS[f][lang]}<span className="n">{f === 'all' ? all.length : all.filter(p => p.status === f).length}</span></button>)}
+              </div>
+              <div className="sp"></div>
+              <select className="d-form-input" style={{ width: 'auto' }} value={branch} onChange={e => setBranch(e.target.value)}>
+                <option value="all">{AR ? 'كل الفروع' : 'All branches'}</option>
+                {branches.map(bi => <option key={bi} value={String(bi)}>{B[lang][bi]}</option>)}
+              </select>
+              {(stFilter !== 'all' || branch !== 'all') && <button className="d-btn sm ghost" onClick={() => { setStFilter('all'); setBranch('all'); }}><Icon name="close" size={13} />{AR ? 'مسح' : 'Clear'}</button>}
             </div>
-            <div className="d-grid c2">
-              <DDistribution all={all} lang={lang} t={t} />
-              <div className="d-panel">
-                <div className="d-panel-head"><b>{t('top_projects')}</b><button className="d-link" onClick={() => goNav('projects')}>{t('view_all')}<Icon name={lang === 'ar' ? 'chevron_left' : 'chevron_right'} size={15} /></button></div>
-                <div>
-                  {recent.map(p => (
-                    <button key={p.id} className="d-mini" onClick={() => goNav('projects')}>
-                      <span className="d-qrow-rail" style={{ background: window.STATUS_VAR[p.status], width: 3, height: 30, borderRadius: 999 }}></span>
-                      <span className="d-mini-main"><b>{p.name[lang]}</b><span>{p.id} · {B[lang][p.branchIdx]}</span></span>
-                      <DPill status={p.status} lang={lang} />
-                    </button>
-                  ))}
+
+            {/* row 1 — progress curve + schedule/cost answer tiles */}
+            <div className="d-dash">
+              <div className="d-dash-main">
+                <div className="d-panel">
+                  <div className="d-panel-head">
+                    <b>{AR ? 'التقدم التراكمي — مخطط مقابل فعلي' : 'Cumulative progress — planned vs actual'}</b>
+                    <span className="d-cell-sub">{AR ? `المخطط ${plannedToDate}% · الفعلي ${physicalPct}%` : `Planned ${plannedToDate}% · Actual ${physicalPct}%`}</span>
+                    <span className={'d-pill ' + (physVariance < -5 ? 'stalled' : physVariance < 0 ? 'suspended' : 'completed')}>
+                      {physVariance < 0 ? (AR ? `متأخر ${Math.abs(physVariance)} نقطة` : `${Math.abs(physVariance)} pts behind`) : (AR ? `متقدّم ${physVariance} نقطة` : `${physVariance} pts ahead`)}
+                    </span>
+                  </div>
+                  <DSCurve lang={lang} data={scurve} />
                 </div>
+              </div>
+              <aside className="d-dash-side">
+                <DStat idx={0} val={physicalPct} suffix="%" lbl={AR ? 'الإنجاز المادي' : 'Physical progress'} bar={physicalPct}
+                  delta={(physVariance < 0 ? '▼ ' : '▲ ') + Math.abs(physVariance) + (AR ? ' نقطة' : ' pts')} deltaDir={physVariance < 0 ? 'down' : 'up'}
+                  foot={(AR ? 'المخطط حتى تاريخه ' : 'Planned to date ') + plannedToDate + '%'} />
+                <DStat idx={1} val={spi.toFixed(2)} lbl={AR ? 'مؤشر أداء الجدول (SPI)' : 'Schedule performance (SPI)'}
+                  delta={spi < 1 ? (AR ? '▼ دون 1.00' : '▼ below 1.00') : (AR ? '▲ عند الهدف' : '▲ at target')} deltaDir={spi < 1 ? 'down' : 'up'}
+                  foot={AR ? 'الحد المقبول 0.95' : 'Threshold 0.95'} />
+                <DStat idx={2} val={financialPct} suffix="%" lbl={AR ? 'الإنجاز المالي' : 'Financial progress'} bar={financialPct}
+                  delta={(burnVariance > 0 ? '▲ +' : '▼ ') + Math.abs(burnVariance) + (AR ? ' مقابل المادي' : ' vs physical')} deltaDir={burnVariance > 0 ? 'down' : 'up'}
+                  foot={musd(cumulativeTotal) + (AR ? ' مصروف' : ' spent')} />
+              </aside>
+            </div>
+
+            {/* row 2 — cost curve + CPI and the workspace signal */}
+            <div className="d-dash">
+              <div className="d-dash-main">
+                <div className="d-panel">
+                  <div className="d-panel-head">
+                    <b>{AR ? 'المنحنى المالي — الصرف المخطط مقابل الفعلي' : 'Cost curve — planned vs actual spend'}</b>
+                    <span className="d-cell-sub">{musd(cumulativeTotal)} {AR ? 'من' : 'of'} {musd(revisedTotal)}</span>
+                    <span className={'d-pill ' + (burnVariance < -5 ? 'suspended' : burnVariance > 5 ? 'stalled' : 'completed')}>
+                      {burnVariance === 0 ? (AR ? 'متوافق مع التنفيذ' : 'in step with progress')
+                        : burnVariance > 0 ? (AR ? `الصرف يسبق التنفيذ ${burnVariance} نقطة` : `spend ${burnVariance} pts ahead`)
+                        : (AR ? `الصرف يتأخر ${Math.abs(burnVariance)} نقطة` : `spend ${Math.abs(burnVariance)} pts behind`)}
+                    </span>
+                  </div>
+                  <DSCurve lang={lang} data={costCurve} color="var(--status-completed)" />
+                </div>
+              </div>
+              <aside className="d-dash-side">
+                <DStat idx={0} val={cpi.toFixed(2)} lbl={AR ? 'مؤشر أداء الكلفة (CPI)' : 'Cost performance (CPI)'}
+                  delta={cpi < 1 ? (AR ? '▼ دون 1.00' : '▼ below 1.00') : (AR ? '▲ فوق 1.00' : '▲ above 1.00')} deltaDir={cpi < 1 ? 'down' : 'up'}
+                  foot={`EV ${musd(earnedValue)} / AC ${musd(cumulativeTotal)}`} />
+                {(() => {
+                  const sig = portfolio.map(p => signalOf(p));
+                  const red = sig.filter(s => s === 'red').length, amber = sig.filter(s => s === 'amber').length, green = sig.filter(s => s === 'green').length;
+                  const pct = n => portfolio.length ? Math.round(n / portfolio.length * 100) : 0;
+                  const cells = [
+                    { tone: 'over', icon: 'warning', label: AR ? 'متعثّرة / متأخرة' : 'Behind / stalled', value: red },
+                    { tone: 'risk', icon: 'error', label: AR ? 'معرّضة للتأخير' : 'At risk', value: amber },
+                    { tone: 'ok', icon: 'check_circle', label: AR ? 'ضمن الخطة' : 'On plan', value: green },
+                  ];
+                  return (
+                    <div className="d-panel sig">
+                      <div className="d-panel-head"><b>{AR ? 'المؤشر التنفيذي' : 'Executive signal'}</b><span className="d-cell-sub">{portfolio.length} {AR ? 'مشروعاً' : 'projects'}</span></div>
+                      <div className="d-tl-band col">
+                        {cells.map((c, i) => (
+                          <div key={i} className={`d-tl-cell ${c.tone}`}>
+                            <span className="d-tl-ico"><Icon name={c.icon} size={18} /></span>
+                            <div className="d-tl-tx"><div className="d-tl-num">{c.value}</div><div className="d-cell-sub">{c.label}</div></div>
+                            <span className="d-tl-pc num">{pct(c.value)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </aside>
+            </div>
+
+            {/* watchlist — full width */}
+            <div className="d-tablewrap" style={{ marginBottom: 16 }}>
+              <div className="d-toolbar">
+                <b style={{ fontSize: 14 }}>{AR ? 'قائمة المتابعة — مشاريع خارج المسار' : 'Watchlist — projects off track'}</b>
+                <div className="sp"></div>
+                <span className="d-cell-sub">{watchlist.length} {AR ? 'من' : 'of'} {portfolio.length}</span>
+                <button className="d-btn sm ghost" onClick={() => goNav('projects')}>{AR ? 'عرض كل المشاريع' : 'View all projects'}<Icon name={AR ? 'chevron_left' : 'chevron_right'} size={14} /></button>
+              </div>
+              {watchlist.length ? (
+                <table className="d-table">
+                  <thead><tr>
+                    <th style={{ width: 108 }}>{AR ? 'الرمز' : 'Code'}</th>
+                    <th>{AR ? 'المشروع' : 'Project'}</th>
+                    <th>{AR ? 'الفرع' : 'Branch'}</th>
+                    <th>{AR ? 'الحالة' : 'Status'}</th>
+                    <th>{AR ? 'الإنجاز' : 'Progress'}</th>
+                    <th className="r">{AR ? 'الانحراف' : 'Variance'}</th>
+                    <th className="r">{AR ? 'الكلفة (د.ع)' : 'Cost (IQD)'}</th>
+                    <th>{AR ? 'الإنجاز المتوقع' : 'Expected finish'}</th>
+                  </tr></thead>
+                  <tbody>{watchlist.map(({ p, s }) => {
+                    const v = p.tech - plannedToDate;
+                    return (
+                      <tr key={p.id} onClick={() => openP(p)} style={{ cursor: 'pointer' }}>
+                        <td className="mono d-cell-sub">{p.id}</td>
+                        <td className="d-cell-strong">{p.name[lang]}</td>
+                        <td className="d-cell-sub">{B[lang][p.branchIdx]}</td>
+                        <td><DPill status={p.status} lang={lang} /></td>
+                        <td><span className="d-mini-bar"><span className="t"><span style={{ width: p.tech + '%' }}></span></span><span className="pc">{p.tech}%</span></span></td>
+                        <td className="num r" style={{ color: v < 0 ? 'var(--error)' : 'var(--status-completed-tx)', fontWeight: 600 }}>{(v > 0 ? '+' : '') + v}</td>
+                        <td className="num r">{window.fmtNum(p.cost)}</td>
+                        <td className="num d-cell-sub">{s.expectedFinish}</td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              ) : (
+                <div style={{ padding: '34px 16px', textAlign: 'center', color: 'var(--on-surface-variant)', fontSize: 13 }}>
+                  <Icon name="check_circle" size={26} style={{ color: 'var(--status-completed-tx)' }} />
+                  <div style={{ marginTop: 8, fontWeight: 600, color: 'var(--on-surface)' }}>{AR ? 'لا مشاريع خارج المسار' : 'No projects off track'}</div>
+                  <div style={{ marginTop: 3 }}>{AR ? 'كل مشاريع المساحة ضمن الخطة.' : 'Every project in this workspace is on plan.'}</div>
+                </div>
+              )}
+            </div>
+
+            {/* breakdown */}
+            <div className="d-grid c2 eqrows">
+              <div className="d-panel">
+                <div className="d-panel-head"><b>{t('rep_by_status')}</b><span className="d-cell-sub">{portfolio.length} {AR ? 'مشروعاً' : 'projects'}</span></div>
+                <div className="d-donut-row">
+                  <DDonutMulti segments={statusCounts} size={140} stroke={16} centerLabel={AR ? 'مشروعاً' : 'projects'} />
+                  <div className="d-donut-legend">
+                    {statusCounts.map(c => (
+                      <div className="li" key={c.key}>
+                        <i style={{ background: c.color }}></i>
+                        <span className="k">{c.label}</span>
+                        <b className="num">{c.value}</b>
+                        <span className="pc num">{portfolio.length ? Math.round(c.value / portfolio.length * 100) : 0}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="d-panel">
+                <div className="d-panel-head"><b>{t('chart_cost_compare')}</b></div>
+                <DBarCompare lang={lang} items={[
+                  { label: t('kpi_planned_cost'), value: plannedTotal, display: musd(plannedTotal), color: 'var(--viz-1)' },
+                  { label: t('kpi_revised_cost'), value: revisedTotal, display: musd(revisedTotal), color: 'var(--viz-2)' },
+                  { label: t('kpi_cumulative_spend'), value: cumulativeTotal, display: musd(cumulativeTotal), color: 'var(--viz-3)' },
+                ]} />
+              </div>
+            </div>
+
+            <div className="d-panel" style={{ marginTop: 16 }}>
+              <div className="d-panel-head"><b>{AR ? 'معالم قادمة' : 'Upcoming milestones'}</b><span className="d-cell-sub">{AR ? 'أقرب الإنجازات المخططة' : 'Nearest planned finishes'}</span></div>
+              <div className="d-actfeed">
+                {milestones.map(({ p, s }) => (
+                  <button key={p.id} className="d-actrow" onClick={() => openP(p)}>
+                    <span className="tx">
+                      <span className="l1"><b>{p.name[lang]}</b></span>
+                      <span className="l2"><span className="mono">{p.id}</span> · {B[lang][p.branchIdx]} · {AR ? 'الإنجاز' : 'Progress'} {p.tech}%</span>
+                    </span>
+                    <DPill status={p.status} lang={lang} />
+                    <span className="tm">{s.plannedFinish}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -48,14 +48,25 @@ function projectBeneficiaries(p) {
 
 // Every BOQ item / activity belongs to one contract. Deterministic so the BOQ page
 // and the change-order wizard always agree on the same scoping.
+/* A BOQ row states its own contract. The old rule derived it from the code's
+   parity, which had nothing to do with the work: the civil contract ended up
+   owning the electrical item. Parity survives only for rows seeded before the
+   field existed. */
 function contractKeyOfBoq(row, contracts) {
   if (!contracts || !contracts.length) return 'main';
+  if (row && row.contractKey && contracts.some(c => c.key === row.contractKey)) return row.contractKey;
   const n = String(row.code || '').replace(/\D/g, '') || '1';
   return contracts[(parseInt(n, 10) - 1) % contracts.length].key;
 }
+/* An activity belongs to the contract that owns its WBS branch — the areas
+   are already split that way (A = building, B = electromechanical). Parity
+   again is only the fallback. */
 function contractKeyOfAct(a, contracts) {
   if (!contracts || !contracts.length) return 'main';
-  const n = String(a.id || '').replace(/\D/g, '') || '1';
+  if (a && a.contractKey && contracts.some(c => c.key === a.contractKey)) return a.contractKey;
+  const path = String((a && (a.wbsPath || a.wbs || a.code)) || '');
+  if (/كهروم|Electromech|EM\b/i.test(path)) { const m = contracts.find(c => c.key === 'mep'); if (m) return m.key; }
+  const n = String((a && a.id) || '').replace(/\D/g, '') || '1';
   return contracts[(parseInt(n, 10) - 1) % contracts.length].key;
 }
 
@@ -268,9 +279,11 @@ function DDistImport({ lang, rows, bens, dist, onApply, onClose }) {
 
 function DModBOQ({ t, lang, d, p, showToast }) {
   const AR = lang === 'ar';
+  const pid = (p && p.id) || 'na';
   const contracts = d.contracts || [{ key: 'main', name: AR ? 'العقد' : 'Contract', code: d.contract.code, status: d.contract.status, raw: d.contract.raw }];
   const [ckey, setCkey] = React.useState(contracts.length === 1 ? contracts[0].key : null);
-  const [allRows, setAllRows] = React.useState(d.boq);
+  // Persisted so BOQ edits/adds/deletes survive navigation and reload.
+  const [allRows, setAllRows] = window.usePersistedState('boq.rows.' + pid, function () { return d.boq; });
   const [view, setView] = React.useState('register');
   const [editCode, setEditCode] = React.useState(null);
   const [ef, setEf] = React.useState({ item: '', unit: '', qty: '', price: '' });
@@ -279,12 +292,13 @@ function DModBOQ({ t, lang, d, p, showToast }) {
   // BOQ <-> activity mapping stays a separate many-to-many relation
   const [basis, setBasis] = React.useState('cost');
   const [links, setLinks] = React.useState(null);
-  const [allocOverrides, setAllocOverrides] = React.useState({});
-  const [actPct, setActPct] = React.useState({});
-  const [dist, setDist] = React.useState({});
+  // Manual allocation overrides + per-activity progress persist per project.
+  const [allocOverrides, setAllocOverrides] = window.usePersistedState('boq.alloc.' + pid, {});
+  const [actPct, setActPct] = window.usePersistedState('boq.actpct.' + pid, {});
+  const [dist, setDist] = window.usePersistedState('boq.dist.' + pid, {});
   const [distOpen, setDistOpen] = React.useState(null);
   const [benOpen, setBenOpen] = React.useState(false);
-  const [assigned, setAssigned] = React.useState(() => projectBeneficiaries(p).map(b => b.code));
+  const [assigned, setAssigned] = window.usePersistedState('boq.assigned.' + pid, function () { return projectBeneficiaries(p).map(b => b.code); });
   const [showImp, setShowImp] = React.useState(false);
   const [showDistImp, setShowDistImp] = React.useState(false);
   const [adding, setAdding] = React.useState(false);
@@ -355,7 +369,7 @@ function DModBOQ({ t, lang, d, p, showToast }) {
   const cActs = React.useMemo(() => sd.activities.filter(a => a.type === 'act' && !a.milestone)
     .filter(a => !ckey || contractKeyOfAct(a, contracts) === ckey), [sd, ckey, contracts]);
   const boqsW = React.useMemo(() => rows.map(r => ({ ...r, weight: weightOf(r) })), [rows, contractTotal]);
-  React.useEffect(() => { setLinks(window.defaultBOQLinks(boqsW, cActs)); setAllocOverrides({}); }, [ckey]);
+  React.useEffect(() => { setLinks(window.defaultBOQLinks(boqsW, cActs)); }, [ckey]);
   const groups = React.useMemo(() => (links && cActs.length)
     ? window.computeBOQGroups(boqsW, cActs, links, allocOverrides, actPct, basis) : [], [boqsW, cActs, links, allocOverrides, actPct, basis]);
   const gByCode = {}; groups.forEach(g => { gByCode[g.b.code] = g; });

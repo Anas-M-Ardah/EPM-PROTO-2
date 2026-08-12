@@ -143,7 +143,7 @@ function DVONewItemPanel({ lang, divs, wbsList, onSave, onClose }) {
           {F('price', AR ? 'سعر الوحدة' : 'Unit rate', true)}
           <div className="d-form-field"><label>Division</label><select className="d-form-input" value={v.div} onChange={e => set('div', e.target.value)}>{divs.map(d => <option key={d}>{d}</option>)}</select></div>
           <div className="d-form-field"><label>WBS</label><select className="d-form-input" value={v.wbs} onChange={e => set('wbs', e.target.value)}>{wbsList.map(d => <option key={d}>{d}</option>)}</select></div>
-          <div className="d-vow-note"><Icon name="info" size={16} /><span>{AR ? 'سيظهر البند داخل الأمر التغييري كبند مقترح جديد فقط.' : 'The item appears inside the change order as a proposed new item only.'}</span></div>
+          <DMsgBar tone="info" icon="info">{AR ? 'سيظهر البند داخل الأمر التغييري كبند مقترح جديد فقط.' : 'The item appears inside the change order as a proposed new item only.'}</DMsgBar>
         </div>
         <div className="d-drawer-foot">
           <button className="d-btn" onClick={onClose}>{AR ? 'إلغاء' : 'Cancel'}</button>

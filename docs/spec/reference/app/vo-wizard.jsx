@@ -3,7 +3,7 @@
 // multi-select table where every row picks its own change type and only the
 // fields that change type needs. Nothing here mutates the record.
 
-function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone, onDraft }) {
+function DVOCreateWizard({ lang, contract, contracts, boq, acts, isSupply, onClose, onDone, onDraft }) {
   const AR = lang === 'ar';
   // the contract is the first required selection: BOQ items and activities from
   // different contracts may never share one change order
@@ -14,7 +14,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
   const [seen, setSeen] = React.useState([0]);
   const visit = n => { setStep(n); setSeen(s => s.includes(n) ? s : [...s, n]); };
   const [tab, setTab] = React.useState('boq');
-  const [kind, setKind] = React.useState('engineering');
+  const [kind, setKind] = React.useState(isSupply ? 'supply' : 'engineering');
   const [party, setParty] = React.useState(0);
   const [justNote, setJustNote] = React.useState('');
   const [editRow, setEditRow] = React.useState(null);
@@ -35,17 +35,26 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
        ['ملخص الأثر', 'difference'], ['المرفقات', 'attach_file'], ['المراجعة والإرسال', 'verified_user']]
     : [['Type & official letter', 'description'], ['Affected items & activities', 'list_alt'],
        ['Impact summary', 'difference'], ['Attachments', 'attach_file'], ['Review & submit', 'verified_user']];
-  const KINDS = [
+  const KINDS = isSupply ? [
+    ['supply', AR ? 'تجهيز — كمية / مبلغ / مدة / توزيع' : 'Supply — quantity / amount / duration / redistribution', 'inbox'],
+  ] : [
     ['engineering', AR ? 'هندسي — كلفة / مدة' : 'Engineering — cost / time', 'engineering'],
     ['supply', AR ? 'تجهيز / إعادة توزيع كميات' : 'Supply / quantity redistribution', 'inbox'],
   ];
   React.useEffect(() => { setJustNote(''); }, [kind]);
 
-  const PARTIES = AR ? ['المقاول', 'المهندس المقيم', 'الجهة المستفيدة', 'الاستشاري'] : ['Contractor', 'Resident engineer', 'Beneficiary', 'Consultant'];
+  const T = window.EPM.voTerms({ type: isSupply ? 'supply' : 'construction' }, lang);
+  const PARTIES = T.parties;
+  // col-1 proposal label follows the selected «الجهة»; col-2 is the fixed reviewer
+  // (RE department for construction, inspection & receipt committee for supply)
+  const requesterLabel = PARTIES[party] || T.requester;
+  const reviewerLabel = T.reviewer;
   const CHG = AR
     ? [['inc', 'زيادة كمية'], ['dec', 'نقص كمية'], ['rate', 'تعديل السعر'], ['del', 'إلغاء بند'], ['redist', 'إعادة توزيع']]
     : [['inc', 'Increase Quantity'], ['dec', 'Decrease Quantity'], ['rate', 'Change Unit Rate'], ['del', 'Cancel Item'], ['redist', 'Quantity Redistribution']];
   const CHG_L = Object.fromEntries(CHG);
+  // supply orders don't re-price at a new unit rate (catalog/LC-fixed) — no 20% tier
+  const CHG_USE = isSupply ? CHG.filter(c => c[0] !== 'rate') : CHG;
   const SCHG = AR
     ? [['inc', 'زيادة المدة'], ['dec', 'تقليل المدة'], ['start', 'تعديل تاريخ البداية'], ['finish', 'تعديل تاريخ النهاية'], ['both', 'تعديل تاريخي البداية والنهاية']]
     : [['inc', 'Increase Duration'], ['dec', 'Decrease Duration'], ['start', 'Change Start Date'], ['finish', 'Change Finish Date'], ['both', 'Change Start and Finish Dates']];
@@ -69,8 +78,11 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     const scoped = (boq || []).filter(b => !ckey || window.contractKeyOfBoq(b, cList) === ckey);
     const sum = scoped.reduce((s, b) => s + b.total, 0) || 1;
     return scoped.map((b, i) => ({
-      _t: 'boq', code: b.code, desc: b.item, div: DIVS[i % DIVS.length], cat: BCAT[i % BCAT.length], unit: b.unit,
+      _t: 'boq', code: b.code, desc: b.item,
+      div: isSupply ? (AR ? 'تجهيز أجهزة' : 'Equipment supply') : DIVS[i % DIVS.length],
+      cat: isSupply ? (AR ? 'توريد' : 'Supply') : BCAT[i % BCAT.length], unit: b.unit,
       qty: b.contractedQty, price: b.price, executedQty: b.executedQty, weight: +(b.total / sum * 100).toFixed(2),
+      beneficiaries: b.beneficiaries || [],   // carried through so supply redistribution can pick from→to
       status: b.executedQty >= b.contractedQty ? (AR ? 'منجز' : 'Completed') : b.executedQty > 0 ? (AR ? 'قيد التنفيذ' : 'In progress') : (AR ? 'لم يبدأ' : 'Not started'),
     }));
   }, [boq, ckey, lang]);
@@ -92,16 +104,16 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
   const bOne = (r, raw, exRaw) => {
     const before = r.qty * r.price, dv = Number(raw) || 0;
     const blank = raw === '' || raw == null;
-    const tiered = r.chg === 'inc' || r.chg === 'dec';
+    const tiered = !isSupply && (r.chg === 'inc' || r.chg === 'dec');
     const thr = r.qty * TIER;
     const atRate = tiered ? Math.min(dv, thr) : 0;       // at the original rate
     const exQty = tiered ? Math.max(0, dv - thr) : 0;    // beyond 20%
     const exBlank = exRaw === '' || exRaw == null;
     const exRate = exBlank ? r.price : (Number(exRaw) || 0);
     let qtyAfter = r.qty, priceAfter = r.price, after;
-    if (r.chg === 'inc') { qtyAfter = r.qty + dv; after = before + atRate * r.price + exQty * exRate; }
-    else if (r.chg === 'dec') { qtyAfter = Math.max(0, r.qty - dv); after = before - atRate * r.price - exQty * exRate; }
-    else if (r.chg === 'redist') { qtyAfter = Math.max(0, r.qty - dv); after = qtyAfter * r.price; }
+    if (r.chg === 'inc') { qtyAfter = r.qty + dv; after = tiered ? before + atRate * r.price + exQty * exRate : (r.qty + dv) * r.price; }
+    else if (r.chg === 'dec') { qtyAfter = Math.max(0, r.qty - dv); after = tiered ? before - atRate * r.price - exQty * exRate : qtyAfter * r.price; }
+    else if (r.chg === 'redist') { qtyAfter = isSupply ? r.qty : Math.max(0, r.qty - dv); after = qtyAfter * r.price; }
     else if (r.chg === 'rate') { priceAfter = blank ? r.price : dv; after = qtyAfter * priceAfter; }
     else { qtyAfter = r.executedQty || 0; after = qtyAfter * r.price; }
     let diff = after - before;
@@ -115,12 +127,26 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     const hasRe = !(r.deltaRe === '' || r.deltaRe == null);
     const re = hasRe ? bOne(r, r.deltaRe, r.priceExRe) : null;
     const gov = re || con;                       // د.م.م governs once entered
-    const capped = r.chg === 'dec' || r.chg === 'redist';
+    const capped = r.chg === 'dec' || (r.chg === 'redist' && !isSupply);
     const overCon = capped && con.dv > remain;
     const overRe = capped && !!re && re.dv > remain;
     return { ...gov, con, re, hasRe, remain, diverges: hasRe && Math.abs(re.diff - con.diff) > 0.5,
       exceeds: con.exceeds || (!!re && re.exceeds),
       overCon, overRe, over: overCon || overRe };
+  };
+  // supply redistribution: ONE item may be re-split across MANY source→target
+  // pairs. Each transfer is {from, to, qty}; the item total and contract value are
+  // unchanged — only per-beneficiary allocations move. Validation is per source:
+  // the sum drawn from a source may not exceed its current allocation.
+  const redistOf = r => {
+    const txs = (r.transfers || []).map(t => ({ from: t.from || '', to: t.to || '', qty: Number(t.qty) || 0 }));
+    const alloc = {}; (r.beneficiaries || []).forEach(b => { alloc[b.name] = b.qty; });
+    const bySrc = {}; txs.forEach(t => { if (t.from) bySrc[t.from] = (bySrc[t.from] || 0) + t.qty; });
+    const net = {}; txs.forEach(t => { if (t.from) net[t.from] = (net[t.from] || 0) - t.qty; if (t.to) net[t.to] = (net[t.to] || 0) + t.qty; });
+    const overSources = Object.keys(bySrc).filter(s => bySrc[s] > (alloc[s] || 0) + 1e-9);
+    const invalid = txs.filter(t => !t.from || !t.to || t.from === t.to || t.qty <= 0);
+    const totalMoved = txs.reduce((s, t) => s + t.qty, 0);
+    return { txs, alloc, bySrc, net, overSources, invalid, totalMoved, count: txs.length };
   };
   const aCalc = r => {
     const dv = Number(r.days) || 0;
@@ -140,12 +166,35 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
   // submission blockers — a decrease may never exceed the remaining quantity,
   // and a redistribution needs its target
   const blockers = [
+    // §2.1.1 / §2.10.1 — official incoming no. & date are the legal-counter start;
+    // a change-order request cannot be submitted without them.
+    ...(!inNo || !inNo.trim() ? [{ code: AR ? 'الوارد' : 'Incoming', msg: AR ? 'رقم الوارد الرسمي مطلوب' : 'Official incoming no. is required' }] : []),
+    ...(!inDate || !inDate.trim() ? [{ code: AR ? 'الوارد' : 'Incoming', msg: AR ? 'تاريخ الوارد الرسمي مطلوب' : 'Official incoming date is required' }] : []),
     ...bRows.filter(r => bCalc(r).overCon).map(r => ({ code: r.code,
-      msg: (AR ? 'مقترح المقاول يتجاوز الكمية المتبقية' : 'Contractor proposal exceeds the remaining quantity') })),
+      msg: (AR ? 'مقترح ' + requesterLabel + ' يتجاوز الكمية المتبقية' : requesterLabel + ' proposal exceeds the remaining quantity') })),
     ...bRows.filter(r => bCalc(r).overRe).map(r => ({ code: r.code,
-      msg: (AR ? 'مقترح د.م.م يتجاوز الكمية المتبقية' : 'RE dept proposal exceeds the remaining quantity') })),
-    ...bRows.filter(r => r.chg === 'redist' && !r.tgt).map(r => ({ code: r.code,
+      msg: (AR ? 'مقترح ' + reviewerLabel + ' يتجاوز الكمية المتبقية' : reviewerLabel + ' proposal exceeds the remaining quantity') })),
+    ...bRows.filter(r => r.chg === 'redist' && !isSupply && !r.tgt).map(r => ({ code: r.code,
       msg: AR ? 'لم يُحدَّد البند الهدف لإعادة التوزيع' : 'Redistribution target not selected' })),
+    // supply redistribution — at least one transfer, each valid, none over-drawn
+    ...bRows.filter(r => r.chg === 'redist' && isSupply && redistOf(r).count === 0).map(r => ({ code: r.code,
+      msg: AR ? 'أضف تحويلاً واحداً على الأقل لإعادة التوزيع' : 'Add at least one redistribution transfer' })),
+    ...bRows.filter(r => r.chg === 'redist' && isSupply && redistOf(r).count > 0 && redistOf(r).invalid.length > 0).map(r => ({ code: r.code,
+      msg: AR ? 'كل تحويل يتطلب جهة مصدر وجهة هدف مختلفتين وكمية موجبة' : 'Each transfer needs a distinct source & target and a positive quantity' })),
+    ...bRows.filter(r => r.chg === 'redist' && isSupply && redistOf(r).overSources.length > 0).map(r => ({ code: r.code,
+      msg: (AR ? 'إجمالي المنقول من ' : 'Total moved from ') + redistOf(r).overSources.join('، ') + (AR ? ' يتجاوز المخصّص المتاح' : ' exceeds available allocation') })),
+    // a change type that carries a quantity/rate must actually specify one — a blank
+    // change has no effect, so it cannot be submitted
+    ...bRows.filter(r => (r.chg === 'inc' || r.chg === 'dec' || r.chg === 'rate') && (r.delta === '' || r.delta == null || Number(r.delta) <= 0)).map(r => ({ code: r.code,
+      msg: r.chg === 'rate' ? (AR ? 'أدخل السعر الجديد' : 'Enter the new unit rate') : (AR ? 'أدخل مقدار التغيير في الكمية' : 'Enter the change amount') })),
+    ...bRows.filter(r => r.chg === 'redist' && !isSupply && (r.delta === '' || r.delta == null || Number(r.delta) <= 0)).map(r => ({ code: r.code,
+      msg: AR ? 'أدخل الكمية المُعاد توزيعها' : 'Enter the redistributed quantity' })),
+    // a time change must specify its days or dates
+    ...aRows.filter(r => (r.chg === 'inc' || r.chg === 'dec') && (r.days === '' || r.days == null || Number(r.days) <= 0)).map(r => ({ code: r.id,
+      msg: AR ? 'أدخل عدد أيام التغيير الزمني' : 'Enter the number of days' })),
+    ...aRows.filter(r => r.chg === 'start' && !r.startDate).map(r => ({ code: r.id, msg: AR ? 'حدّد تاريخ البداية الجديد' : 'Set the new start date' })),
+    ...aRows.filter(r => r.chg === 'finish' && !r.finishDate).map(r => ({ code: r.id, msg: AR ? 'حدّد تاريخ النهاية الجديد' : 'Set the new finish date' })),
+    ...aRows.filter(r => r.chg === 'both' && (!r.startDate || !r.finishDate)).map(r => ({ code: r.id, msg: AR ? 'حدّد تاريخي البداية والنهاية' : 'Set both start and finish dates' })),
   ];
   const canSubmit = blockers.length === 0 && (bRows.length > 0 || aRows.length > 0);
   const daysReq = Math.max(0, ...aRows.map(r => aCalc(r).days), 0);
@@ -160,12 +209,15 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
   const cDur = cStart && cFinish ? Math.max(1, Math.round((new Date(cFinish) - new Date(cStart)) / 86400000)) : 0;
   const durQuarter = Math.round(cDur / 4);
   const overQuarter = cDur > 0 && daysReq > durQuarter;
-  const needsRate = anyExceeds || bRows.some(r => r.chg === 'rate');
+  const needsRate = !isSupply && (anyExceeds || bRows.some(r => r.chg === 'rate'));
   // Six system-owned stages. External parties are not stages — their decisions are
   // recorded inside the owning stage by a delegate, against an official letter.
   const path = [
-    [AR ? 'دراسة الطلب' : 'Request study', 'engineering',
-      AR ? 'دائرة المهندس المقيم — يُدخل الأمر بعد ورود طلب المقاول ورأي الاستشاري' : 'RE department — entered after the contractor’s request and the consultant’s opinion'],
+    [AR ? 'دراسة الطلب' : 'Request study', isSupply ? 'fact_check' : 'engineering',
+      (isSupply ? T.enteredBy : (AR ? 'دائرة المهندس المقيم' : 'RE department'))
+        + (AR ? ' — ' : ' — ')
+        + (isSupply ? (AR ? 'يُدخل الأمر بعد ورود طلب المجهز والرأي الفني' : 'entered after the supplier’s request and technical opinion')
+                    : (AR ? 'يُدخل الأمر بعد ورود طلب المقاول ورأي الاستشاري' : 'entered after the contractor’s request and the consultant’s opinion'))],
     [AR ? 'لجنة أوامر الغيار' : 'Change-order committee', 'account_tree',
       AR ? 'تدقيق الطلب وتنظيم الاستمارات — وتُعاد عند وجود نقص' : 'Reviews the request and prepares the forms'],
     ...(needsRate ? [[AR ? 'تثبيت الأسعار' : 'Rate fixing', 'difference',
@@ -178,7 +230,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     [AR ? 'الأمر الوزاري وملحق العقد' : 'Ministerial order & addendum', 'verified_user',
       AR ? 'أطراف خارجية: الوزير / المفوَّض، قسم العقود الحكومية' : 'External: Minister / delegate, government contracts section'],
     [AR ? 'التنفيذ' : 'Execution', 'done',
-      AR ? 'دائرة المهندس المقيم — تحديث العقد وبنود الكميات والجدول' : 'RE department — contract, BOQ and schedule updated'],
+      T.execOwner + (AR ? ' — ' : ' — ') + T.execNote],
   ];
   const stepDone = [!!ckey && !!justNote.trim(), (bRows.length > 0 || aRows.length > 0) && blockers.length === 0,
     seen.includes(2) && (bRows.length > 0 || aRows.length > 0), files.length > 0, false];
@@ -197,7 +249,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     if (e.target) e.target.value = '';
   };
   const boqPickSpec = extra => ({
-    kind: 'boq', title: AR ? 'اختيار بنود من جدول الكميات' : 'Select BOQ items',
+    kind: 'boq', title: isSupply ? (AR ? 'اختيار الفقرات التجهيزية' : 'Select supply items') : (AR ? 'اختيار بنود من جدول الكميات' : 'Select BOQ items'),
     hint: AR ? 'ابحث بكود البند أو الوصف' : 'Search by BOQ code or description',
     keyOf: r => r.code, taken: extra && extra.mode ? [] : bRows.map(r => r.code),
     cols: [{ k: 'code', l: AR ? 'كود البند' : 'BOQ Code', mono: true, w: 96 }, { k: 'desc', l: AR ? 'وصف البند' : 'Description' },
@@ -240,7 +292,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     const exVal = party === 're' ? r.priceExRe : r.priceEx;
     const side = party === 're' ? c.re : c.con;
     // a decrease can only give back what has not been executed
-    const cap = (r.chg === 'dec' || r.chg === 'redist') ? c.remain : null;
+    const cap = (r.chg === 'dec' || (r.chg === 'redist' && !isSupply)) ? c.remain : null;
     const setQty = v => {
       if (cap != null && v !== '' && Number(v) > cap) {
         upd({ [fld]: String(+cap.toFixed(2)) });
@@ -257,6 +309,10 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
         {capped && <span className="hint">{AR ? 'حُدَّ بالكمية المتبقية' : 'capped at remaining'}</span>}
       </div>);
     if (r.chg === 'del') return <span className="d-cell-sub">{AR ? 'إلغاء المتبقي' : 'Cancel remaining'}</span>;
+    if (r.chg === 'redist' && isSupply) { const R = redistOf(r); return <div className="d-vow-f" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span className="d-pill">{R.count} {AR ? (R.count === 1 ? 'تحويل' : 'تحويلات') : 'transfers'}</span>
+      {R.count > 0 && <span className="d-cell-sub mono">Σ {window.fmtNum(R.totalMoved)} {r.unit}</span>}
+      {R.count === 0 && <span className="d-cell-sub">{AR ? 'حرّر لإضافة تحويل' : 'edit to add'}</span>}</div>; }
     if (r.chg === 'redist') return <div className="d-vow-f">
       {qtyIn(76)}
       {party !== 're' && <button className="d-btn" onClick={() => setPick(boqPickSpec({ mode: 'tgt', i: r._i, title: AR ? 'اختيار البند الهدف' : 'Select target BOQ' }))}>
@@ -268,6 +324,51 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
       </div>);
     if (r.chg === 'rate') return numIn(val, v => upd({ [fld]: v }), 92);
     return qtyIn(78);
+  };
+  // multi-transfer editor for a supply redistribution row
+  const transferEditor = (r, i, upd) => {
+    const R = redistOf(r);
+    const txs = (r.transfers && r.transfers.length) ? r.transfers : [{ from: '', to: '', qty: '' }];
+    const setTx = (j, patch) => upd({ transfers: txs.map((t, k) => k === j ? { ...t, ...patch } : t) });
+    const addTx = () => upd({ transfers: [...txs, { from: '', to: '', qty: '' }] });
+    const delTx = j => upd({ transfers: txs.length > 1 ? txs.filter((_, k) => k !== j) : [{ from: '', to: '', qty: '' }] });
+    // how much is still available from a source, after the OTHER transfers drawn from it
+    const availFor = (src, selfJ) => (R.alloc[src] || 0) - txs.reduce((s, t, k) => s + (k !== selfJ && t.from === src ? (Number(t.qty) || 0) : 0), 0);
+    return (
+      <div className="d-vow-tx">
+        <div className="d-vow-sech" style={{ marginBottom: 8 }}><Icon name="swap_horiz" size={16} />
+          <div className="d-section-title" style={{ margin: 0 }}>{AR ? 'تحويلات إعادة التوزيع' : 'Redistribution transfers'}</div>
+          <div style={{ flex: 1 }}></div>
+          <span className="d-cell-sub">{AR ? 'من عدة مصادر إلى عدة جهات لنفس الفقرة' : 'Several sources → several targets for this item'}</span></div>
+        <table className="d-line-table"><thead><tr>
+          <th style={{ minWidth: 200 }}>{AR ? 'الجهة المصدر' : 'Source beneficiary'}</th>
+          <th style={{ width: 34 }}></th>
+          <th style={{ minWidth: 200 }}>{AR ? 'الجهة الهدف' : 'Target beneficiary'}</th>
+          <th style={{ width: 120 }}>{AR ? 'الكمية المنقولة' : 'Moved qty'}</th>
+          <th style={{ width: 44 }}></th></tr></thead>
+          <tbody>{txs.map((t, j) => { const av = t.from ? availFor(t.from, j) : null; const q = Number(t.qty) || 0;
+            const over = av != null && q > av + 1e-9; const dup = t.from && t.to && t.from === t.to;
+            return (<tr key={j} className={over || dup ? 'on' : ''}>
+              <td><select className="d-form-input" style={{ width: '100%', padding: '5px 6px', fontSize: 12 }} value={t.from || ''} onChange={e => setTx(j, { from: e.target.value })}>
+                <option value="">{AR ? 'اختر المصدر…' : 'Select source…'}</option>
+                {(r.beneficiaries || []).map(b => <option key={b.name} value={b.name}>{b.name} ({window.fmtNum(b.qty)})</option>)}</select></td>
+              <td style={{ textAlign: 'center' }}><Icon name={AR ? 'arrow_back' : 'arrow_forward'} size={14} /></td>
+              <td><select className="d-form-input" style={{ width: '100%', padding: '5px 6px', fontSize: 12 }} value={t.to || ''} onChange={e => setTx(j, { to: e.target.value })}>
+                <option value="">{AR ? 'اختر الهدف…' : 'Select target…'}</option>
+                {(window.EPM.FORMATIONS || []).map(f => <option key={f.en} value={f[lang]}>{f[lang]}</option>)}</select></td>
+              <td>{numIn(t.qty, v => setTx(j, { qty: v }), 92)}
+                {av != null && <div className={'d-cell-sub' + (over ? ' warn' : '')}>{AR ? 'المتاح ' : 'avail '}<b className="mono">{window.fmtNum(+av.toFixed(2))}</b></div>}
+                {dup && <div className="d-cell-sub warn">{AR ? 'المصدر والهدف متطابقان' : 'source = target'}</div>}</td>
+              <td><button className="d-icon-btn" title={AR ? 'حذف التحويل' : 'Remove transfer'} onClick={() => delTx(j)}><Icon name="delete" size={15} /></button></td>
+            </tr>); })}</tbody></table>
+        <button className="d-btn" style={{ marginTop: 8 }} onClick={addTx}><Icon name="add" size={14} />{AR ? 'إضافة تحويل' : 'Add transfer'}</button>
+        {Object.keys(R.net).length > 0 && <div style={{ marginTop: 12 }}>
+          <div className="d-cell-sub" style={{ marginBottom: 6 }}>{AR ? 'صافي التغيير في التوزيع (بعد التطبيق)' : 'Net allocation change (after apply)'}</div>
+          <div className="d-vow-f" style={{ flexWrap: 'wrap', gap: 6 }}>{Object.keys(R.net).map(k => (
+            <span key={k} className={'d-pill ' + (R.net[k] < 0 ? 'stalled' : 'completed')}>{k} {R.net[k] > 0 ? '+' : ''}{window.fmtNum(+R.net[k].toFixed(2))}</span>))}</div></div>}
+        {R.overSources.length > 0 && <DMsgBar tone="warning" icon="warning">{(AR ? 'إجمالي المنقول من ' : 'Total moved from ') + R.overSources.join('، ') + (AR ? ' يتجاوز المخصّص المتاح لهذه الجهة.' : ' exceeds the available allocation.')}</DMsgBar>}
+        <DMsgBar tone="info" icon="info">{AR ? 'إعادة التوزيع لا تغيّر إجمالي كمية الفقرة ولا قيمة العقد — تنقل المخصّصات بين الجهات المستفيدة فقط.' : 'Redistribution changes neither the item total nor the contract value — it only moves allocations between beneficiaries.'}</DMsgBar>
+      </div>);
   };
   const aProposed = (r, upd) => {
     if (r.chg === 'inc' || r.chg === 'dec') return <div className="d-vow-f">{numIn(r.days, v => upd({ days: v }), 74)}<span className="d-cell-sub">{AR ? 'يوم' : 'days'}</span></div>;
@@ -285,8 +386,8 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
       <th style={{ width: 96 }}>{AR ? 'كود البند' : 'BOQ Code'}</th><th style={{ minWidth: 190 }}>{AR ? 'وصف البند' : 'Description'}</th>
       <th style={{ width: 130 }}>{AR ? 'الحالي' : 'Current'}</th>
       <th style={{ width: 150 }}>{AR ? 'نوع التغيير' : 'Change Type'}</th>
-      <th style={{ width: 128 }}>{AR ? 'مقترح المقاول' : 'Contractor'}</th>
-      <th style={{ width: 128 }}>{AR ? 'مقترح د.م.م' : 'RE dept'}</th>
+      <th style={{ width: 128 }}>{(AR ? 'مقترح ' : '') + requesterLabel}</th>
+      <th style={{ width: 128 }}>{(AR ? 'مقترح ' : '') + reviewerLabel}</th>
       <th style={{ width: 150 }}>{AR ? 'الحالة' : 'State'}</th>
       {!ro && <th style={{ width: 106 }}></th>}</tr></thead>
       <tbody>{bRows.map((r, i) => { const c = bCalc(r); const isR = r.chg === 'rate'; const on = bSel.includes(r.code);
@@ -299,7 +400,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
             <td className="mono">{r.code}</td>
             <td>{r.desc}<div className="d-cell-sub">{r.div} · {AR ? 'الوزن' : 'weight'} {r.weight}%</div></td>
             <td className="mono">{window.fmtNum(r.qty)} {r.unit}<div className="d-cell-sub mono">{window.fmtNum(c.before)}</div></td>
-            <td>{ro ? CHG_L[r.chg] : selIn(r.chg, v => upd({ chg: v, delta: '', deltaRe: '', priceEx: '', priceExRe: '', tgt: null }), CHG, 126, 'bc-' + r.code)}</td>
+            <td>{ro ? CHG_L[r.chg] : selIn(r.chg, v => upd({ chg: v, delta: '', deltaRe: '', priceEx: '', priceExRe: '', tgt: null }), CHG_USE, 126, 'bc-' + r.code)}</td>
             {[c.con, c.hasRe ? c.re : null].map((s, k) => (
               <td key={k} className="mono">{!s || (s.blank && !isR && r.chg !== 'del') ? <span className="d-cell-sub">{AR ? 'لم يُدخل' : 'not set'}</span>
                 : <React.Fragment>{(s.diff > 0 ? '+' : '') + window.fmtNum(Math.round(s.diff))}
@@ -326,19 +427,20 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
               <b>{CHG_L[r.chg]}</b>
               <span className="d-cell-sub">{r.code} — {r.desc}</span>
               <div style={{ flex: 1 }}></div>
-              {(r.chg === 'inc' || r.chg === 'dec') && <span className="d-cell-sub">{AR ? 'حد 20%' : '20% limit'} <b className="mono">{window.fmtNum(+(r.qty * TIER).toFixed(2))}</b> {r.unit} {AR ? 'من' : 'of'} <b className="mono">{window.fmtNum(r.qty)}</b></span>}
-              {(r.chg === 'dec' || r.chg === 'redist') && <span className="d-cell-sub">{AR ? 'المتبقي' : 'Remaining'} <b className="mono">{window.fmtNum(c.remain)}</b> {r.unit}</span>}
+              {!isSupply && (r.chg === 'inc' || r.chg === 'dec') && <span className="d-cell-sub">{AR ? 'حد 20%' : '20% limit'} <b className="mono">{window.fmtNum(+(r.qty * TIER).toFixed(2))}</b> {r.unit} {AR ? 'من' : 'of'} <b className="mono">{window.fmtNum(r.qty)}</b></span>}
+              {(r.chg === 'dec' || (r.chg === 'redist' && !isSupply)) && <span className="d-cell-sub">{AR ? 'المتبقي' : 'Remaining'} <b className="mono">{window.fmtNum(c.remain)}</b> {r.unit}</span>}
             </div>
+            {isSupply && r.chg === 'redist' ? transferEditor(r, i, upd) :
             <div className="d-vow-props">
-              {[['con', AR ? 'مقترح المقاول' : 'Contractor proposal', c.con], ['re', AR ? 'مقترح دائرة المهندس المقيم' : 'RE department proposal', c.re]].map(([k, lbl, s]) => (
+              {[['con', (AR ? 'مقترح ' : '') + requesterLabel + (AR ? '' : ' proposal'), c.con], ['re', (AR ? 'مقترح ' : '') + reviewerLabel + (AR ? '' : ' proposal'), c.re]].map(([k, lbl, s]) => (
                 <div key={k} className={'d-vow-prop' + (k === 're' && c.hasRe ? ' gov' : '') + ((k === 'con' ? c.overCon : c.overRe) ? ' bad' : '')}>
-                  <div className="ph"><Icon name={k === 'con' ? 'person' : 'engineering'} size={15} /><b>{lbl}</b>
+                  <div className="ph"><Icon name={k === 'con' ? 'person' : (isSupply ? 'fact_check' : 'engineering')} size={15} /><b>{lbl}</b>
                     {k === 're' && c.hasRe && <span className="d-pill ongoing">{AR ? 'المعتمد للمضي' : 'Carried forward'}</span>}</div>
                   <div className="pf">
                     <label>{isR ? (AR ? 'السعر الجديد' : 'New rate') : r.chg === 'del' ? (AR ? 'الكمية الملغاة' : 'Cancelled qty') : (AR ? 'مقدار التغيير' : 'Change amount')}</label>
                     {r.chg === 'del' ? <span className="mono">{window.fmtNum(c.remain)} {r.unit}</span> : bProposed({ ...r, _i: i }, c, upd, k)}
                   </div>
-                  {(r.chg === 'inc' || r.chg === 'dec') && s && !s.blank && <div className="d-vow-tiers">
+                  {!isSupply && (r.chg === 'inc' || r.chg === 'dec') && s && !s.blank && <div className="d-vow-tiers">
                     <div className="tr1"><i>{AR ? 'ضمن 20%' : 'Within 20%'}</i>
                       <b className="mono">{window.fmtNum(+s.atRate.toFixed(2))} {r.unit}</b>
                       <span className="mono">× {window.fmtNum(r.price)}</span>
@@ -356,16 +458,13 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                     <span><i>{AR ? 'الأثر المالي' : 'Impact'}</i><b className="mono">{s ? (s.diff > 0 ? '+' : '') + window.fmtNum(Math.round(s.diff)) : '—'}</b></span>
                   </div>
                 </div>))}
-            </div>
-            {c.over && <div className="d-vow-note warn"><Icon name="warning" size={16} />
-              <span>{AR ? 'كل مقترح يجب أن يبقى ضمن الكمية المتبقية ' : 'Each proposal must stay within the remaining quantity '}
+            </div>}
+            {c.over && <DMsgBar tone="warning" icon="warning">{AR ? 'كل مقترح يجب أن يبقى ضمن الكمية المتبقية ' : 'Each proposal must stay within the remaining quantity '}
                 <b className="mono">{window.fmtNum(c.remain)}</b> {r.unit}
                 {AR ? ' — لا يجوز إلغاء كمية منفَّذة. المخالف: ' : ' — executed quantity cannot be removed. Offending: '}
-                <b>{[c.overCon && (AR ? 'المقاول' : 'contractor'), c.overRe && (AR ? 'د.م.م' : 'RE dept')].filter(Boolean).join(AR ? ' و' : ' & ')}</b></span></div>}
-            {c.exceeds && <div className="d-vow-note"><Icon name="difference" size={16} />
-              <span>{AR ? 'الكمية الزائدة عن 20% تُسعَّر بسعر جديد يقترحه الطرفان، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.' : 'Quantity beyond 20% is priced at a new rate proposed by both parties and fixed by the rate-fixing committee.'}</span></div>}
-            {r.chg === 'redist' && <div className="d-vow-note"><Icon name="info" size={16} />
-              <span>{AR ? 'البند الهدف' : 'Target BOQ'} <b>{r.tgt ? r.tgt.code + ' — ' + r.tgt.desc : (AR ? 'لم يُحدَّد' : 'not selected')}</b></span></div>}
+                <b>{[c.overCon && requesterLabel, c.overRe && reviewerLabel].filter(Boolean).join(AR ? ' و' : ' & ')}</b></DMsgBar>}
+            {c.exceeds && <DMsgBar tone="info" icon="difference">{AR ? 'الكمية الزائدة عن 20% تُسعَّر بسعر جديد يقترحه الطرفان، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.' : 'Quantity beyond 20% is priced at a new rate proposed by both parties and fixed by the rate-fixing committee.'}</DMsgBar>}
+            {r.chg === 'redist' && !isSupply && <DMsgBar tone="info" icon="info">{AR ? 'البند الهدف' : 'Target BOQ'} <b>{r.tgt ? r.tgt.code + ' — ' + r.tgt.desc : (AR ? 'لم يُحدَّد' : 'not selected')}</b></DMsgBar>}
           </td></tr>}
         </React.Fragment>); })}</tbody>
       <tfoot><tr><td colSpan={ro ? 4 : 5}>{AR ? 'صافي الأثر على قيمة العقد' : 'Net impact on contract value'}
@@ -406,6 +505,18 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
     </table></div>
   );
 
+  // Hand the parent a clean payload so it can persist a real order.
+  const makePayload = () => ({
+    kind, justNote, inNo, inDate, ckey, cCost,
+    party: PARTIES[party], boqNet, boqNetCon, daysReq,
+    bRows: bRows.map(r => ({ code: r.code, desc: r.desc, unit: r.unit, qty: r.qty, price: r.price,
+      chg: r.chg, delta: r.delta, deltaRe: r.deltaRe, tgt: r.tgt && r.tgt.code,
+      transfers: (r.transfers || []).filter(t => t.from && t.to && (Number(t.qty) || 0) > 0)
+        .map(t => ({ from: t.from, to: t.to, qty: Number(t.qty) || 0 })) })),
+    aRows: aRows.map(r => ({ id: r.id, name: r.name, days: r.days, crit: r.crit, chg: r.chg })),
+    files: files.slice(),
+  });
+
   return (
     <React.Fragment>
       <input type="file" multiple ref={fileRef} onChange={addFiles} style={{ display: 'none' }} />
@@ -443,8 +554,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                   {ct && <div className="d-form-i"><span className="k">{AR ? 'قيمة العقد الحالية' : 'Current contract value'}</span><span className="v mono">{window.fmtNum(cCost)}</span></div>}
                   {ct && <div className="d-form-i"><span className="k">{AR ? 'حالة العقد' : 'Contract status'}</span><span className="v">{window.ctStatusLabel(ct.status, lang)}</span></div>}
                 </div>
-                <div className="d-vow-note" style={{ marginTop: 12 }}><Icon name="lock" size={16} />
-                  <span>{AR ? 'تُعرض بنود الكميات والأنشطة التابعة لهذا العقد فقط، ولا يجوز أن يشمل الأمر التغييري عقوداً مختلفة. أي تغيير مالي معتمد يُحدِّث هذا العقد، ثم يُعاد احتساب قيمة المشروع كمجموع عقوده.' : 'Only this contract’s BOQ items and activities are offered; a change order may never span contracts. An approved financial change updates this contract, then the project total is recalculated as the sum of its contracts.'}</span></div>
+                <DMsgBar tone="info" icon="lock">{AR ? 'تُعرض بنود الكميات والأنشطة التابعة لهذا العقد فقط، ولا يجوز أن يشمل الأمر التغييري عقوداً مختلفة. أي تغيير مالي معتمد يُحدِّث هذا العقد، ثم يُعاد احتساب قيمة المشروع كمجموع عقوده.' : 'Only this contract’s BOQ items and activities are offered; a change order may never span contracts. An approved financial change updates this contract, then the project total is recalculated as the sum of its contracts.'}</DMsgBar>
               </div>
               <div>
                 {secH('engineering', AR ? 'نوع الأمر التغييري' : 'Change-order type')}
@@ -474,11 +584,11 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
             {step === 1 && !ckey && <div className="d-vow-empty"><Icon name="description" size={22} /><b>{AR ? 'اختر العقد أولاً' : 'Select the contract first'}</b>
               <span className="d-cell-sub">{AR ? 'تُستنتج البنود والأنشطة من العقد المحدد.' : 'Items and activities are derived from the selected contract.'}</span></div>}
             {step === 1 && ckey && <div>
-              <div className="d-vow-note" style={{ marginBottom: 16 }}><Icon name="payments" size={16} />
-                <span>{AR ? 'قاعدة 20%: تغيير الكمية بالزيادة أو النقصان حتى 20% من الكمية الأصلية يُحتسب بسعر الوحدة الأصلي. الكمية الزائدة عن ذلك تُسعَّر بسعر جديد يقترحه المقاول ودائرة المهندس المقيم، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.' : 'The 20% rule: a quantity increase or decrease up to 20% of the original quantity is valued at the original unit rate. Anything beyond that is priced at a new rate proposed by the contractor and the resident engineer’s department, and fixed by the rate-fixing committee.'}</span></div>
+              {!isSupply && <DMsgBar tone="info" icon="payments">{AR ? 'قاعدة 20%: تغيير الكمية بالزيادة أو النقصان حتى 20% من الكمية الأصلية يُحتسب بسعر الوحدة الأصلي. الكمية الزائدة عن ذلك تُسعَّر بسعر جديد يقترحه المقاول ودائرة المهندس المقيم، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.' : 'The 20% rule: a quantity increase or decrease up to 20% of the original quantity is valued at the original unit rate. Anything beyond that is priced at a new rate proposed by the contractor and the resident engineer’s department, and fixed by the rate-fixing committee.'}</DMsgBar>}
+              {isSupply && <DMsgBar tone="info" icon="inventory_2">{AR ? 'أسعار الفقرات التجهيزية مثبَّتة بالعقد وخطاب الاعتماد المستندي، فلا تنطبق قاعدة الـ20% ولا لجنة تثبيت الأسعار. تُراجَع مقترحات المجهز من قبل لجنة الفحص والاستلام قبل رفعها للجنة أوامر الغيار.' : 'Supply-item prices are fixed by the contract and the letter of credit, so the 20% rule and the rate-fixing committee do not apply. The supplier’s proposals are reviewed by the inspection & receipt committee before the change-order committee.'}</DMsgBar>}
               <div className="d-vow-tabs">
                 <button className={'d-vow-tab' + (tab === 'boq' ? ' on' : '')} onClick={() => setTab('boq')}>
-                  <Icon name="list_alt" size={15} />{AR ? 'بنود جدول الكميات' : 'BOQ Items'}<span className="n">{bRows.length}</span></button>
+                  <Icon name="list_alt" size={15} />{isSupply ? (AR ? 'الفقرات التجهيزية' : 'Supply items') : (AR ? 'بنود جدول الكميات' : 'BOQ Items')}<span className="n">{bRows.length}</span></button>
                 <button className={'d-vow-tab' + (tab === 'act' ? ' on' : '')} onClick={() => setTab('act')}>
                   <Icon name="calendar_month" size={15} />{AR ? 'الأنشطة' : 'Activities'}<span className="n">{aRows.length}</span></button>
                 <div style={{ flex: 1 }}></div>
@@ -490,8 +600,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                 : <div className="d-vow-empty"><Icon name="list_alt" size={22} /><b>{AR ? 'لا بنود مختارة' : 'No items selected'}</b>
                   <span className="d-cell-sub">{AR ? 'بحث وفلاتر بالكود والقسم والتصنيف والحالة — يمكن اختيار عدة بنود دفعة واحدة' : 'Search and filter by code, division, category and status — multiple items at once'}</span></div>)}
               {tab === 'act' && (aRows.length ? <React.Fragment>{actTable(false)}
-                <div className="d-vow-note" style={{ marginTop: 12 }}><Icon name="account_tree" size={16} />
-                  <span>{AR ? 'تعديل مدة النشاط لا يُعد تعديلاً لمدة المشروع. يُحدَّد الأثر النهائي على المسار الحرج وتاريخ النهاية في مرحلة تحليل الجدول.' : 'An activity duration change is not a project duration change. Final impact on the critical path and finish date is determined during Schedule Analysis.'}</span></div>
+                <DMsgBar tone="info" icon="account_tree">{AR ? 'تعديل مدة النشاط لا يُعد تعديلاً لمدة المشروع. يُحدَّد الأثر النهائي على المسار الحرج وتاريخ النهاية في مرحلة تحليل الجدول.' : 'An activity duration change is not a project duration change. Final impact on the critical path and finish date is determined during Schedule Analysis.'}</DMsgBar>
               </React.Fragment>
                 : <div className="d-vow-empty"><Icon name="calendar_month" size={22} /><b>{AR ? 'لا أنشطة مختارة' : 'No activities selected'}</b>
                   <span className="d-cell-sub">{AR ? 'بحث وفلاتر بالحالة والجهة المسؤولة والمسار الحرج — يمكن اختيار عدة أنشطة' : 'Search and filter by status, responsible party and critical path — multiple activities at once'}</span></div>)}
@@ -502,10 +611,10 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                 {kv(AR ? 'البنود المختارة' : 'Selected BOQs', bRows.length, true)}
                 {kv(AR ? 'الأنشطة المختارة' : 'Selected Activities', aRows.length, true)}
                 {kv(AR ? 'قيمة العقد الحالية' : 'Current Contract Value', window.fmtNum(cCost), true)}
-                {kv(AR ? 'مقترح المقاول' : 'Contractor proposal', (boqNetCon > 0 ? '+' : '') + window.fmtNum(Math.round(boqNetCon)), true)}
-                {kv(AR ? 'مقترح د.م.م' : 'RE dept proposal', (boqNet > 0 ? '+' : '') + window.fmtNum(Math.round(boqNet)), true)}
-                {kv(AR ? 'بنود تجاوزت 20%' : 'Lines beyond 20%', bRows.filter(r => bCalc(r).exceeds).length, true)}
-                {kv(AR ? 'سعر الكمية الزائدة' : 'Excess-quantity rate', anyExceeds ? (AR ? 'يُثبَّت بلجنة تثبيت الأسعار' : 'Fixed by the rate-fixing committee') : (AR ? 'لا ينطبق' : 'Not applicable'))}
+                {kv((AR ? 'مقترح ' : '') + requesterLabel + (AR ? '' : ' proposal'), (boqNetCon > 0 ? '+' : '') + window.fmtNum(Math.round(boqNetCon)), true)}
+                {kv((AR ? 'مقترح ' : '') + reviewerLabel + (AR ? '' : ' proposal'), (boqNet > 0 ? '+' : '') + window.fmtNum(Math.round(boqNet)), true)}
+                {!isSupply && kv(AR ? 'بنود تجاوزت 20%' : 'Lines beyond 20%', bRows.filter(r => bCalc(r).exceeds).length, true)}
+                {!isSupply && kv(AR ? 'سعر الكمية الزائدة' : 'Excess-quantity rate', anyExceeds ? (AR ? 'يُثبَّت بلجنة تثبيت الأسعار' : 'Fixed by the rate-fixing committee') : (AR ? 'لا ينطبق' : 'Not applicable'))}
                 {kv(AR ? 'القيمة المعتمدة (لجنة التسعير)' : 'Approved value (pricing cttee)', AR ? 'يُحدَّد في التدقيق المالي' : 'Set at financial review')}
                 {kv(AR ? 'قيمة العقد المعدلة (تقديرية)' : 'Revised Contract Value (indicative)', window.fmtNum(Math.round(cCost + boqNet)), true)}
                 {kv(AR ? 'الأثر الزمني المطلوب' : 'Requested Time Impact', daysReq + (AR ? ' يوم' : ' days'), true)}
@@ -571,13 +680,12 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                 {aRows.length ? actTable(true) : <div className="d-cell-sub">{AR ? 'لا أنشطة متأثرة' : 'None'}</div>}
               </div>
               <div>
-                {blockers.length > 0 && <div className="d-vow-note warn" style={{ marginBottom: 18 }}><Icon name="warning" size={16} />
-                  <span>{AR ? 'يجب تصحيح ما يلي قبل الإرسال للمراجعة: ' : 'Resolve the following before submitting: '}
-                    {blockers.map(b => b.code + ' — ' + b.msg).join(' · ')}</span></div>}
+                {blockers.length > 0 && <DMsgBar tone="warning" icon="warning">{AR ? 'يجب تصحيح ما يلي قبل الإرسال للمراجعة: ' : 'Resolve the following before submitting: '}
+                    {blockers.map(b => b.code + ' — ' + b.msg).join(' · ')}</DMsgBar>}
                 {secH('payments', AR ? 'الأثر المالي والزمني' : 'Financial & time impact')}
                 <div className="d-form-grid">
-                  {kv(AR ? 'مقترح المقاول' : 'Contractor proposal', (boqNetCon > 0 ? '+' : '') + window.fmtNum(Math.round(boqNetCon)), true)}
-                  {kv(AR ? 'مقترح د.م.م' : 'RE dept proposal', (boqNet > 0 ? '+' : '') + window.fmtNum(Math.round(boqNet)), true)}
+                  {kv((AR ? 'مقترح ' : '') + requesterLabel + (AR ? '' : ' proposal'), (boqNetCon > 0 ? '+' : '') + window.fmtNum(Math.round(boqNetCon)), true)}
+                  {kv((AR ? 'مقترح ' : '') + reviewerLabel + (AR ? '' : ' proposal'), (boqNet > 0 ? '+' : '') + window.fmtNum(Math.round(boqNet)), true)}
                   {kv(AR ? 'القيمة المعتمدة (لجنة التسعير)' : 'Approved (pricing cttee)', AR ? 'يُحدَّد في التدقيق المالي' : 'Set at financial review')}
                   {kv(AR ? 'قيمة العقد قبل' : 'Contract value before', window.fmtNum(cCost), true)}
                   {kv(AR ? 'قيمة العقد بعد (تقديرية)' : 'Contract value after (indicative)', window.fmtNum(Math.round(cCost + boqNet)), true)}
@@ -598,7 +706,7 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
                   <li key={i} className={i === 0 ? 'on' : ''}><span className="ic"><Icon name={s[1]} size={15} /></span>
                     <span className="tx"><b>{s[0]}</b>{s[2] && <span className="d-cell-sub">{s[2]}</span>}</span></li>))}</ol>
               </div>
-              <div className="d-vow-note"><Icon name="lock" size={16} /><span>{AR ? 'لا يُطبَّق أي تعديل على العقد أو جدول الكميات أو الجدول الزمني قبل اكتمال المراجعة والاعتماد النهائي.' : 'No change is applied to the contract, BOQ or schedule before the workflow completes and final endorsement is granted.'}</span></div>
+              <DMsgBar tone="info" icon="lock">{AR ? 'لا يُطبَّق أي تعديل على العقد أو جدول الكميات أو الجدول الزمني قبل اكتمال المراجعة والاعتماد النهائي.' : 'No change is applied to the contract, BOQ or schedule before the workflow completes and final endorsement is granted.'}</DMsgBar>
             </div>}
           </div>
 
@@ -609,10 +717,10 @@ function DVOCreateWizard({ lang, contract, contracts, boq, acts, onClose, onDone
               : <React.Fragment>
                 {blockers.length > 0 && <span className="d-vow-block"><Icon name="warning" size={15} />
                   {AR ? 'لا يمكن الإرسال: ' : 'Cannot submit: '}{blockers.length}{AR ? ' مخالفة تحقّق' : ' validation issue(s)'}</span>}
-                <button className="d-btn" onClick={() => (onDraft || onDone)()}><Icon name="save" size={16} />{AR ? 'حفظ كمسودة' : 'Save as Draft'}</button>
+                <button className="d-btn" onClick={() => (onDraft || onDone)(makePayload())}><Icon name="save" size={16} />{AR ? 'حفظ كمسودة' : 'Save as Draft'}</button>
                 <button className="d-btn primary" disabled={!canSubmit} aria-disabled={!canSubmit}
                   title={canSubmit ? '' : (AR ? 'صحّح المخالفات قبل الإرسال' : 'Resolve the validation issues first')}
-                  onClick={() => canSubmit && onDone()}><Icon name="arrow_forward" size={16} />{AR ? 'إرسال للمراجعة' : 'Submit for Review'}</button>
+                  onClick={() => canSubmit && onDone(makePayload())}><Icon name="arrow_forward" size={16} />{AR ? 'إرسال للمراجعة' : 'Submit for Review'}</button>
               </React.Fragment>}
           </div>
         </div>
