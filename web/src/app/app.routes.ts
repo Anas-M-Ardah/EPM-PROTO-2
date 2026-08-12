@@ -178,6 +178,24 @@ export const routes: Routes = [
           // contract is a record and a link to one has to survive being pasted.
           // The FEATURE is `contract-tab` because a .NET namespace `Contract`
           // shadows the entity type of the same name — see P-43.
+          // المسار 2 · [EP-CON-03…05] — ONE component for both, the same shape
+          // the project form takes for المسار 1.
+          //
+          // `contract/new` MUST precede `contract/:contractId`: that route
+          // consumes exactly two segments, so it would otherwise match and open
+          // the contract card for a contract called "new". `contract/:id/edit`
+          // is three segments and cannot collide, but it is kept beside its
+          // sibling so the pair reads as one decision.
+          {
+            path: 'contract/new',
+            loadComponent: () =>
+              import('./features/contract-tab/contract-form.page').then(m => m.ContractFormPage),
+          },
+          {
+            path: 'contract/:contractId/edit',
+            loadComponent: () =>
+              import('./features/contract-tab/contract-form.page').then(m => m.ContractFormPage),
+          },
           {
             path: 'contract',
             loadComponent: () =>

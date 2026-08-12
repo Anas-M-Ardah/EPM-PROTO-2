@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
@@ -10,6 +10,10 @@ import { LangService } from '../../core/lang';
 import { WorkspacesService } from '../../core/workspaces';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
+import { DrawerComponent } from '../../shared/drawer.component';
+import { PersonaService, canDefineProjects } from '../../core/persona';
+import { ProjectsApi } from '../projects/projects.api';
+import { ProjectRow } from '../projects/projects.types';
 import * as fmt from '../../core/format';
 import { ContractsApi } from './contracts.api';
 import { ContractRow } from './contracts.types';
@@ -36,7 +40,7 @@ import { ContractRow } from './contracts.types';
   standalone: true,
   imports: [
     IconComponent, StatusPillComponent, TableSkeletonComponent,
-    PageHeadComponent, PagerComponent,
+    PageHeadComponent, PagerComponent, DrawerComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contracts.page.html',
@@ -44,6 +48,9 @@ import { ContractRow } from './contracts.types';
 export class ContractsPage {
   private api = inject(ContractsApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private projectsApi = inject(ProjectsApi);
+  persona = inject(PersonaService);
   lang = inject(LangService);
   workspaces = inject(WorkspacesService);
   lookups = inject(LookupsService);
@@ -53,6 +60,53 @@ export class ContractsPage {
 
   rows = signal<ContractRow[]>([]);
   countByStatus = signal<Record<string, number>>({});
+  /**
+   * ── «عقد جديد» FROM THE CROSS-PORTFOLIO REGISTER ────────────────────────
+   * A contract belongs to exactly one project (المسار 2, «انتماء العقد إلى
+   * مشروع واحد») and this screen spans every project in scope, so unlike SCR-W3
+   * it has no project to inherit. The button therefore ASKS which one, then
+   * hands off to the real form at /projects/:id/contract/new.
+   *
+   * The list comes from EP-PRJ-01, NOT from the contract rows on screen: a
+   * project with no contracts has no row here, and that is precisely the
+   * project most likely to need its first one.
+   */
+  pickerOpen = signal(false);
+  pickerLoading = signal(false);
+  projects = signal<ProjectRow[]>([]);
+  chosenProject = signal('');
+
+  /** §23 — contract entry belongs to «المستخدم المختص». */
+  canDefine = computed(() => canDefineProjects(this.persona.current()));
+
+  openPicker() {
+    this.chosenProject.set('');
+    this.pickerOpen.set(true);
+    this.pickerLoading.set(true);
+    this.projectsApi.list({ workspace: this.workspace() }).subscribe({
+      next: res => {
+        this.projects.set(res.rows);
+        // One project in scope is not a choice — preselect it so the drawer
+        // reads as a confirmation rather than a quiz with one answer.
+        if (res.rows.length === 1) this.chosenProject.set(res.rows[0].id);
+        this.pickerLoading.set(false);
+      },
+      error: () => this.pickerLoading.set(false),
+    });
+  }
+
+  closePicker() { this.pickerOpen.set(false); }
+
+  /** Hand off to the project-scoped form — the one المسار 2 actually describes. */
+  goToNewContract() {
+    const id = this.chosenProject();
+    if (!id) return;
+    const ws = this.workspace();
+    this.pickerOpen.set(false);
+    this.router.navigate(['/projects', id, 'contract', 'new'],
+      { queryParams: ws ? { ws } : {} });
+  }
+
   loading = signal(true);
   error = signal<string | null>(null);
 

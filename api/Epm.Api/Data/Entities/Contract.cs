@@ -47,10 +47,34 @@ public class Contract
     /// </summary>
     public DateOnly? ForecastFinish { get; set; }
 
-    // ---- the three expense items (01 §2.3) ----
+    // ---- the expense items ----
+    //
+    // ── THREE OR FOUR? THE DOCUMENTS DISAGREE ────────────────────────────
+    // `01 §2.3` lists «the three expense items» — award · reserve ·
+    // supervision — and both الشكل 7 and المسار 2's own «ما يظهر للمستخدم» say
+    // «تفصيل الكلفة على بنودها الثلاثة».
+    //
+    // But المسار 2's «ما يدخله المستخدم» asks for FOUR: «مبالغ الإحالة
+    // والاحتياط والإشراف والمراقبة».
+    //
+    // MonitoringAmount exists because the track asks the specialist to enter
+    // it, and a field the process collects has to land somewhere. Which three
+    // the cost breakdown then shows is NOT resolved here — it is a business
+    // question, reported rather than answered.
     public decimal AwardAmount { get; set; }
     public decimal ReserveAmount { get; set; }
     public decimal SupervisionAmount { get; set; }
+
+    /// <summary>المراقبة — المسار 2 step 3's fourth amount. See the note above.</summary>
+    public decimal MonitoringAmount { get; set; }
+
+    /// <summary>
+    /// المكوّن — which component of the works this contract covers, e.g.
+    /// «المكوّن الميكانيكي» / «المكوّن الكهربائي» (الشكل 6). It is what makes two
+    /// contracts on one project readable as two halves of the same job rather
+    /// than as a duplicate.
+    /// </summary>
+    public string Component { get; set; } = "";
 
     // ---- the official letter that created the contract ----
     public string IncomingNo { get; set; } = "";
@@ -58,4 +82,10 @@ public class Contract
 
     public string Contractor { get; set; } = "";
     public string Consultant { get; set; } = "";
+
+    /// <summary>الجهة المنفذة (المسار 2 step 4) — distinct from the contractor.</summary>
+    public string ExecutingParty { get; set; } = "";
+
+    /// <summary>بيانات التواصل (المسار 2 step 4) — the contractor's contact line.</summary>
+    public string ContactInfo { get; set; } = "";
 }

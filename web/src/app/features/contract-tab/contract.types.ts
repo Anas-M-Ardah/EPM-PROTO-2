@@ -155,3 +155,70 @@ export interface ContractDetailResponse {
   payments: ContractPayment[];
   unavailable: ContractUnavailable[];
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// المسار 2 — إنشاء العقود وربطها بالمشروع
+// Mirrors api/Epm.Api/Features/ContractTab/ContractDto.cs, member for member.
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * المسار 2 steps 2–4: هوية العقد والمكوّن وحالته · المبالغ · التواريخ وبيانات
+ * المقاول.
+ *
+ * Dates are ISO strings, not Date objects — they cross the wire as strings, the
+ * <input type="date"> reads and writes strings, and converting twice in the
+ * middle only creates somewhere for a timezone to be applied by accident.
+ *
+ * No `originalDurationDays`: it is derived from the two dates on the server
+ * (ContractDefinition.DurationDays). A third number would be a third chance to
+ * contradict the two it comes from.
+ */
+export interface ContractDefinitionInput {
+  id: string | null;
+  nameAr: string | null;
+  nameEn: string | null;
+  component: string | null;
+  status: string | null;
+  awardAmount: number | null;
+  reserveAmount: number | null;
+  supervisionAmount: number | null;
+  monitoringAmount: number | null;
+  start: string | null;
+  finish: string | null;
+  contractor: string | null;
+  executingParty: string | null;
+  consultant: string | null;
+  contactInfo: string | null;
+  incomingNo: string | null;
+  incomingDate: string | null;
+}
+
+/** One failed clause of المسار 2 step 5. `field` matches a member above. */
+export interface ContractViolation {
+  field: string;
+  messageAr: string;
+  messageEn: string;
+}
+
+/** سجل النشاط — one row of الشكل 7's fifth tab. */
+export interface ContractEvent {
+  id: number;
+  action: string;
+  actorName: string;
+  actorRole: string;
+  actorParty: string;
+  at: string;
+}
+
+export interface ContractPermissions {
+  edit: boolean;
+}
+
+export interface ContractDefinitionResponse {
+  projectId: string;
+  projectNameAr: string;
+  projectNameEn: string;
+  definition: ContractDefinitionInput;
+  events: ContractEvent[];
+  can: ContractPermissions;
+}

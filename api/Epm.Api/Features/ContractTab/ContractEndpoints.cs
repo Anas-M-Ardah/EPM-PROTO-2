@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
 using Epm.Api.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +44,10 @@ public static class ContractEndpoints
 {
     public static void MapContractEndpoints(this WebApplication app)
     {
+        // المسار 2's writes, kept in their own method so the two reads below
+        // stay readable as the screen they serve.
+        MapContractWrites(app);
+
         // [EP-CON-01] GET /api/projects/{projectId}/contracts
         // web: contract-tab/contract.api.ts register() → contract.page.ts
         // spec: 04 §7 | rules: BR-00, BR-09
@@ -280,6 +285,253 @@ public static class ContractEndpoints
                 detail, money, versions, pending, penalty, paymentRows, unavailable));
         });
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // المسار 2 — إنشاء العقود وربطها بالمشروع
+    //
+    // «البداية: صدور الإحالة · النهاية: عقد نافذ جاهز لاستقبال حساب الكميات
+    // والجدول الزمني والدفعات».
+    //
+    // Creation lives HERE, project-scoped, because المسار 2 validates «انتماء
+    // العقد إلى مشروع واحد» and الشكل 6 puts «زر إضافة عقد» on «مساحة المشروع ›
+    // العقود». The project is to a contract what the workspace is to a project.
+    //
+    // ── NO APPROVAL STEP ─────────────────────────────────────────────────
+    // المسار 2 step 6 is «اعتماد العقد». Omitted, by the same client decision
+    // that removed «اعتماد المشروع» from المسار 1: a contract is saved and is
+    // live at once. Step 7 — «احتساب قيمة المشروع من مجموع قيم عقوده» — then
+    // runs off contracts nobody approved. The arithmetic is untouched (BR-00);
+    // what feeds it is not.
+    // ─────────────────────────────────────────────────────────────────────
+    private static void MapContractWrites(WebApplication app)
+    {
+        // [EP-CON-03] POST /api/projects/{projectId}/contracts
+        // web: contract.api.ts create() → contract-form.page.ts | spec: المسار 2 steps 1-5
+        // rules: BR-15, المسار 2 step 5 | tables: Contracts, ContractActivityEvents (WRITTEN)
+        app.MapPost("/api/projects/{projectId}/contracts", async (
+            EpmDb db, HttpContext ctx, string projectId, ContractDefinitionInput input) =>
+        {
+            var gate = await Gate(db, ctx, projectId);
+            if (gate.Refusal is { } refusal) return refusal;
+
+            var c = new Data.Entities.Contract { ProjectId = projectId };
+            Apply(c, input);
+
+            // «عدم تكرار رقم العقد داخل التشكيل» — the entity's codes, not the
+            // project's and not the ministry's. Resolved by joining contracts
+            // to the projects of this workspace, because a contract has no
+            // workspace column of its own; the project it hangs off carries it.
+            var codes = await CodesInEntity(db, gate.WorkspaceCode, excluding: null);
+
+            var violations = ContractDefinition.Validate(Candidate(c), codes);
+            if (violations.Count > 0) return Unprocessable(violations, create: true);
+
+            Derive(c);
+            db.Contracts.Add(c);
+            db.ContractActivityEvents.Add(Event(c.Id, "created", gate.User, gate.Today));
+            await db.SaveChangesAsync();
+
+            return Results.Created(
+                $"/api/projects/{projectId}/contracts/{c.Id}/definition", new { c.Id });
+        });
+
+        // [EP-CON-04] PUT /api/projects/{projectId}/contracts/{contractId}
+        // web: contract.api.ts save() → contract-form.page.ts | spec: المسار 2 step 2-4
+        // rules: BR-15, المسار 2 step 5 | tables: Contracts, ContractActivityEvents (WRITTEN)
+        app.MapPut("/api/projects/{projectId}/contracts/{contractId}", async (
+            EpmDb db, HttpContext ctx, string projectId, string contractId,
+            ContractDefinitionInput input) =>
+        {
+            var gate = await Gate(db, ctx, projectId);
+            if (gate.Refusal is { } refusal) return refusal;
+
+            var c = await db.Contracts.FirstOrDefaultAsync(
+                x => x.Id == contractId && x.ProjectId == projectId);
+            if (c is null) return Results.NotFound(new { message = $"العقد «{contractId}» غير موجود." });
+
+            // THE AWARDED FIGURES ARE NOT EDITABLE HERE. `OriginalValue`,
+            // `OriginalFinish` and `OriginalDurationDays` are never overwritten
+            // (non-negotiable #6) — an amendment moves them, and it does so by
+            // layering a delta that both figures stay readable through. Apply()
+            // deliberately does not touch them on an existing record.
+            Apply(c, input, existing: true);
+
+            var codes = await CodesInEntity(db, gate.WorkspaceCode, excluding: c.Id);
+
+            var violations = ContractDefinition.Validate(Candidate(c), codes);
+            if (violations.Count > 0) return Unprocessable(violations, create: false);
+
+            db.ContractActivityEvents.Add(Event(c.Id, "updated", gate.User, gate.Today));
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { c.Id });
+        });
+
+        // [EP-CON-05] GET /api/projects/{projectId}/contracts/{contractId}/definition
+        // web: contract.api.ts definition() → contract-form.page.ts | spec: الشكل 8
+        // rules: BR-15 | tables: Contracts, Projects, ContractActivityEvents
+        app.MapGet("/api/projects/{projectId}/contracts/{contractId}/definition", async (
+            EpmDb db, HttpContext ctx, string projectId, string contractId) =>
+        {
+            var gate = await Gate(db, ctx, projectId, mustDefine: false);
+            if (gate.Refusal is { } refusal) return refusal;
+
+            var c = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(
+                x => x.Id == contractId && x.ProjectId == projectId);
+            if (c is null) return Results.NotFound(new { message = $"العقد «{contractId}» غير موجود." });
+
+            var events = await db.ContractActivityEvents.AsNoTracking()
+                .Where(e => e.ContractId == contractId)
+                .OrderByDescending(e => e.Id)
+                .Select(e => new ContractEvent(
+                    e.Id, e.Action, e.ActorName, e.ActorRole, e.ActorParty,
+                    e.At.ToString("yyyy-MM-dd")))
+                .ToListAsync();
+
+            return Results.Ok(new ContractDefinitionResponse(
+                projectId, gate.Project!.NameAr, gate.Project!.NameEn,
+                Read(c), events,
+                new ContractPermissions(Edit: gate.User.CanDefineProjects())));
+        });
+    }
+
+    // ── المسار 2 helpers ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// What every contract write checks before it does anything: the project
+    /// exists, BR-15 allows this capacity into its workspace, and §23 allows
+    /// this capacity to enter data at all. Returns the refusal or the context.
+    /// </summary>
+    private record WriteGate(
+        IResult? Refusal, Data.Entities.Project? Project, string WorkspaceCode,
+        Persona User, DateOnly Today);
+
+    private static async Task<WriteGate> Gate(
+        EpmDb db, HttpContext ctx, string projectId, bool mustDefine = true)
+    {
+        var user = WorkspaceScope.User(ctx);
+
+        if (mustDefine && !user.CanDefineProjects())
+            return new(Results.Json(new
+            {
+                messageAr = "إدخال العقود من صلاحيات المستخدم المختص في الجهة.",
+                messageEn = "Entering contracts is a university specialist permission.",
+            }, statusCode: StatusCodes.Status403Forbidden), null, "", user, default);
+
+        var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+        if (p is null)
+            return new(Results.NotFound(new { message = $"المشروع «{projectId}» غير موجود." }),
+                null, "", user, default);
+
+        // BR-15 against the PROJECT's workspace — a contract inherits its scope
+        // from the project it belongs to, and has no workspace column of its own.
+        if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied)
+            return new(denied, null, "", user, default);
+
+        return new(null, p, p.WorkspaceCode, user,
+            p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// «داخل التشكيل» — every contract code already used by any project of this
+    /// workspace. Two flat queries and an in-memory filter, like every other
+    /// relationship in this codebase.
+    /// </summary>
+    private static async Task<List<string>> CodesInEntity(
+        EpmDb db, string workspaceCode, string? excluding)
+    {
+        var projectIds = await db.Projects.AsNoTracking()
+            .Where(p => p.WorkspaceCode == workspaceCode)
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        return await db.Contracts.AsNoTracking()
+            .Where(c => projectIds.Contains(c.ProjectId) && (excluding == null || c.Id != excluding))
+            .Select(c => c.Id)
+            .ToListAsync();
+    }
+
+    private static IResult Unprocessable(
+        IReadOnlyList<ContractDefinition.Violation> violations, bool create) =>
+        Results.UnprocessableEntity(new
+        {
+            messageAr = create
+                ? "لا يمكن حفظ العقد قبل استكمال التحقق."
+                : "لا يمكن حفظ التعديل قبل استكمال التحقق.",
+            messageEn = create
+                ? "The contract cannot be saved until validation passes."
+                : "The change cannot be saved until validation passes.",
+            violations = violations
+                .Select(x => new ContractViolation(x.Field, x.MessageAr, x.MessageEn))
+                .ToList(),
+        });
+
+    private static void Apply(
+        Data.Entities.Contract c, ContractDefinitionInput d, bool existing = false)
+    {
+        string S(string? v) => (v ?? "").Trim();
+        DateOnly? D(string? v) => DateOnly.TryParse(v, out var x) ? x : null;
+
+        if (!existing) c.Id = S(d.Id);
+        c.NameAr = S(d.NameAr);
+        c.NameEn = S(d.NameEn);
+        c.Component = S(d.Component);
+        if (!string.IsNullOrWhiteSpace(d.Status)) c.Status = S(d.Status);
+
+        c.AwardAmount = d.AwardAmount ?? 0m;
+        c.ReserveAmount = d.ReserveAmount ?? 0m;
+        c.SupervisionAmount = d.SupervisionAmount ?? 0m;
+        c.MonitoringAmount = d.MonitoringAmount ?? 0m;
+
+        if (D(d.Start) is { } start) c.Start = start;
+
+        c.Contractor = S(d.Contractor);
+        c.ExecutingParty = S(d.ExecutingParty);
+        c.Consultant = S(d.Consultant);
+        c.ContactInfo = S(d.ContactInfo);
+        c.IncomingNo = S(d.IncomingNo);
+        c.IncomingDate = D(d.IncomingDate);
+
+        // ORIGINALS ONLY ON CREATE (non-negotiable #6). On an existing contract
+        // the finish and the value are what was awarded, and only an amendment
+        // moves them.
+        if (!existing)
+        {
+            if (D(d.Finish) is { } finish) c.OriginalFinish = finish;
+            c.OriginalValue = d.AwardAmount ?? 0m;
+        }
+    }
+
+    /// <summary>The one derived column, computed after validation has passed.</summary>
+    private static void Derive(Data.Entities.Contract c) =>
+        c.OriginalDurationDays = ContractDefinition.DurationDays(c.Start, c.OriginalFinish);
+
+    private static ContractDefinition.Candidate Candidate(Data.Entities.Contract c) => new(
+        c.Id, c.ProjectId, c.NameAr, c.Component, c.Status,
+        c.Start == default ? null : c.Start,
+        c.OriginalFinish == default ? null : c.OriginalFinish,
+        c.AwardAmount, c.ReserveAmount, c.SupervisionAmount, c.MonitoringAmount,
+        c.Contractor);
+
+    private static ContractDefinitionInput Read(Data.Entities.Contract c) => new(
+        c.Id, c.NameAr, c.NameEn, c.Component, c.Status,
+        c.AwardAmount, c.ReserveAmount, c.SupervisionAmount, c.MonitoringAmount,
+        c.Start == default ? null : c.Start.ToString("yyyy-MM-dd"),
+        c.OriginalFinish == default ? null : c.OriginalFinish.ToString("yyyy-MM-dd"),
+        c.Contractor, c.ExecutingParty, c.Consultant, c.ContactInfo,
+        c.IncomingNo, c.IncomingDate?.ToString("yyyy-MM-dd"));
+
+    private static Data.Entities.ContractActivityEvent Event(
+        string contractId, string action, Persona user, DateOnly at) => new()
+    {
+        ContractId = contractId,
+        Action = action,
+        ActorId = user.Id,
+        ActorName = user.NameAr,
+        ActorRole = user.RoleAr,
+        ActorParty = user.Party,
+        At = at,
+    };
 
     /// <summary>The BR-09 input: one delta per amendment, applied or not.</summary>
     private static List<Amendments.Delta> Deltas(

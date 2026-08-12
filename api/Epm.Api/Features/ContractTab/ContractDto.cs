@@ -190,3 +190,78 @@ public record ContractDetailResponse(
     PenaltyImpact Penalty,
     IReadOnlyList<ContractPayment> Payments,
     IReadOnlyList<ContractUnavailable> Unavailable);
+
+// ─────────────────────────────────────────────────────────────────────────
+// المسار 2 — إنشاء العقود وربطها بالمشروع
+//
+// MEMBER NAMES MATCH web/src/app/features/contract-tab/contract.types.ts.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// What the specialist enters — المسار 2 steps 2-4, in their order:
+/// هوية العقد والمكوّن وحالته · المبالغ · التواريخ وبيانات المقاول.
+///
+/// Nullable at this layer so a missing field arrives as null and is reported by
+/// Domain/ContractDefinition with a message the user can act on, rather than
+/// being rejected by the JSON binder with one that says nothing.
+///
+/// `OriginalDurationDays` is absent ON PURPOSE: it is derived from the two
+/// dates (ContractDefinition.DurationDays). Asking for it would invite a third
+/// number that contradicts the two it comes from.
+/// </summary>
+public record ContractDefinitionInput(
+    // هوية العقد
+    string? Id,
+    string? NameAr,
+    string? NameEn,
+    string? Component,
+    string? Status,
+    // المبالغ
+    decimal? AwardAmount,
+    decimal? ReserveAmount,
+    decimal? SupervisionAmount,
+    decimal? MonitoringAmount,
+    // التواريخ
+    string? Start,
+    string? Finish,
+    // المقاول والجهة المنفذة
+    string? Contractor,
+    string? ExecutingParty,
+    string? Consultant,
+    string? ContactInfo,
+    // كتاب الإحالة
+    string? IncomingNo,
+    string? IncomingDate
+);
+
+/// <inheritdoc cref="Epm.Api.Features.Projects.ProjectViolation"/>
+public record ContractViolation(string Field, string MessageAr, string MessageEn);
+
+/// <summary>سجل النشاط — one row of الشكل 7's fifth tab.</summary>
+public record ContractEvent(
+    int Id,
+    string Action,
+    string ActorName,
+    string ActorRole,
+    string ActorParty,
+    string At
+);
+
+/// <param name="Edit">
+/// «المستخدم المختص» — §23 gives contract entry to the specialist, the same
+/// capacity المسار 1 gives project definition to.
+/// </param>
+public record ContractPermissions(bool Edit);
+
+/// <summary>
+/// GET …/contracts/{id}/definition — the editable record, its activity log and
+/// what the CURRENT capacity may do with it.
+/// </summary>
+public record ContractDefinitionResponse(
+    string ProjectId,
+    string ProjectNameAr,
+    string ProjectNameEn,
+    ContractDefinitionInput Definition,
+    IReadOnlyList<ContractEvent> Events,
+    ContractPermissions Can
+);
