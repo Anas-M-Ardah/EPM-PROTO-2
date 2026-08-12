@@ -446,11 +446,15 @@ epm-app-footer { display: contents; }
 
 /* The code chip in the register's first column. Same shape as the sidebar
    switcher's `.d-ctx-emblem`, so one workspace looks like itself in both. */
+/* The register emblem is the SAME mark as the sidebar switcher's
+   `.d-ctx-emblem`: display code, the workspace's own colour, white text. The
+   colour arrives inline from the record, so this rule owns only the shape —
+   which is what keeps one workspace recognisable in both places. */
 .epm-ws-emblem {
-  display: inline-grid; place-items: center; min-inline-size: 42px;
-  padding: 3px var(--space-8); border-radius: var(--r-sm);
-  background: var(--surface-container-high); color: var(--on-surface-variant);
-  font-family: var(--font-mono); font-size: 11.5px; font-weight: var(--fw-bold);
+  display: inline-grid; place-items: center;
+  inline-size: 34px; block-size: 34px; border-radius: 8px;
+  background: var(--surface-container-high); color: #fff;
+  font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-x, 800);
   letter-spacing: 0;
 }
 
@@ -630,3 +634,184 @@ epm-workspaces-page > .d-grid.c2 {
 }
 epm-portfolio-page > .d-grid.c2 > .d-panel,
 epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
+
+/* The product mark in the sidebar head. The sheet styles `.d-side-logo` as a
+   tinted tile for a glyph; the EPM icon is already a finished tile with its own
+   gradient and corner radius, so the wrapper gets out of its way. */
+.epm-brand-logo { background: none !important; box-shadow: none !important; padding: 0; }
+.epm-brand-logo img { display: block; }
+
+/* The crest in the sidebar footer, beside the ministry's name. */
+.d-side-ministry img { flex: none; border-radius: 999px; }
+
+/* ── EP-WSP-02 create-workspace form ──────────────────────────────────────
+   A drawer, per 04 §3 ("secondary detail goes in a drawer, not an in-place
+   expander"). Fields stack; the two short codes share a row because they are
+   read together. Tokens only. */
+.epm-ws-form { display: flex; flex-direction: column; gap: var(--space-16); }
+.epm-ws-f { display: flex; flex-direction: column; gap: var(--space-6, 6px); }
+.epm-ws-f > span {
+  font-size: 12px; font-weight: var(--fw-medium); color: var(--on-surface-variant);
+}
+.epm-ws-f > span > i { color: var(--error); font-style: normal; margin-inline-start: 2px; }
+.epm-ws-f > small { font-size: 11px; color: var(--on-surface-variant); }
+.epm-ws-f2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
+
+.epm-ws-swatches { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.epm-ws-swatch {
+  inline-size: 30px; block-size: 30px; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; padding: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+}
+/* Selection is a ring AND an outline offset, never colour alone — the swatch
+   IS a colour, so colour cannot also be its state (05 §7.6). */
+.epm-ws-swatch.on { border-color: var(--on-surface); outline: 2px solid var(--surface-container-lowest); outline-offset: -4px; }
+.epm-ws-swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* What the row will look like before it exists. */
+.epm-ws-preview {
+  display: flex; align-items: center; gap: var(--space-12);
+  padding: var(--space-12); border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md); background: var(--surface-container-lowest);
+}
+.epm-ws-preview-tx { display: flex; flex-direction: column; min-width: 0; }
+.epm-ws-preview-tx b { font-size: 13px; color: var(--on-surface); }
+.epm-ws-preview-tx span { font-size: 11.5px; color: var(--on-surface-variant); }
+
+/* ══ SCR-P1 SIGN-IN ═══════════════════════════════════════════════════════
+   The one screen with no equivalent in the copied sheets: `public.css` and
+   `app-public.css` were never ported, because until now the app had no public
+   route. Authored here in tokens rather than pulling in two more stylesheets
+   for a single screen. Ported by eye + measurement from the design-revamp
+   prototype's Login (screens-public.jsx). */
+.au-page {
+  min-block-size: 100dvh; display: flex; flex-direction: column;
+  background: var(--background); color: var(--on-surface);
+}
+
+.au-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-16); padding: var(--space-12) var(--space-24);
+  border-block-end: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+}
+.au-brand { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
+.au-brand img { display: block; flex: none; border-radius: 8px; }
+.au-brand b { display: block; font-size: 15px; letter-spacing: -.01em; }
+.au-brand span { display: block; font-size: 11.5px; color: var(--on-surface-variant); }
+.au-nav-actions { display: flex; align-items: center; gap: var(--space-6, 6px); }
+.au-ghost {
+  display: inline-flex; align-items: center; gap: var(--space-6, 6px);
+  height: var(--ctl-h-md); padding: 0 var(--space-12);
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: none; color: var(--on-surface-variant);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.au-ghost:hover { background: var(--hover-overlay); color: var(--on-surface); }
+.au-ghost.icon { padding-inline: var(--space-8); }
+.au-ghost:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Form beside hero. The hero is decorative, so it is the one that collapses. */
+.au-body {
+  flex: 1; display: grid; grid-template-columns: minmax(360px, 460px) 1fr;
+  align-items: center; gap: var(--space-40); padding: var(--space-40) var(--space-24);
+  max-inline-size: 1280px; inline-size: 100%; margin-inline: auto;
+}
+@media (max-width: 900px) {
+  .au-body { grid-template-columns: 1fr; }
+  .au-hero { display: none; }
+}
+
+.au-card {
+  border: 1px solid var(--outline-variant); border-radius: var(--r-lg);
+  background: var(--surface-container-lowest); box-shadow: var(--elev-2);
+  overflow: hidden;
+}
+.au-card-head {
+  display: flex; align-items: center; gap: var(--space-12);
+  padding: var(--space-16); background: var(--primary); color: var(--on-primary);
+}
+.au-card-head b { display: block; font-size: 15px; }
+.au-card-head span { display: block; font-size: 11.5px; opacity: .85; }
+.au-card-ico {
+  inline-size: 34px; block-size: 34px; border-radius: 9px; flex: none;
+  display: grid; place-items: center; background: rgba(255, 255, 255, .16);
+}
+.au-card-body { padding: var(--space-20) var(--space-16) var(--space-16); }
+
+.au-field { display: flex; flex-direction: column; gap: var(--space-6, 6px); margin-block-end: var(--space-16); }
+.au-field > label { font-size: 12px; font-weight: var(--fw-medium); color: var(--on-surface-variant); }
+.au-input {
+  display: flex; align-items: center; gap: var(--space-8);
+  height: 44px; padding-inline: var(--space-12);
+  border: 1px solid var(--stroke-default, var(--outline-variant)); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--on-surface-variant);
+}
+.au-input:focus-within { border-color: var(--primary); }
+.au-input input {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none;
+  font: inherit; font-size: 13px; color: var(--on-surface);
+}
+.au-eye {
+  border: 0; background: none; padding: 0; cursor: pointer; flex: none;
+  color: var(--on-surface-variant); display: grid; place-items: center;
+}
+.au-eye:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.au-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--status-completed-tx); }
+.au-hint.muted { color: var(--on-surface-variant); }
+
+.au-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-block-end: var(--space-16); }
+.au-check { display: inline-flex; align-items: center; gap: var(--space-8); font-size: 12px; color: var(--on-surface-variant); cursor: pointer; }
+.au-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--primary); cursor: pointer; }
+.au-link:hover { text-decoration: underline; }
+
+/* The reference's submit is crimson, not the primary blue — the one strong
+   call to action on a public screen. */
+.au-submit {
+  inline-size: 100%; height: 48px; border: 0; border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-8);
+  background: var(--error); color: #fff; font: inherit; font-size: 14px;
+  font-weight: var(--fw-semibold, 600); cursor: pointer;
+}
+.au-submit:hover:not(:disabled) { filter: brightness(.95); }
+.au-submit:disabled { cursor: progress; opacity: .8; }
+.au-submit:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.au-spin {
+  inline-size: 15px; block-size: 15px; border-radius: 999px; flex: none;
+  border: 2px solid rgba(255, 255, 255, .45); border-block-start-color: #fff;
+  animation: au-spin .7s linear infinite;
+}
+@keyframes au-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .au-spin { animation-duration: 2.4s; } }
+
+.au-secure {
+  display: flex; align-items: flex-start; gap: var(--space-6, 6px);
+  margin: var(--space-16) 0 0; font-size: 11px; line-height: 1.5;
+  color: var(--on-surface-variant);
+}
+
+/* Hero. The scene is centre-weighted and the page masks one side, per the
+   asset's own comment — in RTL that is the inline-start half. */
+.au-hero { position: relative; min-block-size: 420px; display: grid; place-items: center; }
+.au-scene {
+  position: absolute; inset: 0; inline-size: 100%; block-size: 100%;
+  object-fit: contain; opacity: .5; pointer-events: none;
+}
+:root[data-theme="dark"] .au-scene { opacity: .32; filter: brightness(1.5); }
+.au-hero-tx { position: relative; text-align: center; max-inline-size: 480px; padding: var(--space-24); }
+.au-ministry { display: inline-flex; align-items: center; gap: var(--space-10); margin-block-end: var(--space-16); }
+.au-ministry img { display: block; flex: none; }
+.au-ministry span { font-size: 13px; font-weight: var(--fw-semibold, 600); color: var(--on-surface-variant); }
+.au-badge {
+  display: inline-flex; align-items: center; gap: var(--space-6, 6px);
+  padding: 3px var(--space-10); border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error); font-size: 11.5px; font-weight: var(--fw-semibold, 600);
+  margin-block-end: var(--space-12);
+}
+.au-hero-tx h1 { font-size: 32px; line-height: 1.25; letter-spacing: -.02em; margin: 0 0 var(--space-12); }
+.au-hero-tx p { font-size: 14px; line-height: 1.7; color: var(--on-surface-variant); margin: 0; }
+
+/* Sign-out is the one destructive-looking row in the account menu. */
+.epm-signout { color: var(--error); }
+.epm-signout b { color: var(--error); }

@@ -13,6 +13,10 @@ namespace Epm.Api.Features.Workspaces;
 /// </param>
 public record WorkspaceOverviewResponse(
     string Code,
+    /// <summary>The emblem text — "UOB", not "ub". See Workspace.DisplayCode.</summary>
+    string DisplayCode,
+    /// <summary>The emblem background. An identity colour, never a status one.</summary>
+    string Color,
     string NameAr,
     string NameEn,
     string Kind,
@@ -33,6 +37,20 @@ public record WorkspaceOverviewResponse(
     IReadOnlyList<WorkspaceProjectRow> Recent);
 
 public record WorkspaceStatusSlice(string Status, int Count);
+
+/// <summary>
+/// EP-WSP-02 — «إضافة مساحة عمل» (ملحق الشكل 1 lists it among the screen's
+/// available actions). Everything a workspace IS, which is not much: an
+/// identity and a kind. Its projects, contracts and figures are all derived
+/// from records that point at it, so there is nothing else to ask for.
+/// </summary>
+public record CreateWorkspaceRequest(
+    string Code,
+    string DisplayCode,
+    string NameAr,
+    string NameEn,
+    string Kind,
+    string Color);
 
 /// <param name="Reason">
 /// Why this row is on the watchlist — a status code, resolved to a label by the

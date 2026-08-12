@@ -53,7 +53,7 @@ public static class Personas
     ///   user.project-manager  ub                  one university
     ///   user.co-committee     ub · nu             two
     ///   user.co-rapporteur    ub · nu             two (delegate for the same scope)
-    ///   user.rate-committee   ub · tu · spd       three, including a directorate
+    ///   user.rate-committee   ub · tu · sp       three, including a directorate
     ///   user.endorsement      ministry-wide       everything
     ///   user.senior-mgmt      ministry-wide       everything
     /// </summary>
@@ -73,7 +73,7 @@ public static class Personas
 
         new("user.rate-committee", "م. سارة كريم", "Sara Karim",
             "لجنة تثبيت الأسعار", "عضو لجنة تثبيت الأسعار", "Rate-fixing committee member", false,
-            ["ub", "tu", "spd"], false),
+            ["ub", "tu", "sp"], false),
 
         new("user.project-manager", "م. مصطفى علي", "Mustafa Ali",
             "مدير المشروع", "مدير مشروع", "Project manager", false,

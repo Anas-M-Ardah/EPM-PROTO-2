@@ -16,10 +16,104 @@
   <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
     <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
   </button>
-  <button actions type="button" class="d-btn primary" (click)="toast.demo('مساحة عمل جديدة', 'New workspace')">
-    <epm-icon name="add" [size]="16" />{{ lang.t('new_workspace') }}
-  </button>
+  <!-- الشكل 1 lists «إنشاء مساحة جديدة» among the screen's actions. It writes
+       for real now (EP-WSP-02); §24 puts defining a workspace in the admin
+       plane, so it is offered only to a ministry-wide persona rather than
+       shown to everyone and refused on submit. -->
+  @if (canCreate()) {
+    <button actions type="button" class="d-btn primary" (click)="openCreate()">
+      <epm-icon name="add" [size]="16" />{{ lang.t('new_workspace') }}
+    </button>
+  }
 </epm-page-head>
+
+@if (createOpen()) {
+  <epm-drawer [title]="lang.t('new_workspace')"
+              [sub]="lang.t('ws_create_sub')"
+              [hasFooter]="true"
+              [closeLabel]="lang.t('cancel')"
+              (closed)="closeCreate()">
+
+    <div class="epm-ws-form">
+      <label class="epm-ws-f">
+        <span>{{ lang.t('col_entity') }}<i>*</i></span>
+        <input class="d-form-input" [value]="fNameAr()"
+               (input)="fNameAr.set($any($event.target).value)"
+               [placeholder]="lang.t('ws_create_name_ph')" />
+      </label>
+
+      <label class="epm-ws-f">
+        <span>{{ lang.t('ws_create_name_en') }}</span>
+        <input class="d-form-input" dir="ltr" [value]="fNameEn()"
+               (input)="fNameEn.set($any($event.target).value)" />
+      </label>
+
+      <div class="epm-ws-f2">
+        <label class="epm-ws-f">
+          <span>{{ lang.t('col_code') }}<i>*</i></span>
+          <input class="d-form-input mono" dir="ltr" maxlength="12" [value]="fCode()"
+                 (input)="fCode.set($any($event.target).value)" placeholder="ub" />
+          <small>{{ lang.t('ws_create_code_hint') }}</small>
+        </label>
+
+        <label class="epm-ws-f">
+          <span>{{ lang.t('ws_create_badge') }}<i>*</i></span>
+          <input class="d-form-input mono" dir="ltr" maxlength="5" [value]="fDisplayCode()"
+                 (input)="fDisplayCode.set($any($event.target).value)" placeholder="UOB" />
+          <small>{{ lang.t('ws_create_badge_hint') }}</small>
+        </label>
+      </div>
+
+      <label class="epm-ws-f">
+        <span>{{ lang.t('col_type') }}<i>*</i></span>
+        <select class="d-form-input" [value]="fKind()"
+                (change)="fKind.set($any($event.target).value)">
+          @for (k of kindOptions(); track k.code) {
+            <option [value]="k.code">{{ lang.pick(k.nameAr, k.nameEn) }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="epm-ws-f">
+        <span>{{ lang.t('ws_create_colour') }}</span>
+        <!-- A swatch row, not a colour picker: the emblem palette is the
+             ministry's, and an arbitrary hex would let a new workspace land
+             in a colour that reads as another one's. -->
+        <div class="epm-ws-swatches">
+          @for (c of palette; track c) {
+            <button type="button" class="epm-ws-swatch" [class.on]="fColor() === c"
+                    [style.background]="c" (click)="fColor.set(c)"
+                    [attr.aria-label]="c" [attr.aria-pressed]="fColor() === c"></button>
+          }
+        </div>
+      </div>
+
+      <!-- What the row will look like, before it exists. -->
+      <div class="epm-ws-preview">
+        <span class="epm-ws-emblem" [style.background]="fColor()">
+          <bdi>{{ fDisplayCode() || '—' }}</bdi>
+        </span>
+        <span class="epm-ws-preview-tx">
+          <b>{{ fNameAr() || lang.t('ws_create_name_ph') }}</b>
+          <span>{{ kindLabel(fKind()) }}</span>
+        </span>
+      </div>
+
+      @if (createError()) {
+        <div class="d-inline-err">
+          <epm-icon name="error" [size]="15" /><span>{{ createError() }}</span>
+        </div>
+      }
+    </div>
+
+    <ng-container footer>
+      <button type="button" class="d-btn" (click)="closeCreate()">{{ lang.t('cancel') }}</button>
+      <button type="button" class="d-btn primary" [disabled]="saving()" (click)="submitCreate()">
+        {{ saving() ? lang.t('saving') : lang.t('ws_create_submit') }}
+      </button>
+    </ng-container>
+  </epm-drawer>
+}
 
 @if (loading()) {
   <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />
@@ -121,7 +215,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (e of pageRows(); track e.code) {
+          @for (e of sorted(); track e.code) {
             <tr class="epm-ws-tr"
                 tabindex="0"
                 role="button"
@@ -129,7 +223,11 @@
                 (click)="open(e.code)"
                 (keydown)="onRowKey($event, e.code)">
               <td>
-                <span class="epm-ws-emblem"><bdi>{{ e.code }}</bdi></span>
+                <!-- The emblem carries the workspace's own colour and its
+                     DISPLAY code (UOB), not the url slug (ub) — same mark as
+                     the sidebar switcher, so one workspace looks like itself
+                     wherever it appears. -->
+                <span class="epm-ws-emblem" [style.background]="e.color"><bdi>{{ e.displayCode }}</bdi></span>
               </td>
               <td class="d-cell-strong">{{ lang.pick(e.nameAr, e.nameEn) }}</td>
               <td class="d-cell-sub">{{ kindLabel(e.kind) }}</td>
@@ -161,13 +259,14 @@
           }
         </tbody>
       </table>
-
-      <epm-pager
-        [page]="page()"
-        [total]="rows().length"
-        [pageSize]="pageSize()"
-        (pageChange)="page.set($event)"
-        (pageSizeChange)="setPageSize($event)" />
+      <!--
+        NO PAGER. The reference renders every workspace in one table
+        (DSpaces, desktop-views.jsx:300) and so do we. A ministry has tens of
+        formations, not thousands, and the set a given user can see is smaller
+        still — BR-15 narrows it to their assignments. Paging a list that fits
+        on one screen hides rows behind a control for no benefit, and it is the
+        one register where the whole point is seeing the estate at a glance.
+      -->
     }
   </div>
 }

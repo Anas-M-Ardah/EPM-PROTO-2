@@ -1,5 +1,18 @@
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 import { ShellComponent } from './shell/shell.component';
+import { AuthService } from './core/auth';
+
+/**
+ * The sign-in gate. It keeps the SCREENS behind the form, which is what the
+ * reference does — it is not a security boundary and does not pretend to be
+ * one: the API is still reachable directly (P-05, and see AuthService).
+ */
+const signedIn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return auth.isSignedIn() ? true : router.createUrlTree(['/login']);
+};
 
 /**
  * ── APPEND ONE ENTRY PER PAGE ─────────────────────────────────────────────
@@ -11,9 +24,18 @@ import { ShellComponent } from './shell/shell.component';
  * folder:  /projects → features/projects/ → Features/Projects/
  */
 export const routes: Routes = [
+  // SCR-P1 · features/auth — the public route. Outside the shell: it has its
+  // own chrome and must not render a sidebar for a session that has not
+  // started.
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login.page').then(m => m.LoginPage),
+  },
+
   {
     path: '',
     component: ShellComponent,
+    canActivate: [signedIn],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'portfolio' },
 

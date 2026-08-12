@@ -4,11 +4,14 @@ import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
-import { PagerComponent } from '../../shared/pager.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
+import { DrawerComponent } from '../../shared/drawer.component';
+import { PersonaService } from '../../core/persona';
+import { WorkspacesService } from '../../core/workspaces';
+import { WorkspacesApi } from '../workspaces/workspaces.api';
 import { EntitiesApi } from './entities.api';
 import { EntityRow } from './entities.types';
 
@@ -44,13 +47,16 @@ type SortKey = 'name' | 'projectCount' | 'activeCount' | 'value';
 @Component({
   selector: 'epm-entities-page',
   standalone: true,
-  imports: [IconComponent, TableSkeletonComponent, PageHeadComponent, PagerComponent],
+  imports: [IconComponent, TableSkeletonComponent, PageHeadComponent, DrawerComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './entities.page.html',
 })
 export class EntitiesPage {
   private api = inject(EntitiesApi);
   private router = inject(Router);
+  private wsApi = inject(WorkspacesApi);
+  private persona = inject(PersonaService);
+  private workspaces = inject(WorkspacesService);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   /** The page-head actions are demo stubs and say so — ToastService.demo(). */
@@ -66,9 +72,6 @@ export class EntitiesPage {
 
   q = signal('');
   kind = signal('');
-
-  page = signal(1);
-  pageSize = signal(15);
 
   sortKey = signal<SortKey>('activeCount');
   sortAsc = signal(false);
@@ -112,11 +115,6 @@ export class EntitiesPage {
     });
   });
 
-  pageRows = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
-    return this.sorted().slice(start, start + this.pageSize());
-  });
-
   resultLabel = computed(() => {
     const n = this.rows().length;
     return this.lang.isAr() ? `${n} ${this.lang.t('entities_showing')}` : `${n} ${this.lang.t('entities_showing')}`;
@@ -140,7 +138,6 @@ export class EntitiesPage {
         this.rows.set(res.rows);
         this.countByKind.set(res.countByKind);
         this.ministryTotal.set(res.ministryTotal);
-        this.page.set(1);
         this.loading.set(false);
       },
       error: e => {
@@ -154,16 +151,10 @@ export class EntitiesPage {
   setKind(v: string) { this.kind.set(v); this.load(); }
   clearFilters() { this.q.set(''); this.kind.set(''); this.load(); }
 
-  setPageSize(n: number) {
-    this.pageSize.set(n);
-    this.page.set(1);
-  }
-
   /** Name sorts ascending first; figures sort descending first — biggest matters. */
   toggleSort(k: SortKey) {
     if (this.sortKey() === k) this.sortAsc.set(!this.sortAsc());
     else { this.sortKey.set(k); this.sortAsc.set(k === 'name'); }
-    this.page.set(1);
   }
 
   /**
@@ -207,5 +198,74 @@ export class EntitiesPage {
       e.preventDefault();
       this.open(code);
     }
+  }
+
+  // ── CREATE (EP-WSP-02, الشكل 1 «إنشاء مساحة جديدة») ──────────────────────
+
+  /**
+   * The emblem palette, verbatim from the reference's own five workspaces
+   * (data.jsx WORKSPACES). Offering a swatch row rather than a free colour
+   * input keeps a new entity inside the ministry's palette — an arbitrary hex
+   * would let it land close enough to an existing emblem to be misread.
+   */
+  readonly palette = ['#0e6b47', '#1d4e89', '#7d611d', '#8c2f3a', '#2f5d8c', '#1d3c6e'];
+
+  createOpen = signal(false);
+  saving = signal(false);
+  createError = signal<string | null>(null);
+
+  fCode = signal('');
+  fDisplayCode = signal('');
+  fNameAr = signal('');
+  fNameEn = signal('');
+  fKind = signal('state-university');
+  fColor = signal('#0e6b47');
+
+  /** §24 — defining a workspace is a ministry-centre permission (BR-15). */
+  canCreate = computed(() => this.persona.current()?.ministryWide === true);
+
+  kindOptions = computed(() => this.lookups.list('workspace-kind'));
+
+  openCreate() {
+    this.createError.set(null);
+    this.fCode.set('');
+    this.fDisplayCode.set('');
+    this.fNameAr.set('');
+    this.fNameEn.set('');
+    this.fKind.set(this.kindOptions()[0]?.code ?? 'state-university');
+    this.fColor.set(this.palette[0]);
+    this.createOpen.set(true);
+  }
+
+  closeCreate() { this.createOpen.set(false); }
+
+  submitCreate() {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.createError.set(null);
+
+    this.wsApi.create({
+      code: this.fCode().trim(),
+      displayCode: this.fDisplayCode().trim(),
+      nameAr: this.fNameAr().trim(),
+      nameEn: this.fNameEn().trim(),
+      kind: this.fKind(),
+      color: this.fColor(),
+    }).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.createOpen.set(false);
+        this.toast.show(this.lang.isAr() ? 'أُضيفت مساحة العمل' : 'Workspace added');
+        // The switcher reads the same list (EP-ENT-01), so it has to be told
+        // too — otherwise the new workspace exists in the register and not in
+        // the control that navigates to it.
+        this.workspaces.reload().subscribe();
+        this.load();
+      },
+      error: e => {
+        this.saving.set(false);
+        this.createError.set(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
   }
 }

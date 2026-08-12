@@ -85,7 +85,7 @@ public static class EntitiesEndpoints
                     }));
 
                 return new EntityRow(
-                    w.Code, w.NameAr, w.NameEn, w.Kind, w.Active,
+                    w.Code, w.DisplayCode, w.Color, w.NameAr, w.NameEn, w.Kind, w.Active,
                     mine.Count, active, value,
                     // Needs weight-rolled BOQ progress (BR-04) — P-09.
                     null);

@@ -76,9 +76,13 @@ const STR = {
   // entities list — ported from DSpaces (v1.1, desktop-views.jsx:375).
   // `adm_ws` / `ws_sub` / `ws_showing` in the reference; renamed to the
   // screen's own name here since 04 §2 calls it Entities.
+  // Strings below are VERBATIM from the design-revamp prototype's own string
+  // table (data.jsx STR). `entities_sub` in particular is the reference's
+  // `ws_sub`, and it states BR-15 in the ministry's own words — which is a
+  // better sentence than the one we had invented for it.
   nav_entities:    { ar: 'مساحات العمل',                   en: 'Workspaces' },
-  entities_sub:    { ar: 'الجامعات و التشكيلات التي تملك المشاريع', en: 'The universities and units that own the projects' },
-  search_entities: { ar: 'ابحث بالاسم أو الرمز…',          en: 'Search by name or code…' },
+  entities_sub:    { ar: 'اختر مساحة عمل للانتقال إلى مشاريعها. وصولك هو اتحاد تكليفاتك حسب الدور و النطاق.', en: 'Choose a workspace to view its projects. Your access is the union of your role-and-scope assignments.' },
+  search_entities: { ar: 'ابحث في مساحات العمل بالاسم أو الرمز…', en: 'Search workspaces by name or code…' },
   entities_showing:{ ar: 'مساحة عمل',                      en: 'workspaces' },
   col_entity:      { ar: 'مساحة العمل',                    en: 'Workspace' },
   col_type:        { ar: 'النوع',                          en: 'Type' },
@@ -89,6 +93,18 @@ const STR = {
   /** BR-15 — assigned to nothing is a real state, not an empty database. */
   empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
   empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
+  // ── EP-WSP-02 «إنشاء مساحة جديدة» (ملحق الشكل 1) ──────────────────────
+  ws_create_sub:   { ar: 'تعريف جهة جديدة تملك مشاريعها ضمن المحفظة.', en: 'Define a new entity that owns its projects within the portfolio.' },
+  ws_create_name_ph:{ ar: 'مثال: جامعة البصرة',            en: 'e.g. University of Basrah' },
+  ws_create_name_en:{ ar: 'الاسم بالإنجليزية',             en: 'Name in English' },
+  ws_create_badge: { ar: 'رمز الشارة',                     en: 'Badge code' },
+  ws_create_badge_hint:{ ar: 'حرفان إلى خمسة — يظهر على الشارة الملوّنة.', en: 'Two to five letters — shown on the coloured emblem.' },
+  ws_create_code_hint:{ ar: 'يظهر في الرابط. أحرف لاتينية وأرقام.', en: 'Appears in the URL. Latin letters and digits.' },
+  ws_create_colour:{ ar: 'لون الشارة',                     en: 'Emblem colour' },
+  ws_create_submit:{ ar: 'إضافة مساحة العمل',              en: 'Add workspace' },
+  cancel:          { ar: 'إلغاء',                          en: 'Cancel' },
+  saving:          { ar: 'جارٍ الحفظ…',                    en: 'Saving…' },
+
   ws_enter:        { ar: 'دخول',                           en: 'Open' },
   ws_enter_full:   { ar: 'الدخول إلى مساحة العمل',         en: 'Open workspace' },
   open_project:    { ar: 'فتح المشروع',                    en: 'Open project' },
@@ -365,6 +381,27 @@ const STR = {
   error_t:         { ar: 'تعذّر تحميل البيانات',           en: 'Could not load data' },
   retry:           { ar: 'إعادة المحاولة',                 en: 'Retry' },
 
+  // ── SCR-P1 sign-in. Strings marked VERBATIM are the reference's own
+  // (data.jsx STR); the rest name things the reference did not have to.
+  app_tagline:     { ar: 'إدارة المشاريع الهندسية',        en: 'Engineering Projects Management' },
+  signin:          { ar: 'تسجيل الدخول',                   en: 'Sign in' },
+  signin_sub:      { ar: 'هوية موحّدة على مستوى الوزارة',   en: 'Unified enterprise identity' },
+  signin_portal:   { ar: 'بوابة الدخول المؤسسية',          en: 'Institutional access portal' },
+  signin_blurb:    { ar: 'المنصّة الموحّدة لوزارة التعليم العالي لإدارة المشاريع الهندسية عبر الجامعات و الوحدات.', en: 'The unified platform for managing engineering projects across universities and units.' },
+  /** The username selects the persona — say so rather than let it look decorative. */
+  signin_any:      { ar: 'أي بيانات تُقبل. اكتب اسم مستخدم لتدخل بصفته.', en: 'Any credentials are accepted. Type a username to sign in as them.' },
+  username:        { ar: 'اسم المستخدم',                   en: 'Username' },
+  password:        { ar: 'كلمة المرور',                    en: 'Password' },
+  show_password:   { ar: 'إظهار كلمة المرور',              en: 'Show password' },
+  hide_password:   { ar: 'إخفاء كلمة المرور',              en: 'Hide password' },
+  remember:        { ar: 'تذكّرني',                        en: 'Remember me' },
+  forgot:          { ar: 'نسيت كلمة المرور؟',              en: 'Forgot password?' },
+  enter:           { ar: 'الدخول إلى النظام',              en: 'Enter the system' },
+  verifying:       { ar: 'جارٍ التحقق…',                   en: 'Verifying…' },
+  /** VERBATIM (data.jsx:52). */
+  login_note:      { ar: 'الوصول مقيّد بشبكة الوزارة الداخلية. كل عملية دخول تُسجَّل.', en: 'Access is restricted to the ministry network. Every sign-in is logged.' },
+  signout:         { ar: 'تسجيل الخروج',                   en: 'Sign out' },
+
   // chrome
   persona:         { ar: 'العرض بصفة',                     en: 'Viewing as' },
   language:        { ar: 'English',                        en: 'العربية' },
@@ -373,9 +410,9 @@ const STR = {
   // Keys keep the reference's own names (data.jsx STR) so a label can be
   // copied across verbatim.
   search_ph:       { ar: 'ابحث في المشاريع، العقود، اللجان…', en: 'Search projects, contracts, committees…' },
-  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'All workspaces' },
+  all_workspaces:  { ar: 'المساحة الرئيسية',               en: 'Master space' },
   enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
-  your_workspaces: { ar: 'مساحات العمل',                   en: 'Your workspaces' },
+  your_workspaces: { ar: 'مساحات العمل المتاحة لك',        en: 'Your workspaces' },
   ws_active_short: { ar: 'نشط',                            en: 'active' },
   /** The switcher's own line under "All workspaces" — how many you may enter. */
   ws_assigned_count:{ ar: 'مساحة مسندة إليك',              en: 'assigned to you' },

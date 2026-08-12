@@ -6,6 +6,7 @@ import { LangService, StrKey } from '../core/lang';
 import { LookupsService } from '../core/lookups';
 import { PersonaService } from '../core/persona';
 import { ThemeService } from '../core/theme';
+import { AuthService } from '../core/auth';
 import { WorkspacesService } from '../core/workspaces';
 import { ProjectScopeService } from '../core/project-scope';
 import { StatusPillComponent } from '../shared/status-pill.component';
@@ -75,6 +76,7 @@ export class ShellComponent {
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
   theme = inject(ThemeService);
+  private auth = inject(AuthService);
   workspaces = inject(WorkspacesService);
   projects = inject(ProjectScopeService);
   toast = inject(ToastService);
@@ -421,6 +423,12 @@ export class ShellComponent {
   private go(path: string) {
     const ws = this.wsCode();
     this.router.navigate([path], { queryParams: ws ? { ws } : {} });
+  }
+
+  signOut() {
+    this.closeOverlays();
+    this.auth.signOut();
+    this.router.navigate(['/login']);
   }
 
   onPersona(id: string) {

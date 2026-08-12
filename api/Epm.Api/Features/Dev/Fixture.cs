@@ -44,12 +44,18 @@ public static class Fixture
         // Features/Dev/Personas.cs assigns these codes to personas. Changing a
         // code here means changing it there — that pairing IS the assignment
         // model, and there is deliberately no third place to keep in sync.
+        // Codes, display codes, names, kinds and colours are VERBATIM from the
+        // design-revamp prototype's `WORKSPACES` (data.jsx) — the build at
+        // infinite-azaiton.github.io/epm, which is the visual reference. The
+        // emblem colours in particular are not decoration: they are how a
+        // person recognises a workspace in the switcher at a glance, and
+        // inventing our own would have made the two products look unrelated.
         db.Workspaces.AddRange(
-            new Workspace { Code = "ub", NameAr = "جامعة بغداد", NameEn = "University of Baghdad", Kind = "state-university" },
-            new Workspace { Code = "nu", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Kind = "state-university" },
-            new Workspace { Code = "tu", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar", Kind = "state-university" },
-            new Workspace { Code = "spd", NameAr = "المديرية العامة للتجهيز والمشتريات", NameEn = "Supply & Procurement Directorate", Kind = "supply-directorate" },
-            new Workspace { Code = "cu", NameAr = "الوحدة المركزية — مركز الوزارة", NameEn = "Central Unit — Ministry HQ", Kind = "central-unit" }
+            new Workspace { Code = "ub", DisplayCode = "UOB", Color = "#0e6b47", NameAr = "جامعة بغداد", NameEn = "University of Baghdad", Kind = "state-university" },
+            new Workspace { Code = "nu", DisplayCode = "MU", Color = "#1d4e89", NameAr = "الجامعة المستنصرية", NameEn = "Al-Mustansiriyah University", Kind = "state-university" },
+            new Workspace { Code = "tu", DisplayCode = "UOT", Color = "#7d611d", NameAr = "الجامعة التكنولوجية", NameEn = "University of Technology", Kind = "technical-university" },
+            new Workspace { Code = "cu", DisplayCode = "CU", Color = "#8c2f3a", NameAr = "الوحدة المركزية — مركز الوزارة", NameEn = "Central Unit — Ministry Center", Kind = "central-unit" },
+            new Workspace { Code = "sp", DisplayCode = "SPD", Color = "#2f5d8c", NameAr = "المديرية العامة للتجهيز والمشتريات", NameEn = "Directorate for Supply & Procurement", Kind = "supply-directorate" }
         );
 
         db.Projects.AddRange(
@@ -89,11 +95,15 @@ public static class Fixture
             },
             new Project
             {
+                // Region and executor follow the workspace: `nu` is
+                // الجامعة المستنصرية in Baghdad, not Mosul. A project whose
+                // region contradicts its own entity is the kind of detail that
+                // makes a reviewer stop trusting the rest of the dataset.
                 Id = "PRJ-0207", WorkspaceCode = "nu",
                 NameAr = "صيانة شبكة المياه", NameEn = "Water Network Maintenance",
                 Status = "delayed", Type = "infrastructure", ExecutionStage = "mep-first-fix",
-                FundingType = "reconstruction-fund", Region = "نينوى", Priority = "عالية",
-                Branch = "شعبة البنى التحتية", Executor = "شركة الموصل",
+                FundingType = "reconstruction-fund", Region = "بغداد", Priority = "عالية",
+                Branch = "شعبة البنى التحتية", Executor = "شركة الرافدين للمقاولات",
                 BeneficiaryCodes = "BEN-UON",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 6, 30),
@@ -103,8 +113,8 @@ public static class Fixture
                 Id = "PRJ-0277", WorkspaceCode = "tu",
                 NameAr = "توسعة قاعة المؤتمرات", NameEn = "Conference Hall Expansion",
                 Status = "suspended", Type = "extension", ExecutionStage = "foundations",
-                FundingType = "self-funding", Region = "ذي قار", Priority = "منخفضة",
-                Branch = "شعبة الأبنية", Executor = "شركة الجنوب",
+                FundingType = "self-funding", Region = "بغداد", Priority = "منخفضة",
+                Branch = "شعبة الأبنية", Executor = "شركة الخليج للإنشاءات",
                 BeneficiaryCodes = "BEN-UOT",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 5, 12),
