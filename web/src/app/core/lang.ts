@@ -116,7 +116,6 @@ const STR = {
   empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
   empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
   // ── EP-WSP-02 «إنشاء مساحة جديدة» (ملحق الشكل 1) ──────────────────────
-  ws_create_sub:   { ar: 'تعريف جهة جديدة تملك مشاريعها ضمن المحفظة.', en: 'Define a new entity that owns its projects within the portfolio.' },
   ws_create_name_ph:{ ar: 'مثال: جامعة البصرة',            en: 'e.g. University of Basrah' },
   ws_create_name_en:{ ar: 'الاسم بالإنجليزية',             en: 'Name in English' },
   ws_create_badge: { ar: 'رمز الشارة',                     en: 'Badge code' },

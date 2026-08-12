@@ -28,8 +28,10 @@
 </epm-page-head>
 
 @if (createOpen()) {
+  <!-- No `sub`. It carried «تعريف جهة جديدة تملك مشاريعها ضمن المحفظة.», which
+       restated the title in a longer sentence; the form below says what it is
+       for. The drawer renders the slot only when there is one. -->
   <epm-drawer [title]="lang.t('ws_create_title')"
-              [sub]="lang.t('ws_create_sub')"
               [hasFooter]="true"
               [closeLabel]="lang.t('cancel')"
               (closed)="closeCreate()">
