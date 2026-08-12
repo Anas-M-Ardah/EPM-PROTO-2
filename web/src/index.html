@@ -6,10 +6,15 @@
   <title>EPM — نظام إدارة المشاريع الهندسية</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- The product mark, same asset the reference uses (brand/epm-favicon.svg).
-       The .ico stays as the fallback for browsers that will not take an SVG. -->
+  <!-- The product mark — byte-identical to the reference's own asset, and the
+       ONLY icon declared, exactly as the reference declares it.
+
+       There was an `alternate icon` here pointing at public/favicon.ico. That
+       file was Angular's default purple shield, left over from the scaffold,
+       and it is what actually showed: a browser requests /favicon.ico by
+       convention whether or not an SVG is declared, and the cached .ico won.
+       The reference ships no .ico (it 404s), so neither do we. -->
   <link rel="icon" type="image/svg+xml" href="brand/epm-favicon.svg">
-  <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!--

@@ -138,7 +138,7 @@ export class ShellComponent {
    * Together they are how the rail answers "where am I" without a banner.
    */
   private readonly enterpriseNav: NavItem[] = [
-    { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' },
+    { path: '/portfolio', icon: 'dashboard', key: 'nav_home' },
     // The reference badges this one with the workspace count and nothing else.
     // It is now the count of workspaces ASSIGNED to the viewer (BR-15).
     { path: '/entities', icon: 'apartment', key: 'nav_entities', count: () => this.workspaces.count() || null },
@@ -158,9 +158,15 @@ export class ShellComponent {
     { path: '/reports', icon: 'insights', key: 'nav_reports' },
   ];
 
-  nav = computed<{ group: StrKey; items: NavItem[] }[]>(() => [
-    { group: 'nav_group_ops', items: this.currentWs() ? this.workspaceNav : this.enterpriseNav },
-  ]);
+  /**
+   * FLAT, like the reference's (desktop-shell.jsx:247). It used to be a list of
+   * groups with a single «العمليات» heading over everything, which is a heading
+   * the reference never prints: its only `.d-nav-grp` is «الحوكمة», and that
+   * one sits above the ADMIN entry — a screen this app does not have, so
+   * neither the entry nor its heading belongs here (a nav item whose page does
+   * not exist is exactly the dead link the module list exists to prevent).
+   */
+  nav = computed<NavItem[]>(() => this.currentWs() ? this.workspaceNav : this.enterpriseNav);
 
   /** The workspace in scope, or undefined for the ministry-wide view. */
   currentWs = computed(() => this.workspaces.byCode(this.wsCode()));
@@ -224,7 +230,7 @@ export class ShellComponent {
     const scope = this.lang.isAr() ? 'مساحة العمل' : 'Workspace';
     const app = this.lang.isAr() ? 'التطبيق' : 'Application';
 
-    const pages: CommandAction[] = this.nav().flatMap(g => g.items).map(it => ({
+    const pages: CommandAction[] = this.nav().map(it => ({
       id: 'nav' + it.path,
       group: goto,
       icon: it.icon,
@@ -425,10 +431,16 @@ export class ShellComponent {
     this.router.navigate([path], { queryParams: ws ? { ws } : {} });
   }
 
+  /**
+   * The reference's `onSignout` is `() => setRoute('landing')` — every one of
+   * them (main.jsx:60, :65, :100). It returns to the FRONT DOOR, not to the
+   * sign-in form. This used to send you to `/login`, which was the only place
+   * it could go when there was no landing page; there is one now.
+   */
   signOut() {
     this.closeOverlays();
     this.auth.signOut();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/']);
   }
 
   onPersona(id: string) {

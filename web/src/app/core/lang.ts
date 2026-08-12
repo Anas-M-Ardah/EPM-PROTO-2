@@ -24,6 +24,12 @@ const STR = {
   dept:            { ar: 'دائرة الإعمار و المشاريع — القسم الهندسي', en: 'Dept. of Reconstruction & Projects — Engineering Section' },
 
   // navigation
+  /** The RAIL's first item. VERBATIM (data.jsx:115 `nav_home`) — the reference
+   *  calls it «الرئيسية», not «النظرة العامة». `nav_portfolio` below is the
+   *  PAGE's own title, which is a different string doing a different job: the
+   *  reference's dashboard heads itself with a greeting, so there is nothing
+   *  to copy for it and ours stays. */
+  nav_home:        { ar: 'الرئيسية',                       en: 'Home' },
   nav_portfolio:   { ar: 'النظرة العامة',                  en: 'Portfolio' },
   nav_projects:    { ar: 'المشاريع',                       en: 'Projects' },
   /** Enterprise scope (no workspace selected). Verbatim from data.jsx:245. */
@@ -39,9 +45,15 @@ const STR = {
    *  reference's wording. */
   nav_schedule:    { ar: 'ضبط الجداول الزمنية',            en: 'Schedule Control' },
   nav_alerts:      { ar: 'مركز التنبيهات',                 en: 'Alerts Center' },
-  nav_reports:     { ar: 'التقارير و التحليلات',           en: 'Reports & Analytics' },
-  nav_group_ops:   { ar: 'العمليات',                       en: 'Operations' },
-  nav_group_gov:   { ar: 'الحوكمة',                        en: 'Governance' },
+  /** VERBATIM (data.jsx:178). Was «التقارير و التحليلات», which is not the
+   *  reference's wording — it says «الإحصائيات». */
+  nav_reports:     { ar: 'التقارير و الإحصائيات',          en: 'Reports & analytics' },
+  //
+  // `nav_group_ops` / `nav_group_gov` are gone. The reference's rail is a FLAT
+  // list (desktop-shell.jsx:247) — its only `.d-nav-grp` is «الحوكمة», and that
+  // one heads the ADMIN entry, which this app does not have because it has no
+  // admin screen. We were printing «العمليات» over the whole rail, a heading
+  // the reference never shows.
 
   // projects list — labels ported from DProjectsAll (enterprise-areas.jsx:112)
   projects_sub:    { ar: 'كل المشاريع عبر التشكيلات والجامعات', en: 'All projects across entities & universities' },

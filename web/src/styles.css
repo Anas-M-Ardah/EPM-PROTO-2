@@ -688,3 +688,21 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 /* Sign-out is the one destructive-looking row in the account menu. */
 .epm-signout { color: var(--error); }
 .epm-signout b { color: var(--error); }
+
+/* ── THE ACCOUNT MENU'S PERSONA LIST SCROLLS, THE MENU DOES NOT ────────────
+   `.d-pop` is capped at 70vh with `overflow-y: auto` (desktop.css:1084) —
+   copied from the reference, and correct there: its account menu is six rows
+   and never reaches the cap.
+
+   Ours carries the persona switcher (P-05) on top of those rows, which took
+   the menu past 70vh. The whole menu then scrolled, and SIGN OUT — the last
+   row — sat below the fold inside it, reachable only by scrolling a menu that
+   gave no sign it had more in it.
+
+   So the cap stays where the reference put it and the LIST absorbs it: the
+   menu becomes a flex column that does not scroll, and the persona list is the
+   one child allowed to shrink and scroll. Everything around it — the identity
+   row, appearance, language and sign out — is always in the box, at any
+   viewport height and any number of personas. */
+.epm-acct-pop .d-pop { display: flex; flex-direction: column; overflow: hidden; }
+.epm-acct-pop .epm-persona-list { flex: 0 1 auto; min-block-size: 0; overflow-y: auto; }

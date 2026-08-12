@@ -86,21 +86,18 @@
         «مساحات العمل» is gone, because you are standing in one.
       -->
       <nav class="d-nav">
-        @for (g of nav(); track g.group) {
-          <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
-          @for (it of g.items; track it.path) {
-            <a class="d-nav-item"
-               routerLinkActive="on"
-               [routerLink]="it.path"
-               [queryParams]="wsCode() ? { ws: wsCode() } : {}"
-               [title]="collapsed() ? lang.t(it.key) : ''">
-              <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
-              <span class="d-nav-label">{{ lang.t(it.key) }}</span>
-              @if (it.count && it.count() !== null) {
-                <span class="d-nav-count"><bdi>{{ it.count() }}</bdi></span>
-              }
-            </a>
-          }
+        @for (it of nav(); track it.path) {
+          <a class="d-nav-item"
+             routerLinkActive="on"
+             [routerLink]="it.path"
+             [queryParams]="wsCode() ? { ws: wsCode() } : {}"
+             [title]="collapsed() ? lang.t(it.key) : ''">
+            <span class="d-nav-ico"><epm-icon [name]="it.icon" [size]="20" /></span>
+            <span class="d-nav-label">{{ lang.t(it.key) }}</span>
+            @if (it.count && it.count() !== null) {
+              <span class="d-nav-count"><bdi>{{ it.count() }}</bdi></span>
+            }
+          </a>
         }
 
         <!-- The way back out of a workspace, in the rail rather than only in
@@ -335,7 +332,7 @@
 }
 
 @if (accountAnchor(); as anchor) {
-  <epm-popover [anchor]="anchor" [width]="320"
+  <epm-popover class="epm-acct-pop" [anchor]="anchor" [width]="320"
                [label]="lang.t('persona')"
                (closed)="closeOverlays()">
     <div class="d-pop-row" style="cursor:default">
@@ -355,17 +352,28 @@
       permission model, which is what 03 §7 asks the switcher for.
     -->
     <div class="d-pop-lbl">{{ lang.t('persona') }}</div>
-    @for (p of persona.all(); track p.id) {
-      <button type="button" class="d-pop-row"
-              [class.on]="persona.currentId() === p.id"
-              (click)="onPersona(p.id)">
-        <span class="d-pop-row-tx">
-          <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
-          <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
-        </span>
-        @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
-      </button>
-    }
+    <!--
+      THE LIST SCROLLS, NOT THE MENU. `.d-pop` is capped at 70vh by the
+      reference's own sheet, and the reference's menu never reaches it — it has
+      six rows. Ours has the seven personas on top of them, which overran the
+      cap and pushed SIGN OUT, the last row, below an internal scroll where it
+      could not be found. The furniture around this list is now always visible
+      and only the personas scroll, so the menu's terminal action never leaves
+      the box however many personas 03 §7 grows to.
+    -->
+    <div class="epm-persona-list">
+      @for (p of persona.all(); track p.id) {
+        <button type="button" class="d-pop-row"
+                [class.on]="persona.currentId() === p.id"
+                (click)="onPersona(p.id)">
+          <span class="d-pop-row-tx">
+            <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b>
+            <span>{{ lang.pick(p.roleAr, p.roleEn) }}</span>
+          </span>
+          @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
+        </button>
+      }
+    </div>
 
     <hr />
 
