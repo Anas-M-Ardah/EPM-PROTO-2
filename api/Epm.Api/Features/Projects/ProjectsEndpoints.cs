@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Amendments = Epm.Api.Domain.Amendments;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,20 +15,31 @@ public static class ProjectsEndpoints
     public static void MapProjectsEndpoints(this WebApplication app)
     {
         // [EP-PRJ-01] GET /api/projects?q=&status=&workspace=
-        // web: projects.api.ts list() → projects.page.ts | spec: 04 §2 | rules: BR-00 (01 §3 derived value)
-        // tables: Projects, Contracts
+        // web: projects.api.ts list() → projects.page.ts | spec: 04 §2 | rules: BR-00 (01 §3 derived value), BR-15
+        // tables: Projects, Contracts, Workspaces
         app.MapGet("/api/projects", async (
             EpmDb db,
+            HttpContext ctx,
             string? q,
             string? status,
             string? workspace) =>
         {
+            // BR-15 — a workspace the caller is not assigned to is refused, not
+            // silently emptied. Without this, `?workspace=` is a value the CALLER
+            // chooses and the register is readable across the whole ministry.
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
+
+            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
+
+            // With no explicit workspace this is the enterprise view — which for
+            // a non-ministry user is still bounded by their own assignments
+            // (§7: «ولا يرى بيانات خارج تشكيله»), not the whole portfolio.
+            var scope = WorkspaceScope.Effective(ctx, workspaces.Select(w => w.Code), workspace).ToList();
+
             // Two flat queries and an in-memory join. No Include(), no navigation
             // properties — the relationship is the ProjectId comparison below.
-            var projectQuery = db.Projects.AsNoTracking();
-
-            if (!string.IsNullOrWhiteSpace(workspace))
-                projectQuery = projectQuery.Where(p => p.WorkspaceCode == workspace);
+            var projectQuery = db.Projects.AsNoTracking()
+                .Where(p => scope.Contains(p.WorkspaceCode));
 
             if (!string.IsNullOrWhiteSpace(status))
                 projectQuery = projectQuery.Where(p => p.Status == status);
@@ -51,8 +63,6 @@ public static class ProjectsEndpoints
             var amendments = await db.ContractAmendments.AsNoTracking()
                 .Where(a => contractIds.Contains(a.ContractId))
                 .ToListAsync();
-
-            var workspaces = await db.Workspaces.AsNoTracking().ToListAsync();
 
             var rows = projects.Select(p =>
             {
@@ -89,9 +99,8 @@ public static class ProjectsEndpoints
 
             // Status counts come from the unfiltered-by-status set so the chips
             // keep their numbers when a status filter is active.
-            var countBase = db.Projects.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(workspace))
-                countBase = countBase.Where(p => p.WorkspaceCode == workspace);
+            var countBase = db.Projects.AsNoTracking()
+                .Where(p => scope.Contains(p.WorkspaceCode));
 
             var countByStatus = await countBase
                 .GroupBy(p => p.Status)

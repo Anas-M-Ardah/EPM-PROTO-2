@@ -58,8 +58,14 @@
         <epm-icon name="unfold_more" [size]="17" />
       </button>
 
+      <!--
+        The rail swaps with scope, exactly as the reference does (entNav /
+        wsNav, desktop-shell.jsx:162 and :172) and as الشكلان 48، 49 show:
+        inside a workspace the first item is that workspace's own overview and
+        «مساحات العمل» is gone, because you are standing in one.
+      -->
       <nav class="d-nav">
-        @for (g of nav; track g.group) {
+        @for (g of nav(); track g.group) {
           <div class="d-nav-grp">{{ lang.t(g.group) }}</div>
           @for (it of g.items; track it.path) {
             <a class="d-nav-item"
@@ -74,6 +80,20 @@
               }
             </a>
           }
+        }
+
+        <!-- The way back out of a workspace, in the rail rather than only in
+             the switcher. The reference's switcher carries «العودة للتطبيق»
+             (desktop-shell.jsx:204) for the same reason: entering a scope has
+             to have a visible exit. -->
+        @if (currentWs()) {
+          <button type="button" class="d-nav-item epm-nav-exit" (click)="setWorkspace(null)"
+                  [title]="collapsed() ? lang.t('ws_back_to_ministry') : ''">
+            <span class="d-nav-ico">
+              <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="20" />
+            </span>
+            <span class="d-nav-label">{{ lang.t('ws_back_to_ministry') }}</span>
+          </button>
         }
       </nav>
 
@@ -108,11 +128,22 @@
     <main class="d-main">
 
       <header class="d-topbar">
+        <!--
+          The topbar crumb is the SCOPE, not the page — the page's own trail is
+          in Z2. Inside a workspace the entity's name is a link back to its
+          overview, so "where am I" and "take me to the top of here" are the
+          same control.
+        -->
         <div class="d-crumb">
           @if (currentWs()) {
-            <span class="muted">{{ lang.t('ministry_short') }}</span>
+            <button type="button" class="epm-crumb-btn muted" (click)="setWorkspace(null)">
+              {{ lang.t('ministry_short') }}
+            </button>
             <epm-icon class="sep" [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
-            <b>{{ scopeTitle() }}</b>
+            <a class="epm-crumb-ws" [routerLink]="'/workspace'" [queryParams]="{ ws: wsCode() }">
+              <span class="epm-crumb-emblem"><bdi>{{ currentWs()!.code }}</bdi></span>
+              <b>{{ scopeTitle() }}</b>
+            </a>
           } @else {
             <b>{{ lang.t('ministry_short') }}</b>
           }
@@ -219,10 +250,29 @@
 
 <!-- ── overlays ───────────────────────────────────────────────────────────── -->
 
+<!--
+  The workspace switcher. Ported from DWorkspacePop (desktop-shell.jsx:405):
+  a search field, the ministry row, then «مساحات العمل المتاحة لك».
+
+  The list is EP-ENT-01's — the same request the register renders — so the
+  caption is literally true: it can only ever offer a workspace this persona is
+  assigned to (BR-15). Selecting one ENTERS it (الشكل 1 → الشكل 2).
+-->
 @if (switcherAnchor(); as anchor) {
-  <epm-popover [anchor]="anchor" [width]="300"
+  <epm-popover [anchor]="anchor" [width]="316"
                [label]="lang.t('all_workspaces')"
                (closed)="closeOverlays()">
+
+    @if (workspaces.count() > 5) {
+      <div class="d-field epm-ws-search">
+        <epm-icon name="search" [size]="16" />
+        <input type="search" class="epm-bare-input"
+               [placeholder]="lang.t('search_entities')"
+               [value]="switcherQuery()"
+               (input)="switcherQuery.set($any($event.target).value)" />
+      </div>
+    }
+
     <button type="button" class="d-pop-row" [class.on]="!currentWs()" (click)="setWorkspace(null)">
       <span class="d-ctx-emblem ent"><epm-icon name="account_balance" [size]="16" /></span>
       <span class="d-pop-row-tx">
@@ -234,21 +284,29 @@
 
     <div class="d-pop-lbl">{{ lang.t('your_workspaces') }}</div>
 
-    @for (w of workspaces.list(); track w.code) {
+    @for (w of switcherRows(); track w.code) {
       <button type="button" class="d-pop-row"
               [class.on]="currentWs()?.code === w.code"
               (click)="setWorkspace(w.code)">
         <span class="d-ctx-emblem"><bdi>{{ w.code }}</bdi></span>
         <span class="d-pop-row-tx">
           <b>{{ lang.pick(w.nameAr, w.nameEn) }}</b>
-          <span><bdi>{{ w.activeCount }}</bdi> {{ lang.t('ws_active_short') }}</span>
+          <span>{{ wsSub(w) }}</span>
         </span>
         @if (currentWs()?.code === w.code) { <epm-icon name="check" [size]="18" /> }
       </button>
-    }
-
-    @if (workspaces.list().length === 0) {
-      <div class="d-pop-lbl">{{ lang.t('empty_entities_t') }}</div>
+    } @empty {
+      <!-- Two different emptinesses, two different messages (04 §9): nothing
+           matched the search, versus nothing is assigned to you at all. -->
+      <div class="epm-ws-pop-empty">
+        @if (switcherQuery()) {
+          <epm-icon name="search_off" [size]="20" />
+          <span>{{ lang.t('empty_filter_t') }}</span>
+        } @else {
+          <epm-icon name="apartment" [size]="20" />
+          <span>{{ lang.t('empty_ws_assigned_t') }}</span>
+        }
+      </div>
     }
   </epm-popover>
 }

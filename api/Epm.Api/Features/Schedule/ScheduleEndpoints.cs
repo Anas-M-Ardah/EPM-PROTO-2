@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -51,10 +52,11 @@ public static class ScheduleEndpoints
         // The same gate as SCR-W4, for the same reason: an activity belongs to
         // exactly one contract (01 §1), so a programme spanning two of them
         // would be a schedule for no contract at all.
-        app.MapGet("/api/projects/{projectId}/schedule", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/schedule", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var contracts = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).OrderBy(c => c.Id).ToListAsync();
@@ -80,10 +82,11 @@ public static class ScheduleEndpoints
         // spec: 04 §5 | rules: BR-02, BR-04, BR-10
         // tables: Projects · Contracts · Activities
         app.MapGet("/api/projects/{projectId}/schedule/{contractId}",
-            async (EpmDb db, string projectId, string contractId, string? basis) =>
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string? basis) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var c = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == contractId);
             // CONTRACT SCOPING, CHECKED HERE WHERE IT CAN BE READ (P-01).

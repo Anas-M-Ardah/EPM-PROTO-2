@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Domain;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Contracts;
@@ -17,15 +18,19 @@ public static class ContractsEndpoints
     public static void MapContractsEndpoints(this WebApplication app)
     {
         // [EP-CNT-01] GET /api/contracts?q=&status=&workspace=&projectId=
-        // web: contracts.api.ts list() → contracts.page.ts | spec: 04 §2 | rules: BR-09
-        // tables: Contracts · ContractAmendments · Projects
+        // web: contracts.api.ts list() → contracts.page.ts | spec: 04 §2 | rules: BR-09, BR-15
+        // tables: Contracts · ContractAmendments · Projects · Workspaces
         app.MapGet("/api/contracts", async (
             EpmDb db,
+            HttpContext ctx,
             string? q,
             string? status,
             string? workspace,
             string? projectId) =>
         {
+            // BR-15 — refused before anything is read (see WorkspaceScope).
+            if (WorkspaceScope.Deny(ctx, workspace) is { } denied) return denied;
+
             // Flat reads matched in memory — no Include(), no navigation
             // properties. The relationship IS the ProjectId comparison below.
             var contractQuery = db.Contracts.AsNoTracking();
@@ -47,12 +52,14 @@ public static class ContractsEndpoints
                 .ToListAsync();
 
             // Workspace scoping reaches contracts THROUGH their project — a
-            // contract has no workspace of its own (01 §1).
-            if (!string.IsNullOrWhiteSpace(workspace))
-            {
-                var inWs = projects.Where(p => p.WorkspaceCode == workspace).Select(p => p.Id).ToHashSet();
-                contracts = contracts.Where(c => inWs.Contains(c.ProjectId)).ToList();
-            }
+            // contract has no workspace of its own (01 §1). With no explicit
+            // `?workspace=` the scope is still the user's own assignments, so
+            // the "cross-portfolio" list is cross-THEIR-portfolio (BR-15).
+            var scope = WorkspaceScope.Effective(
+                ctx, projects.Select(p => p.WorkspaceCode).Distinct(), workspace);
+
+            var inScope = projects.Where(p => scope.Contains(p.WorkspaceCode)).Select(p => p.Id).ToHashSet();
+            contracts = contracts.Where(c => inScope.Contains(c.ProjectId)).ToList();
 
             var ids = contracts.Select(c => c.Id).ToList();
             var amendments = await db.ContractAmendments.AsNoTracking()
@@ -98,12 +105,9 @@ public static class ContractsEndpoints
 
             // Chip counts come from the set BEFORE the status filter, so the
             // numbers stay put while a status is selected.
-            var countBase = db.Contracts.AsNoTracking().AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(workspace))
-            {
-                var inWs = projects.Where(p => p.WorkspaceCode == workspace).Select(p => p.Id).ToHashSet();
-                countBase = countBase.Where(c => inWs.Contains(c.ProjectId));
-            }
+            var countBase = db.Contracts.AsNoTracking().AsEnumerable()
+                .Where(c => inScope.Contains(c.ProjectId));
+
             var countByStatus = countBase
                 .GroupBy(c => c.Status)
                 .ToDictionary(g => g.Key, g => g.Count());

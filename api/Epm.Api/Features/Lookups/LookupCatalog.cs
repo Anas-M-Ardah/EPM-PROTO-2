@@ -106,6 +106,22 @@ public static class LookupCatalog
         yield return L("beneficiary-type", "facility",   "منشأة",       "Facility");
         yield return L("beneficiary-type", "other",      "أخرى",        "Other");
 
+        // ── WORKSPACE KINDS (4) — ملحق الشاشات، الشكل 1 ────────────────────
+        // The four filter chips the workspace register shows, verbatim from the
+        // addendum: «جامعة حكومية · جامعة تقنية · وحدة مركزية · مديرية تجهيز».
+        //
+        // A workspace kind is NOT a beneficiary type. The register used to label
+        // itself from `beneficiary-type`, which shares the word "university" and
+        // nothing else — a directorate rendered as the raw code `directorate`
+        // because that list has no such entry. Two different vocabularies for
+        // two different things (01 §2.1: beneficiaries RECEIVE quantity;
+        // workspaces OWN projects — see P-24).
+        sort = 0;
+        yield return L("workspace-kind", "state-university",     "جامعة حكومية",  "State university");
+        yield return L("workspace-kind", "technical-university", "جامعة تقنية",   "Technical university");
+        yield return L("workspace-kind", "central-unit",         "وحدة مركزية",   "Central unit");
+        yield return L("workspace-kind", "supply-directorate",   "مديرية تجهيز",  "Supply directorate");
+
         // ── 06 §7 — change-order type. ONLY TWO. ──────────────────────────
         sort = 0;
         yield return L("co-type", "engineering", "هندسي — كلفة / مدة",          "Engineering — cost / duration");

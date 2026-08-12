@@ -125,6 +125,16 @@ epm-app-footer { display: contents; }
 .d-grid.stats.fit,
 .d-grid.stats5.fit { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 
+/* A strip carrying a nine-digit money figure raises its own floor. `.d-stat` is
+   overflow:hidden and `.d-stat-val` is 28px, so at the 120px floor
+   "420,000,000" is silently cut to "20,000,000" — a WRONG number, not a
+   truncated one. Measured on SCR-E8 at 900px with the sidebar collapsed. See
+   SummaryStripComponent.needsWide for why the track widens instead of the type
+   shrinking. Same 0,3,0 specificity as the rule above, so source order decides
+   and this comes second. */
+.d-grid.stats.fit.epm-stat-wide,
+.d-grid.stats5.fit.epm-stat-wide { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
 /* The `auto` badge in a field grid — a system-derived value that cannot be
    edited (01 §3). The reference set these colours inline in JSX; 05 §8 names
    inline-styles-beating-stylesheets as a recurring defect class, so they live
@@ -390,3 +400,233 @@ epm-app-footer { display: contents; }
   display: inline-flex; align-items: center; gap: var(--space-6);
   font-size: var(--fs-200); color: var(--error);
 }
+
+/* ══ WORKSPACE — register entry, overview, switcher, breadcrumb ═══════════
+   The enterprise workspace («مساحة العمل»), not the project workspace. Every
+   value below is a token; the reference's own classes (`.d-mini`, `.d-panel`,
+   `.d-pop-row`, `.d-ctx-emblem`) carry the rest, so these are only the bits
+   that did not exist because nothing was enterable before. */
+
+/* ── A ROW THAT OPENS SOMETHING ────────────────────────────────────────────
+   Used by the workspace register and the projects register, so entering a
+   workspace and opening a project feel like one gesture at two levels. The
+   affordance is NOT hover-only: the row is a tab stop with a visible focus
+   ring, and the "دخول" cue has a resting opacity rather than appearing from
+   nothing (05 §7.7). */
+.epm-ws-tr { cursor: pointer; transition: background var(--dur-fast, 120ms); }
+.epm-ws-tr:hover { background: var(--hover-overlay); }
+.epm-ws-tr:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: -2px;
+  background: var(--hover-overlay);
+}
+.epm-ws-table td:last-child { text-align: end; }
+
+/* The name column takes the slack. Without a floor the auto table layout
+   gives it whatever the pinned columns leave over, and «المديرية العامة
+   للتجهيز والمشتريات» wraps to three lines while the row beside it is one —
+   the uneven row heights the register is read for comparing across. */
+.epm-ws-name { min-inline-size: 240px; }
+.epm-ws-table td:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-inline-size: 0; }
+
+/* Kind, and the row action, are short labels that must never wrap either —
+   a two-line «جامعة حكومية» next to a one-line «وحدة مركزية» is the uneven
+   row height this table is least able to afford. */
+.epm-ws-table td:nth-child(3),
+.epm-ws-table th:nth-child(3) { white-space: nowrap; }
+
+.epm-ws-open {
+  display: inline-flex; align-items: center; gap: var(--space-4, 4px);
+  font-size: 11.5px; font-weight: var(--fw-semibold, 600);
+  color: var(--on-surface-variant);
+  opacity: .55; transition: opacity var(--dur-fast, 120ms), color var(--dur-fast, 120ms);
+  white-space: nowrap;
+}
+.epm-ws-tr:hover .epm-ws-open,
+.epm-ws-tr:focus-visible .epm-ws-open { opacity: 1; color: var(--primary); }
+
+/* The code chip in the register's first column. Same shape as the sidebar
+   switcher's `.d-ctx-emblem`, so one workspace looks like itself in both. */
+.epm-ws-emblem {
+  display: inline-grid; place-items: center; min-inline-size: 42px;
+  padding: 3px var(--space-8); border-radius: var(--r-sm);
+  background: var(--surface-container-high); color: var(--on-surface-variant);
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: var(--fw-bold);
+  letter-spacing: 0;
+}
+
+/* ── OVERVIEW ROWS ────────────────────────────────────────────────────────
+   `.d-mini` from the sheet, plus the three cells the reference row does not
+   have: a figure, a date, and the chevron that says the row leads somewhere. */
+.epm-ws-row { gap: var(--space-12, 12px); }
+.epm-ws-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.epm-ws-val,
+.epm-ws-upd {
+  flex: none; font-size: 11.5px; color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.epm-ws-go { flex: none; color: var(--on-surface-variant); opacity: .5; }
+.epm-ws-row:hover .epm-ws-go,
+.epm-ws-row:focus-visible .epm-ws-go { opacity: 1; color: var(--primary); }
+.epm-ws-dot {
+  display: inline-block; inline-size: 3px; block-size: 3px; border-radius: 999px;
+  background: var(--outline); margin-inline: var(--space-6, 6px); vertical-align: middle;
+}
+
+/* An empty watchlist is GOOD NEWS, so it is a sentence and not the same grey
+   "nothing here" as a missing record (04 §9). */
+.epm-ws-ok {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-8);
+  /* The panel is height-matched to the chart beside it (.eqrows), so a single
+     line pinned to the top leaves a void that reads as a rendering failure.
+     Filling and centring makes the empty watchlist look deliberate, which it
+     is — it is the good outcome. */
+  min-block-size: 200px; block-size: 100%;
+  padding: var(--space-16);
+  font-size: var(--fs-200); color: var(--on-surface-variant);
+}
+.epm-ws-ok epm-icon { color: var(--status-completed-tx); }
+
+/* ── SWITCHER ─────────────────────────────────────────────────────────────
+   The reference's popover search (desktop-shell.jsx:411) and the two empty
+   states underneath it. */
+/* The legend sits BESIDE the donut, so it should not stretch to fill a panel
+   that has gone full-width in the single-column stack — at 580px the counts
+   end up a hand's width from the labels they belong to. */
+.epm-donut-row .epm-legend { max-inline-size: 300px; }
+
+.epm-ws-search { margin: 2px 2px var(--space-6, 6px); block-size: 34px; }
+.epm-ws-pop-empty {
+  display: flex; align-items: center; gap: var(--space-8);
+  padding: var(--space-12) var(--space-10);
+  font-size: var(--fs-200); color: var(--on-surface-variant);
+}
+
+/* ── BREADCRUMBS ──────────────────────────────────────────────────────────
+   Z2 crumbs that name a destination are links now. `.d-crumbs a` already
+   styles them; this only adds the underline-on-hover that says so. */
+.epm-crumb-link { text-decoration: none; }
+.epm-crumb-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* The topbar scope crumb: "الوزارة › [UB] جامعة بغداد", both walkable. */
+.epm-crumb-btn {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--topbar-fg-dim); font-size: var(--fs-200); font-weight: var(--fw-medium);
+}
+.epm-crumb-btn:hover { color: var(--topbar-fg); }
+.epm-crumb-ws {
+  display: inline-flex; align-items: center; gap: var(--space-8);
+  text-decoration: none; min-width: 0;
+}
+.epm-crumb-ws b { color: var(--topbar-fg); }
+.epm-crumb-ws:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.epm-crumb-emblem {
+  display: inline-grid; place-items: center; min-inline-size: 32px;
+  padding: 2px var(--space-6, 6px); border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, .12); color: var(--topbar-fg);
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: var(--fw-bold);
+}
+
+/* ── THE WAY OUT OF A WORKSPACE ───────────────────────────────────────────
+   A nav item, so it sits in the rail's rhythm, but separated by a hairline
+   because it LEAVES the scope every item above it belongs to. */
+.epm-nav-exit {
+  width: 100%; border: 0; background: none; font: inherit; cursor: pointer;
+  margin-block-start: var(--space-8);
+  padding-block-start: var(--space-12);
+  border-block-start: 1px solid var(--outline-variant);
+  border-start-start-radius: 0; border-start-end-radius: 0;
+  color: var(--on-surface-variant);
+}
+
+/* ── THE WORKSPACE CODE CHIP, MADE VISIBLE ────────────────────────────────
+   `.d-ctx-emblem` in the copied sheet sets `color: #fff` and NO background —
+   the reference supplies one inline per workspace (`style={{background: w.color}}`,
+   desktop-shell.jsx:423) from a palette this port does not have. Without it the
+   code rendered white-on-white in the switcher popover: present in the DOM,
+   readable by nothing. Measured — `bg: rgba(0,0,0,0)`, `color: rgb(255,255,255)`.
+
+   Rather than invent a colour per workspace — `05 §1` has every colour channel
+   already spoken for, and identity is not one of them — each plane gets a
+   neutral chip. The register (.epm-ws-emblem), the sidebar switcher and this
+   popover then show the same object three times instead of three treatments. */
+.d-side-switch .d-ctx-emblem:not(.ent) {
+  background: rgba(255, 255, 255, .14);
+  color: var(--topbar-fg, #fff);
+}
+.d-pop-row .d-ctx-emblem:not(.ent) {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
+/* Same defect, the ministry variant. `.d-ctx-emblem.ent` is a WHITE chip and
+   the emblem inherits `color: #fff`, so the icon was white on white in both
+   the sidebar and the popover. The reference puts an <img> logo in this slot,
+   where the inherited colour never mattered; this port draws an icon, which
+   uses currentColor. The chip stays white — it is the ministry's — and the
+   mark takes the brand colour. */
+.d-ctx-emblem.ent { color: var(--primary); }
+
+/* ══ CANVAS PAGE RHYTHM ═══════════════════════════════════════════════════
+   A page that stacks more than one block had NO space between them: the KPI
+   strip, the message bar, the two-panel row and the panel below it all sat
+   flush, so the whole page read as one continuous slab instead of four
+   things. Measured on SCR-E1: gaps of 24 · 0 · 0 · 0.
+
+   16px is the house value, not a new one — `.d-sevcards` already carries
+   `margin-bottom: 16px` on the Alerts Center (desktop.css) and the reference's
+   own DWorkspaceOverview sets `style={{ marginBottom: 16 }}` on its stat band.
+   This applies that rhythm at the page level instead of asking each block to
+   remember it, which is how three of them came to forget.
+
+   Flex rather than sibling margins because the component hosts
+   (<epm-page-head>, <epm-summary-strip>) are `display: inline` — an inline box
+   ignores vertical margin, which is the other half of why the markup's
+   intent never showed up on screen. Flex blockifies them.
+
+   Listed explicitly rather than applied to every page: the single-block pages
+   need nothing, and Alerts already spaces itself. */
+epm-portfolio-page,
+epm-workspaces-page,
+epm-schedule-control-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* The identity bar keeps the 24px of air it has today — 8px of its own plus
+   the 16px gap — so the header stays more separated than the blocks are from
+   each other, and nothing above the fold moves. */
+epm-portfolio-page > epm-page-head .d-page-head,
+epm-workspaces-page > epm-page-head .d-page-head,
+epm-schedule-control-page > epm-page-head .d-page-head {
+  margin-block-end: var(--space-8);
+}
+
+/* ══ PANEL INTERIORS ══════════════════════════════════════════════════════
+   `.d-panel` carries no padding of its own — the sheet expects a
+   `.d-panel-body` wrapper (desktop.css:286) that these pages never used, so
+   the donut, the entity bars and the unavailable tiles all touched the panel
+   border on all four sides. Measured: 1px of inset, which is the border.
+
+   Padding the three body types by name rather than every non-header child of
+   a panel: a register table and the `.d-mini` rows on SCR-E8 are deliberately
+   full-bleed, because their hover state has to span the whole row. */
+.d-panel > .epm-donut-row,
+.d-panel > .epm-bars,
+.d-panel > .d-grid.stats { padding: var(--space-16); }
+
+/* The two-panel row inherits `.d-grid`'s 12px gap, which reads as a seam next
+   to the 16px rhythm above and below it. Matching them makes the horizontal
+   and vertical spacing one system instead of two values 4px apart.
+
+   `align-items: stretch` pairs the heights: a donut is naturally taller than
+   three bars, and left to itself the row ends ragged. The sheet already has
+   `.eqrows` for exactly this — same declaration, applied here so the markup
+   does not have to carry a class to say "these two belong together". */
+epm-portfolio-page > .d-grid.c2,
+epm-workspaces-page > .d-grid.c2 {
+  gap: var(--space-16);
+  align-items: stretch;
+}
+epm-portfolio-page > .d-grid.c2 > .d-panel,
+epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }

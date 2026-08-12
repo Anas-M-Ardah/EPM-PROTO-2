@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Information;
@@ -38,12 +39,14 @@ public static class InformationEndpoints
         // [EP-INF-01] GET /api/projects/{projectId}/information
         // web: information.api.ts get() → information.page.ts
         // spec: 04 §3 | rules: — | tables: Projects · Workspaces
-        app.MapGet("/api/projects/{projectId}/information", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/information", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == projectId);
 
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var ws = await db.Workspaces.AsNoTracking()
                 .FirstOrDefaultAsync(w => w.Code == p.WorkspaceCode);

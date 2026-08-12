@@ -12,8 +12,15 @@ public class Workspace
     public string NameAr { get; set; } = "";
     public string NameEn { get; set; } = "";
 
-    /// <summary>university · institute · directorate · other</summary>
-    public string Kind { get; set; } = "university";
+    /// <summary>
+    /// Lookup "workspace-kind" — one of the four the register filters by
+    /// (ملحق الشاشات، الشكل 1): state-university · technical-university ·
+    /// central-unit · supply-directorate.
+    ///
+    /// NOT a `beneficiary-type`. A beneficiary receives distributed quantity
+    /// (01 §2.1); a workspace owns projects. See P-24.
+    /// </summary>
+    public string Kind { get; set; } = "state-university";
 
     public bool Active { get; set; } = true;
 }

@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Boq;
@@ -49,10 +50,11 @@ public static class FinancialsEndpoints
         // spec: 04 §3 | rules: BR-00, BR-04, BR-09, BR-11 + P-53
         // tables: Projects · Contracts · ContractAmendments · Payments
         //         BoqItems · BoqRateBands · BoqActivityLinks · Activities
-        app.MapGet("/api/projects/{projectId}/financials", async (EpmDb db, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/financials", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
 
             var asOf = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
 

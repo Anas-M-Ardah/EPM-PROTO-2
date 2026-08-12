@@ -8,6 +8,7 @@ import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { PagerComponent } from '../../shared/pager.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { LangService } from '../../core/lang';
+import { WorkspacesService } from '../../core/workspaces';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
@@ -46,6 +47,7 @@ export class ScheduleControlPage {
   private api = inject(ScheduleControlApi);
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
+  workspaces = inject(WorkspacesService);
   lookups = inject(LookupsService);
   /** The page-head actions are demo stubs and say so — ToastService.demo(). */
   toast = inject(ToastService);
@@ -74,10 +76,39 @@ export class ScheduleControlPage {
   /** Column count for the loading skeleton — must match the real table. */
   readonly colCount = 8;
 
-  crumbs = computed<Crumb[]>(() => [
-    { label: this.lang.t('ministry_short') },
-    { label: this.lang.t('nav_schedule') },
-  ]);
+  /**
+   * Z2 breadcrumb. الشكلان 48، 49 breadcrumb this screen «جامعة بغداد › …»
+   * when it is scoped, not «الوزارة › …» — a filtered register that still
+   * calls itself ministry-wide is the one thing a reader cannot recover from.
+   * The workspace crumb links back to its overview.
+   */
+  crumbs = computed<Crumb[]>(() => {
+    const ws = this.workspace();
+    if (!ws) {
+      return [
+        { label: this.lang.t('ministry_short') },
+        { label: this.lang.t('nav_schedule') },
+      ];
+    }
+    return [
+      { label: this.lang.t('ministry_short') },
+      { label: this.scopeName(), link: ['/workspace'], query: { ws } },
+      { label: this.lang.t('nav_schedule') },
+    ];
+  });
+
+  /**
+   * The identity line. Scoped, it is the ENTITY — the reference does exactly
+   * this (enterprise-areas.jsx:33, :85, :130, :183), and it is what stops a
+   * filtered register from reading as the whole ministry.
+   */
+  scopeSub = computed(() => this.workspace() ? this.scopeName() : this.lang.t('schedule_sub'));
+
+  /** The scoped workspace's name, from the list the switcher already loaded. */
+  scopeName = computed(() => {
+    const ws = this.workspaces.byCode(this.workspace());
+    return ws ? this.lang.pick(ws.nameAr, ws.nameEn) : this.workspace();
+  });
 
   isUnfiltered = computed(() => !this.q() && !this.state());
 

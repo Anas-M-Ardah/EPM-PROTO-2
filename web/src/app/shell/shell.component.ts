@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 import { IconComponent } from '../core/icon.component';
 import { LangService, StrKey } from '../core/lang';
+import { LookupsService } from '../core/lookups';
 import { PersonaService } from '../core/persona';
 import { ThemeService } from '../core/theme';
 import { WorkspacesService } from '../core/workspaces';
@@ -20,6 +21,23 @@ interface NavItem {
   key: StrKey;
   /** Renders the `.d-nav-count` badge when it resolves to a number. */
   count?: () => number | null;
+}
+
+/** `?ws=` out of a URL, without needing an ActivatedRoute snapshot. */
+function read(url: string): string {
+  const q = url.indexOf('?');
+  if (q < 0) return '';
+  return new URLSearchParams(url.slice(q + 1)).get('ws') ?? '';
+}
+
+/**
+ * The project id out of `/projects/:id[/:module]`, or '' anywhere else.
+ * `/projects` alone is the enterprise register and has no project in scope.
+ */
+function readProject(url: string): string {
+  const path = url.split('?')[0];
+  const m = /^\/projects\/([^/]+)/.exec(path);
+  return m ? decodeURIComponent(m[1]) : '';
 }
 
 /**
@@ -54,6 +72,7 @@ interface NavItem {
 })
 export class ShellComponent {
   lang = inject(LangService);
+  lookups = inject(LookupsService);
   persona = inject(PersonaService);
   theme = inject(ThemeService);
   workspaces = inject(WorkspacesService);
@@ -91,25 +110,55 @@ export class ShellComponent {
   pickerOpen = signal(false);
   pickerQuery = signal('');
 
-  readonly nav: { group: StrKey; items: NavItem[] }[] = [
-    {
-      // Order follows the reference enterprise nav (desktop-shell.jsx:162):
-      // dashboard → spaces → projects → contracts → schedule → alerts →
-      // reports. Complete as of Phase 2.6 — every enterprise destination the
-      // reference offers now exists.
-      group: 'nav_group_ops',
-      items: [
-        { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' },
-        // The reference badges this one with the workspace count and nothing else.
-        { path: '/entities', icon: 'apartment', key: 'nav_entities', count: () => this.workspaces.count() || null },
-        { path: '/projects', icon: 'projects', key: 'nav_projects' },
-        { path: '/contracts', icon: 'description', key: 'nav_contracts_all' },
-        { path: '/schedule-control', icon: 'calendar_month', key: 'nav_schedule' },
-        { path: '/alerts', icon: 'notifications', key: 'nav_alerts' },
-        { path: '/reports', icon: 'insights', key: 'nav_reports' },
-      ],
-    },
+  /** The switcher's own search box (v1.1 DWorkspacePop, desktop-shell.jsx:411). */
+  switcherQuery = signal('');
+
+  /** Workspaces the switcher offers, filtered by its search box. */
+  switcherRows = computed(() => {
+    const q = this.switcherQuery().trim().toLowerCase();
+    return this.workspaces.list().filter(w => !q
+      || w.code.toLowerCase().includes(q)
+      || w.nameAr.toLowerCase().includes(q)
+      || w.nameEn.toLowerCase().includes(q));
+  });
+
+  /**
+   * ── THE NAV IS SCOPE-DEPENDENT (ملحق الشكلان 48، 49) ────────────────────
+   * The reference keeps two lists, `entNav` and `wsNav` (desktop-shell.jsx:162
+   * and :172), and swaps them when you enter a workspace. The addendum shows
+   * the same thing: figures 48 and 49 render a university-level rail —
+   * «نظرة عامة · المشاريع ٥ · العقود · ضبط الجداول الزمنية · مركز التنبيهات ·
+   * التقارير» — with no «مساحات العمل» entry, because you are inside one.
+   *
+   * Two differences from the ministry list are load-bearing, not cosmetic:
+   *   1. the first item is the WORKSPACE overview, not the ministry portfolio;
+   *   2. «مساحات العمل» disappears and المشاريع carries the entity's own count.
+   * Together they are how the rail answers "where am I" without a banner.
+   */
+  private readonly enterpriseNav: NavItem[] = [
+    { path: '/portfolio', icon: 'dashboard', key: 'nav_portfolio' },
+    // The reference badges this one with the workspace count and nothing else.
+    // It is now the count of workspaces ASSIGNED to the viewer (BR-15).
+    { path: '/entities', icon: 'apartment', key: 'nav_entities', count: () => this.workspaces.count() || null },
+    { path: '/projects', icon: 'projects', key: 'nav_projects_all' },
+    { path: '/contracts', icon: 'description', key: 'nav_contracts_all' },
+    { path: '/schedule-control', icon: 'calendar_month', key: 'nav_schedule' },
+    { path: '/alerts', icon: 'notifications', key: 'nav_alerts' },
+    { path: '/reports', icon: 'insights', key: 'nav_reports' },
   ];
+
+  private readonly workspaceNav: NavItem[] = [
+    { path: '/workspace', icon: 'dashboard', key: 'ws_overview' },
+    { path: '/projects', icon: 'projects', key: 'nav_projects', count: () => this.currentWs()?.projectCount ?? null },
+    { path: '/contracts', icon: 'description', key: 'nav_contracts_all' },
+    { path: '/schedule-control', icon: 'calendar_month', key: 'nav_schedule' },
+    { path: '/alerts', icon: 'notifications', key: 'nav_alerts' },
+    { path: '/reports', icon: 'insights', key: 'nav_reports' },
+  ];
+
+  nav = computed<{ group: StrKey; items: NavItem[] }[]>(() => [
+    { group: 'nav_group_ops', items: this.currentWs() ? this.workspaceNav : this.enterpriseNav },
+  ]);
 
   /** The workspace in scope, or undefined for the ministry-wide view. */
   currentWs = computed(() => this.workspaces.byCode(this.wsCode()));
@@ -119,11 +168,26 @@ export class ShellComponent {
     return ws ? this.lang.pick(ws.nameAr, ws.nameEn) : this.lang.t('all_workspaces');
   });
 
+  /**
+   * The line under the workspace name in the switcher button. The reference
+   * shows `kind · N active` (desktop-shell.jsx:424). The kind is a lookup
+   * label, not a chrome string — the same `workspace-kind` list the register
+   * filters by, so the two can never drift.
+   */
   scopeSub = computed(() => {
     const ws = this.currentWs();
-    if (!ws) return this.lang.t('enterprise_ctx');
-    return this.lang.t(('ws_kind_' + ws.kind) as StrKey);
+    if (!ws) {
+      const n = this.workspaces.count();
+      return n ? `${n} ${this.lang.t('ws_assigned_count')}` : this.lang.t('enterprise_ctx');
+    }
+    const kind = this.lookups.label('workspace-kind', ws.kind);
+    return `${kind} · ${ws.activeCount} ${this.lang.t('ws_active_short')}`;
   });
+
+  /** The switcher rows' own subtitle — same shape, per workspace. */
+  wsSub(ws: { kind: string; activeCount: number }) {
+    return `${this.lookups.label('workspace-kind', ws.kind)} · ${ws.activeCount} ${this.lang.t('ws_active_short')}`;
+  }
 
   /** Two initials, from whichever language is showing. */
   initials = computed(() => {
@@ -158,7 +222,7 @@ export class ShellComponent {
     const scope = this.lang.isAr() ? 'مساحة العمل' : 'Workspace';
     const app = this.lang.isAr() ? 'التطبيق' : 'Application';
 
-    const pages: CommandAction[] = this.nav.flatMap(g => g.items).map(it => ({
+    const pages: CommandAction[] = this.nav().flatMap(g => g.items).map(it => ({
       id: 'nav' + it.path,
       group: goto,
       icon: it.icon,
@@ -211,8 +275,14 @@ export class ShellComponent {
 
   constructor() {
     this.persona.load();
-    this.workspaces.ensureLoaded().subscribe();
     this.projects.ensureLoaded().subscribe();
+    // The switcher labels its rows with the `workspace-kind` list.
+    this.lookups.ensureLoaded().subscribe();
+
+    // The workspace list decides what the switcher offers AND whether the
+    // `?ws=` already in the URL is one this persona may open, so the guard
+    // below cannot run until it has arrived.
+    this.workspaces.ensureLoaded().subscribe(() => this.guardScope());
 
     this.syncChrome(this.router.url);
 
@@ -222,7 +292,32 @@ export class ShellComponent {
       .subscribe(e => {
         this.wsCode.set(read(e.urlAfterRedirects));
         this.syncChrome(e.urlAfterRedirects);
+        this.guardScope();
       });
+  }
+
+  /**
+   * ── A `?ws=` THE USER MAY NOT OPEN IS CORRECTED, NOT RENDERED (BR-15) ────
+   * Typed, pasted, bookmarked from another account, or left over after a
+   * persona switch. The API refuses it — every scoped endpoint 403s — but six
+   * pages each rendering their own error is not an answer to "you are not
+   * assigned to this workspace". So the shell resets the scope once, says why,
+   * and lands on the register, which is the screen that lists what you MAY open.
+   *
+   * This is convenience, not enforcement: `WorkspaceScope.Deny` on the server
+   * is what actually withholds the data, and it does not care what the client
+   * decided to render.
+   */
+  private guardScope() {
+    const code = this.wsCode();
+    if (!code || !this.workspaces.loaded() || this.workspaces.has(code)) return;
+
+    this.toast.show(
+      this.lang.isAr()
+        ? `${this.lang.t('ws_denied_t')} — ${this.lang.t('ws_denied_b')}`
+        : `${this.lang.t('ws_denied_t')} — ${this.lang.t('ws_denied_b')}`,
+    );
+    this.router.navigate(['/entities'], { replaceUrl: true });
   }
 
   /**
@@ -288,7 +383,11 @@ export class ShellComponent {
     localStorage.setItem('epm_side', this.collapsed() ? 'collapsed' : 'expanded');
   }
 
-  openSwitcher(el: HTMLElement) { this.closeOverlays(); this.switcherAnchor.set(el); }
+  openSwitcher(el: HTMLElement) {
+    this.closeOverlays();
+    this.switcherQuery.set('');
+    this.switcherAnchor.set(el);
+  }
   openAccount(el: HTMLElement) { this.closeOverlays(); this.accountAnchor.set(el); }
 
   closeOverlays() {
@@ -298,16 +397,25 @@ export class ShellComponent {
   }
 
   /**
-   * Re-scope. Stays on the current page and changes only `?ws=`, so switching
-   * workspace from the Contracts screen leaves you on Contracts — the reference
-   * behaviour, and the one that does not lose your place.
+   * ENTER a workspace, or return to the ministry.
+   *
+   * The reference does exactly this: its switcher rows call `openWorkspace(w)`,
+   * which sets `view='overview'` (desktop-shell.jsx:302, :422), and its "all
+   * workspaces" row calls `goEnterprise()`, which lands on the dashboard (:303,
+   * :415). الشكل 1 → الشكل 2 documents the same transition.
+   *
+   * An earlier version merged `?ws=` onto whatever page you were standing on.
+   * That is what let a user sit inside a project of workspace A with a
+   * breadcrumb reading workspace B: the scope moved and nothing landed.
+   * Entering a workspace now always arrives somewhere that is ABOUT it.
    */
   setWorkspace(code: string | null) {
     this.closeOverlays();
-    this.router.navigate([], {
-      queryParams: { ws: code || null },
-      queryParamsHandling: 'merge',
-    });
+    if (!code) {
+      this.router.navigate(['/portfolio']);
+      return;
+    }
+    this.router.navigate(['/workspace'], { queryParams: { ws: code } });
   }
 
   private go(path: string) {
@@ -324,21 +432,4 @@ export class ShellComponent {
     location.reload();
   }
 
-}
-
-/** `?ws=` out of a URL, without needing an ActivatedRoute snapshot. */
-function read(url: string): string {
-  const q = url.indexOf('?');
-  if (q < 0) return '';
-  return new URLSearchParams(url.slice(q + 1)).get('ws') ?? '';
-}
-
-/**
- * The project id out of `/projects/:id[/:module]`, or '' anywhere else.
- * `/projects` alone is the enterprise register and has no project in scope.
- */
-function readProject(url: string): string {
-  const path = url.split('?')[0];
-  const m = /^\/projects\/([^/]+)/.exec(path);
-  return m ? decodeURIComponent(m[1]) : '';
 }

@@ -65,7 +65,7 @@ export interface Stat {
   standalone: true,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="d-grid stats fit">
+    <div class="d-grid stats fit" [class.epm-stat-wide]="needsWide()">
       @for (s of stats; track s.label) {
         @if (s.unavailable) {
           <!-- The "in" class is required: .d-grid.stats .d-stat starts at
@@ -116,6 +116,25 @@ export class SummaryStripComponent implements AfterViewInit, OnDestroy {
   private onVisibility = () => { if (document.hidden) this.settleAll(); };
 
   clamp(v: number) { return Math.max(0, Math.min(100, v)); }
+
+  /**
+   * ── A CLIPPED FIGURE IS A WRONG FIGURE ────────────────────────────────
+   * `.d-stat` is `overflow: hidden` and `.d-stat-val` is 28px, so a grouped
+   * nine-digit money figure needs ~148px of tile. The strip's floor is
+   * `minmax(120px, 1fr)` (05 §8), and at that floor "420,000,000" renders as
+   * "20,000,000" — not truncated with an ellipsis, silently BEHEADED into a
+   * different, plausible, smaller number. Measured on SCR-E8 at a 900px
+   * viewport with the sidebar collapsed.
+   *
+   * So a strip that carries a long figure raises its own floor. Widening the
+   * track keeps the type scale intact — shrinking the number to fit would have
+   * meant a size off the 11/11.5/12/13/15/18/21/24 scale, and one tile in a
+   * band set in a different size is its own defect.
+   *
+   * 9 characters is "100,000,000" minus its separators — the point where the
+   * rendered string first exceeds the 120px floor.
+   */
+  needsWide = () => this.stats.some(s => !s.unavailable && this.figureText(s).length >= 9);
 
   /** The settled figure. `dp` picks decimals over grouped whole numbers. */
   figureText(s: Stat) { return this.render(s, s.value); }

@@ -4,7 +4,7 @@ import { Api } from './api';
 import { EntitiesResponse, EntityRow } from '../features/entities/entities.types';
 
 /**
- * The workspaces the sidebar switcher offers, and which one is in scope.
+ * The workspaces THIS USER may enter, and which one is in scope.
  *
  * ── SCOPE IS THE URL, NOT A SERVICE FIELD ─────────────────────────────────
  * Every enterprise endpoint already accepts `?workspace=`, and every page
@@ -12,8 +12,16 @@ import { EntitiesResponse, EntityRow } from '../features/entities/entities.types
  * navigates, and the pages react. That keeps a scoped view shareable as a
  * link and survivable across a reload, which a service field would not be.
  *
- * Loads once from EP-ENT-01, the same list the Entities register renders —
- * there is no second source of truth for what a workspace is.
+ * ── ONE LIST OF "MY WORKSPACES" (BR-15) ───────────────────────────────────
+ * Loads once from EP-ENT-01 — the same request the register renders. The
+ * SERVER decides what is in it, from the persona's assignments, so the
+ * switcher and the register cannot disagree and neither can be widened by
+ * anything the client does. الشكل 1 gives the switcher the caption
+ * «مساحات العمل المتاحة لك»; this is what makes that caption true.
+ *
+ * The client-side `has()` below is a NAVIGATION convenience — it lets the
+ * shell correct a bad `?ws=` before firing six requests that would each 403.
+ * It is not the enforcement; the enforcement is Features/Workspaces/WorkspaceScope.
  */
 @Injectable({ providedIn: 'root' })
 export class WorkspacesService {
@@ -45,6 +53,16 @@ export class WorkspacesService {
   byCode(code: string | null | undefined): EntityRow | undefined {
     if (!code) return undefined;
     return this.rows().find(w => w.code === code);
+  }
+
+  /**
+   * Is this code one the user may enter? Empty is the enterprise scope and is
+   * always allowed. Only meaningful once `loaded()` — before that the answer
+   * is "not yet known", and the shell waits rather than guessing.
+   */
+  has(code: string | null | undefined): boolean {
+    if (!code) return true;
+    return this.rows().some(w => w.code === code);
   }
 
   /** Refetch after POST /api/dev/load-fixture or /api/dev/reset. */

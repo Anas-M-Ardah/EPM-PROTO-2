@@ -86,6 +86,33 @@ const STR = {
   col_completion:  { ar: 'نسبة الإنجاز',                   en: 'Completion' },
   empty_entities_t:{ ar: 'لا توجد مساحات عمل بعد',         en: 'No workspaces yet' },
   empty_entities_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+  /** BR-15 — assigned to nothing is a real state, not an empty database. */
+  empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
+  empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
+  ws_enter:        { ar: 'دخول',                           en: 'Open' },
+  ws_enter_full:   { ar: 'الدخول إلى مساحة العمل',         en: 'Open workspace' },
+  open_project:    { ar: 'فتح المشروع',                    en: 'Open project' },
+  /** Scoped register: the workspace has no projects, which is not "no data". */
+  empty_ws_projects_t:{ ar: 'لا توجد مشاريع في هذه المساحة', en: 'No projects in this workspace' },
+  empty_ws_projects_b:{ ar: 'اختر مساحة أخرى أو عد إلى المركز لعرض المحفظة كاملة.', en: 'Pick another workspace, or return to the ministry for the whole portfolio.' },
+  empty_ws_contracts_t:{ ar: 'لا توجد عقود في هذه المساحة', en: 'No contracts in this workspace' },
+
+  // ── SCR-E8 workspace overview — «مساحة العمل › نظرة عامة» (ملحق الشكل 2)
+  ws_overview:     { ar: 'نظرة عامة',                      en: 'Overview' },
+  ws_overview_sub: { ar: 'موقف مشاريع الجهة قبل النزول إلى مشروع بعينه', en: 'The entity’s position, before descending into one project' },
+  ws_view_projects:{ ar: 'عرض المشاريع',                   en: 'View projects' },
+  ws_view_all:     { ar: 'عرض الكل',                       en: 'View all' },
+  ws_watchlist:    { ar: 'قائمة المتابعة — مشاريع خارج المسار', en: 'Watchlist — projects off track' },
+  ws_watchlist_ok: { ar: 'كل المشاريع ضمن الخطة.',         en: 'Every project is on plan.' },
+  ws_recent:       { ar: 'آخر ما جرى تحديثه',              en: 'Recently updated' },
+  ws_by_status:    { ar: 'المشاريع حسب الحالة',            en: 'Projects by status' },
+  ws_open_alerts:  { ar: 'تنبيهات مفتوحة',                 en: 'Open alerts' },
+  ws_critical_short:{ ar: 'حرجة',                          en: 'critical' },
+  ws_no_projects_t:{ ar: 'لا توجد مشاريع في هذه المساحة',  en: 'No projects in this workspace' },
+  ws_no_projects_b:{ ar: 'مساحة العمل معرّفة ولم يُدرَج فيها مشروع بعد.', en: 'The workspace exists; no project has been added to it yet.' },
+  /** The 403 the API returns when `?ws=` names a workspace outside the assignment. */
+  ws_denied_t:     { ar: 'مساحة عمل غير مسندة إليك',       en: 'Workspace not assigned to you' },
+  ws_denied_b:     { ar: 'لا يرى المستخدم بيانات خارج تشكيله. أُعيد النطاق إلى مساحاتك.', en: 'A user sees no data outside their own entity. The scope has been reset.' },
 
   // executive portfolio — ported from DDashboard (v1.1, desktop-views.jsx:45)
   portfolio_sub:   { ar: 'الوضع التعاقدي عبر المحفظة',      en: 'The contractual position across the portfolio' },
@@ -350,11 +377,15 @@ const STR = {
   enterprise_ctx:  { ar: 'الوزارة',                        en: 'Ministry-wide' },
   your_workspaces: { ar: 'مساحات العمل',                   en: 'Your workspaces' },
   ws_active_short: { ar: 'نشط',                            en: 'active' },
-  /** 06 §? — Workspaces.Kind. Only four values exist; see EntitiesDto. */
-  ws_kind_university:  { ar: 'جامعة',                      en: 'University' },
-  ws_kind_institute:   { ar: 'معهد',                       en: 'Institute' },
-  ws_kind_directorate: { ar: 'مديرية',                     en: 'Directorate' },
-  ws_kind_other:       { ar: 'جهة أخرى',                   en: 'Other' },
+  /** The switcher's own line under "All workspaces" — how many you may enter. */
+  ws_assigned_count:{ ar: 'مساحة مسندة إليك',              en: 'assigned to you' },
+  ws_current:      { ar: 'مساحة العمل الحالية',            en: 'Current workspace' },
+  ws_back_to_ministry:{ ar: 'العودة إلى المركز',           en: 'Back to the ministry' },
+  //
+  // Workspace KIND labels are NOT here. They are a business-maintained value
+  // list (`workspace-kind` in the Lookups table) like every other enum, and
+  // this map is UI chrome only. The old ws_kind_* keys were a second, drifting
+  // copy of that list and are gone.
   /** The app footer. The env badge is not decoration — see AppFooterComponent. */
   env_prototype:   { ar: 'بيئة تجريبية',                   en: 'PROTOTYPE' },
   support:         { ar: 'الدعم الفني',                    en: 'Support' },
