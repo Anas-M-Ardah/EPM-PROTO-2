@@ -116,7 +116,27 @@
       <table class="d-table epm-ws-table">
         <thead>
           <tr>
-            <th>{{ lang.t('col_project') }}</th>
+            <!--
+              الرمز IS ITS OWN COLUMN — الشكل 3 enumerates the set:
+              «الرمز · المشروع · الفرع · الحالة · الإنجاز · الكلفة (د.ع) ·
+              آخر تحديث», and the live prototype renders it that way.
+
+              It used to be a sub-line under the project name, which is what the
+              CHECKED-IN reference does (enterprise-areas.jsx:144). That copy is
+              stale — the same trap ROADMAP warns about and P-58 already hit
+              once. The document and the deployed prototype agree against it.
+            -->
+            <th style="width:104px">{{ lang.t('col_code') }}</th>
+            <!--
+              THE NAME ABSORBS THE TABLE'S SLACK, and it needs saying so
+              explicitly. `td.d-cell-strong` sets `max-width: 0` so a long cell
+              ellipsises instead of pushing the grid wide; that worked while the
+              cell also carried the id beneath the name, which gave it intrinsic
+              width. With الرمز moved to its own column the name had nothing
+              left to size against and collapsed to ~105px, truncating every row
+              to «إنشاء …». The minimum is on the header, where the column is.
+            -->
+            <th style="min-width:260px">{{ lang.t('col_project') }}</th>
             <!-- Enterprise view only. Inside one workspace every row would repeat
                  the same value, so the reference hides it. -->
             @if (showWorkspaceCol()) {
@@ -127,7 +147,13 @@
             <th>{{ lang.t('col_physical') }}</th>
             <th class="num">{{ lang.t('col_cost') }}</th>
             <th>{{ lang.t('col_updated') }}</th>
-            <th style="width:104px"><span class="epm-sr-only">{{ lang.t('open_project') }}</span></th>
+            <!--
+              NO TRAILING «دخول» COLUMN. الشكل 3's set ends at آخر تحديث, and the
+              row is the control: it carries role="button", tabindex="0",
+              Enter/Space and an aria-label naming the project it opens. The
+              column was a visible duplicate of an affordance the row already
+              has, so dropping it costs no keyboard or screen-reader access.
+            -->
           </tr>
         </thead>
         <tbody>
@@ -145,10 +171,8 @@
                 [attr.aria-label]="lang.t('open_project') + ': ' + lang.pick(p.nameAr, p.nameEn)"
                 (click)="open(p.id)"
                 (keydown)="onRowKey($event, p.id)">
-              <td class="d-cell-strong">
-                {{ lang.pick(p.nameAr, p.nameEn) }}
-                <div class="d-cell-sub mono"><bdi>{{ p.id }}</bdi></div>
-              </td>
+              <td class="mono d-cell-sub"><bdi>{{ p.id }}</bdi></td>
+              <td class="d-cell-strong">{{ lang.pick(p.nameAr, p.nameEn) }}</td>
               @if (showWorkspaceCol()) {
                 <td class="d-cell-sub">{{ lang.pick(p.workspaceNameAr, p.workspaceNameEn) }}</td>
               }
@@ -172,12 +196,6 @@
               </td>
               <td class="mono num"><bdi>{{ fmt.money(p.cost) }}</bdi></td>
               <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.updatedAt) }}</bdi></td>
-              <td>
-                <span class="epm-ws-open" tabindex="-1" aria-hidden="true">
-                  {{ lang.t('ws_enter') }}
-                  <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
-                </span>
-              </td>
             </tr>
           }
         </tbody>

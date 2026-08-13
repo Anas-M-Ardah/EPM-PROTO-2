@@ -81,8 +81,9 @@ export class ProjectsPage {
   showWorkspaceCol = computed(() => !this.workspace());
 
   /**
-   * Column count for the loading skeleton — follows showWorkspaceCol, plus the
-   * open column that is always there.
+   * Column count for the loading skeleton. الشكل 3's seven — الرمز · المشروع ·
+   * الفرع · الحالة · الإنجاز · الكلفة · آخر تحديث — plus مساحة العمل when the
+   * register is not workspace-scoped. Nothing else: the row IS the open action.
    */
   colCount = computed(() => (this.showWorkspaceCol() ? 8 : 7));
 
