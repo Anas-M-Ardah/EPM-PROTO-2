@@ -9,6 +9,7 @@ import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
+import { PersonaService, canDefineProjects } from '../../core/persona';
 import * as fmt from '../../core/format';
 import { ContractTabApi } from './contract.api';
 import {
@@ -55,8 +56,19 @@ export class ContractPage {
   private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
+  persona = inject(PersonaService);
   toast = inject(ToastService);
   fmt = fmt;
+
+  /** §23 — contract entry belongs to «المستخدم المختص» (المسار 2 المرحلة 1). */
+  canDefine = computed(() => canDefineProjects(this.persona.current()));
+
+  /** المسار 2 step 1 — «إضافة عقد», inside the project the contract belongs to. */
+  newContract() {
+    const ws = this.route.snapshot.queryParamMap.get('ws');
+    this.router.navigate(['/projects', this.projectId(), 'contract', 'new'],
+      { queryParams: ws ? { ws } : {} });
+  }
 
   projectId = signal('');
   contractId = signal('');

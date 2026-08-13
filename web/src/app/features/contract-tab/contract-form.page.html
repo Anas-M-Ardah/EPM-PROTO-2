@@ -1,0 +1,302 @@
+<!--
+  المسار 2 — إنشاء العقود وربطها بالمشروع.
+
+  THE MODULE FRAME, like every other page inside the project workspace:
+    .d-pframe → .d-pz6 (toolbar, actions)  +  .d-pbody.no-aside → .d-pz7
+  `.d-pz7` is the ONLY scrolling region in this layout (desktop.css:2368), so
+  the sections must live inside it or the form is clipped at the fold.
+
+  Five sections, in المسار 2's own order — هوية العقد والمكوّن وحالته (step 2) ·
+  المبالغ (step 3) · التواريخ · المقاول والأطراف (step 4) · كتاب الإحالة.
+
+  Classes are the app's existing form vocabulary. No component CSS.
+  Every <select> carries its selection on the <option>, never on the select's
+  own [value] — P-39.
+-->
+<div class="d-pframe">
+
+  <div class="d-pz6">
+    <b>{{ title() }}</b>
+    <span class="sp"></span>
+    <button type="button" class="d-btn sm" (click)="cancel()">{{ lang.t('cancel') }}</button>
+    @if (canDefine()) {
+      <button type="button" class="d-btn sm primary"
+              [disabled]="saving() || loading()"
+              (click)="submit()">
+        <epm-icon name="check" [size]="15" />
+        {{ saving() ? lang.t('saving') : lang.t(isNew() ? 'con_save' : 'con_save_changes') }}
+      </button>
+    }
+  </div>
+
+  <div class="d-pbody no-aside">
+    <div class="d-pz7">
+
+      @if (!canDefine()) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
+          <b>{{ lang.t('con_no_permission_t') }}</b>
+          <span>{{ lang.t('con_no_permission_b') }}</span>
+          <button class="d-btn" (click)="cancel()">{{ lang.t('cancel') }}</button>
+        </div>
+      } @else if (loading()) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="hourglass_empty" [size]="30" /></span>
+          <b>{{ lang.t('loading') }}</b>
+        </div>
+      } @else if (error()) {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+          <b>{{ lang.t('error_t') }}</b>
+          <span><bdi>{{ error() }}</bdi></span>
+          <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+        </div>
+      } @else {
+
+        <!-- الشكل 7's tabs. A new contract has no history, so the strip only
+             appears once there is something in it. -->
+        @if (!isNew()) {
+          <div class="d-secnav">
+            <button type="button" class="d-secnav-i" [class.on]="tab() === 'details'"
+                    (click)="tab.set('details')">{{ lang.t('prj_details') }}</button>
+            <button type="button" class="d-secnav-i" [class.on]="tab() === 'activity'"
+                    (click)="tab.set('activity')">
+              {{ lang.t('prj_activity') }}<span class="n"><bdi>{{ events().length }}</bdi></span>
+            </button>
+          </div>
+        }
+
+        @if (tab() === 'activity') {
+          <!-- §7's four attribution facts per row: اسم · صفة · جهة · تاريخ -->
+          <div class="d-tablewrap">
+            <table class="d-table">
+              <tbody>
+                @for (e of events(); track e.id) {
+                  <tr>
+                    <td class="d-cell-strong">{{ e.actorName }}</td>
+                    <td class="d-cell-sub">{{ actionLabel(e.action) }}</td>
+                    <td class="d-cell-sub">{{ e.actorRole }}</td>
+                    <td class="d-cell-sub">{{ e.actorParty }}</td>
+                    <td class="mono d-cell-sub"><bdi>{{ e.at }}</bdi></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+
+          @if (formError()) {
+            <div class="d-inline-err">
+              <epm-icon name="error" [size]="15" /><span>{{ formError() }}</span>
+            </div>
+          }
+
+          <p class="muted epm-form-note">
+            <epm-icon name="info" [size]="14" />{{ lang.t('prj_required_note') }}
+          </p>
+
+          <!-- ── 1. هوية العقد (step 2) ────────────────────────────────── -->
+          <epm-section [title]="lang.t('con_group_identity')" [collapsible]="true" [defaultOpen]="true">
+            <div class="epm-ws-form">
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_code') }}<i>*</i></span>
+                  <!-- The code IS the key, so it is set once and never edited:
+                       changing it would orphan every BOQ item, activity, payment
+                       and change order that names this contract. -->
+                  <input class="d-form-input mono" dir="ltr"
+                         [class.epm-invalid]="errorFor('id')"
+                         [disabled]="!isNew()"
+                         [value]="form().id ?? ''"
+                         (input)="setText('id', $any($event.target).value)"
+                         placeholder="CNT-0279" />
+                  @if (errorFor('id')) { <small class="epm-f-err">{{ errorFor('id') }}</small> }
+                  @if (!isNew()) { <small>{{ lang.t('con_code_locked') }}</small> }
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_component') }}<i>*</i></span>
+                  <input class="d-form-input"
+                         [class.epm-invalid]="errorFor('component')"
+                         [value]="form().component ?? ''"
+                         (input)="setText('component', $any($event.target).value)"
+                         [placeholder]="lang.t('con_component_ph')" />
+                  @if (errorFor('component')) {
+                    <small class="epm-f-err">{{ errorFor('component') }}</small>
+                  }
+                </label>
+              </div>
+
+              <label class="epm-ws-f">
+                <span>{{ lang.t('inf_nameAr') }}<i>*</i></span>
+                <input class="d-form-input" [class.epm-invalid]="errorFor('nameAr')"
+                       [value]="form().nameAr ?? ''"
+                       (input)="setText('nameAr', $any($event.target).value)" />
+                @if (errorFor('nameAr')) { <small class="epm-f-err">{{ errorFor('nameAr') }}</small> }
+              </label>
+
+              <label class="epm-ws-f">
+                <span>{{ lang.t('inf_nameEn') }}</span>
+                <input class="d-form-input" dir="ltr" [value]="form().nameEn ?? ''"
+                       (input)="setText('nameEn', $any($event.target).value)" />
+              </label>
+
+              <label class="epm-ws-f">
+                <span>{{ lang.t('inf_status') }}<i>*</i></span>
+                <select class="d-form-input" [class.epm-invalid]="errorFor('status')"
+                        (change)="set('status', $any($event.target).value)">
+                  @for (s of statuses(); track s.code) {
+                    <option [value]="s.code" [selected]="form().status === s.code">
+                      {{ lang.pick(s.nameAr, s.nameEn) }}
+                    </option>
+                  }
+                </select>
+                @if (errorFor('status')) { <small class="epm-f-err">{{ errorFor('status') }}</small> }
+              </label>
+            </div>
+          </epm-section>
+
+          <!-- ── 2. المبالغ (step 3) ───────────────────────────────────── -->
+          <epm-section [title]="lang.t('con_group_amounts')" [collapsible]="true" [defaultOpen]="true">
+            <div class="epm-ws-form">
+              <label class="epm-ws-f">
+                <span>{{ lang.t('con_award') }}<i>*</i></span>
+                <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                       [class.epm-invalid]="errorFor('awardAmount')"
+                       [disabled]="!isNew()"
+                       [value]="form().awardAmount ?? ''"
+                       (input)="setNumber('awardAmount', $any($event.target).value)" />
+                @if (errorFor('awardAmount')) {
+                  <small class="epm-f-err">{{ errorFor('awardAmount') }}</small>
+                }
+                <!-- Non-negotiable #6: the awarded value is never overwritten.
+                     An amendment moves it, and both figures stay readable. -->
+                @if (!isNew()) { <small>{{ lang.t('con_award_locked') }}</small> }
+              </label>
+
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_reserve') }}</span>
+                  <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                         [class.epm-invalid]="errorFor('reserveAmount')"
+                         [value]="form().reserveAmount ?? ''"
+                         (input)="setNumber('reserveAmount', $any($event.target).value)" />
+                  @if (errorFor('reserveAmount')) {
+                    <small class="epm-f-err">{{ errorFor('reserveAmount') }}</small>
+                  }
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_supervision') }}</span>
+                  <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                         [class.epm-invalid]="errorFor('supervisionAmount')"
+                         [value]="form().supervisionAmount ?? ''"
+                         (input)="setNumber('supervisionAmount', $any($event.target).value)" />
+                  @if (errorFor('supervisionAmount')) {
+                    <small class="epm-f-err">{{ errorFor('supervisionAmount') }}</small>
+                  }
+                </label>
+              </div>
+
+              <label class="epm-ws-f">
+                <span>{{ lang.t('con_monitoring') }}</span>
+                <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                       [class.epm-invalid]="errorFor('monitoringAmount')"
+                       [value]="form().monitoringAmount ?? ''"
+                       (input)="setNumber('monitoringAmount', $any($event.target).value)" />
+                @if (errorFor('monitoringAmount')) {
+                  <small class="epm-f-err">{{ errorFor('monitoringAmount') }}</small>
+                }
+                <small>{{ lang.t('con_monitoring_hint') }}</small>
+              </label>
+            </div>
+          </epm-section>
+
+          <!-- ── 3. التواريخ (step 4) ──────────────────────────────────── -->
+          <epm-section [title]="lang.t('con_group_dates')" [collapsible]="true" [defaultOpen]="true">
+            <div class="epm-ws-form">
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_start') }}<i>*</i></span>
+                  <input class="d-form-input mono" dir="ltr" type="date"
+                         [class.epm-invalid]="errorFor('start')"
+                         [value]="form().start ?? ''"
+                         (input)="setText('start', $any($event.target).value)" />
+                  @if (errorFor('start')) { <small class="epm-f-err">{{ errorFor('start') }}</small> }
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_finish') }}<i>*</i></span>
+                  <input class="d-form-input mono" dir="ltr" type="date"
+                         [class.epm-invalid]="errorFor('finish')"
+                         [disabled]="!isNew()"
+                         [value]="form().finish ?? ''"
+                         (input)="setText('finish', $any($event.target).value)" />
+                  @if (errorFor('finish')) { <small class="epm-f-err">{{ errorFor('finish') }}</small> }
+                  @if (!isNew()) { <small>{{ lang.t('con_finish_locked') }}</small> }
+                </label>
+              </div>
+            </div>
+          </epm-section>
+
+          <!-- ── 4. المقاول والأطراف (step 4) ──────────────────────────── -->
+          <epm-section [title]="lang.t('con_group_parties')" [collapsible]="true" [defaultOpen]="true">
+            <div class="epm-ws-form">
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_contractor') }}<i>*</i></span>
+                  <input class="d-form-input" [class.epm-invalid]="errorFor('contractor')"
+                         [value]="form().contractor ?? ''"
+                         (input)="setText('contractor', $any($event.target).value)" />
+                  @if (errorFor('contractor')) {
+                    <small class="epm-f-err">{{ errorFor('contractor') }}</small>
+                  }
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_executing_party') }}</span>
+                  <input class="d-form-input" [value]="form().executingParty ?? ''"
+                         (input)="setText('executingParty', $any($event.target).value)" />
+                </label>
+              </div>
+
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('inf_consultantParty') }}</span>
+                  <input class="d-form-input" [value]="form().consultant ?? ''"
+                         (input)="setText('consultant', $any($event.target).value)" />
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_contact') }}</span>
+                  <input class="d-form-input" dir="ltr" [value]="form().contactInfo ?? ''"
+                         (input)="setText('contactInfo', $any($event.target).value)" />
+                </label>
+              </div>
+            </div>
+          </epm-section>
+
+          <!-- ── 5. كتاب الإحالة ──────────────────────────────────────── -->
+          <epm-section [title]="lang.t('con_group_letter')" [collapsible]="true" [defaultOpen]="false">
+            <div class="epm-ws-form">
+              <div class="epm-ws-f2">
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_incoming_no') }}</span>
+                  <input class="d-form-input mono" dir="ltr" [value]="form().incomingNo ?? ''"
+                         (input)="setText('incomingNo', $any($event.target).value)" />
+                </label>
+
+                <label class="epm-ws-f">
+                  <span>{{ lang.t('con_incoming_date') }}</span>
+                  <input class="d-form-input mono" dir="ltr" type="date"
+                         [value]="form().incomingDate ?? ''"
+                         (input)="setText('incomingDate', $any($event.target).value)" />
+                </label>
+              </div>
+            </div>
+          </epm-section>
+        }
+      }
+    </div>
+  </div>
+</div>

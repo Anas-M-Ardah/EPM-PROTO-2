@@ -21,10 +21,60 @@
   <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
     <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
   </button>
-  <button actions type="button" class="d-btn primary" (click)="toast.demo('عقد جديد', 'New contract')">
-    <epm-icon name="add" [size]="16" />{{ lang.t('new_contract') }}
-  </button>
+  <!-- المسار 2 — no longer a demo stub. This register spans projects, so it
+       asks which one before handing off to the project-scoped form. -->
+  @if (canDefine()) {
+    <button actions type="button" class="d-btn primary" (click)="openPicker()">
+      <epm-icon name="add" [size]="16" />{{ lang.t('new_contract') }}
+    </button>
+  }
 </epm-page-head>
+
+@if (pickerOpen()) {
+  <!-- No `sub`. It carried «العقد يتبع مشروعاً واحداً…», which restated the
+       title in a longer sentence — the same call the create-workspace drawer
+       already made. The field below says what it is for. -->
+  <epm-drawer [title]="lang.t('con_pick_project_t')"
+              [hasFooter]="true"
+              [closeLabel]="lang.t('cancel')"
+              (closed)="closePicker()">
+    <div class="epm-ws-form">
+      @if (pickerLoading()) {
+        <p class="muted">{{ lang.t('loading') }}</p>
+      } @else if (projects().length === 0) {
+        <!-- No project in scope means no contract can be created at all —
+             a contract hangs off a project (المسار 2). Say so plainly. -->
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
+          <b>{{ lang.t('empty_projects_t') }}</b>
+        </div>
+      } @else {
+        <label class="epm-ws-f">
+          <span>{{ lang.t('col_project') }}<i>*</i></span>
+          <select class="d-form-input"
+                  (change)="chosenProject.set($any($event.target).value)">
+            <option value=""></option>
+            <!-- Selection on the OPTION, never the select's [value] — P-39. -->
+            @for (p of projects(); track p.id) {
+              <option [value]="p.id" [selected]="chosenProject() === p.id">
+                {{ lang.pick(p.nameAr, p.nameEn) }} — {{ p.id }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+    </div>
+
+    <ng-container footer>
+      <button type="button" class="d-btn" (click)="closePicker()">{{ lang.t('cancel') }}</button>
+      <button type="button" class="d-btn primary"
+              [disabled]="!chosenProject()"
+              (click)="goToNewContract()">
+        {{ lang.t('con_pick_project_go') }}
+      </button>
+    </ng-container>
+  </epm-drawer>
+}
 
 @if (loading()) {
   <epm-table-skeleton [cols]="colCount" [rows]="5" [loadingLabel]="lang.t('loading')" />

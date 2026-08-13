@@ -63,7 +63,8 @@ const STR = {
   col_branch:      { ar: 'الفرع',                          en: 'Branch' },
   col_status:      { ar: 'الحالة',                         en: 'Status' },
   col_physical:    { ar: 'الإنجاز',                        en: 'Physical' },
-  col_cost:        { ar: 'الكلفة',                         en: 'Cost' },
+  /** الشكل 3 names the unit in the header: «الكلفة (د.ع)». */
+  col_cost:        { ar: 'الكلفة (د.ع)',                   en: 'Cost (IQD)' },
   col_updated:     { ar: 'آخر تحديث',                      en: 'Updated' },
   all:             { ar: 'الكل',                           en: 'All' },
   showing:         { ar: 'مشروع',                          en: 'projects' },
@@ -299,6 +300,18 @@ const STR = {
   ovw_alerts_sub:  { ar: 'التنبيهات غير المُقَرّة لهذا المشروع', en: 'Unacknowledged alerts on this project' },
   ovw_no_alerts:   { ar: 'لا توجد تنبيهات مفتوحة.',        en: 'No open alerts.' },
 
+  // الشكل 4 — «خط سير المراحل». The four states are NOT the document's approval
+  // vocabulary (معتمد · جاهز للمراجعة · مُعاد بملاحظات): nothing in this system
+  // can say those truthfully. See Domain/ModuleReadiness.cs.
+  ovw_track:       { ar: 'خط سير المراحل',                 en: 'Module track' },
+  ovw_track_started:{ ar: 'وحدات بدأت',                    en: 'modules started' },
+  ovw_next_action: { ar: 'الإجراء التالي المطلوب',         en: 'Next required action' },
+  ovw_no_next_action:{ ar: 'لا يوجد إجراء مطلوب حالياً.',  en: 'Nothing is waiting on you right now.' },
+  ovw_waiting:     { ar: 'بانتظار إجراء',                  en: 'awaiting action' },
+  ovw_state_not_started:{ ar: 'لم تبدأ',                   en: 'Not started' },
+  ovw_state_in_progress:{ ar: 'قيد الإنجاز',               en: 'In progress' },
+  ovw_state_needs_attention:{ ar: 'يتطلب إجراء',           en: 'Needs action' },
+
   // SCR-W2 Information — field labels. The GROUPING is the endpoint's; only
   // the labels are here, because a label is chrome (see information.page.ts).
   inf_group_identity: { ar: 'هوية المشروع',                en: 'Project identity' },
@@ -366,6 +379,47 @@ const STR = {
   prj_no_permission_t:{ ar: 'تعريف المشاريع غير متاح بصفتك الحالية.', en: 'Defining projects is not available in your current capacity.' },
   prj_no_permission_b:{ ar: '§23 يسند تعريف المشروع إلى المستخدم المختص في الجهة. بدّل «العرض بصفة» للمتابعة.', en: '§23 assigns project definition to the university specialist. Switch «العرض بصفة» to continue.' },
   inf_coordinates_hint:{ ar: 'خط العرض ثم خط الطول، مفصولين بفاصلة.', en: 'Latitude then longitude, comma separated.' },
+
+  // المسار 2 — the contract form. One component serves create and edit, so the
+  // title and the save verb are the only things that differ between them.
+  con_new_title:   { ar: 'إضافة عقد جديد',                 en: 'Add a new contract' },
+  con_edit_title:  { ar: 'تعديل بيانات العقد',             en: 'Edit contract details' },
+  con_save:        { ar: 'حفظ العقد',                      en: 'Save contract' },
+  con_save_changes:{ ar: 'حفظ التعديلات',                  en: 'Save changes' },
+  con_saved:       { ar: 'حُفظ العقد',                     en: 'Contract saved' },
+  con_updated:     { ar: 'حُفظت التعديلات',                en: 'Changes saved' },
+  con_fix_errors:  { ar: 'تعذّر الحفظ. راجع الحقول أدناه.', en: 'Could not save. Review the fields below.' },
+  con_group_identity:{ ar: 'هوية العقد',                   en: 'Contract identity' },
+  con_group_amounts:{ ar: 'المبالغ',                       en: 'Amounts' },
+  con_group_dates: { ar: 'التواريخ',                       en: 'Dates' },
+  con_group_parties:{ ar: 'المقاول و الأطراف',             en: 'Contractor & parties' },
+  con_group_letter:{ ar: 'كتاب الإحالة',                   en: 'Award letter' },
+  con_code:        { ar: 'رمز العقد',                      en: 'Contract code' },
+  con_code_locked: { ar: 'الرمز هو مفتاح العقد ولا يقبل التعديل بعد الحفظ.', en: 'The code is the contract key and cannot be changed after saving.' },
+  con_component:   { ar: 'المكوّن',                        en: 'Component' },
+  con_component_ph:{ ar: 'المكوّن المدني',                 en: 'Civil works' },
+  con_award:       { ar: 'مبلغ الإحالة',                   en: 'Award amount' },
+  con_award_locked:{ ar: 'القيمة المُحالة لا تُعدَّل — يحرّكها أمر تغييري.', en: 'The awarded value is never edited — an amendment moves it.' },
+  con_reserve:     { ar: 'مبلغ الاحتياط',                  en: 'Reserve amount' },
+  con_supervision: { ar: 'مبلغ الإشراف',                   en: 'Supervision amount' },
+  con_monitoring:  { ar: 'مبلغ المراقبة',                  en: 'Monitoring amount' },
+  /** `01 §2.3` lists three expense items; المسار 2 asks for four. See Contract.cs. */
+  con_monitoring_hint:{ ar: 'يطلبه المسار 1 ضمن المبالغ الأربعة.', en: 'Requested by المسار 2 as the fourth amount.' },
+  con_start:       { ar: 'تاريخ المباشرة',                 en: 'Start date' },
+  con_finish:      { ar: 'تاريخ الإنجاز التعاقدي',         en: 'Contractual finish' },
+  con_finish_locked:{ ar: 'الإنجاز التعاقدي لا يُعدَّل — يحرّكه أمر تغييري.', en: 'The contractual finish is never edited — an amendment moves it.' },
+  con_contractor:  { ar: 'اسم المقاول',                    en: 'Contractor' },
+  con_executing_party:{ ar: 'الجهة المنفّذة',              en: 'Executing party' },
+  con_contact:     { ar: 'بيانات التواصل',                 en: 'Contact details' },
+  con_incoming_no: { ar: 'رقم الكتاب',                     en: 'Letter number' },
+  con_incoming_date:{ ar: 'تاريخ الكتاب',                  en: 'Letter date' },
+  /** SCR-E3's «عقد جديد» — the cross-portfolio register has no project to inherit. */
+  con_pick_project_t:{ ar: 'اختر المشروع',                 en: 'Choose the project' },
+  con_pick_project_go:{ ar: 'متابعة',                      en: 'Continue' },
+  con_act_created: { ar: 'أضاف العقد',                     en: 'added the contract' },
+  con_act_updated: { ar: 'عدّل بيانات العقد',              en: 'updated the contract' },
+  con_no_permission_t:{ ar: 'إدخال العقود غير متاح بصفتك الحالية.', en: 'Entering contracts is not available in your current capacity.' },
+  con_no_permission_b:{ ar: '§23 يسند إدخال العقود إلى المستخدم المختص في الجهة. بدّل «العرض بصفة» للمتابعة.', en: '§23 assigns contract entry to the university specialist. Switch «العرض بصفة» to continue.' },
 
   // SCR-W3 Contract — ported from DModContractNew + DContractAmendments.
   // The amendment STATE labels are not here: they are stored codes and come

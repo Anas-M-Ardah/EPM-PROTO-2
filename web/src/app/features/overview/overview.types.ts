@@ -93,6 +93,36 @@ export interface OverviewUnavailable {
   needsEn: string;
 }
 
+/**
+ * One module of الشكل 4's «خط سير المراحل».
+ *
+ * `id` matches the rail's module id (features/workspace/project-modules.ts) —
+ * that is what lets the strip, the sidebar and the next-action link agree.
+ *
+ * `state` is one of: not-available · not-started · in-progress · needs-attention.
+ * Deliberately NOT الشكل 4's approval words (معتمد · جاهز للمراجعة · مُعاد
+ * بملاحظات): nothing in this system can say them truthfully.
+ */
+export interface OverviewModule {
+  id: string;
+  state: string;
+  rows: number;
+  waiting: number;
+}
+
+/** Modules STARTED out of modules AVAILABLE — الشكل 4's «4/8», honestly renamed. */
+export interface OverviewProgress {
+  started: number;
+  available: number;
+}
+
+/** «الإجراء التالي المطلوب», or null when nothing is waiting. */
+export interface OverviewNextAction {
+  moduleId: string;
+  reason: string;
+  waiting: number;
+}
+
 export interface OverviewResponse {
   project: OverviewProject;
   totals: OverviewTotals;
@@ -100,4 +130,7 @@ export interface OverviewResponse {
   beneficiaries: OverviewBeneficiary[];
   alerts: OverviewAlerts;
   unavailable: OverviewUnavailable[];
+  modules: OverviewModule[];
+  progress: OverviewProgress;
+  nextAction: OverviewNextAction | null;
 }

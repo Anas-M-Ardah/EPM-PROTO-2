@@ -754,3 +754,14 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    viewport height and any number of personas. */
 .epm-acct-pop .d-pop { display: flex; flex-direction: column; overflow: hidden; }
 .epm-acct-pop .epm-persona-list { flex: 0 1 auto; min-block-size: 0; overflow-y: auto; }
+
+
+/* «الإجراء التالي المطلوب» — one primary control, sized like every other
+   d-btn rather than a banner. Its sub-line carries the count.
+
+   The strip above it needs NOTHING here: `.d-stagebar` is the design system's
+   own component (desktop.css:1297) and renders «خط سير المراحل» as shipped. An
+   earlier pass hand-rolled chips for it and collided with the existing
+   `.epm-track` rail — CLAUDE.md §7, grep before writing a rule. */
+.epm-next-action { align-items: center; gap: var(--space-8, 8px); margin-block-end: var(--space-12); }
+.epm-next-action small { color: inherit; opacity: .8; margin-inline-start: var(--space-6, 6px); }

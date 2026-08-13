@@ -32,7 +32,20 @@
     </div></div>
 
   } @else if (rows().length === 0) {
-    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_contract') }}</span></div>
+    <div class="d-pz6">
+      <span class="z6-t">{{ lang.t('mod_contract') }}</span>
+      <span class="sp"></span>
+      <!-- THE FIRST CONTRACT HAS TO BE REACHABLE FROM HERE. The add action used
+           to live only in the register branch below, which needs at least one
+           row to render — so a project with no contracts, which is EVERY newly
+           defined project, had no way to get its first one. 04 §9: an empty
+           state must say what to do, and the button is what makes that true. -->
+      @if (canDefine()) {
+        <button type="button" class="d-btn sm primary" (click)="newContract()">
+          <epm-icon name="add" [size]="15" />{{ lang.t('con_add') }}
+        </button>
+      }
+    </div>
     <div class="d-pbody no-aside"><div class="d-pz7">
       <!-- No contract is a real state, not a loading gap: a project is
            registered before it is awarded (04 §9). -->
@@ -40,6 +53,11 @@
         <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
         <b>{{ lang.t('ovw_no_contracts_t') }}</b>
         <span>{{ lang.t('ovw_no_contracts_b') }}</span>
+        @if (canDefine()) {
+          <button class="d-btn primary" (click)="newContract()">
+            <epm-icon name="add" [size]="15" />{{ lang.t('con_add') }}
+          </button>
+        }
       </div>
     </div></div>
 
@@ -51,9 +69,14 @@
       <button type="button" class="d-btn sm" (click)="toast.demo('تصدير', 'Export')">
         <epm-icon name="download" [size]="15" />{{ lang.t('export') }}
       </button>
-      <button type="button" class="d-btn sm primary" (click)="toast.demo('إضافة عقد', 'Add contract')">
-        <epm-icon name="add" [size]="15" />{{ lang.t('con_add') }}
-      </button>
+      <!-- المسار 2 step 1 — «فتح وحدة العقود وإضافة عقد». No longer a demo
+           stub. Offered to «المستخدم المختص» only (§23), the same way the
+           projects register offers «مشروع جديد». -->
+      @if (canDefine()) {
+        <button type="button" class="d-btn sm primary" (click)="newContract()">
+          <epm-icon name="add" [size]="15" />{{ lang.t('con_add') }}
+        </button>
+      }
     </div>
 
     <div class="d-pbody no-aside">

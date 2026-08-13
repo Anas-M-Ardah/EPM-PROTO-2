@@ -43,6 +43,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // (الشكل 5's second tab). Not a workflow — there is none.
     public DbSet<ProjectActivityEvent> ProjectActivityEvents => Set<ProjectActivityEvent>();
 
+    // ── المسار 2 — إنشاء العقود وربطها بالمشروع ──────────────────────────
+    // سجل النشاط, الشكل 7's fifth contract tab.
+    public DbSet<ContractActivityEvent> ContractActivityEvents => Set<ContractActivityEvent>();
+
     // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
     public DbSet<Lookup> Lookups => Set<Lookup>();
 
@@ -123,6 +127,7 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // Same reason: an activity event is something that HAPPENED, so it has
         // no natural name. Ordered by Id, which is the order it occurred in.
         b.Entity<ProjectActivityEvent>().HasKey(x => x.Id);
+        b.Entity<ContractActivityEvent>().HasKey(x => x.Id);
 
         // The code IS the identity — it is what Projects.BeneficiaryCodes stores.
         b.Entity<Beneficiary>().HasKey(x => x.Code);

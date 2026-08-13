@@ -1,5 +1,5 @@
 import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -10,9 +10,11 @@ import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
+import { moduleById } from '../workspace/project-modules';
 import { OverviewApi } from './overview.api';
 import {
   OverviewAlerts, OverviewBeneficiary, OverviewContract,
+  OverviewModule, OverviewNextAction, OverviewProgress,
   OverviewProject, OverviewTotals, OverviewUnavailable,
 } from './overview.types';
 
@@ -49,6 +51,7 @@ import {
 export class OverviewPage {
   private api = inject(OverviewApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   fmt = fmt;
@@ -59,6 +62,90 @@ export class OverviewPage {
   beneficiaries = signal<OverviewBeneficiary[]>([]);
   alerts = signal<OverviewAlerts>({ open: 0, critical: 0, warning: 0, info: 0 });
   unavailable = signal<OverviewUnavailable[]>([]);
+
+  // ── الشكل 4 — «خط سير المراحل» و«الإجراء التالي المطلوب» ────────────────
+  modules = signal<OverviewModule[]>([]);
+  progress = signal<OverviewProgress>({ started: 0, available: 0 });
+  nextAction = signal<OverviewNextAction | null>(null);
+
+  /**
+   * The strip, in rail order, carrying each module's LABEL and ROUTE.
+   *
+   * The label and the route come from `project-modules.ts` — the same list the
+   * sidebar renders — so the strip cannot name a module differently from the
+   * rail beside it, and cannot link somewhere the rail would not.
+   * Unbuilt modules are dropped: الشكل 4's strip reports on the project, and a
+   * phase-6 module is not this project's business.
+   */
+  strip = computed(() => this.modules()
+    .filter(m => m.state !== 'not-available')
+    .map(m => ({ ...m, mod: moduleById(m.id) }))
+    .filter(x => !!x.mod));
+
+  /** «الإجراء التالي المطلوب» resolved to something clickable, or null. */
+  next = computed(() => {
+    const n = this.nextAction();
+    if (!n) return null;
+    const mod = moduleById(n.moduleId);
+    return mod ? { ...n, mod } : null;
+  });
+
+  /**
+   * A readiness state's label. The wire codes are hyphenated (`not-started`)
+   * and `lang.ts` keys are underscored, so the mapping happens HERE rather than
+   * as string concatenation in the template — which silently produced
+   * `ovw_state_not-started` and rendered the raw key.
+   */
+  stateLabel(state: string): string {
+    return this.lang.t(('ovw_state_' + state.replace(/-/g, '_')) as never);
+  }
+
+  /** A module's own label, from the rail's list. */
+  moduleLabel(key: string): string {
+    return this.lang.t(key as never);
+  }
+
+  /**
+   * The step's readiness class and icon, mapped onto the REFERENCE's own
+   * vocabulary (`../epm/app/data.jsx:464` READINESS) so `.d-stagebar` renders
+   * exactly as it does in the prototype.
+   *
+   * Only three of the reference's seven are reachable here. `approved`,
+   * `ready` and `returned` are approval verdicts this system cannot make — see
+   * Domain/ModuleReadiness.cs — so they are deliberately never emitted. The
+   * reference reaches them by generating readiness from a seeded RNG
+   * (`buildReadiness`, `rng(p.id.charCodeAt(6) * 13 + 5)`), which is exactly
+   * the fabrication this screen must not repeat.
+   */
+  stateClass(state: string): string {
+    switch (state) {
+      case 'in-progress': return 'r-info';
+      case 'needs-attention': return 'r-warn';
+      default: return 'r-neutral';
+    }
+  }
+
+  stateIcon(state: string): string {
+    switch (state) {
+      case 'in-progress': return 'pending';
+      case 'needs-attention': return 'priority_high';
+      default: return 'radio_button_unchecked';
+    }
+  }
+
+  /** The head bar's completion fill, as a percentage of available modules. */
+  progressPct = computed(() => {
+    const p = this.progress();
+    return p.available === 0 ? 0 : Math.round((p.started / p.available) * 100);
+  });
+
+  /** Open the module the next action points at, keeping `?ws=` scope. */
+  goToModule(moduleId: string) {
+    const ws = this.route.snapshot.queryParamMap.get('ws');
+    const id = this.route.parent?.snapshot.paramMap.get('id') ?? '';
+    this.router.navigate(['/projects', id, moduleId],
+      { queryParams: ws ? { ws } : {} });
+  }
 
   loading = signal(true);
   error = signal<string | null>(null);
@@ -209,6 +296,9 @@ export class OverviewPage {
         this.beneficiaries.set(res.beneficiaries);
         this.alerts.set(res.alerts);
         this.unavailable.set(res.unavailable);
+        this.modules.set(res.modules ?? []);
+        this.progress.set(res.progress ?? { started: 0, available: 0 });
+        this.nextAction.set(res.nextAction ?? null);
         this.loading.set(false);
       },
       error: e => {
