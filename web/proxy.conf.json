@@ -1,7 +1,7 @@
 {
   "/api": {
-    "target": "http://localhost:5080",
-    "secure": false,
+    "target": "https://emp-infinite.runasp.net",
+    "secure": true,
     "changeOrigin": true
   }
 }
