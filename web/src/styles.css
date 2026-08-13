@@ -54,6 +54,40 @@
    flex parent, its host needs this. */
 epm-app-footer { display: contents; }
 
+/* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
+   `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
+   flex child of `.d-detail-main`, so that `.d-pz7` inside it is the ONE
+   scrolling box. Angular puts the routed component's host element in between,
+   and a plain block host takes `height: auto` — so the frame grows to its
+   content, `.d-pz7` never gets a bounded height, and the overflow travels up to
+   `.d-fill { overflow: hidden }`, which clips it.
+
+   MEASURED, on a 910px viewport with the fixture loaded: `.d-pz7` scrolled on
+   NONE of the seven built modules, and overview · progress · financial ·
+   changeorders · information overflowed `.d-main` by up to 780px — the bottom
+   of each was unreachable. الشكل 5 is where it became obvious, because its six
+   cards are the tallest content in the workspace and the edit bar sits below
+   them, but the defect is the shell's and it was there before.
+
+   One rule, because the host is the only thing wrong: `display: contents`
+   removes it from the box tree and hands each flex parent its real child back.
+   Every module added later needs its selector here — or its page will not
+   scroll.
+
+   TWO hosts sit on the chain, not one: `<epm-workspace-page>` between `.d-main`
+   and `.d-detail-layout`, then the module's own host between `.d-detail-main`
+   and `.d-pframe`. Both have to go, or the height still stops at the survivor. */
+epm-workspace-page,
+epm-overview-page,
+epm-information-page,
+epm-contract-page,
+epm-contract-form-page,
+epm-boq-page,
+epm-schedule-page,
+epm-progress-page,
+epm-financials-page,
+epm-change-orders-page { display: contents; }
+
 /* The leading icon slot in a .d-pop-row that has no emblem — the reference
    sets this inline on each row (desktop-shell.jsx:437-442). */
 .epm-pop-ico { inline-size: 22px; display: grid; place-items: center; flex: none; }
@@ -705,6 +739,61 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    canvas colours — without this they inherit the topbar's light-on-dark and
    render white on white when the menu opens. */
 .epm-role-select option { background: var(--surface); color: var(--on-surface); }
+
+/* ══ <epm-select> — THE APP'S ONE DROPDOWN ════════════════════════════════
+   The trigger IS `.d-form-input` (same height, border, radius, focus ring), so
+   a select and a text box sit on the same line without a second control
+   vocabulary. Only what a <button> cannot inherit from an <input> is set here.
+
+   The PANEL is `.d-pop` + `.d-pop-row`, already in desktop.css:1082 — the
+   switcher and the account menu use the same rows, so an option looks like
+   every other chooseable row in the app. Tokens only, no literals. */
+.epm-select {
+  display: flex; align-items: center; gap: var(--space-8);
+  text-align: start; cursor: pointer;
+}
+.epm-select:disabled { cursor: not-allowed; opacity: .6; }
+/* The value truncates; the chevron never does. */
+.epm-select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epm-select-v.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
+.epm-select-chev { flex: none; color: var(--on-surface-variant); transition: transform var(--dur-fast); }
+.epm-select.on .epm-select-chev { transform: rotate(180deg); }
+/* Open is a state the control shows, not only the panel — otherwise the field
+   looks inert while its list is up. */
+.epm-select.on { border-color: var(--primary); }
+
+/* ── THE PANEL LINES UP WITH THE FIELD, TO THE PIXEL ──────────────────────
+   `.d-pop` is a MENU surface: 7px of padding, 260px min-width and its own
+   `overflow-y: auto` for a 70vh list. All three are wrong for a select, whose
+   panel is not a menu floating near a button but the field's own list:
+
+     · the padding put the option text 17px from the panel edge (7 + the row's
+       10) while the trigger's text sits at 10 — a 7px step you can see;
+     · `min-width: 260px` made the panel wider than any narrower field, so the
+       two edges stopped agreeing;
+     · its scroller nested INSIDE the list's own, giving two tracks.
+
+   So for a select the panel keeps only the surface — border, radius, plane —
+   and hands the inline padding to the rows and the scrolling to the list. */
+.d-pop:has(> .epm-select-list) {
+  padding-inline: 0;
+  padding-block: var(--space-4);
+  min-width: 0;
+  max-height: none;
+  overflow: hidden;   /* the list scrolls; the panel only clips its corners */
+}
+
+.epm-select-list { max-height: 264px; overflow-y: auto; }
+/* 10px — the same inline inset as `.d-form-input`, so the selected value does
+   not shift sideways when the list opens under it. */
+.epm-select-opt { gap: var(--space-8); font-size: 13px; padding-inline: 10px; border-radius: 0; }
+.epm-select-opt.act { background: var(--hover-overlay); }
+.epm-select-opt.on { font-weight: var(--fw-semibold, 600); }
+/* Trailing, and only on the selected row — so it marks the selection without
+   indenting every other label away from the field's own text inset. */
+.epm-select-tick { flex: none; margin-inline-start: auto; color: var(--primary); }
+.epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
 
 /* The "fields marked with a star are required" line above the sections. */
 .epm-form-note {

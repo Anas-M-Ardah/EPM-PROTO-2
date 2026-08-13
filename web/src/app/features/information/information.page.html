@@ -1,23 +1,60 @@
 <!--
-  SCR-W2 Project Information — v1.1 module skeleton.
-  Ported from DModInformation, ../epm@design/system-revamp
-  app/project-modules.jsx:280.
+  SCR-W2 — الشكل 5 «معلومات المشروع — التفاصيل».
 
-  Renders its own module frame: Z6 title bar → Z7 scrolling body. Four semantic
-  field groups, each a label + space and a two-column grid — never a nested box
-  (04 §3, CLAUDE.md §6).
+  THE ZONES ARE THE PROTOTYPE'S (app/project-modules.jsx · DModInformation):
+
+    .d-pz6    معلومات المشروع                          [تعديل]
+    .d-pz5    التفاصيل · سجل النشاط ⑥
+    .d-pbody  six .d-fgroup cards  (or the activity trail)
+    .d-z9     [إلغاء] [حفظ التعديلات]        ← edit mode only
+
+  Every one of those classes is already in web/src/styles — copied verbatim from
+  the reference. Nothing here adds CSS (CLAUDE.md §7).
+
+  Every id, date and coordinate is <bdi>-isolated (05 §5.2).
 -->
 <div class="d-pframe">
+
   <div class="d-pz6">
     <span class="z6-t">{{ lang.t('mod_information') }}</span>
     <span class="sp"></span>
+    <!--
+      «زر تعديل». Offered only when the SERVER said this persona may define
+      projects (§23 «المستخدم المختص») — the same capacity EP-PRJ-03 checks
+      before it will accept the save, so the button and the endpoint cannot
+      disagree. Absent on the activity tab and while editing, as in the
+      prototype: there is nothing on a log to edit.
+    -->
+    @if (showEditButton()) {
+      <button type="button" class="d-btn sm" (click)="edit()">
+        <epm-icon name="edit" [size]="15" />{{ lang.t('prj_edit') }}
+      </button>
+    }
   </div>
+
+  @if (!loading() && !error()) {
+    <!-- «تبويبان: التفاصيل · سجل النشاط (6 أحداث)» — the count rides on the
+         tab, which is why EP-INF-01 returns the log with the card. -->
+    <div class="d-pz5" role="tablist">
+      <button type="button" role="tab" [class.on]="tab() === 'details'"
+              [attr.aria-selected]="tab() === 'details'"
+              [disabled]="editing()"
+              (click)="openTab('details')">{{ lang.t('prj_details') }}</button>
+      <button type="button" role="tab" [class.on]="tab() === 'activity'"
+              [attr.aria-selected]="tab() === 'activity'"
+              [disabled]="editing()"
+              (click)="openTab('activity')">
+        {{ lang.t('prj_activity') }}<span class="n"><bdi>{{ events().length }}</bdi></span>
+      </button>
+    </div>
+  }
 
   <div class="d-pbody no-aside">
     <div class="d-pz7">
 
       @if (loading()) {
         <epm-table-skeleton [cols]="2" [rows]="6" [loadingLabel]="lang.t('loading')" />
+
       } @else if (error()) {
         <div class="d-empty">
           <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
@@ -25,7 +62,8 @@
           <span><bdi>{{ error() }}</bdi></span>
           <button class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
         </div>
-      } @else {
+
+      } @else if (tab() === 'details') {
         <!--
           There is no "empty because the database is empty" state here. This
           module renders one project's stored columns; if the project did not
@@ -33,12 +71,90 @@
           An individual field with no value renders an em dash, which the
           shared field grid does — "not recorded" is an answer.
         -->
+        @if (formError()) {
+          <div class="d-inline-err">
+            <epm-icon name="error" [size]="15" /><span>{{ formError() }}</span>
+          </div>
+        }
+
+        @if (editing()) {
+          <p class="muted epm-form-note">
+            <epm-icon name="info" [size]="14" />{{ lang.t('prj_required_note') }}
+          </p>
+        }
+
         @for (s of sections(); track s.id) {
-          <epm-section [title]="s.title">
-            <epm-field-grid [fields]="s.fields" />
-          </epm-section>
+          <epm-field-group [id]="'sec-' + s.id" [title]="s.title" [sub]="s.sub">
+            <epm-field-grid
+              [fields]="s.fields"
+              [editing]="editing()"
+              [proposedLabel]="lang.t('prj_suggested')"
+              [proposedHint]="lang.t('prj_suggested_hint')"
+              [unsetLabel]="lang.t('unset')"
+              (changed)="set($event)" />
+          </epm-field-group>
+        }
+
+      } @else {
+        <!--
+          سجل النشاط — the `.d-trail` timeline the prototype uses for one
+          record's history (design standards L23), NOT a table: each step is an
+          actor, their capacity and party, and what they did.
+
+          §7 asks that every edit be attributable «باسم منفّذها وصفته وجهته
+          وتاريخها» — the four facts on each step. The prototype also renders
+          per-field «from → to» chips; this system does not record which columns
+          an edit touched, so the step states the action instead of inventing a
+          diff. See the report.
+        -->
+        @if (events().length === 0) {
+          <div class="d-empty">
+            <span class="d-empty-ico"><epm-icon name="history" [size]="30" /></span>
+            <b>{{ lang.t('prj_no_activity_t') }}</b>
+            <span>{{ lang.t('prj_no_activity_b') }}</span>
+          </div>
+        } @else {
+          <div class="d-actlog">
+            <div class="d-trail">
+              @for (e of events(); track e.id) {
+                <div class="d-tstep">
+                  <span class="tdot"><epm-icon name="edit" [size]="11" /></span>
+                  <div class="th">
+                    <span>{{ e.actorName }}</span>
+                    <time class="tm"><bdi>{{ e.at }}</bdi></time>
+                  </div>
+                  <div class="tr">
+                    <span class="ro">{{ e.actorRole }}</span>
+                    <span class="sep">·</span>
+                    <span class="og">{{ e.actorParty }}</span>
+                  </div>
+                  <div class="tb">{{ actionLabel(e.action) }}</div>
+                </div>
+              }
+            </div>
+          </div>
         }
       }
     </div>
   </div>
+
+  <!--
+    Z9 — the edit action bar, present only while editing. The prototype's
+    carries [إلغاء] [حفظ كمسودة] [إرسال]; the draft → review → submit half of
+    المسار 1 was REMOVED from this build at the client's instruction, so the bar
+    keeps the zone and the two actions that still exist. Recorded in the report
+    rather than reinstated silently.
+  -->
+  @if (editing()) {
+    <div class="d-z9">
+      <span class="sp"></span>
+      <button type="button" class="d-btn sm" [disabled]="saving()" (click)="cancel()">
+        {{ lang.t('cancel') }}
+      </button>
+      <button type="button" class="d-btn sm primary" [disabled]="saving()" (click)="save()">
+        <epm-icon name="check" [size]="14" />
+        {{ saving() ? lang.t('saving') : lang.t('prj_save_changes') }}
+      </button>
+    </div>
+  }
 </div>

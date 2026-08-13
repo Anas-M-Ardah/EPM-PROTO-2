@@ -371,20 +371,45 @@ public static class ProjectsEndpoints
         p.Formation, p.BeneficiaryCodes, p.OrgStructure, p.Branch,
         p.ConsultantParty, p.DesignerParty, p.Executor);
 
-    /// <summary>Which values on this record the SYSTEM put there — الشكل 5's «مقترح» tags.</summary>
+    /// <summary>
+    /// الشكل 5's «مقترح» tags — THE FIVE THE DOCUMENT MARKS: رمز المشروع ·
+    /// المنطقة الجغرافية · أولوية المشروع · الفئة الإنفاقية · رقم اعتماد الموازنة.
+    /// Its prose names only the first two; its screen marks all five, and the
+    /// screen is the one that shows the badge.
+    ///
+    /// ── THE TEST IS "HAS A VALUE", AND THAT IS A KNOWN LIMIT ─────────────
+    /// Nothing records WHO put a value here — there is no provenance column and
+    /// one was not added, because the document defines no confirm step that
+    /// would ever clear the flag. So a value the specialist typed carries the
+    /// tag too. The alternative was to invent an acceptance workflow the
+    /// documents do not describe. Reported, not silently resolved.
+    /// </summary>
     private static IReadOnlyList<ProjectSuggestion> SuggestionsOf(Data.Entities.Project p)
     {
         var list = new List<ProjectSuggestion>();
-        if (!string.IsNullOrWhiteSpace(p.Code)) list.Add(new("code", p.Code));
-        if (!string.IsNullOrWhiteSpace(p.ExpenditureCategory))
-            list.Add(new("expenditureCategory", p.ExpenditureCategory));
+        void Add(string field, string value)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) list.Add(new(field, value));
+        }
+
+        Add("code", p.Code);
+        Add("region", p.Region);
+        Add("priority", p.Priority);
+        Add("expenditureCategory", p.ExpenditureCategory);
+        Add("budgetApprovalNumber", p.BudgetApprovalNumber);
         return list;
     }
+
+    /// <summary>The same five, as a set — what الشكل 5's read card tags.</summary>
+    internal static readonly IReadOnlySet<string> SuggestedFields =
+        new HashSet<string>(StringComparer.Ordinal)
+        { "code", "region", "priority", "expenditureCategory", "budgetApprovalNumber" };
 
     /// <summary>The entity, as Domain/ProjectDefinition wants to see it.</summary>
     private static ProjectDefinition.Candidate Candidate(Data.Entities.Project p) => new(
         p.NameAr, p.Type, p.RegistrationYear, p.ExecutionStage,
-        p.FundingType, p.WorkspaceCode, p.PlannedCost, p.BeneficiaryCodes);
+        p.FundingType, p.WorkspaceCode, p.PlannedCost, p.BeneficiaryCodes,
+        p.Status, p.Formation, p.OrgStructure, p.ConsultantParty);
 
     /// <summary>
     /// One log row, carrying §7's four attribution facts — «باسم منفّذها وصفته

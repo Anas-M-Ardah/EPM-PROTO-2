@@ -48,4 +48,17 @@ export class ProjectScopeService {
     if (!id) return undefined;
     return this.rows().find(p => p.id === id);
   }
+
+  /**
+   * Refetch. Needed after a project is CREATED: this list is what gives the
+   * workspace shell the project's name and its owning تشكيل, and a cache from
+   * before the insert leaves the new project's own screen showing `PRJ-0280`
+   * with no workspace crumb — measured, straight after المسار 1 saves.
+   * Same shape as LookupsService.reload().
+   */
+  reload(): Observable<void> {
+    this.loaded.set(false);
+    this.inFlight = undefined;
+    return this.ensureLoaded();
+  }
 }

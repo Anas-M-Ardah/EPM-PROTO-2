@@ -29,7 +29,11 @@ public class ProjectDefinitionTests
         FundingType: "federal-budget",
         WorkspaceCode: "ub",
         PlannedCost: 340_000_000m,
-        BeneficiaryCodes: "BEN-UOB");
+        BeneficiaryCodes: "BEN-UOB",
+        Status: "ongoing",
+        Formation: "وزارة التعليم العالي والبحث العلمي",
+        OrgStructure: "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
+        ConsultantParty: "دار الهندسة");
 
     // ── the gate as a whole ───────────────────────────────────────────────
 
@@ -44,13 +48,55 @@ public class ProjectDefinitionTests
     {
         // A form that reveals one problem per save makes the specialist
         // save five times to learn five things.
-        var empty = new ProjectDefinition.Candidate("", "", null, "", "", "", null, "");
+        var empty = new ProjectDefinition.Candidate("", "", null, "", "", "", null, "", "", "", "", "");
 
         var v = ProjectDefinition.Validate(empty, DataDateYear);
 
-        Assert.Equal(8, v.Count);
+        Assert.Equal(12, v.Count);
         Assert.Contains(v, x => x.Field == "nameAr");
         Assert.Contains(v, x => x.Field == "workspaceCode");
+    }
+
+    /// <summary>
+    /// الشكل 5 draws «نجمة على الحقول الإلزامية» on ten fields, and SCR-W2 reads
+    /// its stars from `RequiredFields`. If the rule ever stops refusing one of
+    /// them the card would keep drawing a star nothing enforces — which is the
+    /// specific way this screen can start lying.
+    /// </summary>
+    [Theory]
+    [InlineData("nameAr")]
+    [InlineData("type")]
+    [InlineData("registrationYear")]
+    [InlineData("executionStage")]
+    [InlineData("status")]
+    [InlineData("fundingType")]
+    [InlineData("formation")]
+    [InlineData("beneficiaryCodes")]
+    [InlineData("orgStructure")]
+    [InlineData("consultantParty")]
+    public void Every_starred_field_on_figure_5_is_refused_when_empty(string field)
+    {
+        Assert.Contains(field, ProjectDefinition.RequiredFields);
+
+        var empty = new ProjectDefinition.Candidate("", "", null, "", "", "", null, "", "", "", "", "");
+
+        Assert.Contains(ProjectDefinition.Validate(empty, DataDateYear), x => x.Field == field);
+    }
+
+    /// <summary>
+    /// …and nothing the card does NOT star may sit in that set, or SCR-W2 would
+    /// miss a star for a rule that is enforced. الكلفة المقررة and مساحة العمل
+    /// are the two: required by المسار 1, absent from الشكل 5.
+    /// </summary>
+    [Fact]
+    public void Fields_absent_from_figure_5_are_enforced_but_not_starred()
+    {
+        Assert.DoesNotContain("plannedCost", ProjectDefinition.RequiredFields);
+        Assert.DoesNotContain("workspaceCode", ProjectDefinition.RequiredFields);
+
+        Assert.Contains("plannedCost", ProjectDefinition.EnforcedFields);
+        Assert.Contains("workspaceCode", ProjectDefinition.EnforcedFields);
+        Assert.True(ProjectDefinition.RequiredFields.IsSubsetOf(ProjectDefinition.EnforcedFields));
     }
 
     // ── 1. اكتمال الحقول الإلزامية ────────────────────────────────────────
@@ -59,8 +105,12 @@ public class ProjectDefinitionTests
     [InlineData("nameAr")]
     [InlineData("type")]
     [InlineData("executionStage")]
+    [InlineData("status")]
     [InlineData("fundingType")]
+    [InlineData("formation")]
     [InlineData("beneficiaryCodes")]
+    [InlineData("orgStructure")]
+    [InlineData("consultantParty")]
     public void A_missing_mandatory_field_blocks_the_save(string field)
     {
         var c = field switch
@@ -68,7 +118,11 @@ public class ProjectDefinitionTests
             "nameAr" => Valid() with { NameAr = "" },
             "type" => Valid() with { Type = "" },
             "executionStage" => Valid() with { ExecutionStage = "" },
+            "status" => Valid() with { Status = "" },
             "fundingType" => Valid() with { FundingType = "" },
+            "formation" => Valid() with { Formation = "" },
+            "orgStructure" => Valid() with { OrgStructure = "" },
+            "consultantParty" => Valid() with { ConsultantParty = "" },
             _ => Valid() with { BeneficiaryCodes = "" },
         };
 

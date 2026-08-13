@@ -60,7 +60,18 @@
 
     <!-- Z2 — the identity bar. One per page (05 v1.1 §08). -->
     <div class="d-pz2">
+      <!--
+        الشكل 5's own trail: «جامعة بغداد › المشاريع › تأهيل المنظومة الكهربائية ›
+        معلومات المشروع» — the WORKSPACE first. A project belongs to exactly one
+        تشكيل (المسار 1) and the document leads with it, so the crumb is read off
+        the project record rather than off `?ws=`, which is absent on a pasted
+        URL. It only appears once the project list has resolved a name for it.
+      -->
       <nav class="z2-crumbs" [attr.aria-label]="lang.isAr() ? 'مسار التنقل' : 'Breadcrumb'">
+        @if (workspaceName(); as w) {
+          <button type="button" (click)="openWorkspace()">{{ w }}</button>
+          <span class="sep">{{ lang.isAr() ? '‹' : '›' }}</span>
+        }
         <button type="button" (click)="backToProjects()">{{ lang.t('nav_projects') }}</button>
         <span class="sep">{{ lang.isAr() ? '‹' : '›' }}</span>
         @if (moduleId() === 'overview') {

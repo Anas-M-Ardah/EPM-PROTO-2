@@ -41,17 +41,21 @@ function readProject(url: string): string {
   const m = /^\/projects\/([^/]+)/.exec(path);
   if (!m) return '';
 
-  // `/projects/...` is not automatically the project WORKSPACE. The المسار 1
-  // definition form lives under the same prefix and is an ordinary enterprise
-  // page: it belongs inside `.d-canvas`, which is the only scrolling container
-  // in the frame, and it has no project to put in the topbar picker.
+  // `/projects/...` is not automatically the project WORKSPACE. `/projects/new`
+  // is the المسار 1 CREATE form and is an ordinary enterprise page: it belongs
+  // inside `.d-canvas`, which is the only scrolling container in the frame, and
+  // it has no project to put in the topbar picker.
   //
-  // Both were measured before this guard existed: the six-section form was
-  // CLIPPED at the fold with no way to reach الجهة or الاستشاري, and the picker
-  // offered a project called "new".
+  // Measured before this guard existed: the six-section form was CLIPPED at the
+  // fold with no way to reach الجهة or الاستشاري, and the picker offered a
+  // project called "new".
+  //
+  // EDITING an existing project is the opposite case and no longer excluded:
+  // الشكل 5 puts it at «مساحة المشروع › معلومات المشروع › تعديل», so
+  // `/projects/:id/information/edit` IS the workspace and keeps the rail, the
+  // identity bar and the picker.
   const id = decodeURIComponent(m[1]);
   if (id === 'new') return '';
-  if (/^\/projects\/[^/]+\/edit\/?$/.test(path)) return '';
 
   return id;
 }

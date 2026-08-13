@@ -155,47 +155,26 @@
         </div>
 
         <div class="epm-ws-f2">
-          <label class="epm-ws-f">
+          <div class="epm-ws-f">
             <span>{{ lang.t('inf_type') }}<i>*</i></span>
-            <select class="d-form-input" [class.epm-invalid]="errorFor('type')"
-                    (change)="set('type', $any($event.target).value)">
-              <option value=""></option>
-              @for (t of types(); track t.code) {
-                <option [value]="t.code" [selected]="form().type === t.code">
-                  {{ lang.pick(t.nameAr, t.nameEn) }}
-                </option>
-              }
-            </select>
+            <epm-select [options]="opt(types())" [value]="form().type" [label]="lang.t('inf_type')" [placeholder]="lang.t('unset')" [invalid]="!!errorFor('type')" (changed)="set('type', $event)" />
             @if (errorFor('type')) { <small class="epm-f-err">{{ errorFor('type') }}</small> }
-          </label>
+          </div>
 
-          <label class="epm-ws-f">
+          <div class="epm-ws-f">
             <span>{{ lang.t('inf_executionStage') }}<i>*</i></span>
-            <select class="d-form-input" [class.epm-invalid]="errorFor('executionStage')"
-                    (change)="set('executionStage', $any($event.target).value)">
-              <option value=""></option>
-              @for (s of stages(); track s.code) {
-                <option [value]="s.code" [selected]="form().executionStage === s.code">
-                  {{ lang.pick(s.nameAr, s.nameEn) }}
-                </option>
-              }
-            </select>
+            <epm-select [options]="opt(stages())" [value]="form().executionStage" [label]="lang.t('inf_executionStage')" [placeholder]="lang.t('unset')" [invalid]="!!errorFor('executionStage')" (changed)="set('executionStage', $event)" />
             @if (errorFor('executionStage')) {
               <small class="epm-f-err">{{ errorFor('executionStage') }}</small>
             }
-          </label>
+          </div>
         </div>
 
-        <label class="epm-ws-f">
-          <span>{{ lang.t('inf_status') }}</span>
-          <select class="d-form-input" (change)="set('status', $any($event.target).value)">
-            @for (s of statuses(); track s.code) {
-              <option [value]="s.code" [selected]="(form().status ?? 'ongoing') === s.code">
-                {{ lang.pick(s.nameAr, s.nameEn) }}
-              </option>
-            }
-          </select>
-        </label>
+        <div class="epm-ws-f">
+          <span>{{ lang.t('inf_status') }}<i>*</i></span>
+          <epm-select [options]="opt(statuses())" [value]="form().status" [label]="lang.t('inf_status')" [placeholder]="lang.t('unset')" [invalid]="!!errorFor('status')" (changed)="set('status', $event)" />
+          @if (errorFor('status')) { <small class="epm-f-err">{{ errorFor('status') }}</small> }
+        </div>
       </div>
     </epm-section>
 
@@ -211,11 +190,17 @@
             <small>{{ lang.t('inf_coordinates_hint') }}</small>
           </label>
 
-          <label class="epm-ws-f">
-            <span>{{ lang.t('inf_region') }}</span>
-            <input class="d-form-input" [value]="form().region ?? ''"
-                   (input)="setText('region', $any($event.target).value)" />
-          </label>
+          <div class="epm-ws-f">
+            <span>
+              {{ lang.t('inf_region') }}
+              @if (isSuggested('region')) {
+                <span class="d-proposed" [title]="lang.t('prj_suggested_hint')">
+                  {{ lang.t('prj_suggested') }}
+                </span>
+              }
+            </span>
+            <epm-select [options]="opt(regions())" [value]="form().region" [label]="lang.t('inf_region')" [placeholder]="lang.t('unset')" (changed)="set('region', $event)" />
+          </div>
         </div>
       </div>
     </epm-section>
@@ -224,21 +209,13 @@
     <epm-section [title]="lang.t('inf_group_funding')" [collapsible]="true" [defaultOpen]="true">
       <div class="epm-ws-form">
         <div class="epm-ws-f2">
-          <label class="epm-ws-f">
+          <div class="epm-ws-f">
             <span>{{ lang.t('inf_fundingType') }}<i>*</i></span>
-            <select class="d-form-input" [class.epm-invalid]="errorFor('fundingType')"
-                    (change)="set('fundingType', $any($event.target).value)">
-              <option value=""></option>
-              @for (f of fundingTypes(); track f.code) {
-                <option [value]="f.code" [selected]="form().fundingType === f.code">
-                  {{ lang.pick(f.nameAr, f.nameEn) }}
-                </option>
-              }
-            </select>
+            <epm-select [options]="opt(fundingTypes())" [value]="form().fundingType" [label]="lang.t('inf_fundingType')" [placeholder]="lang.t('unset')" [invalid]="!!errorFor('fundingType')" (changed)="set('fundingType', $event)" />
             @if (errorFor('fundingType')) {
               <small class="epm-f-err">{{ errorFor('fundingType') }}</small>
             }
-          </label>
+          </div>
 
           <label class="epm-ws-f">
             <span>{{ lang.t('inf_plannedCost') }}<i>*</i></span>
@@ -253,7 +230,7 @@
         </div>
 
         <div class="epm-ws-f2">
-          <label class="epm-ws-f">
+          <div class="epm-ws-f">
             <span>
               {{ lang.t('inf_expenditureCategory') }}
               @if (isSuggested('expenditureCategory')) {
@@ -262,19 +239,18 @@
                 </span>
               }
             </span>
-            <select class="d-form-input"
-                    (change)="set('expenditureCategory', $any($event.target).value)">
-              <option value=""></option>
-              @for (c of expenditureCategories(); track c.code) {
-                <option [value]="c.code" [selected]="form().expenditureCategory === c.code">
-                  {{ lang.pick(c.nameAr, c.nameEn) }}
-                </option>
-              }
-            </select>
-          </label>
+            <epm-select [options]="opt(expenditureCategories())" [value]="form().expenditureCategory" [label]="lang.t('inf_expenditureCategory')" [placeholder]="lang.t('unset')" (changed)="set('expenditureCategory', $event)" />
+          </div>
 
           <label class="epm-ws-f">
-            <span>{{ lang.t('inf_budgetApprovalNumber') }}</span>
+            <span>
+              {{ lang.t('inf_budgetApprovalNumber') }}
+              @if (isSuggested('budgetApprovalNumber')) {
+                <span class="d-proposed" [title]="lang.t('prj_suggested_hint')">
+                  {{ lang.t('prj_suggested') }}
+                </span>
+              }
+            </span>
             <input class="d-form-input mono" dir="ltr"
                    [value]="form().budgetApprovalNumber ?? ''"
                    (input)="setText('budgetApprovalNumber', $any($event.target).value)"
@@ -282,11 +258,17 @@
           </label>
         </div>
 
-        <label class="epm-ws-f">
-          <span>{{ lang.t('inf_priority') }}</span>
-          <input class="d-form-input" [value]="form().priority ?? ''"
-                 (input)="setText('priority', $any($event.target).value)" />
-        </label>
+        <div class="epm-ws-f">
+          <span>
+            {{ lang.t('inf_priority') }}
+            @if (isSuggested('priority')) {
+              <span class="d-proposed" [title]="lang.t('prj_suggested_hint')">
+                {{ lang.t('prj_suggested') }}
+              </span>
+            }
+          </span>
+          <epm-select [options]="opt(priorities())" [value]="form().priority" [label]="lang.t('inf_priority')" [placeholder]="lang.t('unset')" (changed)="set('priority', $event)" />
+        </div>
       </div>
     </epm-section>
 
@@ -335,15 +317,21 @@
         </div>
 
         <label class="epm-ws-f">
-          <span>{{ lang.t('inf_formation') }}</span>
-          <input class="d-form-input" [value]="form().formation ?? ''"
+          <span>{{ lang.t('inf_formation') }}<i>*</i></span>
+          <input class="d-form-input" [class.epm-invalid]="errorFor('formation')"
+                 [value]="form().formation ?? ''"
                  (input)="setText('formation', $any($event.target).value)" />
+          @if (errorFor('formation')) { <small class="epm-f-err">{{ errorFor('formation') }}</small> }
         </label>
 
         <label class="epm-ws-f">
-          <span>{{ lang.t('inf_orgStructure') }}</span>
-          <input class="d-form-input" [value]="form().orgStructure ?? ''"
+          <span>{{ lang.t('inf_orgStructure') }}<i>*</i></span>
+          <input class="d-form-input" [class.epm-invalid]="errorFor('orgStructure')"
+                 [value]="form().orgStructure ?? ''"
                  (input)="setText('orgStructure', $any($event.target).value)" />
+          @if (errorFor('orgStructure')) {
+            <small class="epm-f-err">{{ errorFor('orgStructure') }}</small>
+          }
         </label>
       </div>
     </epm-section>
@@ -352,9 +340,13 @@
     <epm-section [title]="lang.t('inf_group_consultant')" [collapsible]="true" [defaultOpen]="true">
       <div class="epm-ws-form">
         <label class="epm-ws-f">
-          <span>{{ lang.t('inf_consultantParty') }}</span>
-          <input class="d-form-input" [value]="form().consultantParty ?? ''"
+          <span>{{ lang.t('inf_consultantParty') }}<i>*</i></span>
+          <input class="d-form-input" [class.epm-invalid]="errorFor('consultantParty')"
+                 [value]="form().consultantParty ?? ''"
                  (input)="setText('consultantParty', $any($event.target).value)" />
+          @if (errorFor('consultantParty')) {
+            <small class="epm-f-err">{{ errorFor('consultantParty') }}</small>
+          }
         </label>
 
         <div class="epm-ws-f2">

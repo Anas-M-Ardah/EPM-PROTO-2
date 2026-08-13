@@ -164,7 +164,9 @@ erDiagram
     CONTRACTS ||..o{ PAYMENTS : "Payments.ContractId = Contracts.Id — NO FK"
 ```
 
-**Writes nothing.**
+**`EP-CON-01` and `EP-CON-02` write nothing** — every figure on them is derived at
+projection time. المسار 2's `EP-CON-03` / `EP-CON-04` are the contract tab's only
+writes, and they touch `Contracts` alone.
 
 ### The three values, and why they are three
 
@@ -236,7 +238,7 @@ stateDiagram-v2
 | 2 | **Spend is not split across award / reserve / supervision.** All three show their amount and no spend, with the reason printed. | A payment is recorded against the CONTRACT. Apportioning it across the three expense items would be an allocation nobody authorised. |
 | 3 | **No financial %.** The money is shown; the percentage is not. | `02 §4` says financial % "comes from payments" without fixing the denominator — effective value or total contract cost including reserve and supervision. Choosing one would be a guess with a number attached (P-44). |
 | 4 | **The penalty's "no forecast" branch is not exercised by the fixture.** Every fixture contract carries a `ForecastFinish`. | The branch exists and returns `unavailable: true`; nothing in the seeded data reaches it. |
-| 5 | **No edit mode, no "add contract".** Both are demo toasts. | Nothing in this build writes except alert acknowledgement. |
+| ~~5~~ | ~~**No edit mode, no "add contract".** Both are demo toasts.~~ **CLOSED by المسار 2** — `EP-CON-03` creates, `EP-CON-04` updates, `EP-CON-05` reads the definition back, on the same shape المسار 1 uses for a project. | |
 | 6 | **No per-payment record pane.** The reference opens a Z8 drawer with the payment's line items and attachments. | Payments have no line items in this model — `04 §7`'s certificate breakdown belongs to Phase 4.4's Financials screen. |
 | 7 | **The reference's penalty formula is NOT the one used.** | See §7. |
 

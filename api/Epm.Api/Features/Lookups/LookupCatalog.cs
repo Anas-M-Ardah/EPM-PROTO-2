@@ -54,6 +54,35 @@ public static class LookupCatalog
         yield return L("expenditure-category", "studies",      "دراسات",         "Studies");
         yield return L("expenditure-category", "operational",  "نفقات تشغيلية",  "Operational");
 
+        // ── الشكل 5 — أولوية المشروع ──────────────────────────────────────
+        // A LOOKUP, not free text. الشكل 5 renders it as a value list and the
+        // live prototype offers exactly these three; the worked example is
+        // «متوسطة». Codes are latin like every other kind, so the Arabic stays
+        // a label the ministry can reword without touching a row.
+        sort = 0;
+        yield return L("priority", "high",   "عالية",  "High");
+        yield return L("priority", "medium", "متوسطة", "Medium");
+        yield return L("priority", "low",    "منخفضة", "Low");
+
+        // ── الشكل 5 — المنطقة الجغرافية ───────────────────────────────────
+        // Also a lookup: الشكل 5's worked example is «ديالى» and المسار 1 step 4
+        // derives the value «من الجهة», which it can only do against a list.
+        // The eleven governorates the prototype offers — NOT all eighteen: this
+        // is the set the system has been shown with, and inventing the rest
+        // would put values on screen no document has ever carried.
+        sort = 0;
+        yield return L("region", "baghdad",   "بغداد",    "Baghdad");
+        yield return L("region", "basra",     "البصرة",   "Basra");
+        yield return L("region", "nineveh",   "نينوى",    "Nineveh");
+        yield return L("region", "diyala",    "ديالى",    "Diyala");
+        yield return L("region", "anbar",     "الأنبار",  "Anbar");
+        yield return L("region", "karbala",   "كربلاء",   "Karbala");
+        yield return L("region", "babil",     "بابل",     "Babil");
+        yield return L("region", "wasit",     "واسط",     "Wasit");
+        yield return L("region", "qadisiyah", "القادسية", "Qadisiyah");
+        yield return L("region", "dhiqar",    "ذي قار",   "Dhi Qar");
+        yield return L("region", "kirkuk",    "كركوك",    "Kirkuk");
+
         // ── 06 §2 — execution stages (12) ─────────────────────────────────
         // The construction-progress list the projects carry. NOT the same as
         // data.jsx's PROJECT_STAGES, which is an administrative lifecycle list

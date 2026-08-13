@@ -215,8 +215,14 @@ erDiagram
     WORKSPACES ||..o{ PROJECTS : "Projects.WorkspaceCode = Workspaces.Code — NO FK"
 ```
 
-**Writes nothing.** SCR-W2 is the only module in the workspace whose every
-value is a stored column; SCR-W1's every figure is derived at projection time.
+SCR-W2 is the only module in the workspace whose every value is a stored
+column; SCR-W1's every figure is derived at projection time.
+
+**SCR-W2 now writes**, through `EP-PRJ-03` — the same endpoint the create form
+posts to. It has no update endpoint of its own: الشكل 5 is a second CALLER of
+المسار 1's, not a second copy of it. Its read (`EP-INF-01`) returns the card,
+the activity log and the persona's edit permission in one response, so the tab
+can show its count before it is opened.
 
 ### The four derived figures on SCR-W1
 
@@ -273,6 +279,11 @@ stateDiagram-v2
 | SCR-W1 figures, tiles, columns | `features/overview/*` and `Features/Overview/OverviewEndpoints.cs` |
 | SCR-W2 field GROUPING | `Features/Information/InformationEndpoints.cs` — semantic, belongs with the data |
 | SCR-W2 field LABELS | `core/lang.ts` (`inf_*`) — a label is chrome |
+| Which SCR-W2 fields carry a **star** | `Domain/ProjectDefinition.RequiredFields` — the set `Validate` enforces, so a star always means something at save time |
+| Which carry **«مقترح»** | `Features/Projects/ProjectsEndpoints.SuggestedFields` |
+| The six section CARDS | `shared/field-group.component.ts` (`.d-fgroup`) — not `<epm-section>`, which is the register's label+space treatment |
+| A field's read AND edit cell | `shared/field-grid.component.ts` — one component, so the two views cannot show different fields |
+| Any dropdown, anywhere | `shared/select.component.ts` — a native `<select>` draws its list with the OS |
 | How value / finish / delay are derived | `Domain/ProjectValue.cs` · `Amendments.cs` · `Penalty.cs` — **not** an endpoint |
 
 ---
@@ -284,8 +295,8 @@ stateDiagram-v2
 | 1 | **No context pane.** `04 §3`'s third pane is not built. | v1.1 does not render one either — `DProjectContext` is dead code there, and `.d-three` carries `data-ctx="off"`. Its per-module actions moved into Z6 (P-40). |
 | 2 | **No readiness dots** on the rail. | The reference derives them from `rng(p.id.charCodeAt(6) * 13 + 5)`. No review state is stored anywhere in this system (P-09). |
 | 3 | **No S-curve, no physical %, no SPI/CPI.** Four KPI tiles render "unavailable + reason". | Physical % is BR-04 (Phase 4.2), financial % needs payments (4.1), the indices need a baseline curve (4.3). The curve is absent rather than unavailable because a chart cannot be labelled. |
-| 4 | **No edit mode.** The reference's Information module edits inline. | Nothing in this build writes except alert acknowledgement, so an edit mode would be a form that discards what you type. |
-| 5 | **No activity-log tab** on SCR-W2, and no description field. | There is no audit table until Phase 6, and `Projects` has no description column. |
+| ~~4~~ | ~~**No edit mode.**~~ **CLOSED.** SCR-W2 edits inline, the way the reference does: «تعديل» flips each cell to a control on the same screen, and `EP-PRJ-03` saves. `/projects/:id/edit` existed for one release and is gone (P-70). | |
+| ~~5~~ | ~~**No activity-log tab** on SCR-W2, and no description field.~~ **CLOSED.** `Projects.Description` is الشكل 5's fourth section, and `ProjectActivityEvents` backs the «سجل النشاط» tab — a flat table of edits, not the audit framework Phase 6 still owes (`Data/Entities/AuditEvent.cs` remains its unregistered starting point). | |
 | 6 | **No per-module Z6 actions.** | Every one of them (import P6, record payment, create change order) belongs to a module that does not exist yet. |
 | 7 | **No keyboard ↑/↓ through the picker list.** The reference moves selection with arrows. | Its queue was a permanent pane; ours is a menu, and a menu that navigates on arrow-key would fire a route change per keypress. |
 | 8 | **Module permission is not enforced.** The reference locks a module when `!m.perm`. | BR-14 `ViewerRelation` exists in `Domain/`, but nothing maps a persona to a module yet — and inventing a map would gate real screens on a guess. The `locked` visual is used for *unbuilt*, which is a different statement and is labelled as one. |

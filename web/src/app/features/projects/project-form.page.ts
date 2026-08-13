@@ -4,10 +4,12 @@ import { forkJoin, of } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { SectionComponent } from '../../shared/section.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 import { LangService } from '../../core/lang';
-import { LookupsService } from '../../core/lookups';
+import { LookupsService, LookupItem } from '../../core/lookups';
 import { WorkspacesService } from '../../core/workspaces';
 import { PersonaService, canDefineProjects } from '../../core/persona';
+import { ProjectScopeService } from '../../core/project-scope';
 import { ToastService } from '../../shared/toast.service';
 import { ProjectsApi } from './projects.api';
 import {
@@ -20,13 +22,15 @@ import {
 /**
  * المسار 1 — تعريف المشروع وربطه بالجامعة. The definition card of الشكل 5.
  *
- * ── ONE COMPONENT, TWO ROUTES ─────────────────────────────────────────────
- * `/projects/new?ws=ub` creates and `/projects/:id/edit` edits, and they are
- * the SAME screen because they are the same six sections over the same twenty
- * fields. Two components would be two places to add a field to, and the pair
- * would drift the first time only one of them was updated. The only things
- * that differ are the title, the submit verb, and which api method runs — all
- * three derived from `isNew()`.
+ * ── CREATE ONLY, SINCE الشكل 5 GAINED ITS OWN EDITOR ──────────────────────
+ * `/projects/new?ws=ub` is the only route that reaches this component. Editing
+ * an existing project happens IN PLACE on الشكل 5 (features/information), the
+ * way the prototype does it, so there is no `/projects/:id/edit` any more.
+ *
+ * The `isNew()` branches below are kept because both screens still post the
+ * SAME `ProjectDefinitionInput` to the SAME endpoints — `EP-PRJ-02` here,
+ * `EP-PRJ-03` there — and a create that could not reuse the edit shape would be
+ * the start of two definitions of one record.
  *
  * ── THE SIX SECTIONS ARE THE DOCUMENT'S ───────────────────────────────────
  * الشكل 5: «ستة أقسام قابلة للطي (هوية المشروع · الموقع · التمويل والموازنة ·
@@ -48,7 +52,7 @@ import {
 @Component({
   selector: 'epm-project-form-page',
   standalone: true,
-  imports: [IconComponent, PageHeadComponent, SectionComponent],
+  imports: [IconComponent, PageHeadComponent, SectionComponent, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './project-form.page.html',
 })
@@ -60,6 +64,7 @@ export class ProjectFormPage {
   lookups = inject(LookupsService);
   workspaces = inject(WorkspacesService);
   persona = inject(PersonaService);
+  scope = inject(ProjectScopeService);
   toast = inject(ToastService);
 
   /** Null while creating; the project id while editing. The whole mode switch. */
@@ -132,12 +137,25 @@ export class ProjectFormPage {
     return this.suggestions().some(s => s.field === field);
   }
 
+  /**
+   * A lookup row as the shared dropdown wants it. `<epm-select>` takes
+   * `{code,label}` and knows nothing about lookups or languages, which is what
+   * lets the contract card and any register filter use the same control.
+   */
+  opt(rows: LookupItem[]): SelectOption[] {
+    return rows.map(r => ({ code: r.code, label: this.lang.pick(r.nameAr, r.nameEn) }));
+  }
+
   // ── lookups the selects are fed from (06, via EP-LKP-01) ────────────────
   types = computed(() => this.lookups.list('project-type'));
   stages = computed(() => this.lookups.list('execution-stage'));
   statuses = computed(() => this.lookups.list('project-status'));
   fundingTypes = computed(() => this.lookups.list('funding-type'));
   expenditureCategories = computed(() => this.lookups.list('expenditure-category'));
+  // الشكل 5 renders both of these as value lists, so they are lookups like the
+  // five above and not the free text they used to be.
+  priorities = computed(() => this.lookups.list('priority'));
+  regions = computed(() => this.lookups.list('region'));
 
   /**
    * §23 gives project definition to «المستخدم المختص». The server decides and
@@ -225,6 +243,10 @@ export class ProjectFormPage {
       next: res => {
         this.saving.set(false);
         this.toast.show(this.lang.t(this.isNew() ? 'prj_saved' : 'prj_updated'));
+        // The shell reads the project's name and its تشكيل from this list, and
+        // it was loaded before the row existed. Refetch before navigating, or
+        // the new project's own header shows its id and no workspace crumb.
+        this.scope.reload().subscribe();
         // A saved project is live immediately — there is no draft and no
         // review — so the honest place to land is the project itself.
         this.router.navigate(['/projects', res.id, 'information'], {

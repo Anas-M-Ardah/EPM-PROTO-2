@@ -77,6 +77,18 @@ export class WorkspacePage {
     return p ? this.lang.pick(p.nameAr, p.nameEn) : this.projectId();
   });
 
+  /**
+   * الشكل 5's first crumb — «جامعة بغداد». Read off the PROJECT's own record
+   * (EP-PRJ-01 carries the workspace name), not off `?ws=`: a pasted or
+   * bookmarked module URL has no query string, and a project belongs to exactly
+   * one تشكيل either way. Empty while the list is in flight, which is why the
+   * crumb is conditional rather than showing a code that turns into a name.
+   */
+  workspaceName = computed(() => {
+    const p = this.project();
+    return p ? this.lang.pick(p.workspaceNameAr, p.workspaceNameEn) : '';
+  });
+
   activeModule = computed<ProjectModule | undefined>(() => moduleById(this.moduleId()));
 
   constructor() {
@@ -133,6 +145,17 @@ export class WorkspacePage {
 
   backToProjects() {
     this.router.navigate(['/projects'], { queryParams: this.qp() });
+  }
+
+  /**
+   * The workspace crumb. SCR-E8 is `/workspace?ws=` — the one scope mechanism
+   * (P-64) — so the project's own workspace code is what it is entered with,
+   * whether or not the current URL happened to carry it.
+   */
+  openWorkspace() {
+    const code = this.project()?.workspaceCode ?? this.workspace();
+    if (!code) return;
+    this.router.navigate(['/workspace'], { queryParams: { ws: code } });
   }
 
   copyId() {
