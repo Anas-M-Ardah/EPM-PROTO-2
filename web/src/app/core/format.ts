@@ -37,6 +37,27 @@ export function date(v: string | null | undefined): string {
   return v.length >= 10 ? v.slice(0, 10) : v;
 }
 
+/**
+ * الشكل 5's «إحداثيات الموقع» — `"33.33,44.33"` → `33.33°N, 44.33°E`.
+ *
+ * ONE STORED COLUMN, `Projects.Coordinates`, in the "lat,lon" form the entity
+ * documents. The hemisphere letters are a DISPLAY decision, not a second
+ * representation: they come from the sign, so nothing new is stored and the
+ * value round-trips through the form unchanged.
+ *
+ * Anything that is not a numeric pair passes through as typed — a half-entered
+ * coordinate is data the specialist can still see and correct, and silently
+ * blanking it would hide the mistake.
+ */
+export function coords(v: string | null | undefined): string {
+  if (!v) return '—';
+  const parts = v.split(',').map(s => s.trim());
+  if (parts.length !== 2) return v;
+  const [lat, lon] = parts.map(Number);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return v;
+  return `${Math.abs(lat)}°${lat < 0 ? 'S' : 'N'}, ${Math.abs(lon)}°${lon < 0 ? 'W' : 'E'}`;
+}
+
 export function days(v: number | null | undefined): string {
   if (v === null || v === undefined) return '—';
   return String(v);

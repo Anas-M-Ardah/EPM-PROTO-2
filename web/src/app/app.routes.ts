@@ -78,23 +78,20 @@ export const routes: Routes = [
         loadComponent: () => import('./features/projects/projects.page').then(m => m.ProjectsPage),
       },
 
-      // المسار 1 · features/projects · Features/Projects · [EP-PRJ-02…04]
-      // ONE component for both. `projects/new` and `projects/:id/edit` are the
-      // same six sections over the same twenty fields; the only difference is
-      // whether there is an id to load and which api method saves.
+      // المسار 1 · features/projects · Features/Projects · [EP-PRJ-02]
+      // CREATE ONLY. There is no project yet, so there is no project workspace
+      // to render it in — it is an ordinary enterprise page.
       //
-      // BOTH MUST PRECEDE `projects/:id` below. That route has a `**` child
+      // EDITING an existing project is NOT here and is not a route at all:
+      // الشكل 5 edits its own card in place, inside «مساحة المشروع › معلومات
+      // المشروع». See features/information.
+      //
+      // THIS MUST PRECEDE `projects/:id` below. That route has a `**` child
       // that redirects an unknown segment to `overview`, so if it matched
       // first, `/projects/new` would load the project workspace for a project
-      // called "new" and `/projects/PRJ-0148/edit` would silently become
-      // `/overview` — the exact dead-end the wildcard exists to prevent.
+      // called "new" — the exact dead-end the wildcard exists to prevent.
       {
         path: 'projects/new',
-        loadComponent: () =>
-          import('./features/projects/project-form.page').then(m => m.ProjectFormPage),
-      },
-      {
-        path: 'projects/:id/edit',
         loadComponent: () =>
           import('./features/projects/project-form.page').then(m => m.ProjectFormPage),
       },
@@ -167,11 +164,18 @@ export const routes: Routes = [
           },
 
           // SCR-W2 · features/information · Features/Information · [EP-INF-01]
+          // الشكل 5 «معلومات المشروع — التفاصيل».
           {
             path: 'information',
             loadComponent: () =>
               import('./features/information/information.page').then(m => m.InformationPage),
           },
+
+          // NO `information/edit` ROUTE. الشكل 5 edits IN PLACE — «تعديل» flips
+          // the card's cells to controls without leaving the screen, as the
+          // prototype does. A route would put the editor somewhere the
+          // breadcrumb does not go and give the same six sections a second
+          // template. The write still goes through `EP-PRJ-03`.
 
           // SCR-W3 · features/contract-tab · Features/ContractTab · [EP-CON-01] [EP-CON-02]
           // The selected contract is a URL segment, not component state: a

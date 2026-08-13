@@ -43,7 +43,15 @@ public static class ProjectDefinition
         string FundingType,
         string WorkspaceCode,
         decimal? PlannedCost,
-        string BeneficiaryCodes);
+        string BeneficiaryCodes,
+        // الشكل 5's remaining starred fields. They joined the rule when the
+        // card started marking them: a star the save does not enforce is a
+        // false statement, and the document draws the star. No defaults — a
+        // caller that forgets one should not compile.
+        string Status,
+        string Formation,
+        string OrgStructure,
+        string ConsultantParty);
 
     /// <summary>
     /// The earliest سنة إدراج this system will accept.
@@ -57,6 +65,59 @@ public static class ProjectDefinition
     /// if the ministry states a real range.
     /// </summary>
     public const int EarliestRegistrationYear = 2000;
+
+    /// <summary>
+    /// الشكل 5's «نجمة على الحقول الإلزامية» — the fields that carry the star.
+    ///
+    /// IT IS THIS LIST BECAUSE IT IS WHAT <see cref="Validate"/> ENFORCES, one
+    /// name per required clause below, in camelCase so it matches
+    /// `ProjectDefinitionInput`'s members and `InfoField.Key` alike. The read
+    /// screen and the form both mark from here, so a star can never claim a
+    /// field the save would accept empty.
+    ///
+    /// ── IT IS الشكل 5's TEN, AND THE RULE WAS EXTENDED TO MEET THEM ──────
+    /// The card stars حالة المشروع · اسم التشكيل · الهيكل التنظيمي · اسم الشركة
+    /// الاستشارية, which المسار 1's one-line statement of the gate does not
+    /// mention. The two were reconciled by making the RULE match the document
+    /// rather than by unmarking the fields: الشكل 5 is «المصدر الوحيد» for this
+    /// data and a star it draws has to mean something at save time.
+    ///
+    /// `plannedCost` and `workspaceCode` are enforced too and are NOT in this
+    /// set — they are required by المسار 1 step 3 but are not fields OF الشكل 5,
+    /// so there is no star of theirs to be true or false. See
+    /// <see cref="EnforcedFields"/>.
+    /// </summary>
+    public static readonly IReadOnlySet<string> RequiredFields =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            // هوية المشروع
+            "nameAr",
+            "type",
+            "registrationYear",
+            "executionStage",
+            "status",
+            // التمويل والموازنة
+            "fundingType",
+            // الجهة
+            "formation",
+            "beneficiaryCodes",
+            "orgStructure",
+            // الاستشاري
+            "consultantParty",
+        };
+
+    /// <summary>
+    /// Everything <see cref="Validate"/> refuses an empty value for — الشكل 5's
+    /// ten plus the two that belong to المسار 1 but not to the card. Kept beside
+    /// <see cref="RequiredFields"/> so the difference between "the rule enforces
+    /// it" and "the card stars it" is visible rather than inferred.
+    /// </summary>
+    public static readonly IReadOnlySet<string> EnforcedFields =
+        new HashSet<string>(RequiredFields, StringComparer.Ordinal)
+        {
+            "plannedCost",
+            "workspaceCode",
+        };
 
     /// <summary>
     /// Every violation, not just the first. A form that reveals one problem per
@@ -74,12 +135,9 @@ public static class ProjectDefinition
 
         // ── 1. اكتمال الحقول الإلزامية ────────────────────────────────────
         // المسار 1 step 2 names the four groups that must be entered: «الهوية
-        // والموقع والتمويل والجهة المستفيدة». These are the fields inside them
-        // that the track goes on to depend on.
-        //
-        // الشكل 5 puts «نجمة على الحقول الإلزامية» but does NOT enumerate which
-        // carry the star — so this set is derived from step 2's four groups and
-        // is flagged in the report rather than presented as documented.
+        // والموقع والتمويل والجهة المستفيدة». الشكل 5 then puts «نجمة على الحقول
+        // الإلزامية» on TEN specific fields, and those ten are the clauses
+        // below — one per star. See RequiredFields.
         if (string.IsNullOrWhiteSpace(c.NameAr))
             v.Add(new("nameAr", "اسم المشروع مطلوب.", "Project name is required."));
 
@@ -87,13 +145,25 @@ public static class ProjectDefinition
             v.Add(new("type", "نوع المشروع مطلوب.", "Project type is required."));
 
         if (string.IsNullOrWhiteSpace(c.ExecutionStage))
-            v.Add(new("executionStage", "مرحلة التنفيذ مطلوبة.", "Execution stage is required."));
+            v.Add(new("executionStage", "مرحلة تنفيذ المشروع مطلوبة.", "Execution stage is required."));
+
+        if (string.IsNullOrWhiteSpace(c.Status))
+            v.Add(new("status", "حالة المشروع مطلوبة.", "Project status is required."));
 
         if (string.IsNullOrWhiteSpace(c.FundingType))
             v.Add(new("fundingType", "نوع التمويل مطلوب.", "Funding type is required."));
 
+        if (string.IsNullOrWhiteSpace(c.Formation))
+            v.Add(new("formation", "اسم التشكيل مطلوب.", "Formation is required."));
+
         if (string.IsNullOrWhiteSpace(c.BeneficiaryCodes))
-            v.Add(new("beneficiaryCodes", "الجهة المستفيدة مطلوبة.", "Beneficiary is required."));
+            v.Add(new("beneficiaryCodes", "الجامعة / الجهة المستفيدة مطلوبة.", "Beneficiary is required."));
+
+        if (string.IsNullOrWhiteSpace(c.OrgStructure))
+            v.Add(new("orgStructure", "الهيكل التنظيمي مطلوب.", "Organisational structure is required."));
+
+        if (string.IsNullOrWhiteSpace(c.ConsultantParty))
+            v.Add(new("consultantParty", "اسم الشركة الاستشارية مطلوب.", "Consultancy firm is required."));
 
         // ── 2. صحة سنة الإدراج ────────────────────────────────────────────
         if (c.RegistrationYear is null)

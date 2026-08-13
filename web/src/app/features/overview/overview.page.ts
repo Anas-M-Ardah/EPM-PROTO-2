@@ -172,7 +172,8 @@ export class OverviewPage {
       { k: ar ? 'مرحلة التنفيذ' : 'Execution stage', v: this.lookups.label('execution-stage', p.executionStage), num: false },
       { k: ar ? 'نوع التمويل' : 'Funding', v: this.lookups.label('funding-type', p.fundingType), num: false },
       { k: ar ? 'الفرع' : 'Branch', v: p.branch, num: false },
-      { k: ar ? 'المنطقة' : 'Region', v: p.region, num: false },
+      // A lookup since الشكل 5 made it one — label it, never print the code.
+      { k: ar ? 'المنطقة الجغرافية' : 'Region', v: this.lookups.label('region', p.region), num: false },
       { k: ar ? 'الجهة المنفّذة' : 'Executor', v: p.executor, num: false },
       // The data date is the project's "now" (D-06). Every date on this screen
       // is measured against it, so the screen states what it is.

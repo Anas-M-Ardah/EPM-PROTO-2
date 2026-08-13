@@ -52,7 +52,23 @@ export class PopoverComponent implements AfterViewInit, OnDestroy {
   top = signal(0);
   placed = signal(false);
 
-  private onScroll = () => this.close();
+  /**
+   * Closing on scroll is anchoring, not hygiene: this is positioned against a
+   * RECT, so once the page moves the popover has lost the thing it was
+   * explaining.
+   *
+   * But the listener is registered with `capture: true`, which means it also
+   * sees scrolls that ORIGINATED INSIDE the popover — and a popover whose own
+   * content scrolls is a normal thing (a select's option list). Before this
+   * guard, dragging that list shut the popover on the first pixel and snapped
+   * the scroll back to 0. Measured on the region field: `scrollTop` stayed 0
+   * and the panel was gone.
+   */
+  private onScroll = (e: Event) => {
+    const inside = this.pop?.nativeElement;
+    if (inside && e.target instanceof Node && inside.contains(e.target)) return;
+    this.close();
+  };
 
   ngAfterViewInit() {
     this.position();

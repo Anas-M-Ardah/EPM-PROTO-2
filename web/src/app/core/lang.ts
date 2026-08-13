@@ -166,6 +166,8 @@ const STR = {
   portfolio_pending_note:{ ar: 'معتمد بانتظار التطبيق — غير مضاف إلى القيمة النافذة:', en: 'Approved and awaiting application — NOT included in the effective value:' },
   portfolio_unavailable:{ ar: 'مؤشرات غير متوفرة بعد',      en: 'Indicators not available yet' },
   unavailable:     { ar: 'غير متوفر',                       en: 'Unavailable' },
+  /** A lookup with nothing chosen — and the row in <epm-select> that clears one. */
+  unset:           { ar: 'غير محدّد',                       en: 'Not set' },
   kpi_physical:    { ar: 'الإنجاز المادي',                  en: 'Physical progress' },
   kpi_financial:   { ar: 'الإنجاز المالي',                  en: 'Financial progress' },
   kpi_spi:         { ar: 'مؤشر أداء الجدول (SPI)',          en: 'Schedule performance (SPI)' },
@@ -314,44 +316,52 @@ const STR = {
 
   // SCR-W2 Information — field labels. The GROUPING is the endpoint's; only
   // the labels are here, because a label is chrome (see information.page.ts).
+  // GROUP TITLES AND CAPTIONS ARE الشكل 5's OWN. The six section headings are
+  // quoted in the appendix («هوية المشروع · الموقع · التمويل والموازنة · الوصف ·
+  // الجهة · الاستشاري»); the captions beside them are read off الشكل 5's screen.
   inf_group_identity: { ar: 'هوية المشروع',                en: 'Project identity' },
+  inf_group_identity_sub:{ ar: 'البيانات التعريفية الأساسية', en: 'Core identifying data' },
   inf_group_location: { ar: 'الموقع',                      en: 'Location' },
-  inf_group_funding:  { ar: 'التمويل و الأولوية',          en: 'Funding & priority' },
-  inf_group_parties:  { ar: 'الأطراف',                     en: 'Parties' },
+  inf_group_location_sub:{ ar: 'الموقع الجغرافي وحدود العمل', en: 'Geography and work boundary' },
+  inf_group_funding:  { ar: 'التمويل والموازنة',           en: 'Funding & budget' },
+  inf_group_funding_sub:{ ar: 'مصدر التمويل وتصنيف الصرف', en: 'Funding source and spend class' },
   inf_id:          { ar: 'رقم المشروع',                    en: 'Project number' },
-  inf_nameAr:      { ar: 'الاسم بالعربية',                 en: 'Name (Arabic)' },
-  inf_nameEn:      { ar: 'الاسم بالإنجليزية',              en: 'Name (English)' },
+  inf_nameAr:      { ar: 'اسم المشروع',                    en: 'Project name' },
+  inf_nameEn:      { ar: 'اسم المشروع (بالإنجليزية)',      en: 'Project name (English)' },
   inf_type:        { ar: 'نوع المشروع',                    en: 'Project type' },
-  inf_status:      { ar: 'الحالة',                         en: 'Status' },
-  inf_executionStage:{ ar: 'مرحلة التنفيذ',                en: 'Execution stage' },
+  inf_status:      { ar: 'حالة المشروع',                   en: 'Project status' },
+  inf_executionStage:{ ar: 'مرحلة تنفيذ المشروع',          en: 'Execution stage' },
   inf_updatedAt:   { ar: 'آخر تحديث',                      en: 'Last updated' },
   inf_workspaceCode:{ ar: 'مساحة العمل',                   en: 'Workspace' },
-  inf_region:      { ar: 'المنطقة',                        en: 'Region' },
+  inf_region:      { ar: 'المنطقة الجغرافية',              en: 'Geographic region' },
   inf_branch:      { ar: 'الفرع',                          en: 'Branch' },
   inf_fundingType: { ar: 'نوع التمويل',                    en: 'Funding type' },
-  inf_priority:    { ar: 'الأولوية',                       en: 'Priority' },
+  inf_priority:    { ar: 'أولوية المشروع',                 en: 'Project priority' },
   /** D-06 — the project's own "now". Every date on its screens is measured
    *  against it, and this is the only screen that states what it is. */
   inf_dataDate:    { ar: 'تاريخ البيانات',                 en: 'Data date' },
   inf_executor:    { ar: 'الجهة المنفّذة',                 en: 'Executor' },
   inf_designerParty:{ ar: 'الجهة المصمِّمة',               en: 'Designer' },
-  inf_consultantParty:{ ar: 'المكتب الاستشاري',            en: 'Consultant' },
+  inf_consultantParty:{ ar: 'اسم الشركة الاستشارية',       en: 'Consultancy firm' },
 
   // المسار 1 · الشكل 5 — the rest of the definition card. Same `inf_` prefix as
   // the labels above ON PURPOSE: SCR-W2 reads these fields and the project form
   // writes them, and one label set is what stops the two screens calling the
   // same column different things. Wording is الشكل 5's own.
   inf_group_description:{ ar: 'الوصف',                     en: 'Description' },
+  inf_group_description_sub:{ ar: 'نطاق العمل كما ورد في العقد', en: 'Scope of work as contracted' },
   inf_group_entity: { ar: 'الجهة',                         en: 'Entity' },
+  inf_group_entity_sub:{ ar: 'الجهة المستفيدة والمالكة',   en: 'Beneficiary and owning entity' },
   inf_group_consultant:{ ar: 'الاستشاري',                  en: 'Consultant' },
+  inf_group_consultant_sub:{ ar: 'المكتب الاستشاري المشرف', en: 'Supervising consultancy' },
   inf_code:        { ar: 'رمز المشروع',                    en: 'Project code' },
   inf_registrationYear:{ ar: 'سنة الإدراج',                en: 'Registration year' },
   inf_plannedCost: { ar: 'الكلفة المقررة',                 en: 'Planned cost' },
   inf_expenditureCategory:{ ar: 'الفئة الإنفاقية',         en: 'Expenditure category' },
   inf_budgetApprovalNumber:{ ar: 'رقم اعتماد الموازنة',    en: 'Budget approval no.' },
   inf_coordinates: { ar: 'إحداثيات الموقع',                en: 'Coordinates' },
-  inf_formation:   { ar: 'التشكيل',                        en: 'Formation' },
-  inf_beneficiaryCodes:{ ar: 'الجهة المستفيدة',            en: 'Beneficiary' },
+  inf_formation:   { ar: 'اسم التشكيل',                    en: 'Formation' },
+  inf_beneficiaryCodes:{ ar: 'الجامعة / الجهة المستفيدة',  en: 'University / beneficiary' },
   inf_orgStructure:{ ar: 'الهيكل التنظيمي',                en: 'Organisational structure' },
   inf_description: { ar: 'وصف المشروع',                    en: 'Project description' },
 
@@ -376,6 +386,9 @@ const STR = {
   prj_details:     { ar: 'التفاصيل',                       en: 'Details' },
   prj_act_created: { ar: 'أنشأ التعريف',                   en: 'created the definition' },
   prj_act_updated: { ar: 'عدّل التعريف',                   en: 'updated the definition' },
+  /** 04 §9 — an empty state states what it is AND what fills it. */
+  prj_no_activity_t:{ ar: 'لا نشاط مسجَّل على هذا المشروع', en: 'No activity recorded on this project' },
+  prj_no_activity_b:{ ar: 'يُسجَّل حدث عند تعريف المشروع وعند كل تعديل على بياناته.', en: 'An entry is recorded when the project is defined and on every edit to its data.' },
   prj_no_permission_t:{ ar: 'تعريف المشاريع غير متاح بصفتك الحالية.', en: 'Defining projects is not available in your current capacity.' },
   prj_no_permission_b:{ ar: '§23 يسند تعريف المشروع إلى المستخدم المختص في الجهة. بدّل «العرض بصفة» للمتابعة.', en: '§23 assigns project definition to the university specialist. Switch «العرض بصفة» to continue.' },
   inf_coordinates_hint:{ ar: 'خط العرض ثم خط الطول، مفصولين بفاصلة.', en: 'Latitude then longitude, comma separated.' },
