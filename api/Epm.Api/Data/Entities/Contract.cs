@@ -68,6 +68,23 @@ public class Contract
     /// <summary>المراقبة — المسار 2 step 3's fourth amount. See the note above.</summary>
     public decimal MonitoringAmount { get; set; }
 
+    // ── المصروف مقابل كل بند — NOT STORED HERE ───────────────────────────
+    // الشكل 8's fourth section prints «المصروف من الإحالة · من الاحتياط · من
+    // الإشراف والمراقبة», and الشكل 7 draws a bar per cost item from the same
+    // three figures. They are NOT columns of this table: each is the sum of the
+    // matching portion over the contract's PAID payments —
+    // `Payment.AwardPortion` and its two siblings — so storing them would be a
+    // derived value with a second place to be wrong (01 §3).
+    //
+    // That also settles what was previously reported as unavailable. The
+    // breakdown used to print «المصروف مسجَّل على العقد لا على بنوده الثلاثة»
+    // because a payment carried no apportionment. It carries one now, because
+    // الشكل 9 shows it — so the split is a sum, not an allocation anyone had to
+    // invent.
+    //
+    // كلفة العقد الكلي — the total الشكل 8 prints beneath them — is the sum of
+    // the three, and is likewise computed at projection time.
+
     /// <summary>
     /// المكوّن — which component of the works this contract covers, e.g.
     /// «المكوّن الميكانيكي» / «المكوّن الكهربائي» (الشكل 6). It is what makes two

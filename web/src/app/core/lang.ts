@@ -34,12 +34,14 @@ const STR = {
   nav_projects:    { ar: 'المشاريع',                       en: 'Projects' },
   /** Enterprise scope (no workspace selected). Verbatim from data.jsx:245. */
   nav_projects_all:{ ar: 'كل المشاريع',                    en: 'Projects' },
-  /** The WORKSPACE contract tab (SCR-W3) — a project's contracts and their addendums. */
-  nav_contracts:   { ar: 'العقود و الملاحق',               en: 'Contracts & Addendums' },
+  /** The WORKSPACE contract tab (SCR-W3). Currently unreferenced — the rail and
+   *  the breadcrumb both read `mod_contract`. Kept in step with it so the two
+   *  cannot drift if a screen picks this one up. */
+  nav_contracts:   { ar: 'العقود',                         en: 'Contracts' },
   /** Enterprise scope (SCR-E3), the cross-portfolio list. Verbatim from data.jsx.
-   *  Same split as nav_projects / nav_projects_all — the enterprise screen has
-   *  its own shorter label and `DContractsAll` uses it for the title, the
-   *  breadcrumb AND the nav item (desktop-shell.jsx:166). */
+   *  `DContractsAll` uses it for the title, the breadcrumb AND the nav item
+   *  (desktop-shell.jsx:166). Same Arabic as the workspace tab now that الشكل 6
+   *  names that one «العقود» too; they never appear in the same list. */
   nav_contracts_all:{ ar: 'العقود',                        en: 'Contracts' },
   /** Verbatim from data.jsx:235 — was 'ضبط الجدولة', which is not the
    *  reference's wording. */
@@ -258,7 +260,10 @@ const STR = {
   // ../epm@design/system-revamp app/data.jsx:445, app/desktop-workspace.jsx:112.
   mod_overview:    { ar: 'نظرة عامة',                      en: 'Overview' },
   mod_information: { ar: 'معلومات المشروع',                en: 'Project Information' },
-  mod_contract:    { ar: 'العقود و الملاحق',               en: 'Contracts & Addendums' },
+  /** الشكل 6 names the module «العقود» — the rail entry, the breadcrumb's last
+   *  crumb and the Z6 header all read this one key. The addendums are a TAB of
+   *  a contract (الشكل 10), not a second thing the module is about. */
+  mod_contract:    { ar: 'العقود',                         en: 'Contracts' },
   mod_boq:         { ar: 'جدول الكميات',                   en: 'BOQ' },
   mod_financials:  { ar: 'الموقف المالي',                  en: 'Financials' },
   mod_schedule:    { ar: 'الجدول الزمني',                  en: 'Schedule' },
@@ -462,6 +467,98 @@ const STR = {
   con_tab_details: { ar: 'التفاصيل',                        en: 'Details' },
   con_tab_payments:{ ar: 'الدفعات',                         en: 'Payments' },
   con_tab_amend:   { ar: 'الملاحق والتعديلات',              en: 'Addenda & amendments' },
+  con_tab_activity:{ ar: 'سجل النشاط',                      en: 'Activity log' },
+
+  // ── الشكل 8 — the five collapsible sections and their fields ───────────
+  // Titles and captions are the document's own, read off its screen.
+  con_grp_identity:{ ar: 'هوية العقد',                      en: 'Contract identity' },
+  con_grp_identity_sub:{ ar: 'التعريف والمكوّن',            en: 'Identification & component' },
+  con_grp_dates:   { ar: 'التواريخ والمدة',                 en: 'Dates & duration' },
+  con_grp_dates_sub:{ ar: 'المباشرة والإنجاز والمراسلات الرسمية', en: 'Start, finish & official correspondence' },
+  con_grp_amounts: { ar: 'المبالغ التعاقدية',               en: 'Contract amounts' },
+  con_grp_amounts_sub:{ ar: 'الإحالة والاحتياط والإشراف',   en: 'Award, reserve & supervision' },
+  con_grp_spend:   { ar: 'المصروف',                         en: 'Spend' },
+  con_grp_spend_sub:{ ar: 'المنصرف مقابل كل بند',           en: 'Disbursed against each item' },
+  con_grp_contractor:{ ar: 'المقاول',                       en: 'Contractor' },
+  con_grp_contractor_sub:{ ar: 'بيانات المقاول المنفّذ',     en: 'Executing contractor details' },
+
+  con_f_nameAr:    { ar: 'اسم العقد',                       en: 'Contract name' },
+  con_f_id:        { ar: 'رمز العقد',                       en: 'Contract code' },
+  con_f_component: { ar: 'المكوّن',                          en: 'Component' },
+  con_f_status:    { ar: 'حالة العقد (الموسّعة)',            en: 'Contract status (extended)' },
+  con_f_start:     { ar: 'تاريخ المباشرة',                  en: 'Start date' },
+  con_f_finish:    { ar: 'تاريخ الإنجاز',                   en: 'Finish date' },
+  con_f_awardAmount:{ ar: 'مبلغ الإحالة',                   en: 'Award amount' },
+  con_f_reserveAmount:{ ar: 'مبلغ الاحتياط',                en: 'Reserve amount' },
+  con_f_supervisionAmount:{ ar: 'مبلغ الإشراف والمراقبة',   en: 'Supervision & monitoring amount' },
+  con_f_spentAward:{ ar: 'المصروف من الإحالة',              en: 'Spent from award' },
+  con_f_spentReserve:{ ar: 'المصروف من الاحتياط',           en: 'Spent from reserve' },
+  con_f_spentSupervision:{ ar: 'المصروف من الإشراف والمراقبة', en: 'Spent from supervision' },
+  con_f_spentTotal:{ ar: 'كلفة العقد الكلي',                en: 'Total contract cost' },
+  con_f_contractor:{ ar: 'اسم المقاول',                     en: 'Contractor name' },
+  con_f_executingParty:{ ar: 'الجهة المنفذة',               en: 'Executing party' },
+  con_f_contactInfo:{ ar: 'بيانات التواصل',                 en: 'Contact details' },
+
+  // ── الشكل 6 — the register card ────────────────────────────────────────
+  con_card_value:  { ar: 'قيمة العقد',                      en: 'Contract value' },
+  con_card_unamended:{ ar: 'القيمة الأصلية دون تعديل',       en: 'Original value, unamended' },
+  con_card_over:   { ar: 'عن الأصلية',                      en: 'over the original' },
+  con_physical:    { ar: 'الإنجاز المادي',                  en: 'Physical progress' },
+  con_no_addenda:  { ar: 'بلا ملاحق',                       en: 'No addenda' },
+  con_open:        { ar: 'فتح العقد',                       en: 'Open contract' },
+  con_weighted_physical:{ ar: 'الإنجاز المادي المرجّح',      en: 'Weighted physical progress' },
+  con_weighted_sub:{ ar: 'مرجّح بقيمة كل عقد · العلامة = نسبة الصرف', en: 'Weighted by contract value · the marker is the spend %' },
+  con_spend_of_effective:{ ar: 'الصرف من القيمة النافذة',    en: 'Spend of effective value' },
+  con_contracts_n: { ar: 'عقود',                            en: 'contracts' },
+  con_asof:        { ar: 'البيانات حتى',                    en: 'Data as of' },
+  /** The footer strip's own label — definite, where the count chip is not. */
+  con_contracts_f: { ar: 'العقود',                          en: 'Contracts' },
+  con_card_period: { ar: 'المدة',                           en: 'Duration' },
+  /**
+   * The badge and the equation's sub-line say the SAME words on الشكل 6 —
+   * «2 ملحق · 1 قيد الاعتماد» — so they read one pair of keys, not two.
+   * `con_addenda` / `con_pending_short` are the register TABLE's longer
+   * wording and are not used by the card.
+   */
+  con_addenda_n:   { ar: 'ملحق',                            en: 'addenda' },
+  con_pending_n:   { ar: 'قيد الاعتماد',                    en: 'awaiting approval' },
+  /** Indefinite, as the plate prints them under the spend bar. */
+  con_spent_short: { ar: 'مصروف',                           en: 'spent' },
+  con_remaining_short:{ ar: 'متبقٍ',                        en: 'remaining' },
+  /** P-09 — a bar with no measurable input says so instead of drawing 0%. */
+  con_no_physical: { ar: 'لا إنجاز قابل للقياس بعد',        en: 'No measurable progress yet' },
+
+  // ── الشكل 9 — the payment panel ────────────────────────────────────────
+  con_pay_no:      { ar: 'رقم الدفعة',                      en: 'Payment no.' },
+  con_pay_letter:  { ar: 'كتاب التمويل',                    en: 'Finance letter' },
+  con_pay_date:    { ar: 'التاريخ',                         en: 'Date' },
+  con_pay_items:   { ar: 'البنود',                          en: 'Items' },
+  con_pay_amount:  { ar: 'المبلغ',                          en: 'Amount' },
+  con_pay_total:   { ar: 'الإجمالي',                        en: 'Total' },
+  con_pay_split:   { ar: 'تفصيل الدفعة لهذا العقد',          en: 'Payment split for this contract' },
+  con_pay_files:   { ar: 'المرفقات',                        en: 'Attachments' },
+  con_pay_export:  { ar: 'تصدير الدفعة',                    en: 'Export payment' },
+  con_pay_item:    { ar: 'البند',                           en: 'Item' },
+  con_payments_n:  { ar: 'الدفعات',                         en: 'Payments' },
+  con_no_payments_t:{ ar: 'لا دفعات مسجَّلة على هذا العقد',  en: 'No payments recorded on this contract' },
+  con_no_payments_b:{ ar: 'تُسجَّل الدفعة عند صدور كتاب التمويل ومصادقة الذرعة.', en: 'A payment is recorded when the finance letter is issued and the measurement certified.' },
+
+  // ── الشكل 11 — the contract activity log ───────────────────────────────
+  con_no_activity_t:{ ar: 'لا نشاط مسجَّل على هذا العقد',    en: 'No activity recorded on this contract' },
+  con_no_activity_b:{ ar: 'يُسجَّل حدث عند إضافة العقد وعند كل تعديل على بياناته.', en: 'An entry is recorded when the contract is added and on every edit to its data.' },
+
+  // ── الشكل 10 — العقد النافذ ────────────────────────────────────────────
+  con_effective_grp:{ ar: 'العقد النافذ',                    en: 'The contract in force' },
+  con_effective_after:{ ar: 'بعد {n} ملحق مطبَّق',           en: 'after {n} applied addenda' },
+  con_effective_none:{ ar: 'لا ملاحق مطبَّقة',               en: 'No applied addenda' },
+  con_f_effVersion:{ ar: 'الإصدار النافذ',                  en: 'Version in force' },
+  con_f_effValue:  { ar: 'قيمة العقد النافذة',              en: 'Effective contract value' },
+  con_f_effFinish: { ar: 'تاريخ الإنجاز التعاقدي',          en: 'Contractual finish date' },
+  con_f_effDuration:{ ar: 'مدة العقد',                      en: 'Contract duration' },
+  con_f_netApplied:{ ar: 'صافي التعديل المطبَّق',            en: 'Net applied change' },
+  con_f_awaiting:  { ar: 'ملاحق بانتظار التطبيق',           en: 'Addenda awaiting application' },
+  con_original_label:{ ar: 'الأصلية',                       en: 'original' },
+  con_unapplied_t: { ar: 'أوامر معتمدة لم تُطبَّق بعد',       en: 'Approved orders not yet applied' },
   con_identity:    { ar: 'هوية العقد',                      en: 'Contract identity' },
   con_dates:       { ar: 'التواريخ والمدة',                 en: 'Dates & duration' },
   con_dates_sub:   { ar: 'المباشرة والإنجاز والمراسلات الرسمية', en: 'Start, finish & official correspondence' },
@@ -471,13 +568,10 @@ const STR = {
   con_cost_award:  { ar: 'الإحالة',                         en: 'Award' },
   con_cost_reserve:{ ar: 'الاحتياط',                        en: 'Reserve' },
   con_cost_supervision:{ ar: 'الإشراف والمراقبة',           en: 'Supervision & monitoring' },
-  con_pay_no:      { ar: 'الرقم',                           en: 'No.' },
   con_pay_kind:    { ar: 'النوع',                           en: 'Kind' },
   con_finance_letter:{ ar: 'كتاب التمويل',                  en: 'Finance letter' },
   con_gross:       { ar: 'المبلغ الإجمالي',                 en: 'Gross' },
   con_net:         { ar: 'الصافي',                          en: 'Net' },
-  con_no_payments_t:{ ar: 'لا توجد دفعات مسجلة لهذا العقد',  en: 'No payments recorded for this contract' },
-  con_no_payments_b:{ ar: 'تُسجَّل الدفعات مقابل كتاب تمويل رسمي.', en: 'Payments are recorded against an official finance letter.' },
   con_chain:       { ar: 'سلسلة إصدارات العقد',             en: 'Contract version chain' },
   con_chain_sub:   { ar: 'العقد الأصلي ثم كل ملحق مطبَّق — بالترتيب', en: 'The original contract, then each APPLIED amendment, in order' },
   con_version:     { ar: 'الإصدار',                         en: 'Version' },

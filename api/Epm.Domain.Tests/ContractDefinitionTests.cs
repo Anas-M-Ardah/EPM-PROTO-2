@@ -30,7 +30,8 @@ public class ContractDefinitionTests
         ReserveAmount: 12_000_000m,
         SupervisionAmount: 5_000_000m,
         MonitoringAmount: 2_000_000m,
-        Contractor: "شركة الفاو الهندسية");
+        Contractor: "شركة الفاو الهندسية",
+        ExecutingParty: "شركة الطاقة العامة");
 
     private static readonly string[] NoneYet = [];
 
@@ -46,7 +47,7 @@ public class ContractDefinitionTests
     public void Every_failing_clause_is_reported_not_only_the_first()
     {
         var empty = new ContractDefinition.Candidate(
-            "", "", "", "", "", null, null, null, null, null, null, "");
+            "", "", "", "", "", null, null, null, null, null, null, "", "");
 
         var v = ContractDefinition.Validate(empty, NoneYet);
 
@@ -58,6 +59,46 @@ public class ContractDefinitionTests
         Assert.Contains(v, x => x.Field == "finish");
         Assert.Contains(v, x => x.Field == "awardAmount");
         Assert.Contains(v, x => x.Field == "projectId");
+        Assert.Contains(v, x => x.Field == "executingParty");
+    }
+
+    /// <summary>
+    /// الشكل 8 draws «نجمة على الحقول الإلزامية» on five fields, and the contract
+    /// card marks them from `RequiredFields`. If the rule ever stopped refusing
+    /// one, the card would keep drawing a star nothing enforces.
+    /// </summary>
+    [Theory]
+    [InlineData("nameAr")]
+    [InlineData("start")]
+    [InlineData("finish")]
+    [InlineData("contractor")]
+    [InlineData("executingParty")]
+    public void Every_starred_field_on_figure_8_is_refused_when_empty(string field)
+    {
+        Assert.Contains(field, ContractDefinition.RequiredFields);
+
+        var empty = new ContractDefinition.Candidate(
+            "", "", "", "", "", null, null, null, null, null, null, "", "");
+
+        Assert.Contains(ContractDefinition.Validate(empty, NoneYet), x => x.Field == field);
+    }
+
+    /// <summary>
+    /// المسار 2 requires more than الشكل 8 stars — رمز العقد · المكوّن · حالة
+    /// العقد · مبلغ الإحالة. Those stay enforced and stay OFF the card's star
+    /// set, which is why the two sets exist. The create form marks the larger
+    /// one, so no screen ever refuses a save on a field it left unmarked.
+    /// </summary>
+    [Fact]
+    public void The_cards_stars_are_a_subset_of_what_the_rule_enforces()
+    {
+        Assert.True(ContractDefinition.RequiredFields.IsSubsetOf(ContractDefinition.EnforcedFields));
+
+        foreach (var extra in new[] { "id", "component", "status", "awardAmount", "projectId" })
+        {
+            Assert.Contains(extra, ContractDefinition.EnforcedFields);
+            Assert.DoesNotContain(extra, ContractDefinition.RequiredFields);
+        }
     }
 
     // ── 1. عدم تكرار رقم العقد داخل التشكيل ───────────────────────────────

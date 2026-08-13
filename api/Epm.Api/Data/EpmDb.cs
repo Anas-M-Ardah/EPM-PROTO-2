@@ -74,6 +74,9 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // four rows of the SCR-E7 catalog were unavailable.
     public DbSet<Payment> Payments => Set<Payment>();
 
+    /// <summary>الشكل 9's «المرفقات» — the letter and the measurement sheet behind one payment.</summary>
+    public DbSet<PaymentAttachment> PaymentAttachments => Set<PaymentAttachment>();
+
     // ── PHASE 4.2 BOQ tab — SCR-W4 ───────────────────────────────────────
     // The densest screen in the system, and the first one where five tables
     // have to agree. BoqItems carries the contracted line; BoqRateBands is the
@@ -135,6 +138,7 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // (ContractId, No) is the real identity and is checked in the endpoint,
         // not here (P-01 — invariants live where they can be read).
         b.Entity<Payment>().HasKey(x => x.Id);
+        b.Entity<PaymentAttachment>().HasKey(x => x.Id);
 
         // The five BOQ tables all carry surrogate keys. Their real identities —
         // (ContractId, Code) on an item, (BoqItemId, BeneficiaryCode) on a

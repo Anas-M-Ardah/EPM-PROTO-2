@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Boq;
 using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
 using Epm.Api.Domain;
@@ -69,11 +70,36 @@ public static class ContractEndpoints
             var payments = await db.Payments.AsNoTracking()
                 .Where(x => ids.Contains(x.ContractId)).ToListAsync();
 
+            // الشكل 6's card draws «الإنجاز المادي» beside «المصروف» per
+            // contract. Physical % is BR-04 — rolled up by weight from this
+            // contract's own bill — and comes from the SAME BoqEndpoints.Derive
+            // that SCR-W4, SCR-W6 and SCR-W1 use, so the register cannot
+            // disagree with the BOQ tab about the same contract (P-54).
+            //
+            // Awaited in a loop rather than in the Select below: a projection
+            // cannot await, and one query per contract is what the flat model
+            // costs. A project has two or three contracts.
+            var physicalById = new Dictionary<string, decimal?>();
+            foreach (var c in contracts)
+            {
+                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+                var billed = derived.Sum(x => x.Line.Amount);
+                // NULL, never 0, for a contract with no bill to roll up — "not
+                // measurable" and "measured at zero" are different answers (P-09).
+                physicalById[c.Id] = billed > 0m
+                    ? ProgressReflection.Rollup(billed, derived.Sum(x => x.Progress.AchievedAmount))
+                    : null;
+            }
+
             var rows = contracts.Select(c =>
             {
                 var deltas = Deltas(amendments, c.Id);
                 var original = Original(c);
                 var effective = Amendments.Effective(original, deltas);
+
+                var disbursed = payments
+                    .Where(x => x.ContractId == c.Id && x.Status == "paid")
+                    .Sum(x => x.NetAmount);
 
                 return new ContractRow(
                     c.Id, c.NameAr, c.NameEn, c.Status,
@@ -87,13 +113,25 @@ public static class ContractEndpoints
                     // released money against has not been disbursed, and
                     // counting it would overstate spend on every delayed project
                     // — which is exactly where the figure matters most.
-                    payments.Where(x => x.ContractId == c.Id && x.Status == "paid")
-                            .Sum(x => x.NetAmount),
-                    c.Contractor);
+                    disbursed,
+                    c.Contractor,
+                    c.Component,
+                    Q(physicalById[c.Id]),
+                    // Against كلفة العقد الكلية, NOT the effective value — الشكل 7
+                    // fixes the denominator («22 % من كلفة العقد الكلية») and the
+                    // two differ by three points on the document's own contract.
+                    // The PROJECT bar below uses the effective value, because
+                    // الشكل 6 labels that one «الصرف من القيمة النافذة». Two bars,
+                    // two questions, two denominators — each named on screen.
+                    Q(ContractRollup.SpentPct(
+                        ContractRollup.TotalCost(
+                            c.AwardAmount, c.ReserveAmount, c.SupervisionAmount),
+                        disbursed)));
             }).ToList();
 
             var effectiveTotal = ProjectValue.Total(rows.Select(r => r.EffectiveValue));
             var originalTotal = ProjectValue.Total(rows.Select(r => r.OriginalValue));
+            var disbursedTotal = payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount);
 
             var totals = new ContractRegisterTotals(
                 rows.Count,
@@ -105,10 +143,24 @@ public static class ContractEndpoints
                 effectiveTotal + amendments.Where(a => a.AppliedAt == null).Sum(a => a.DeltaValue),
                 rows.Sum(r => r.Addenda),
                 rows.Sum(r => r.Pending),
-                payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount),
+                disbursedTotal,
                 payments.Where(x => x.Status is "paid" or "certified").Sum(x => x.NetAmount),
+                effectiveTotal - disbursedTotal,
+                // «الصرف من القيمة النافذة» — the bar names its own denominator.
+                effectiveTotal > 0m
+                    ? Q(ProgressReflection.Rollup(effectiveTotal, disbursedTotal))
+                    : null,
+                // «الإنجاز المادي المرجّح بقيمة كل عقد» (العرض الفني §11-1).
+                // Weighted here rather than in Angular, and by CONTRACT VALUE
+                // rather than by billed BOQ amount — see Domain/ContractRollup
+                // for why that is not SCR-W6's figure.
+                Q(ContractRollup.WeightedPhysical(
+                    rows.Select(r => new ContractRollup.Weight(r.EffectiveValue, r.PhysicalPct)))),
                 rows.Count == 0 ? null : rows.Min(r => r.Start),
-                rows.Count == 0 ? null : rows.Max(r => r.EffectiveFinish));
+                rows.Count == 0 ? null : rows.Max(r => r.EffectiveFinish),
+                // D-06 — the PROJECT's data date, never DateTime.Now. الشكل 6's
+                // footer prints it so a reader knows how old the figures are.
+                p.DataDate?.ToString("yyyy-MM-dd"));
 
             var countByStatus = rows
                 .GroupBy(r => r.Status)
@@ -234,14 +286,22 @@ public static class ContractEndpoints
                 payments.Sum(x => x.AdvanceRecovery),
                 effective.Value - disbursed,
                 [
-                    // Spent is null on all three: a payment is recorded against
-                    // the CONTRACT, not against one of its three expense items,
-                    // so splitting disbursement across them would be an
-                    // apportionment nobody authorised (P-09).
-                    new CostLine("award", c.AwardAmount, null),
-                    new CostLine("reserve", c.ReserveAmount, null),
-                    new CostLine("supervision", c.SupervisionAmount, null),
+                    // الشكل 7's «تفصيل كلفة العقد» and الشكل 8's «المصروف»
+                    // section. Spend per item is Σ of the matching portion over
+                    // the PAID payments — the same set `disbursed` sums, so the
+                    // three add up to it exactly.
+                    //
+                    // It used to be null on all three, because a payment carried
+                    // no apportionment and splitting one would have been a
+                    // decision nobody made. الشكل 9 records the apportionment on
+                    // the payment, so this is a sum now, not a guess.
+                    new CostLine("award", c.AwardAmount, Paid(x => x.AwardPortion)),
+                    new CostLine("reserve", c.ReserveAmount, Paid(x => x.ReservePortion)),
+                    new CostLine("supervision", c.SupervisionAmount, Paid(x => x.SupervisionPortion)),
                 ]);
+
+            decimal Paid(Func<Data.Entities.Payment, decimal> part) =>
+                payments.Where(x => x.Status == "paid").Sum(part);
 
             var detail = new ContractDetail(
                 c.Id, p.Id, p.NameAr, p.NameEn,
@@ -258,13 +318,14 @@ public static class ContractEndpoints
                 effective.Duration,
                 c.OriginalValue, effective.Value, projection.Value,
                 c.IncomingNo,
-                c.IncomingDate?.ToString("yyyy-MM-dd"));
+                c.IncomingDate?.ToString("yyyy-MM-dd"),
+                c.Component, c.ExecutingParty, c.ContactInfo,
+                c.AwardAmount, c.ReserveAmount, c.SupervisionAmount, c.MonitoringAmount);
 
             var unavailable = new List<ContractUnavailable>
             {
-                new("cost-line-spend",
-                    "المصروف مسجَّل على العقد لا على بنوده الثلاثة، فلا يمكن توزيعه على الإحالة والاحتياط والإشراف دون قرار توزيع.",
-                    "Spend is recorded against the contract, not against its three expense items, so it cannot be split across award, reserve and supervision without an apportionment decision."),
+                // `cost-line-spend` is GONE: the three expense items carry real
+                // spend now, summed from the payment portions الشكل 9 records.
                 new("amendment-source",
                     "لم يُبنَ سجل الأوامر التغييرية بعد (المرحلة 5.1)، فلا يمكن ربط الملحق بالأمر الذي أنشأه.",
                     "The change-order register does not exist yet (Phase 5.1), so an amendment cannot yet be linked to the order that created it."),
@@ -273,16 +334,50 @@ public static class ContractEndpoints
                     "02 §4 does not fix the denominator for financial % (effective value or total contract cost) — the amounts are shown without a percentage."),
             };
 
+            // المرفقات — one flat read for every payment on this contract, then
+            // grouped in memory. `db.PaymentAttachments.Where(a => a.PaymentId
+            // == id)` IS the relationship; doing it per payment would be one
+            // query per row.
+            var paymentIds = payments.Select(x => x.Id).ToList();
+            var files = await db.PaymentAttachments.AsNoTracking()
+                .Where(a => paymentIds.Contains(a.PaymentId))
+                .ToListAsync();
+
             var paymentRows = payments.Select(x => new ContractPayment(
                 x.No, x.Kind, x.FinanceLetterNo,
                 x.FinanceLetterDate?.ToString("yyyy-MM-dd"),
                 x.GrossAmount, x.RetentionAmount, x.AdvanceRecovery, x.NetAmount,
                 x.CertifiedDate?.ToString("yyyy-MM-dd"),
                 x.PaidDate?.ToString("yyyy-MM-dd"),
-                x.Status, x.Note)).ToList();
+                x.Status, x.Note,
+                // الشكل 9's «تفصيل الدفعة لهذا العقد» — the same three keys the
+                // cost breakdown uses, so the panel and the tab name the items
+                // identically.
+                [
+                    new CostLine("award", x.AwardPortion, null),
+                    new CostLine("reserve", x.ReservePortion, null),
+                    new CostLine("supervision", x.SupervisionPortion, null),
+                ],
+                files.Where(a => a.PaymentId == x.Id)
+                    .Select(a => new PaymentFile(a.TitleAr, a.TitleEn, a.FileName, a.SizeBytes))
+                    .ToList())).ToList();
+
+            // سجل النشاط — the SAME rows EP-CON-05 returns, read the same way.
+            // Newest first: an activity log is read from the top.
+            var events = await db.ContractActivityEvents.AsNoTracking()
+                .Where(e => e.ContractId == contractId)
+                .OrderByDescending(e => e.Id)
+                .Select(e => new ContractEvent(
+                    e.Id, e.Action, e.ActorName, e.ActorRole, e.ActorParty,
+                    e.At.ToString("yyyy-MM-dd")))
+                .ToListAsync();
 
             return Results.Ok(new ContractDetailResponse(
-                detail, money, versions, pending, penalty, paymentRows, unavailable));
+                detail, money, versions, pending, penalty, paymentRows, unavailable,
+                events,
+                // The same capacity EP-CON-04 checks before it will accept the
+                // save, so the Edit button cannot offer what the endpoint refuses.
+                new ContractPermissions(Edit: WorkspaceScope.User(http).CanDefineProjects())));
         });
     }
 
@@ -511,7 +606,7 @@ public static class ContractEndpoints
         c.Start == default ? null : c.Start,
         c.OriginalFinish == default ? null : c.OriginalFinish,
         c.AwardAmount, c.ReserveAmount, c.SupervisionAmount, c.MonitoringAmount,
-        c.Contractor);
+        c.Contractor, c.ExecutingParty);
 
     private static ContractDefinitionInput Read(Data.Entities.Contract c) => new(
         c.Id, c.NameAr, c.NameEn, c.Component, c.Status,
@@ -532,6 +627,14 @@ public static class ContractEndpoints
         ActorParty = user.Party,
         At = at,
     };
+
+    /// <summary>
+    /// Percentages carry four decimals, rounded once at projection time — the
+    /// same treatment SCR-W6 and SCR-W1 give theirs (P-49). Nullable throughout:
+    /// a percentage that cannot be derived is null, never 0 (P-09).
+    /// </summary>
+    private static decimal? Q(decimal? v) =>
+        v is null ? null : Math.Round(v.Value, 4, MidpointRounding.AwayFromZero);
 
     /// <summary>The BR-09 input: one delta per amendment, applied or not.</summary>
     private static List<Amendments.Delta> Deltas(

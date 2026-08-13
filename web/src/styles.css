@@ -795,6 +795,133 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
 
+/* ══ الشكل 7 — «تفصيل كلفة العقد» ═════════════════════════════════════════
+   A tile per expense item: name, amount, its own spend bar, and what has been
+   disbursed against it. Three tiles that wrap to one column on a narrow pane,
+   sized by the CARD (`.d-fgroup` is a container) rather than the viewport —
+   the same contract fits a wide pane and a split one. */
+.epm-costgrid {
+  display: grid; gap: var(--space-16);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.epm-costtile {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: 1fr auto;
+  align-content: start;
+  padding: var(--space-12);
+  border: 1px solid var(--stroke-subtle, var(--outline-variant));
+  border-radius: var(--r-sm);
+  background: var(--surface-container-lowest);
+}
+.epm-costtile .k { font-size: 12px; color: var(--on-surface-variant); }
+.epm-costtile .pct { font-size: 12px; color: var(--on-surface-variant); text-align: end; }
+.epm-costtile .v { grid-column: 1 / -1; font-size: 15px; font-weight: var(--fw-bold); }
+.epm-costtile .track { grid-column: 1 / -1; }
+.epm-costtile .sp2 { grid-column: 1 / -1; font-size: 11.5px; }
+
+/* ══ الشكل 6 — سجل عقود المشروع ═══════════════════════════════════════════
+   The register is CARDS, not a table. The plate in «ملحق الشاشات والوظائف» is
+   the binding visual here — not `DModContractNew`, which this screen used to
+   be a port of and which renders a seven-column table with none of the five
+   figures the card carries. Recorded because replacing a reviewed component
+   needs a reason on the record.
+
+   Nothing below introduces a colour, a size or a radius: every value is a
+   token, and `.d-panel` · `.d-pill` · `.epm-track` · `.d-recon` · `.d-z9` are
+   the existing primitives (CLAUDE.md §7). */
+
+/* ── C1 · the summary card's identity row ──────────────────────────────── */
+.epm-reghead { display: flex; align-items: flex-end; gap: var(--space-12); flex-wrap: wrap; }
+.epm-reghead > .n { display: flex; align-items: baseline; gap: var(--space-6); }
+.epm-reghead > .n > b { font-size: var(--fs-500); line-height: var(--lh-500); font-weight: var(--fw-bold); }
+.epm-reghead > .sp { flex: 1 1 var(--space-16); }
+.epm-reghead > .per { text-align: end; }
+.epm-reghead > .per > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
+
+/* ── C3 · D3 · «شريطا تقدّم متقابلان» ───────────────────────────────────────
+   Two halves set against each other for comparison. Both fills run from the
+   inline-start edge — RTL progress — so «متقابلان» is the juxtaposition, not
+   mirrored geometry. Used at BOTH scales: the project summary (spend vs
+   weighted physical) and each contract card (physical vs spend). */
+/* 150px, not 220: this same rule runs inside a CARD, whose inner width is a
+   third of the summary's. At 220 the pair stacked there and the comparison
+   — which is the entire point of the row — stopped being one glance. Sized by
+   the container, so a narrow pane still folds it to one column rather than
+   crushing two. */
+.epm-barpair {
+  display: grid; gap: var(--space-12) var(--space-24);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.epm-bar { min-inline-size: 0; }
+.epm-bar > .h { display: flex; align-items: baseline; gap: var(--space-8); }
+.epm-bar > .h > .k { font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-bar > .h > .sp { flex: 1; }
+.epm-bar > .h > .v {
+  font-size: var(--fs-400); line-height: var(--lh-400);
+  font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
+}
+/* The spend rail is the only one that is not `--viz-1`. Two magnitudes on one
+   row need to be told apart at a glance, and they are ALSO labelled and
+   printed in words — the colour is never the only carrier (05 §8). */
+.epm-bar > .track > i.spend { background: var(--success); }
+
+/* THE MARKER — «العلامة = نسبة الصرف». What makes the summary row a
+   comparison rather than two bars: the physical rail is ticked at the spend %,
+   so 28-against-30 is one glance. `inset-inline-start` puts it on the same
+   axis the fill grows along, in both directions. */
+.epm-track.marked { position: relative; overflow: visible; }
+.epm-track > .mk {
+  position: absolute; inset-block: -3px; inline-size: 2px;
+  background: var(--on-surface); border-radius: var(--r-pill);
+}
+
+/* ── Sections are label + space, never nested boxes (CLAUDE.md §6) ──────
+   One panel, rows divided by hairlines. Both the summary card and each
+   contract card are this shape, so it is one rule rather than two. */
+.epm-hrows > * { padding: var(--space-16); }
+.epm-hrows > * + * { border-block-start: 1px solid var(--outline-variant); }
+
+/* ── D · the contract cards ────────────────────────────────────────────── */
+.epm-cardgrid {
+  display: grid; gap: var(--space-16);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+.epm-concard > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
+.epm-concard > .hd > .t { min-inline-size: 0; }
+.epm-concard > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.epm-concard > .hd > .sp { flex: 1; }
+.epm-concard > .val > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-concard > .val > b {
+  display: block; font-size: var(--fs-500); line-height: var(--lh-500);
+  font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
+}
+/* The amendment delta. A ملحق that RAISES the contract is the exceptional
+   fact the plate colours; a reduction is shown in the same place with the
+   neutral branch, because colouring a magnitude by its sign is the defect
+   CLAUDE.md §6 names. The arrow carries the direction either way. */
+.epm-concard > .val > .up { color: var(--error); }
+.epm-conmeta {
+  display: grid; gap: var(--space-12) var(--space-16);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.epm-conmeta > div > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-confoot { display: flex; align-items: center; gap: var(--space-6); }
+.epm-confoot > .sp { flex: 1; }
+
+/* The amendment badges carry no status dot — they count a thing, they do not
+   report a state, and `.d-pill::before` would read as one. */
+.d-pill.count::before { content: none; }
+
+/* ── E · «شريط تذييل ثابت» ─────────────────────────────────────────────────
+   Contract count · effective value · disbursed · data date. `.d-z9` is the
+   module frame's bottom bar; the shadow it carries for the edit bar is
+   dropped here, because nothing floats (CLAUDE.md §6). */
+.epm-regfoot { flex-wrap: wrap; box-shadow: none; }
+.epm-regfoot > .it { display: flex; align-items: baseline; gap: var(--space-6); }
+.epm-regfoot > .it + .it { border-inline-start: 1px solid var(--outline-variant); padding-inline-start: var(--space-16); }
+.epm-regfoot > .it > .k { font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-regfoot > .sp { flex: 1; }
+
 /* The "fields marked with a star are required" line above the sections. */
 .epm-form-note {
   display: flex; align-items: center; gap: var(--space-6, 6px);

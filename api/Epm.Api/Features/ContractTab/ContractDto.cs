@@ -17,6 +17,21 @@ namespace Epm.Api.Features.ContractTab;
 /// Approved but NOT applied. Counted separately everywhere, never folded in.
 /// </param>
 /// <param name="Disbursed">Σ net of PAID payments. Certified-not-paid is not spend.</param>
+/// <param name="Component">المكوّن — الشكل 6's card prints it under the contractor.</param>
+/// <param name="PhysicalPct">
+/// الإنجاز المادي — BR-04, rolled up from this contract's BOQ. Null when the
+/// contract has no bill to roll up, which is not the same as zero.
+/// </param>
+/// <param name="SpentPct">
+/// المصروف as a share of **كلفة العقد الكلية** — الإحالة + الاحتياط + الإشراف
+/// (Domain/ContractRollup). NOT of the effective value: الشكل 7 states the
+/// denominator in as many words — «22 % من كلفة العقد الكلية» — and the same
+/// spend against the effective value reads 19%, which is the figure الشكل 6's
+/// card would then contradict. **This resolves P-44 at the CONTRACT level
+/// only**; the project bar in <see cref="ContractRegisterTotals"/> keeps the
+/// effective value, because الشكل 6 labels that one «الصرف من القيمة النافذة».
+/// Null when the contract has no amounts entered yet.
+/// </param>
 public record ContractRow(
     string Id,
     string NameAr,
@@ -30,7 +45,10 @@ public record ContractRow(
     int Addenda,
     int Pending,
     decimal Disbursed,
-    string Contractor);
+    string Contractor,
+    string Component,
+    decimal? PhysicalPct,
+    decimal? SpentPct);
 
 /// <summary>
 /// The reconciliation the register leads with: **original + addenda impact =
@@ -44,6 +62,25 @@ public record ContractRow(
 /// <param name="ProjectionValue">
 /// Effective + Σ approved-but-unapplied deltas. Its own figure (02 §9).
 /// </param>
+/// <param name="Remaining">
+/// القيمة النافذة − المصروف. الشكل 6 prints it beside المصروف under the spend
+/// bar: 2,099,751,046 − 622,697,487 = 1,477,053,559.
+/// </param>
+/// <param name="SpentPct">
+/// «الصرف من القيمة النافذة» — disbursed ÷ EFFECTIVE value, which is the
+/// denominator الشكل 6 names on the bar itself and العرض الفني §11-1 words as
+/// «ونسبة الصرف منها». Deliberately a different denominator from
+/// <see cref="ContractRow.SpentPct"/>; see that member's note.
+/// </param>
+/// <param name="WeightedPhysicalPct">
+/// «الإنجاز المادي المرجّح بقيمة كل عقد» — Domain/ContractRollup. Null when no
+/// contract on the project has a bill to roll up, so the bar can say so rather
+/// than draw 0% (P-09).
+/// </param>
+/// <param name="DataDate">
+/// The project's own data date (D-06), for الشكل 6's footer «البيانات حتى». Never
+/// DateTime.Now.
+/// </param>
 public record ContractRegisterTotals(
     int ContractCount,
     decimal OriginalValue,
@@ -54,8 +91,12 @@ public record ContractRegisterTotals(
     int Pending,
     decimal Disbursed,
     decimal Certified,
+    decimal Remaining,
+    decimal? SpentPct,
+    decimal? WeightedPhysicalPct,
     string? PeriodStart,
-    string? PeriodFinish);
+    string? PeriodFinish,
+    string? DataDate);
 
 public record ContractRegisterResponse(
     string ProjectId,
@@ -123,6 +164,16 @@ public record PenaltyImpact(
 
 /// <param name="Status">pending · certified · paid.</param>
 /// <param name="NetAmount">gross − retention − advance recovery.</param>
+/// <summary>المرفقات — one file behind a payment (الشكل 9). Metadata only.</summary>
+public record PaymentFile(string TitleAr, string TitleEn, string FileName, long SizeBytes);
+
+/// <param name="Portions">
+/// تفصيل الدفعة لهذا العقد — الشكل 9's side panel splits one payment across the
+/// contract's three cost items. `CostLine.Amount` carries the portion and
+/// `Spent` is null: on a payment the portion IS the spend, so a second number
+/// would be the same figure twice.
+/// </param>
+/// <param name="Files">المرفقات — usually the finance letter and the measurement sheet.</param>
 public record ContractPayment(
     int No,
     string Kind,
@@ -135,13 +186,19 @@ public record ContractPayment(
     string? CertifiedDate,
     string? PaidDate,
     string Status,
-    string Note);
+    string Note,
+    IReadOnlyList<CostLine> Portions,
+    IReadOnlyList<PaymentFile> Files);
 
 /// <summary>
 /// The three expense items of `01 §2.3`, each with what has been spent against
-/// it. **Spend is not split across them by this build** — a payment is recorded
-/// against the contract, not against one of its three lines, so `Spent` is null
-/// on all three and the panel says why rather than apportioning it on a guess.
+/// it — الشكل 7's «تفصيل كلفة العقد» and الشكل 8's «المصروف» section.
+///
+/// `Spent` is the sum of the matching `Payment` portion over the contract's PAID
+/// payments. It is NOT a column and never was: apportioning a contract-level
+/// payment would have been an allocation nobody authorised, which is why this
+/// used to be null with a printed reason. الشكل 9 records the apportionment on
+/// the payment itself, so the figure is now a sum rather than a guess.
 /// </summary>
 public record CostLine(string Key, decimal Amount, decimal? Spent);
 
@@ -166,7 +223,18 @@ public record ContractDetail(
     decimal EffectiveValue,
     decimal ProjectionValue,
     string IncomingNo,
-    string? IncomingDate);
+    string? IncomingDate,
+    // ── الشكل 8's own fields ─────────────────────────────────────────────
+    // The details card names these and the card had no way to read them: they
+    // were on the entity and on the definition endpoint, and nowhere on the
+    // record the tab renders.
+    string Component,
+    string ExecutingParty,
+    string ContactInfo,
+    decimal AwardAmount,
+    decimal ReserveAmount,
+    decimal SupervisionAmount,
+    decimal MonitoringAmount);
 
 /// <param name="Disbursed">Σ net of PAID payments.</param>
 /// <param name="Certified">Σ net of certified-or-paid payments.</param>
@@ -182,6 +250,14 @@ public record ContractMoney(
 
 public record ContractUnavailable(string Key, string NeedsAr, string NeedsEn);
 
+/// <param name="Events">
+/// سجل النشاط — الشكل 11's tab, newest first. The SAME `ContractActivityEvents`
+/// rows `EP-CON-05` returns and `EP-CON-03/04` write.
+/// </param>
+/// <param name="Can">
+/// Resolved server-side from the persona. الشكل 8's «زر تعديل» renders from this
+/// and never decides for itself, so the button and `EP-CON-04` cannot disagree.
+/// </param>
 public record ContractDetailResponse(
     ContractDetail Contract,
     ContractMoney Money,
@@ -189,7 +265,9 @@ public record ContractDetailResponse(
     IReadOnlyList<AmendmentVersion> Pending,
     PenaltyImpact Penalty,
     IReadOnlyList<ContractPayment> Payments,
-    IReadOnlyList<ContractUnavailable> Unavailable);
+    IReadOnlyList<ContractUnavailable> Unavailable,
+    IReadOnlyList<ContractEvent> Events,
+    ContractPermissions Can);
 
 // ─────────────────────────────────────────────────────────────────────────
 // المسار 2 — إنشاء العقود وربطها بالمشروع
