@@ -32,6 +32,13 @@ export interface Field {
   options?: FieldOption[];
   /** Digits only — سنة الإدراج. */
   numeric?: boolean;
+  /**
+   * Keeps its VALUE while the rest of the card is editing. For a figure that is
+   * derived rather than entered — الشكل 8's «المصروف» section is Σ of the
+   * payment portions, and the contract code is the record's own key. A field
+   * with nothing to type into must not render an input the save would ignore.
+   */
+  readonly?: boolean;
   /** A 422 message from Domain/ProjectDefinition, or null. */
   error?: string | null;
   unit?: string;
@@ -77,7 +84,7 @@ export interface Field {
             }
           </div>
         } @else {
-          <div class="d-form-i" [class.editing]="editing">
+          <div class="d-form-i" [class.editing]="editing && !f.readonly">
             <label class="k">
               {{ f.label }}
               @if (f.required) { <span class="req">*</span> }
@@ -86,7 +93,7 @@ export interface Field {
               }
             </label>
 
-            @if (editing) {
+            @if (editing && !f.readonly) {
               @if (f.options) {
                 <!-- Not a native <select>: its popup is drawn by the OS and
                      ignores the app's font, RTL and theme. <epm-select> renders

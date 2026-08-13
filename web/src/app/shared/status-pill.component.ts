@@ -19,10 +19,18 @@ import { LookupsService } from '../core/lookups';
   selector: 'epm-status-pill',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  template: `<span class="d-pill {{ cls() }}">{{ text() }}</span>`,
+  template: `<span class="d-pill {{ cls() }}">{{ text() }}@if (n() !== null) {<bdi>{{ n() }}</bdi>}</span>`,
 })
 export class StatusPillComponent {
   private lookups = inject(LookupsService);
+
+  /**
+   * الشكل 6's «مستمر 2» — a status and how many carry it, as الشكل 3's filter
+   * chips already read. Optional, and `<bdi>`-isolated because a Latin digit
+   * ending an Arabic label is exactly the case `05 §5.2` is about. The LABEL is
+   * still not optional (see above): this adds a number, never replaces a word.
+   */
+  @Input() set count(v: number | null) { this.countSig.set(v); }
 
   /** A 06 lookup kind, e.g. 'project-status' · 'co-lifecycle'. */
   @Input({ required: true }) set kind(v: string) { this.kindSig.set(v); }
@@ -34,8 +42,10 @@ export class StatusPillComponent {
   private kindSig = signal('');
   private codeSig = signal('');
   private labelSig = signal<string | null>(null);
+  private countSig = signal<number | null>(null);
 
   text = computed(() => this.labelSig() ?? this.lookups.label(this.kindSig(), this.codeSig()));
+  n = computed(() => this.countSig());
 
   /**
    * The API speaks the CANONICAL keys of 06 §1 (delayed, cancelled). The

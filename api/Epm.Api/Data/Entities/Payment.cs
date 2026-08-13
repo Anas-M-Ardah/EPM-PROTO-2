@@ -31,6 +31,26 @@ public class Payment
     public decimal AdvanceRecovery { get; set; }
     public decimal NetAmount { get; set; }
 
+    // ── تفصيل الدفعة لهذا العقد — الشكل 9's side panel ───────────────────
+    // «تفاصيل PAY-100: الإحالة 32,926,402، الاحتياط 10,348,298، الإشراف
+    // والمراقبة 3,763,017» — the panel splits ONE payment across the contract's
+    // three cost items, and the register's «البنود» column counts how many of
+    // them the payment touched.
+    //
+    // These come off the funding letter, so they are recorded, not computed:
+    // nothing else in the model says how a certificate was apportioned.
+    //
+    // THEY SUM TO <see cref="NetAmount"/>, not to <see cref="GrossAmount"/>.
+    // The contract's own «المصروف من الإحالة …» (الشكل 7 · الشكل 8) is the sum
+    // of each portion over the PAID payments, and the contract's total spend is
+    // already Σ net — so netting them here keeps one spend figure on every
+    // screen instead of a gross-based split sitting beside a net-based total.
+    // Retention and advance recovery are withheld from the whole certificate,
+    // not from one cost item, which is why they are deducted before the split.
+    public decimal AwardPortion { get; set; }
+    public decimal ReservePortion { get; set; }
+    public decimal SupervisionPortion { get; set; }
+
     public DateOnly? CertifiedDate { get; set; }
     public DateOnly? PaidDate { get; set; }
 

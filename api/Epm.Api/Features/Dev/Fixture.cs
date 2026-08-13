@@ -165,6 +165,7 @@ public static class Fixture
                 AwardAmount = 240_000_000m, ReserveAmount = 12_000_000m, SupervisionAmount = 6_000_000m,
                 IncomingNo = "3421", IncomingDate = new DateOnly(2025, 2, 11),
                 Contractor = "شركة الفاو الهندسية", Consultant = "دار الهندسة",
+                Component = "المكوّن المدني", ExecutingParty = "شركة الفاو العامة", ContactInfo = "+964 771 222 3333",
             },
             new Contract
             {
@@ -178,6 +179,7 @@ public static class Fixture
                 AwardAmount = 100_000_000m, ReserveAmount = 5_000_000m, SupervisionAmount = 2_500_000m,
                 IncomingNo = "3588", IncomingDate = new DateOnly(2025, 5, 6),
                 Contractor = "شركة المنصور للتجهيزات", Consultant = "دار الهندسة",
+                Component = "المكوّن الكهربائي", ExecutingParty = "شركة الطاقة العامة", ContactInfo = "+964 780 444 5555",
             },
             new Contract
             {
@@ -191,6 +193,7 @@ public static class Fixture
                 AwardAmount = 68_500_000m, ReserveAmount = 3_400_000m, SupervisionAmount = 1_700_000m,
                 IncomingNo = "2914", IncomingDate = new DateOnly(2024, 8, 22),
                 Contractor = "شركة بغداد للمقاولات", Consultant = "المكتب الاستشاري",
+                Component = "المكوّن المدني", ExecutingParty = "شركة بغداد العامة للمقاولات", ContactInfo = "+964 790 111 2222",
             },
             new Contract
             {
@@ -204,6 +207,7 @@ public static class Fixture
                 AwardAmount = 31_200_000m, ReserveAmount = 1_500_000m, SupervisionAmount = 800_000m,
                 IncomingNo = "3102", IncomingDate = new DateOnly(2024, 12, 3),
                 Contractor = "شركة الموصل", Consultant = "دار الهندسة",
+                Component = "المكوّن البنى التحتية", ExecutingParty = "شركة الرافدين العامة", ContactInfo = "+964 751 666 7777",
             }
         );
 
@@ -390,18 +394,21 @@ public static class Fixture
             new Payment { ContractId = "CNT-0279", No = 1, Kind = "advance",
                 GrossAmount = 24_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
                 NetAmount = 24_000_000m,
+                AwardPortion = 22_400_000m, ReservePortion = 1_100_000m, SupervisionPortion = 500_000m,
                 FinanceLetterNo = "1420/2025", FinanceLetterDate = new DateOnly(2025, 4, 10),
                 CertifiedDate = new DateOnly(2025, 4, 6), PaidDate = new DateOnly(2025, 4, 21),
                 Status = "paid", Note = "سلفة تشغيلية 10% من مبلغ الإحالة" },
             new Payment { ContractId = "CNT-0279", No = 2, Kind = "interim",
                 GrossAmount = 62_000_000m, RetentionAmount = 3_100_000m, AdvanceRecovery = 6_200_000m,
                 NetAmount = 52_700_000m,
+                AwardPortion = 49_000_000m, ReservePortion = 2_500_000m, SupervisionPortion = 1_200_000m,
                 FinanceLetterNo = "2107/2025", FinanceLetterDate = new DateOnly(2025, 11, 3),
                 CertifiedDate = new DateOnly(2025, 10, 28), PaidDate = new DateOnly(2025, 11, 19),
                 Status = "paid", Note = "المستخلص الأول — أعمال الأسس والهيكل" },
             new Payment { ContractId = "CNT-0279", No = 3, Kind = "interim",
                 GrossAmount = 48_500_000m, RetentionAmount = 2_425_000m, AdvanceRecovery = 4_850_000m,
                 NetAmount = 41_225_000m,
+                AwardPortion = 38_300_000m, ReservePortion = 1_975_000m, SupervisionPortion = 950_000m,
                 FinanceLetterNo = "0931/2026", FinanceLetterDate = new DateOnly(2026, 7, 12),
                 CertifiedDate = new DateOnly(2026, 7, 9), PaidDate = null,
                 Status = "certified", Note = "مصادق عليه — بانتظار التخصيص المالي" },
@@ -410,6 +417,7 @@ public static class Fixture
             new Payment { ContractId = "CNT-0279-EM", No = 1, Kind = "advance",
                 GrossAmount = 10_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
                 NetAmount = 10_000_000m,
+                AwardPortion = 9_400_000m, ReservePortion = 400_000m, SupervisionPortion = 200_000m,
                 FinanceLetterNo = "1655/2025", FinanceLetterDate = new DateOnly(2025, 7, 8),
                 CertifiedDate = new DateOnly(2025, 7, 2), PaidDate = new DateOnly(2025, 7, 20),
                 Status = "paid", Note = "سلفة تشغيلية" },
@@ -418,12 +426,14 @@ public static class Fixture
             new Payment { ContractId = "CNT-0148", No = 1, Kind = "interim",
                 GrossAmount = 21_000_000m, RetentionAmount = 1_050_000m, AdvanceRecovery = 0m,
                 NetAmount = 19_950_000m,
+                AwardPortion = 18_600_000m, ReservePortion = 930_000m, SupervisionPortion = 420_000m,
                 FinanceLetterNo = "0788/2025", FinanceLetterDate = new DateOnly(2025, 3, 17),
                 CertifiedDate = new DateOnly(2025, 3, 12), PaidDate = new DateOnly(2025, 3, 30),
                 Status = "paid", Note = "المستخلص الأول" },
             new Payment { ContractId = "CNT-0148", No = 2, Kind = "interim",
                 GrossAmount = 26_400_000m, RetentionAmount = 1_320_000m, AdvanceRecovery = 0m,
                 NetAmount = 25_080_000m,
+                AwardPortion = 23_400_000m, ReservePortion = 1_180_000m, SupervisionPortion = 500_000m,
                 FinanceLetterNo = "0402/2026", FinanceLetterDate = new DateOnly(2026, 2, 24),
                 CertifiedDate = new DateOnly(2026, 2, 18), PaidDate = new DateOnly(2026, 3, 9),
                 Status = "paid", Note = "المستخلص الثاني — الإكساء" },
@@ -433,6 +443,7 @@ public static class Fixture
             new Payment { ContractId = "CNT-0207", No = 1, Kind = "interim",
                 GrossAmount = 7_800_000m, RetentionAmount = 390_000m, AdvanceRecovery = 0m,
                 NetAmount = 7_410_000m,
+                AwardPortion = 6_930_000m, ReservePortion = 330_000m, SupervisionPortion = 150_000m,
                 FinanceLetterNo = "0555/2026", FinanceLetterDate = new DateOnly(2026, 5, 14),
                 CertifiedDate = null, PaidDate = null,
                 Status = "pending", Note = "قيد التدقيق لدى الرقابة المالية" }
@@ -460,9 +471,54 @@ public static class Fixture
         // PHASE 5.1 — the six change orders 06 §12 asks for, in six states.
         ChangeOrders(db);
 
+        // الشكل 9 — the letter and the measurement sheet behind each payment.
+        PaymentFiles(db);
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();
+    }
+
+    /// <summary>
+    /// المرفقات — الشكل 9 puts «كتاب المالية» and «ذرعة الأعمال المنجزة» beside
+    /// every payment, which is the pair the ministry actually certifies against.
+    ///
+    /// Its own method for the same reason `Boq` is: `PaymentAttachment.PaymentId`
+    /// points at a GENERATED key, so the payments are saved first and the files
+    /// are built from the ids that came back. Keyed by (contract, no) rather
+    /// than by insertion order — an id that depends on the order rows happen to
+    /// be added in is a fixture that breaks the first time one is inserted.
+    ///
+    /// Sizes are plausible, not real: no file is stored anywhere (CLAUDE.md §4).
+    /// </summary>
+    private static void PaymentFiles(EpmDb db)
+    {
+        db.SaveChanges();
+
+        foreach (var p in db.Payments.ToList())
+        {
+            var tag = $"{p.ContractId}-{p.No:D2}";
+
+            db.PaymentAttachments.Add(new PaymentAttachment
+            {
+                PaymentId = p.Id,
+                TitleAr = "كتاب المالية", TitleEn = "Finance letter",
+                FileName = $"{tag}-fin-letter.pdf", SizeBytes = 96_000,
+            });
+
+            // A مستخلص is certified against a measurement sheet; a سلفة is not
+            // measured, so it carries only the letter. One row fewer is the
+            // honest fixture, and it exercises the one-attachment layout.
+            if (p.Kind != "advance")
+            {
+                db.PaymentAttachments.Add(new PaymentAttachment
+                {
+                    PaymentId = p.Id,
+                    TitleAr = "ذرعة الأعمال المنجزة", TitleEn = "Measurement sheet",
+                    FileName = $"{tag}-measurement.pdf", SizeBytes = 188_000,
+                });
+            }
+        }
     }
 
     /// <summary>

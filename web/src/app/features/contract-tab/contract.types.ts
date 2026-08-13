@@ -27,6 +27,18 @@ export interface ContractRow {
   /** Σ net of PAID payments. */
   disbursed: number;
   contractor: string;
+  /** المكوّن — الشكل 6's card prints it under the contractor. */
+  component: string;
+  /** BR-04, from this contract's own bill. Null when there is none to roll up. */
+  physicalPct: number | null;
+  /**
+   * Disbursed ÷ **كلفة العقد الكلية** (إحالة+احتياط+إشراف), NOT ÷ effective —
+   * الشكل 7 fixes that denominator: «22 % من كلفة العقد الكلية». The PROJECT bar
+   * in `ContractRegisterTotals.spentPct` uses the effective value instead,
+   * because الشكل 6 labels that one «الصرف من القيمة النافذة». Two bars, two
+   * questions, and each names its own denominator on screen.
+   */
+  spentPct: number | null;
 }
 
 export interface ContractRegisterTotals {
@@ -40,8 +52,16 @@ export interface ContractRegisterTotals {
   pending: number;
   disbursed: number;
   certified: number;
+  /** القيمة النافذة − المصروف — الشكل 6 prints it beside المصروف. */
+  remaining: number;
+  /** «الصرف من القيمة النافذة» — disbursed ÷ EFFECTIVE value. */
+  spentPct: number | null;
+  /** «الإنجاز المادي المرجّح بقيمة كل عقد». Null when nothing is measurable. */
+  weightedPhysicalPct: number | null;
   periodStart: string | null;
   periodFinish: string | null;
+  /** The project's data date (D-06) — الشكل 6's footer «البيانات حتى». */
+  dataDate: string | null;
 }
 
 export interface ContractRegisterResponse {
@@ -96,12 +116,24 @@ export interface ContractPayment {
   paidDate: string | null;
   status: string;
   note: string;
+  /** تفصيل الدفعة لهذا العقد — الشكل 9. `spent` is null: the portion IS the spend. */
+  portions: CostLine[];
+  /** المرفقات — the finance letter and, on a مستخلص, the measurement sheet. */
+  files: PaymentFile[];
+}
+
+/** One attachment behind a payment (الشكل 9). Metadata only — nothing is stored. */
+export interface PaymentFile {
+  titleAr: string;
+  titleEn: string;
+  fileName: string;
+  sizeBytes: number;
 }
 
 export interface CostLine {
   key: string;
   amount: number;
-  /** Always null — spend is recorded against the contract, not its lines. */
+  /** Σ of the matching payment portion over the PAID payments, or null on a portion row. */
   spent: number | null;
 }
 
@@ -127,6 +159,13 @@ export interface ContractDetail {
   projectionValue: number;
   incomingNo: string;
   incomingDate: string | null;
+  component: string;
+  executingParty: string;
+  contactInfo: string;
+  awardAmount: number;
+  reserveAmount: number;
+  supervisionAmount: number;
+  monitoringAmount: number;
 }
 
 export interface ContractMoney {
@@ -154,6 +193,10 @@ export interface ContractDetailResponse {
   penalty: PenaltyImpact;
   payments: ContractPayment[];
   unavailable: ContractUnavailable[];
+  /** سجل النشاط — الشكل 11, newest first. The same rows EP-CON-03/04 write. */
+  events: ContractEvent[];
+  /** Resolved server-side. الشكل 8's «زر تعديل» renders from this. */
+  can: ContractPermissions;
 }
 
 // ───────────────────────────────────────────────────────────────────────────

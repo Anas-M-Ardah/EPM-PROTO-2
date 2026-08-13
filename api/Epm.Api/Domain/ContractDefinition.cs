@@ -47,7 +47,50 @@ public static class ContractDefinition
         decimal? ReserveAmount,
         decimal? SupervisionAmount,
         decimal? MonitoringAmount,
-        string Contractor);
+        string Contractor,
+        /// <summary>الجهة المنفذة — الشكل 8 stars it; the rule refuses it empty.</summary>
+        string ExecutingParty);
+
+    /// <summary>
+    /// الشكل 8's «نجمة على الحقول الإلزامية» — the five fields its screen marks:
+    /// اسم العقد · تاريخ المباشرة · تاريخ الإنجاز · اسم المقاول · الجهة المنفذة.
+    ///
+    /// ── THE TWO DOCUMENTS DISAGREE, AND BOTH ARE KEPT ────────────────────
+    /// المسار 2 step 2 also requires «هوية العقد والمكوّن وحالته» and a positive
+    /// award amount, and <see cref="Validate"/> still refuses all of those — see
+    /// <see cref="EnforcedFields"/>. But الشكل 8 draws no star on رمز العقد ·
+    /// المكوّن · حالة العقد · مبلغ الإحالة, so THIS card does not draw one either.
+    ///
+    /// The split is not a fudge, it is which document owns which screen: the
+    /// CREATE form is المسار 2's and keeps المسار 2's stars; the contract CARD is
+    /// الشكل 8's and carries الشكل 8's. A field can therefore be starred on one
+    /// and not the other — and neither screen ever refuses a save on a field it
+    /// left unmarked, because the create form marks the larger set.
+    /// </summary>
+    public static readonly IReadOnlySet<string> RequiredFields =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "nameAr",
+            "start",
+            "finish",
+            "contractor",
+            "executingParty",
+        };
+
+    /// <summary>
+    /// Everything <see cref="Validate"/> refuses an empty or non-positive value
+    /// for. The create form stars these; الشكل 8's card stars only
+    /// <see cref="RequiredFields"/>.
+    /// </summary>
+    public static readonly IReadOnlySet<string> EnforcedFields =
+        new HashSet<string>(RequiredFields, StringComparer.Ordinal)
+        {
+            "id",
+            "component",
+            "status",
+            "awardAmount",
+            "projectId",
+        };
 
     /// <summary>
     /// Every violation, not just the first.
@@ -79,6 +122,12 @@ public static class ContractDefinition
 
         if (string.IsNullOrWhiteSpace(c.Contractor))
             v.Add(new("contractor", "اسم المقاول مطلوب.", "Contractor name is required."));
+
+        // الشكل 8 stars الجهة المنفذة beside اسم المقاول. It is a separate party
+        // from the contractor — «المقاول شركة الطاقة المتقدمة والجهة المنفذة
+        // شركة الطاقة العامة» — so it gets its own clause rather than sharing one.
+        if (string.IsNullOrWhiteSpace(c.ExecutingParty))
+            v.Add(new("executingParty", "الجهة المنفذة مطلوبة.", "The executing party is required."));
 
         // ── 1. عدم تكرار رقم العقد داخل التشكيل ───────────────────────────
         // Case-insensitive: "cnt-0279" and "CNT-0279" are the same number to
