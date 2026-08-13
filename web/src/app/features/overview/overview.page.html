@@ -43,6 +43,78 @@
         <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
 
         <!--
+          الشكل 4 — «خط سير المراحل» + «الإجراء التالي المطلوب».
+
+          The counter reads STARTED / AVAILABLE, not «معتمد»: the document's
+          «4/8 معتمد» counts approvals, and this system has no per-module
+          approval state to count. Saying «بدأت» is the true version of the
+          same sentence. See Domain/ModuleReadiness.cs.
+
+          Chips are the rail's own labels and routes, so the strip can never
+          name or link a module differently from the sidebar beside it.
+        -->
+        <!--
+          `.d-stagebar` IS the design system's «خط سير المراحل» — head bar with
+          a progress track, then a row of steps each carrying a dot, a name and
+          a state word (desktop.css:1297-1319). An earlier pass invented chips
+          instead and collided with the existing `.epm-track` rail; the
+          component already existed and CLAUDE.md §7 says to grep first.
+
+          The readiness classes and icons are the reference's own
+          (../epm/app/data.jsx:464). Only three of its seven states are
+          reachable: «معتمد», «جاهز للمراجعة» and «مُعاد بملاحظات» are approval
+          verdicts this system cannot make, and the reference only reaches them
+          by generating readiness from a seeded RNG.
+        -->
+        <div class="d-stagebar">
+          <div class="sb-head">
+            <b>{{ lang.t('ovw_track') }}</b>
+            <span class="prog">
+              <span class="track" aria-hidden="true">
+                <i [style.width.%]="progressPct()"></i>
+              </span>
+              <bdi>{{ progress().started }}/{{ progress().available }}</bdi>
+              {{ lang.t('ovw_track_started') }}
+            </span>
+          </div>
+
+          <ul class="steps">
+            @for (m of strip(); track m.id) {
+              <li class="step" [class]="'step ' + stateClass(m.state)"
+                  [class.now]="next() && next()!.moduleId === m.id">
+                <button type="button" (click)="goToModule(m.id)"
+                        [attr.aria-label]="moduleLabel(m.mod!.key) + ': ' + stateLabel(m.state)">
+                  <span class="dot" aria-hidden="true">
+                    <epm-icon [name]="stateIcon(m.state)" [size]="15" />
+                  </span>
+                  <span class="nm">{{ moduleLabel(m.mod!.key) }}</span>
+                  <!-- 05 §7.6 — status is never colour-only; the dot always has a word. -->
+                  <span class="st">{{ stateLabel(m.state) }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+
+        @if (next(); as n) {
+          <button type="button" class="d-btn primary epm-next-action"
+                  (click)="goToModule(n.mod.id)">
+            <epm-icon name="priority_high" [size]="15" />
+            <span>
+              {{ lang.t('ovw_next_action') }}:
+              {{ moduleLabel(n.mod.key) }}
+              @if (n.waiting > 0) {
+                <small><bdi>{{ n.waiting }}</bdi> {{ lang.t('ovw_waiting') }}</small>
+              }
+            </span>
+          </button>
+        } @else {
+          <p class="muted epm-form-note">
+            <epm-icon name="check_circle" [size]="14" />{{ lang.t('ovw_no_next_action') }}
+          </p>
+        }
+
+        <!--
           THE PROJECTION IS ITS OWN LINE, NEVER PART OF THE VALUE ABOVE.
           Approving a change order changes nothing; only applying it moves the
           contract (02 §9, non-negotiable #2). Folding an approved-but-unapplied

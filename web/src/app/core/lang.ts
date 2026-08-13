@@ -63,7 +63,8 @@ const STR = {
   col_branch:      { ar: 'الفرع',                          en: 'Branch' },
   col_status:      { ar: 'الحالة',                         en: 'Status' },
   col_physical:    { ar: 'الإنجاز',                        en: 'Physical' },
-  col_cost:        { ar: 'الكلفة',                         en: 'Cost' },
+  /** الشكل 3 names the unit in the header: «الكلفة (د.ع)». */
+  col_cost:        { ar: 'الكلفة (د.ع)',                   en: 'Cost (IQD)' },
   col_updated:     { ar: 'آخر تحديث',                      en: 'Updated' },
   all:             { ar: 'الكل',                           en: 'All' },
   showing:         { ar: 'مشروع',                          en: 'projects' },
@@ -298,6 +299,18 @@ const STR = {
   ovw_alerts:      { ar: 'التنبيهات المفتوحة',             en: 'Open alerts' },
   ovw_alerts_sub:  { ar: 'التنبيهات غير المُقَرّة لهذا المشروع', en: 'Unacknowledged alerts on this project' },
   ovw_no_alerts:   { ar: 'لا توجد تنبيهات مفتوحة.',        en: 'No open alerts.' },
+
+  // الشكل 4 — «خط سير المراحل». The four states are NOT the document's approval
+  // vocabulary (معتمد · جاهز للمراجعة · مُعاد بملاحظات): nothing in this system
+  // can say those truthfully. See Domain/ModuleReadiness.cs.
+  ovw_track:       { ar: 'خط سير المراحل',                 en: 'Module track' },
+  ovw_track_started:{ ar: 'وحدات بدأت',                    en: 'modules started' },
+  ovw_next_action: { ar: 'الإجراء التالي المطلوب',         en: 'Next required action' },
+  ovw_no_next_action:{ ar: 'لا يوجد إجراء مطلوب حالياً.',  en: 'Nothing is waiting on you right now.' },
+  ovw_waiting:     { ar: 'بانتظار إجراء',                  en: 'awaiting action' },
+  ovw_state_not_started:{ ar: 'لم تبدأ',                   en: 'Not started' },
+  ovw_state_in_progress:{ ar: 'قيد الإنجاز',               en: 'In progress' },
+  ovw_state_needs_attention:{ ar: 'يتطلب إجراء',           en: 'Needs action' },
 
   // SCR-W2 Information — field labels. The GROUPING is the endpoint's; only
   // the labels are here, because a label is chrome (see information.page.ts).

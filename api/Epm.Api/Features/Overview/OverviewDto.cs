@@ -132,10 +132,33 @@ public record OverviewAlerts(int Open, int Critical, int Warning, int Info);
 /// </summary>
 public record OverviewUnavailable(string Key, string NeedsAr, string NeedsEn);
 
+/// <summary>
+/// One module of الشكل 4's «خط سير المراحل». `Id` matches the rail's module id
+/// in web/src/app/features/workspace/project-modules.ts — that is what lets the
+/// strip and the sidebar agree, and what lets the next action link to a route.
+///
+/// `State` is one of Domain/ModuleReadiness's four. It is deliberately NOT
+/// الشكل 4's approval vocabulary: nothing in this system can say «معتمد»
+/// truthfully. See the header of ModuleReadiness.cs.
+/// </summary>
+public record OverviewModule(string Id, string State, int Rows, int Waiting);
+
+/// <summary>
+/// الشكل 4's «4/8» counter, honestly renamed: modules STARTED out of modules
+/// AVAILABLE. The document counts approved ones; we cannot.
+/// </summary>
+public record OverviewProgress(int Started, int Available);
+
+/// <summary>«الإجراء التالي المطلوب», or null when nothing is waiting.</summary>
+public record OverviewNextAction(string ModuleId, string Reason, int Waiting);
+
 public record OverviewResponse(
     OverviewProject Project,
     OverviewTotals Totals,
     IReadOnlyList<OverviewContract> Contracts,
     IReadOnlyList<OverviewBeneficiary> Beneficiaries,
     OverviewAlerts Alerts,
-    IReadOnlyList<OverviewUnavailable> Unavailable);
+    IReadOnlyList<OverviewUnavailable> Unavailable,
+    IReadOnlyList<OverviewModule> Modules,
+    OverviewProgress Progress,
+    OverviewNextAction? NextAction);

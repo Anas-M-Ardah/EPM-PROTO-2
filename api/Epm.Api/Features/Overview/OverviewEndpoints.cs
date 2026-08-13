@@ -219,6 +219,59 @@ public static class OverviewEndpoints
                     "Needs earned value and actual spend together."),
             };
 
+            // ── الشكل 4 — «خط سير المراحل» ───────────────────────────────
+            // §79: «خط سير المراحل يقرأ حالة كل وحدة من الوحدة نفسها». So each
+            // module is counted from ITS OWN table, and the verdict is
+            // Domain/ModuleReadiness's — this file only supplies the counts.
+            //
+            // WAITING is the signal that separates "working" from "needs me":
+            //   contracts      — amendments approved but not yet applied (02 §9)
+            //   changeorders   — orders still moving through the stage chain
+            // A module with rows and nothing waiting is working as intended.
+            var boqCount = contractIds.Count == 0 ? 0 : await db.BoqItems.AsNoTracking()
+                .CountAsync(b => contractIds.Contains(b.ContractId));
+
+            var activityCount = contractIds.Count == 0 ? 0 : await db.Activities.AsNoTracking()
+                .CountAsync(a => contractIds.Contains(a.ContractId));
+
+            var paymentCount = contractIds.Count == 0 ? 0 : await db.Payments.AsNoTracking()
+                .CountAsync(x => contractIds.Contains(x.ContractId));
+
+            var orders = contractIds.Count == 0
+                ? []
+                : await db.ChangeOrders.AsNoTracking()
+                    .Where(o => contractIds.Contains(o.ContractId))
+                    .Select(o => o.Lifecycle)
+                    .ToListAsync();
+
+            // The rail's order IS the documents' order — keep them identical or
+            // the next action stops matching the sidebar it points at.
+            var moduleStates = ModuleReadiness.ResolveAll(
+            [
+                // التعريف
+                new("information",  true,  1, 0),
+                new("contract",     true,  contracts.Count, totals.PendingAmendments),
+                new("boq",          true,  boqCount, 0),
+                new("financial",    true,  paymentCount, 0),
+                // التنفيذ والمتابعة
+                new("schedule",     true,  activityCount, 0),
+                new("progress",     true,  activityCount, 0),
+                new("changeorders", true,  orders.Count,
+                    orders.Count(l => l is not ("closed" or "rejected" or "cancelled"))),
+                new("risk",         false, 0, 0),
+                // السجلات والوثائق
+                new("model",        false, 0, 0),
+                new("meetings",     false, 0, 0),
+                new("documents",    false, 0, 0),
+                // الرقابة
+                new("alerts",       false, 0, 0),
+                new("reports",      false, 0, 0),
+                new("audit",        false, 0, 0),
+            ]);
+
+            var (started, available) = ModuleReadiness.Progress(moduleStates);
+            var next = ModuleReadiness.NextAction(moduleStates);
+
             return Results.Ok(new OverviewResponse(
                 new OverviewProject(
                     p.Id, p.NameAr, p.NameEn, p.Status, p.Type, p.ExecutionStage,
@@ -226,7 +279,12 @@ public static class OverviewEndpoints
                     p.WorkspaceCode, ws?.NameAr ?? p.WorkspaceCode, ws?.NameEn ?? p.WorkspaceCode,
                     p.DataDate?.ToString("yyyy-MM-dd"),
                     p.UpdatedAt?.ToString("yyyy-MM-dd")),
-                totals, rows, beneficiaries, alerts, unavailable));
+                totals, rows, beneficiaries, alerts, unavailable,
+                moduleStates
+                    .Select(m => new OverviewModule(m.Id, m.State, m.Rows, m.Waiting))
+                    .ToList(),
+                new OverviewProgress(started, available),
+                next is null ? null : new OverviewNextAction(next.Id, next.State, next.Waiting)));
         });
     }
 }
