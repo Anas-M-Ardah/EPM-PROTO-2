@@ -27,8 +27,12 @@ builder.Services.AddDbContext<EpmDb>(o =>
 
 // The Angular dev server runs on :4200 and proxies /api, but allow direct
 // cross-origin calls too so the API can be poked from a browser or REST client.
+// Production CORS covers both Netlify and RunASP deployments.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins("http://localhost:4200")
+    .WithOrigins(
+        "http://localhost:4200",                    // dev Angular server
+        "https://emp-infinite.netlify.app",       // prod Netlify
+        "https://emp-infinite.runasp.net")        // prod RunASP
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
