@@ -68,6 +68,14 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 > stale for every screen v1.1 rewrote, and some components differ in kind — the
 > pre-v1.1 `DAlertsCenter` is a card feed, the v1.1 one is a full register.
 >
+> ⚠️ **AND THE SIBLING REPO IS NOT THE NEWEST EITHER.** The deployed prototype at
+> `https://infinite-azaiton.github.io/epm` is ahead of both, and its `app/*.jsx` are
+> served as plain files — `curl` one and read it. الشكل 5's screen was redrawn there
+> (`.d-fgroup` cards, a `.d-pz5` tab zone, a `.d-z9` action bar, inline editing), and
+> the appendix's own screenshot matches the DEPLOYED version, not either checked-in
+> one. **Diff against the live prototype before building a screen** — the line
+> numbers are not the only thing that goes stale, the SHAPE does too. See P-69.
+>
 > **The v1.1 components live in the sibling `epm` repo on `origin/design/system-revamp`.**
 > Get one with:
 >
@@ -104,7 +112,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | ID | Tab | Reference component |
 |---|---|---|
 | SCR-W1 | Overview | `DModOverview` — `project-modules.jsx:1461` |
-| SCR-W2 | Project Information | `DModInformation` — `project-modules.jsx:157` |
+| SCR-W2 | Project Information | `DModInformation` — `project-modules.jsx:280` **in the LIVE prototype** (`infinite-azaiton.github.io/epm`). The checked-in copy is a pre-v1.1 snapshot whose version of this screen was redrawn — see P-69 |
 | SCR-W3 | Contract | `DModContractNew` — `project-modules.jsx:194` · `DContractAmendments` — `contract-amendments.jsx:301` |
 | SCR-W4 | BOQ | *(v1.1 moved this module into its own files, sibling repo)* `DBoqWorkspace` — `boq-workspace.jsx:16` · `DBoqRegister` — `boq-register.jsx:435` · `DBoqAssign` — `boq-assign.jsx:11` · `DBoqDistDrawer` — `contract-context.jsx:101` |
 | SCR-W5 | Schedule | `DModSchedule` — `schedule-module.jsx:432` · `DGantt` — `:81` · `DSchedTable` — `:252` |
@@ -460,9 +468,10 @@ Gates every tab. One agent, no parallelism.
 - [x] Physical % · financial % · SPI · CPI render **"unavailable + reason"**; the
       reference's S-curve is absent rather than faked, because a chart cannot be
       labelled unavailable
-- [x] SCR-W2 Project Information — four semantic field groups. The **grouping is the
+- [x] SCR-W2 Project Information — semantic field groups. The **grouping is the
       endpoint's** (the reference matched a regex against each field's *English*
       label, so it silently did nothing in Arabic); the **labels are chrome**
+- [x] **SCR-W2 completed to الشكل 5** *(later phase — see the section below)*
 - [x] Register `Beneficiary` DbSet + the five fixture rows the projects already reference
 - [x] `EP-OVW-01` · `EP-INF-01` · Angular trios · `docs/uml/workspace-shell.md` · TRACE rows
 
@@ -665,6 +674,37 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 - [ ] `DAmdPanel` drawer, identical for BOQ items and activities (`04 §6`)
 - [ ] Cell delta — effective figure + compact signed delta, coloured settled vs pending, **no strikethrough**
 - [ ] `docs/uml/amendment-disclosure.md`
+
+### 4.6 المسار 1 + الشكل 5 — project definition, and SCR-W2 completed ✅ COMPLETE
+
+**Reference: the LIVE prototype's `DModInformation`, not the checked-in copy** — the two
+had diverged and the appendix's screenshot matches the live one (P-69).
+
+- [x] `EP-PRJ-02` create · `EP-PRJ-03` update · `EP-PRJ-04` read-back, with
+      `Domain/ProjectDefinition` as the one gate. **No draft/review track** — built,
+      then removed at the client's instruction; a project is live as soon as it is saved
+- [x] `ProjectActivityEvents` — §7's four attribution facts per edit, written by both writes
+- [x] **SCR-W2 becomes الشكل 5**: Z6 title + «تعديل» · Z5 tabs (التفاصيل · سجل النشاط ⑥) ·
+      six `.d-fgroup` cards · Z9 edit bar. Sixteen documented fields, ten stars, five «مقترح»
+- [x] **Editing is in place, not a route.** `/projects/:id/edit` deleted; `project-form.page`
+      is create-only. One update endpoint, one activity table, one lookup service (P-70)
+- [x] Stars come from `ProjectDefinition.RequiredFields` and the RULE was extended to
+      match the document — a star always means something at save time (P-71)
+- [x] `priority` and `region` become lookups; beneficiary codes resolve to names;
+      coordinates render `33.27°N, 44.36°E` from the one stored column
+- [x] `shared/field-group.component.ts` (`.d-fgroup`) · editable `field-grid` ·
+      `shared/select.component.ts` — all three project-agnostic, ready for الشكل 8
+- [x] TRACE rows · `docs/uml/workspace-shell.md` gaps 4–5 closed · DECISIONS P-69…P-74
+
+> **Two shell defects found by measuring, both older than this screen**: `.d-pz7`
+> scrolled on **none** of the seven built modules and five were clipped by up to 780px
+> (P-73), and `<epm-popover>` closed on scrolls originating inside itself, so a panel
+> with its own list could not be scrolled (P-74).
+
+> **Open, and deliberately not decided here** — see DECISIONS "Raised by الشكل 5":
+> the enterprise lookup catalogues still differ from the prototype's and from الشكل 5's
+> own worked example (Q-F5-1); three of the five «مقترح» fields have no derivation rule
+> (Q-F5-2); the activity log records no per-field diff (Q-F5-3).
 
 ---
 
