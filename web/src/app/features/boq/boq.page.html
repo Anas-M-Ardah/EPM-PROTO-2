@@ -99,6 +99,22 @@
 
       <span class="sp"></span>
 
+      <!-- «أزرار الإدخال اليدوي والاستيراد والجهات المستفيدة».
+           الاستيراد IS الشكل 13 and opens the wizard. The other two are still
+           demo stubs and each is blocked on something real: manual entry
+           needs a create endpoint (EP-BOQ-03 updates by code and 404s on a
+           new one), and a project-level beneficiaries screen has no figure
+           of its own anywhere in the appendix. -->
+      <button type="button" class="d-btn sm" (click)="toast.demo('إدخال يدوي', 'Manual entry')">
+        <epm-icon name="add" [size]="15" />{{ lang.t('boq_manual_add') }}
+      </button>
+      <button type="button" class="d-btn sm" (click)="importOpen.set(true)">
+        <epm-icon name="upload_file" [size]="15" />{{ lang.t('boq_import') }}
+      </button>
+      <button type="button" class="d-btn sm" (click)="toast.demo('الجهات المستفيدة', 'Beneficiaries')">
+        <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_beneficiaries') }}
+      </button>
+
       @if (!singleContract()) {
         <!-- The selector stays reachable from inside the module, so switching
              contract is one control and not a trip back through the gate.
@@ -117,7 +133,9 @@
       }
     </div>
 
-    <div class="d-pbody no-aside">
+    <!-- The aside is الشكل 12's بطاقة البند and nothing else, so the body is
+         `no-aside` until a row is opened. -->
+    <div class="d-pbody" [class.no-aside]="!cardRow()">
       <div class="d-pz7">
 
         @if (view() === 'register') {
@@ -133,6 +151,22 @@
             </div>
           } @else {
             <div class="d-tablewrap">
+
+              <!-- «يُقدَّم للاعتماد ولا يُستبدل الجدول السابق». Said HERE, over
+                   the bill it did not change, because that is where a reader
+                   would otherwise expect the import to have landed. -->
+              @if (pendingImport(); as v) {
+                <div class="d-msgbar info">
+                  <epm-icon name="info" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('boq_imp_pending') }} — <bdi>{{ v.no }}</bdi></b>
+                    <span>{{ lang.t('boq_imp_pending_b') }}
+                      <bdi>{{ v.itemCount }}</bdi> {{ lang.t('boq_imp_rows') }} ·
+                      <bdi>{{ fmt.money(v.totalAmount) }}</bdi> ·
+                      <bdi>{{ v.actorName }}</bdi> · <bdi>{{ fmt.date(v.at) }}</bdi></span>
+                  </div>
+                </div>
+              }
 
               <div class="d-toolbar">
                 <div class="d-field">
@@ -309,6 +343,14 @@
                   }
                 </table>
               </div>
+
+              <!-- الشكل 12 prints this under the table, and it is the whole
+                   relationship between this screen and the schedule: the
+                   weights are the bill's, the execution % is the schedule's
+                   (BR-01 · BR-04). -->
+              <p class="d-cell-sub boq-basis-note">
+                <epm-icon name="functions" [size]="13" />{{ lang.t('boq_basis_note') }}
+              </p>
 
               <div class="d-pager calcnote">
                 <epm-icon name="functions" [size]="14" />
@@ -579,6 +621,195 @@
           }
         }
       </div>
+
+      <!-- ══ Z8 — بطاقة البند (الشكل 12) ═══════════════════════════════════
+           «لوحة تفاصيل البند بتبويبات: عام · التخصيص · التوزيع · الإنجاز ·
+           الكلفة · السجل». The register could edit an item, distribute it and
+           assign it, but it could not SHOW it: every figure the row carries was
+           a column and nothing gathered them into the item itself.
+
+           Every tab reads the row the register already has — no second request
+           for a record that is on screen. The two tabs with a deeper view of
+           their own (التوزيع · التخصيص) open it rather than duplicate it.
+      -->
+      @if (cardRow(); as r) {
+        <div class="d-pz8">
+          <div class="d-rpane">
+            <div class="rp-h">
+              <div class="tx">
+                <div class="r1">
+                  <span class="code"><bdi>{{ r.code }}</bdi></span>
+                  <span class="d-pill" [class]="coverageClass(r.coverage)">
+                    {{ coverageLabel(r.coverage) }}
+                  </span>
+                </div>
+                <b>{{ description(r) }}</b>
+                <span class="sub">
+                  {{ lang.t('boq_card_source') }}:
+                  {{ r.source === 'manual' ? lang.t('boq_manual') : lang.t('boq_card_imported') }}
+                </span>
+              </div>
+              <div class="acts">
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('boq_card_edit')" (click)="editFromCard()">
+                  <epm-icon name="edit" [size]="16" />
+                </button>
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('boq_card_close')" (click)="card.set('')">
+                  <epm-icon name="close" [size]="18" />
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-tabs" role="tablist">
+              @for (t of cardTabs; track t.k) {
+                <button type="button" role="tab" [class.on]="cardTab() === t.k"
+                        [attr.aria-selected]="cardTab() === t.k" (click)="cardTab.set(t.k)">
+                  {{ lang.t($any(t.label)) }}
+                </button>
+              }
+            </div>
+
+            <div class="rp-b">
+              @switch (cardTab()) {
+
+                @case ('general') {
+                  <!-- The plate's summary card: what the item IS WORTH and what
+                       state it is in, before any of the detail. -->
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_amount') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(r.amount) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_weight') }}</span>
+                      <span class="v num"><bdi>{{ r.weight.toFixed(2) }}%</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_unit') }}</span>
+                      <span class="v"><bdi>{{ r.unit }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_qty') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.qty) }}</bdi></span></div>
+                  </div>
+
+                  <epm-section [title]="lang.t('boq_card_identity')">
+                    <div class="d-form-grid">
+                      <div class="d-form-i"><span class="k">{{ lang.t('boq_col_code') }}</span>
+                        <span class="v mono"><bdi>{{ r.code }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('boq_col_desc') }}</span>
+                        <span class="v">{{ description(r) }}</span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('boq_card_division') }}</span>
+                        <span class="v">{{ r.divisionName || '—' }}</span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('boq_card_source') }}</span>
+                        <span class="v">
+                          {{ r.source === 'manual' ? lang.t('boq_manual') : lang.t('boq_card_imported') }}
+                        </span></div>
+                    </div>
+                  </epm-section>
+                }
+
+                @case ('alloc') {
+                  <!-- BR-03. `assignedWeight` is what the linked activities
+                       actually carry of this item's weight; the gap between it
+                       and `weight` IS the coverage state beside it. -->
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_links') }}</span>
+                      <span class="v num"><bdi>{{ r.links }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_shares') }}</span>
+                      <span class="v num"><bdi>{{ r.sharesTotal.toFixed(2) }}%</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_weight') }}</span>
+                      <span class="v num"><bdi>{{ r.weight.toFixed(2) }}%</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_assigned_wt') }}</span>
+                      <span class="v num"><bdi>{{ r.assignedWeight.toFixed(2) }}%</bdi></span></div>
+                  </div>
+                  <button type="button" class="d-btn sm"
+                          (click)="card.set(''); activeCode.set(r.code); setView('assign')">
+                    <epm-icon name="account_tree" [size]="15" />{{ lang.t('boq_card_open_assign') }}
+                  </button>
+                }
+
+                @case ('dist') {
+                  <!-- BR-08. The drawer is where a distribution is EDITED; this
+                       tab says where it stands. -->
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_dist_total') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.qty) }}</bdi> <bdi>{{ r.unit }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_distributed') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.distributed) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_dist_left') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.remaining) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_distribution') }}</span>
+                      <span class="v">
+                        <span class="d-pill" [class]="distributionClass(r.distributionState)">
+                          {{ distributionLabel(r.distributionState) }}
+                        </span>
+                      </span></div>
+                  </div>
+                  <button type="button" class="d-btn sm" (click)="card.set(''); openDistribution(r.code)">
+                    <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_distribute') }}
+                  </button>
+                }
+
+                @case ('prog') {
+                  <!-- BR-04 — «نسبة التنفيذ من الأنشطة المرتبطة». This screen is
+                       a CONSUMER of the schedule, never a second source for it,
+                       and the note says so where someone might try to type. -->
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_progress') }}</span>
+                      <span class="v num"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_achieved_qty') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.achievedQty) }}</bdi> <bdi>{{ r.unit }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_achieved') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(r.achievedAmount) }}</bdi></span></div>
+                  </div>
+                  <span class="track epm-track"><i [style.width.%]="bar(r.progress)"></i></span>
+                  <p class="d-cell-sub">{{ lang.t('boq_card_prog_note') }}</p>
+                }
+
+                @case ('cost') {
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_orig_qty') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.originalQty) }}</bdi> <bdi>{{ r.unit }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_card_eff_qty') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(r.qty) }}</bdi> <bdi>{{ r.unit }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_rate') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(r.rate) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_amount') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(r.amount) }}</bdi></span></div>
+                  </div>
+                  <!-- BR-05 / D-01. A banded line's rate is not one number, and
+                       the card is where that stops being a badge and becomes a
+                       sentence. -->
+                  @if (r.banded) {
+                    <div class="d-msgbar info">
+                      <epm-icon name="info" [size]="16" />
+                      <div>
+                        <b>{{ lang.t('boq_banded') }}</b>
+                        <span>{{ lang.t('boq_card_banded_b') }}</span>
+                      </div>
+                    </div>
+                  }
+                }
+
+                @case ('log') {
+                  <!-- Named, not drawn empty (04 §9). الشكل 11's contract log is
+                       where an edit to this item is recorded today. -->
+                  <p class="d-cell-sub epm-rpt-needs">
+                    <epm-icon name="lock" [size]="13" />{{ lang.t('boq_card_log_na') }}
+                  </p>
+                }
+              }
+            </div>
+
+            <!-- The plate's footer: what is left of the item's quantity, and
+                 the one action the card offers. -->
+            <div class="rp-f">
+              <span class="d-cell-sub">
+                {{ lang.t('boq_card_left') }}
+                <bdi>{{ fmt.qty(r.remaining) }}</bdi> <bdi>{{ r.unit }}</bdi>
+              </span>
+              <button type="button" class="d-btn sm" (click)="editFromCard()">
+                <epm-icon name="edit" [size]="15" />{{ lang.t('boq_card_edit') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
 
     <!-- ══ Z10 — the status strip ═══════════════════════════════════════ -->
@@ -825,7 +1056,16 @@
 
   } @else {
     <tr>
-      <td class="mono d-cell-sub freeze"><bdi>{{ r.code }}</bdi></td>
+      <!-- THE CODE OPENS THE CARD. A button and not a row click: `05 §7`
+           wants a :focus-visible target, and the row already carries an
+           inline editor, a delete confirmation and an overflow menu — a
+           whole-row handler would fire from inside all three. -->
+      <td class="mono d-cell-sub freeze">
+        <button type="button" class="lnk"
+                [attr.aria-label]="lang.t('boq_card_open')"
+                [attr.aria-expanded]="card() === r.code"
+                (click)="openCard(r.code)"><bdi>{{ r.code }}</bdi></button>
+      </td>
       <td class="d-cell-strong freeze nm">
         <span class="nmx" [title]="description(r)">{{ description(r) }}</span>
         @if (r.source === 'manual') { <span class="d-proposed">{{ lang.t('boq_manual') }}</span> }
@@ -894,3 +1134,15 @@
     </tr>
   }
 </ng-template>
+
+<!-- ══ الشكل 13 — استيراد جدول الكميات ═══════════════════════════════════
+     A modal over the register, as the plate draws it: the item card and the
+     table stay visible behind the scrim. It writes a VERSION and never the
+     bill, so the register underneath is still correct while it is open. -->
+@if (importOpen() && contract(); as c) {
+  <epm-boq-import-wizard
+    [projectId]="projectId()"
+    [contractId]="c.id"
+    (submitted)="importSubmitted($event)"
+    (closed)="importOpen.set(false)" />
+}

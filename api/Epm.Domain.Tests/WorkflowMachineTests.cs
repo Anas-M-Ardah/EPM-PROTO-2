@@ -123,9 +123,39 @@ public class WorkflowMachineTests
     [Fact]
     public void The_rate_step_of_the_checklist_applies_only_when_a_rate_changed()
     {
-        Assert.False(WorkflowMachine.ApplyChecklist(false).Single(s => s.No == 3).Required);
-        Assert.True(WorkflowMachine.ApplyChecklist(true).Single(s => s.No == 3).Required);
-        Assert.Equal(7, WorkflowMachine.ApplyChecklist(false).Count);
+        // 03 §6 numbers it 3; الشكل 30 prints it fourth, after «إصدار ملحق
+        // العقد». Both numbers are on the step, and the rule is keyed to the
+        // SPEC one so the written rule stays greppable.
+        Assert.False(WorkflowMachine.ApplyChecklist(false).Single(s => s.SpecStep == 3).Required);
+        Assert.True(WorkflowMachine.ApplyChecklist(true).Single(s => s.SpecStep == 3).Required);
+    }
+
+    [Fact]
+    public void The_checklist_is_the_plates_nine_steps_and_carries_the_specs_seven_inside_it()
+    {
+        var steps = WorkflowMachine.ApplyChecklist(true);
+
+        // الشكل 30: «تسع خطوات مكتملة». The two the plate adds — issuing the
+        // amendment (BR-09) and recalculating the penalty (BR-10) — have no
+        // number in 03 §6, and say so rather than borrowing one.
+        Assert.Equal(9, steps.Count);
+        Assert.Equal(7, steps.Count(s => s.SpecStep is not null));
+        Assert.Equal([1, 2, 3, 4, 5, 6, 7], steps.Where(s => s.SpecStep is not null).Select(s => s.SpecStep!.Value));
+        Assert.Null(steps[0].SpecStep);   // إصدار ملحق العقد
+        Assert.Null(steps[7].SpecStep);   // إعادة احتساب الغرامات التأخيرية
+
+        // Display order is 1..9 with no gaps — it is what the screen counts by.
+        Assert.Equal(Enumerable.Range(1, 9), steps.Select(s => s.No));
+    }
+
+    [Fact]
+    public void The_penalty_step_applies_only_to_an_order_that_moves_the_finish_date()
+    {
+        // BR-10 charges against the contractual finish. An order with no
+        // approved days moves no baseline, so the step is `na` — not a step
+        // that silently passes.
+        Assert.False(WorkflowMachine.ApplyChecklist(true, extendsTime: false).Single(s => s.No == 8).Required);
+        Assert.True(WorkflowMachine.ApplyChecklist(true, extendsTime: true).Single(s => s.No == 8).Required);
     }
 
     [Fact]

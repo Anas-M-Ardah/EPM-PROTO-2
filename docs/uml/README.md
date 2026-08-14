@@ -14,6 +14,8 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Workspace shell | SCR-W1 Overview · SCR-W2 Information | `EP-OVW-01` · `EP-INF-01` | [workspace-shell.md](workspace-shell.md) |
 | Contract tab | SCR-W3 Contract | `EP-CON-01` · `EP-CON-02` | [contract-tab.md](contract-tab.md) |
 | BOQ tab | SCR-W4 BOQ | `EP-BOQ-01` … `EP-BOQ-08` | [boq-tab.md](boq-tab.md) |
+| Change orders | SCR-W8 register | `EP-CHG-01` | [change-orders.md](change-orders.md) |
+| Change order record | SCR-W8 record · الأشكال 30–34 | `EP-CHG-02` | [change-order-record.md](change-order-record.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |

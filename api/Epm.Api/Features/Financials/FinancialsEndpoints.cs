@@ -50,7 +50,8 @@ public static class FinancialsEndpoints
         // spec: 04 §3 | rules: BR-00, BR-04, BR-09, BR-11 + P-53
         // tables: Projects · Contracts · ContractAmendments · Payments
         //         BoqItems · BoqRateBands · BoqActivityLinks · Activities
-        app.MapGet("/api/projects/{projectId}/financials", async (EpmDb db, HttpContext http, string projectId) =>
+        app.MapGet("/api/projects/{projectId}/financials", async (
+            EpmDb db, HttpContext http, string projectId, int? year) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
@@ -109,13 +110,58 @@ public static class FinancialsEndpoints
 
                 // The award carries the whole change; the reserve and the
                 // supervision allowance are untouched by a change order.
+                // `SpentYear` / `SpentToDate` are filled per row below, and the
+                // forecast stays null on a component — see the DTO note (P-90).
                 var components = new List<FinancialsComponentDto>
                 {
-                    new("award", "الإحالة", "Award", c.AwardAmount, chg, c.AwardAmount + chg),
-                    new("reserve", "الاحتياط", "Reserve", c.ReserveAmount, 0m, c.ReserveAmount),
+                    new("award", "الإحالة", "Award", c.AwardAmount, chg, c.AwardAmount + chg,
+                        0m, 0m, null, null),
+                    new("reserve", "الاحتياط", "Reserve", c.ReserveAmount, 0m, c.ReserveAmount,
+                        0m, 0m, null, null),
                     new("supervision", "الإشراف والمراقبة", "Supervision & monitoring",
-                        c.SupervisionAmount, 0m, c.SupervisionAmount),
+                        c.SupervisionAmount, 0m, c.SupervisionAmount, 0m, 0m, null, null),
                 };
+
+                // EV's input, from the ONE derivation SCR-W4 and SCR-W6 read.
+                // Read BEFORE the row is built now, because الشكل 14's forecast
+                // column is BR-11 on this contract and needs its earned value.
+                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+                var contractActs = await db.Activities.AsNoTracking()
+                    .Where(a => a.ContractId == c.Id && !a.IsMilestone).ToListAsync();
+                var executed = derived.Sum(d => d.Progress.AchievedAmount);
+                var billed = derived.Sum(d => d.Line.Amount);
+                executedTotal += executed;
+                billedTotal += billed;
+
+                // «عند الإنجاز» — BR-11's EAC, per contract: its budget over its
+                // OWN cost performance. Null when nothing has been disbursed,
+                // because a CPI has no denominator then (P-09) — a contract
+                // that has spent nothing is not forecast to cost nothing.
+                var evmC = EarnedValue.For(
+                    effective.Value,
+                    // PLANNED % on this contract's own activities. SPI is not
+                    // what الشكل 14 asks for, but EarnedValue.For takes it and
+                    // only the cost side is read here.
+                    contractActs.Sum(a => a.BudgetedCost) > 0m
+                        ? contractActs.Sum(a => a.BudgetedCost
+                              * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m)
+                          / contractActs.Sum(a => a.BudgetedCost)
+                        : 0m,
+                    billed > 0m ? ProgressReflection.Rollup(billed, executed) / 100m : 0m,
+                    disbursed);
+
+                decimal? forecast = disbursed > 0m && evmC.Eac is not null ? M(evmC.Eac.Value) : null;
+                decimal? variance = forecast is null ? null : M(effective.Value - forecast.Value);
+
+                // «مصروف السنة» — a certificate belongs to the year its MONEY
+                // moved (PaidDate), not the year it was certified: this column
+                // sits under «الفعلي», and the ministry's year is a cash year.
+                decimal spentIn(Func<Data.Entities.Payment, decimal> part) =>
+                    pays.Where(x => x.Status == "paid"
+                            && (year is null || (x.PaidDate?.Year ?? 0) == year))
+                        .Sum(part);
+
+                var spentYear = spentIn(x => x.NetAmount);
 
                 rows.Add(new FinancialsContractDto(
                     c.Id, c.NameAr, c.NameEn, c.Status,
@@ -123,22 +169,20 @@ public static class FinancialsEndpoints
                     M(disbursed), M(certified), M(retention), M(Math.Max(0m, advanceOut)),
                     M(effective.Value - disbursed),
                     pays.Count,
+                    M(spentYear), forecast, variance,
                     components.Select(x => x with
                     {
                         Original = M(x.Original),
                         Chg = M(x.Chg),
                         Revised = M(x.Revised),
+                        // Per ITEM, from the portions الشكل 9 records on each
+                        // payment — the same three keys the contract card splits.
+                        SpentYear = M(spentIn(portion(x.Key))),
+                        SpentToDate = M(pays.Where(y => y.Status == "paid").Sum(portion(x.Key))),
                     }).ToList()));
 
-                // EV's input, from the ONE derivation SCR-W4 and SCR-W6 read.
-                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
-                executedTotal += derived.Sum(d => d.Progress.AchievedAmount);
-                billedTotal += derived.Sum(d => d.Line.Amount);
-
-                var acts = await db.Activities.AsNoTracking()
-                    .Where(a => a.ContractId == c.Id && !a.IsMilestone).ToListAsync();
-                plannedBasis += acts.Sum(a => a.BudgetedCost);
-                plannedWeighted += acts.Sum(a =>
+                plannedBasis += contractActs.Sum(a => a.BudgetedCost);
+                plannedWeighted += contractActs.Sum(a =>
                     a.BudgetedCost * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
             }
 
@@ -161,7 +205,16 @@ public static class FinancialsEndpoints
                 M(Math.Max(0m, payments.Where(x => x.Kind == "advance" && x.Status == "paid").Sum(x => x.NetAmount)
                                - payments.Where(x => x.Status == "paid").Sum(x => x.AdvanceRecovery))),
                 M(revised - disbursedTotal),
-                Q(ProgressReflection.Rollup(revised, disbursedTotal)));
+                Q(ProgressReflection.Rollup(revised, disbursedTotal)),
+                M(rows.Sum(r => r.SpentYear)),
+                // «أساسا القياس»: the project's approved budget against what its
+                // contracts commit. `Projects.PlannedCost` is the budget المسار 1
+                // records; the commitments are BR-00 over BR-09. The gap is what
+                // الشكل 14's note box exists to raise, and it is signed —
+                // negative means the contracts have outrun the budget.
+                p.PlannedCost is null ? null : M(p.PlannedCost.Value),
+                M(revised),
+                p.PlannedCost is null ? null : M(p.PlannedCost.Value - revised));
 
             var paymentRows = payments.Select(x =>
             {
@@ -177,13 +230,137 @@ public static class FinancialsEndpoints
             // P-56 — two tabs of the reference that have no source here.
             var unavailable = new List<FinancialsUnavailable>
             {
-                new("allocation",
-                    "يتطلب جدول التخصيصات السنوية للوزارة — لا يسجّله هذا النموذج بعد.",
-                    "Needs the ministry's yearly allocation table — this data model does not record one."),
-                new("sla",
-                    "يتطلب تواريخ مراحل تدقيق المستخلص — لا تسجّلها جداول الدفعات بعد.",
-                    "Needs the per-stage audit dates of a certificate — the payment tables do not record them."),
+                // `allocation` is GONE: `ProjectAllocations` exists now and
+                // الشكل 15 reads it (P-92). What is still missing is the SCREEN
+                // that edits it — الشكل 18's «البيانات المسجّلة» — and that tab
+                // names its own gap.
+                // `sla` is GONE: `PaymentAuditStages` records the route now and
+                // الشكل 17 reads it (P-97). Both of P-56's gaps are closed.
             };
+
+            // ── الشكل 17 — مهل التدقيق ─────────────────────────────────
+            // «السلفة الجارية»: the certificate that has been certified and
+            // not yet paid. One at a time — a paid certificate has no lead
+            // time left to watch, and a pending one has not entered the route.
+            var inFlight = payments
+                .Where(x => x.Status == "certified")
+                .OrderByDescending(x => x.CertifiedDate)
+                .FirstOrDefault();
+
+            FinancialsAuditSlaDto? auditSla = null;
+
+            if (inFlight is not null)
+            {
+                var stageRows = await db.PaymentAuditStages.AsNoTracking()
+                    .Where(x => x.PaymentId == inFlight.Id)
+                    .OrderBy(x => x.No)
+                    .ToListAsync();
+
+                var stages = stageRows.Select(x =>
+                {
+                    // BR-12 against the DATA DATE (D-06). A finished stage is
+                    // measured to its own finish; the one holding the file is
+                    // measured to today-as-the-project-knows-it.
+                    int? elapsed = x.StartedAt is null
+                        ? null
+                        : (x.FinishedAt ?? asOf).DayNumber - x.StartedAt.Value.DayNumber;
+
+                    var state =
+                        x.FinishedAt is not null ? "done" :
+                        x.StartedAt is null ? "waiting" :
+                        SlaLeadTime.For(asOf, x.StartedAt.Value, x.CapDays).Overdue ? "overdue" :
+                        "current";
+
+                    return new FinancialsAuditStageDto(
+                        x.No, x.StageKey, x.PartyAr, x.PartyEn, x.CapDays,
+                        x.StartedAt?.ToString("yyyy-MM-dd"),
+                        x.FinishedAt?.ToString("yyyy-MM-dd"),
+                        elapsed, state);
+                }).ToList();
+
+                var current = stages.FirstOrDefault(x => x.State is "current" or "overdue");
+                var c0 = contracts.First(y => y.Id == inFlight.ContractId);
+
+                auditSla = new FinancialsAuditSlaDto(
+                    c0.Id, c0.NameAr, c0.NameEn, inFlight.No, inFlight.FinanceLetterNo,
+                    // «ضمن المهلة» unless a desk has passed its own cap.
+                    stages.Any(x => x.State == "overdue") ? "overdue" : "within",
+                    inFlight.LegalDueDate?.ToString("yyyy-MM-dd"),
+                    inFlight.LegalDueDate is null
+                        ? null
+                        : inFlight.LegalDueDate.Value.DayNumber - asOf.DayNumber,
+                    current is null ? null : LookupParty(stageRows, current.No, ar: true),
+                    current is null ? null : LookupParty(stageRows, current.No, ar: false),
+                    stages);
+            }
+
+            // ── الشكل 16 — سجل الدفعات ─────────────────────────────────
+            // «دفعة واحدة تشمل أكثر من عقد مع توزيع معلن». The grouping key is
+            // the OFFICIAL LETTER, which every payment already carries and
+            // which is what the ministry files by — so a letter covering two
+            // contracts is two rows sharing it, and no new table is needed
+            // to say so (P-94).
+            var letters = payments
+                .Where(x => year is null
+                    || (x.PaidDate?.Year ?? x.FinanceLetterDate?.Year ?? 0) == year)
+                .GroupBy(x => new { x.FinanceLetterNo, x.FinanceLetterDate })
+                .OrderByDescending(g => g.Key.FinanceLetterDate)
+                .Select(g => new FinancialsLetterDto(
+                    g.Key.FinanceLetterNo,
+                    g.Key.FinanceLetterDate?.ToString("yyyy-MM-dd"),
+                    g.Select(x => x.ContractId).Distinct().Count(),
+                    M(g.Sum(x => x.NetAmount)),
+                    // Two statuses inside one letter is the case a single
+                    // status would hide: paid on one contract, certified on
+                    // the other (P-26).
+                    g.Select(x => x.Status).Distinct().OrderBy(x => x).ToList(),
+                    g.GroupBy(x => x.ContractId).Select(cg =>
+                    {
+                        var c = contracts.First(y => y.Id == cg.Key);
+                        return new FinancialsLetterShareDto(
+                            cg.Key, c.NameAr, c.NameEn, c.Status,
+                            // The same three portions الشكل 9 records on the
+                            // payment — one apportionment, read by both screens.
+                            M(cg.Sum(x => x.AwardPortion)),
+                            M(cg.Sum(x => x.ReservePortion)),
+                            M(cg.Sum(x => x.SupervisionPortion)),
+                            M(cg.Sum(x => x.NetAmount)));
+                    }).ToList()))
+                .ToList();
+
+            // ── الشكل 15 — التخصيص السنوي ──────────────────────────────
+            // The allocation is recorded; the spend is DERIVED from the
+            // payments whose money moved in the year, so this tab and جدول
+            // الكلف cannot report a different figure for one year.
+            var allocRows = await db.ProjectAllocations.AsNoTracking()
+                .Where(x => x.ProjectId == projectId)
+                .OrderByDescending(x => x.Year)
+                .ToListAsync();
+
+            var allocations = allocRows
+                .Where(x => year is null || x.Year == year)
+                .Select(x =>
+                {
+                    var spent = payments
+                        .Where(y => y.Status == "paid" && (y.PaidDate?.Year ?? 0) == x.Year)
+                        .Sum(y => y.NetAmount);
+
+                    return new FinancialsAllocationDto(
+                        x.Year, M(x.Amount), M(spent), M(x.Amount - spent),
+                        // A year with nothing released has no consumption to
+                        // report — that is not 0% (P-09).
+                        x.Amount > 0m ? Q(ProgressReflection.Rollup(x.Amount, spent)) : null,
+                        x.Closed, x.ActorName, x.ActorRole, x.ActorParty,
+                        x.At == default ? null : x.At.ToString("yyyy-MM-dd"));
+                })
+                .ToList();
+
+            // The filter offers only years that HAVE a paid certificate: a
+            // dropdown of empty years is a list of ways to see nothing.
+            var years = payments
+                .Where(x => x.Status == "paid" && x.PaidDate != null)
+                .Select(x => x.PaidDate!.Value.Year)
+                .Distinct().OrderByDescending(y => y).ToList();
 
             return Results.Ok(new FinancialsResponse(
                 p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
@@ -191,8 +368,24 @@ public static class FinancialsEndpoints
                 new FinancialsEvm(
                     M(revised), M(evm.Pv), M(evm.Ev), M(evm.Ac),
                     R(evm.Cpi), R(evm.Spi), Money(evm.Eac), Money(evm.Vac)),
-                rows, paymentRows, unavailable));
+                rows, paymentRows, unavailable, allocations, letters, auditSla, years, year));
         });
+    }
+
+    /// <summary>Which payment column carries a given expense item's share (الشكل 9).</summary>
+    private static Func<Data.Entities.Payment, decimal> portion(string key) => key switch
+    {
+        "award" => x => x.AwardPortion,
+        "reserve" => x => x.ReservePortion,
+        _ => x => x.SupervisionPortion,
+    };
+
+    /// <summary>The desk's own name, as الشكل 17 prints it under the stage.</summary>
+    private static string LookupParty(
+        IReadOnlyList<Data.Entities.PaymentAuditStage> rows, int no, bool ar)
+    {
+        var r = rows.First(x => x.No == no);
+        return ar ? r.PartyAr : r.PartyEn;
     }
 
     private static decimal M(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);

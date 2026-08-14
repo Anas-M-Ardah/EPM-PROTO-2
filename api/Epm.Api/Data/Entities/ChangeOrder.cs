@@ -43,6 +43,21 @@ public class ChangeOrder
     // ---- the official letter that precedes entry (03 §1) ----
     public string ResponsibleParty { get; set; } = "";
     public string IncomingNo { get; set; } = "";
+
+    /// <summary>
+    /// المدخلات السابقة لإدخال الأمر (`03 §1`) — the contractor's request and the
+    /// consultant's opinion, each with its own official number and date.
+    ///
+    /// They are NOT workflow stages and NOT this order's incoming letter: they
+    /// are two letters that arrived BEFORE the RE department entered anything,
+    /// and الشكل 30 prints all three numbers separately. Deriving them from
+    /// <see cref="IncomingNo"/> would put one letter's number on three
+    /// different documents on a legal record.
+    /// </summary>
+    public string? ContractorLetterNo { get; set; }
+    public DateOnly? ContractorLetterDate { get; set; }
+    public string? ConsultantLetterNo { get; set; }
+    public DateOnly? ConsultantLetterDate { get; set; }
     /// <summary>leadDays = dataDate − this. Never measured from the wall clock (BR-12).</summary>
     public DateOnly? IncomingDate { get; set; }
 
@@ -54,6 +69,18 @@ public class ChangeOrder
     /// <summary>From the governing (RE department) proposal. Spec 02 §6.</summary>
     public decimal? RequestedValue { get; set; }
     public int? RequestedDays { get; set; }
+
+    /// <summary>
+    /// What the SCHEDULE-IMPACT ANALYSIS concluded for the ORDER — الشكل 32's
+    /// «الأيام الناتجة عن التحليل», the middle of its three day counts.
+    ///
+    /// It is NOT the sum of the affected activities' days and NOT their
+    /// maximum: an activity extension absorbed by float moves the project by
+    /// less than itself, and two extensions on one path move it by more than
+    /// either. الشكل 32 prints +9 and +6 on the activities and 21 here, which
+    /// is neither — so it is stored, not derived (`03 §9` tab 3).
+    /// </summary>
+    public int? AnalysisDays { get; set; }
 
     /// <summary>
     /// From the pricing/rate-fixing committee decision ONLY, entered at financial

@@ -155,8 +155,20 @@
                 </tr>
               </thead>
               <tbody>
+                <!--
+                  THE ROW OPENS THE RECORD (`03 §10` → `03 §9`). Same control
+                  shape as every other register in the app: tabbable,
+                  Enter/Space, and an aria-label naming the order it opens —
+                  never a trailing «فتح» column duplicating an affordance the
+                  row already has.
+                -->
                 @for (r of shown(); track r.id) {
-                  <tr>
+                  <tr class="epm-ws-tr"
+                      tabindex="0"
+                      role="button"
+                      [attr.aria-label]="lang.t('chg_open') + ': ' + r.no + ' — ' + title(r)"
+                      (click)="open(r.no)"
+                      (keydown)="onRowKey($event, r.no)">
                     <td class="mono"><bdi>{{ r.no }}</bdi></td>
 
                     <!-- The title column carries NO status information (03 §10). -->
@@ -235,8 +247,8 @@
             </div>
           }
 
-          <!-- What this phase does NOT do yet, said plainly rather than left
-               as a dead row click. -->
+          <!-- Where a row goes, and what is still ahead of it: the record is
+               built, and the decisions on it are the stage machine's. -->
           <div class="d-msgbar info">
             <epm-icon name="info" [size]="16" />
             <div>

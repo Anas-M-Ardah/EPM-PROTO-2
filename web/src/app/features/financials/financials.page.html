@@ -50,20 +50,37 @@
         <em>{{ lang.t('cur_iqd') }} · {{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
       </span>
 
+      <!-- «مرشح السنة» — only years that carry a paid certificate, plus كل
+           السنوات. A year with no money in it is a way to see nothing. -->
       <div class="grp">
-        <button type="button" class="d-fchip" [class.on]="view() === 'sheet'"
-                (click)="view.set('sheet')">{{ lang.t('fin_tab_sheet') }}</button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'payments'"
-                (click)="view.set('payments')">
-          {{ lang.t('fin_tab_payments') }}
-          <span class="n"><bdi>{{ d.payments.length }}</bdi></span>
-        </button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'diagnostics'"
-                (click)="view.set('diagnostics')">{{ lang.t('fin_tab_evm') }}</button>
+        <span class="d-cell-sub">{{ lang.t('fin_year') }}</span>
+        @for (y of d.years; track y) {
+          <button type="button" class="d-fchip" [class.on]="year() === y"
+                  (click)="setYear(y)"><bdi>{{ y }}</bdi></button>
+        }
+        <button type="button" class="d-fchip" [class.on]="year() === null"
+                (click)="setYear(null)">{{ lang.t('fin_all_years') }}</button>
+      </div>
+
+      <span class="sp"></span>
+
+      <!-- الشكل 14 — «ستة تبويبات». Four of them are الأشكال 15 · 17 · 18 · 19
+           and are not built: each names what it needs rather than being left
+           off a strip the document draws (04 §9). -->
+      <div class="grp">
+        @for (t of tabs; track t.k) {
+          <button type="button" class="d-fchip" [class.on]="view() === t.k"
+                  (click)="view.set(t.k)">
+            {{ lang.t($any(t.label)) }}
+            @if (t.k === 'payments' && d.payments.length) {
+              <span class="n"><bdi>{{ d.payments.length }}</bdi></span>
+            }
+          </button>
+        }
       </div>
     </div>
 
-    <div class="d-pbody" [class.no-aside]="!selectedPayment()">
+    <div class="d-pbody" [class.no-aside]="!selectedLetter()">
       <div class="d-pz7">
 
         <epm-summary-strip [stats]="summaryStats()" />
@@ -115,27 +132,46 @@
             </div>
           }
 
-          <!-- ══ THE COST SHEET ═══════════════════════════════════════════
-               Contract, then the three components 01 §2.3 says its cost is
-               made of. An applied change moves the AWARD alone. -->
-          <div class="d-tablewrap"><table class="d-table" style="min-width: 1080px">
+          <!-- ══ الشكل 14 — جدول الكلف حسب العقود ومكوّناتها ═══════════════
+               «الموازنة (المقررة · تغييرات معتمدة · المعدلة) · الفعلي (مصروف
+               السنة · مصروف تراكمي) · التنبؤ (عند الإنجاز · الفرق) · الحالة».
+
+               ONE TABLE WITH A TREE, which this screen could not draw before:
+               the three expense items used to out-total the contract they
+               belong to, so they travelled beside it under their own heading
+               (P-57). They are a partition now — الشكل 7, الشكل 8 and this plate
+               all print award + reserve + supervision = the contract value —
+               and the sheet is the shape the document draws (P-89).
+          -->
+          <div class="d-tablewrap"><table class="d-table" style="min-width: 1160px">
             <thead>
+              <!-- The plate's grouped header: three questions about one row. -->
+              <tr class="fin-grp">
+                <th></th>
+                <th class="r" colspan="3">{{ lang.t('fin_grp_budget') }}</th>
+                <th class="r" colspan="2">{{ lang.t('fin_grp_actual') }}</th>
+                <th class="r" colspan="2">{{ lang.t('fin_grp_forecast') }}</th>
+                <th></th>
+              </tr>
               <tr>
                 <th>{{ lang.t('fin_cost_item') }}</th>
-                <th class="r">{{ lang.t('fin_approved') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                <th class="r">{{ lang.t('fin_approved') }}</th>
                 <th class="r">{{ lang.t('fin_approved_changes') }}</th>
                 <th class="r">{{ lang.t('fin_revised') }}</th>
-                <th class="r">{{ lang.t('fin_disbursed') }}</th>
-                <th class="r">{{ lang.t('fin_certified_unpaid') }}</th>
-                <th class="r">{{ lang.t('fin_retention') }}</th>
-                <th class="r">{{ lang.t('fin_balance') }}</th>
+                <th class="r">{{ lang.t('fin_spent_year') }}</th>
+                <th class="r">{{ lang.t('fin_spent_todate') }}</th>
+                <th class="r">{{ lang.t('fin_at_completion') }}</th>
+                <th class="r">{{ lang.t('fin_variance') }}</th>
+                <th>{{ lang.t('scd_col_status') }}</th>
               </tr>
             </thead>
             <tbody>
               @for (c of d.contracts; track c.id) {
-                <tr class="lvl1">
+                <!-- «صفوف عقود قابلة للطي لعرض المكوّنات» -->
+                <tr class="lvl1" (click)="toggle(c.id)" style="cursor: pointer">
                   <td>
                     <span class="d-tree lvl1">
+                      <epm-icon [name]="isOpen(c.id) ? 'expand_more' : 'chevron_right'" [size]="15" />
                       <b class="mono"><bdi>{{ c.id }}</bdi></b>
                       <span class="nm">{{ name(c) }}</span>
                     </span>
@@ -143,12 +179,39 @@
                   <td class="r mono"><bdi>{{ fmt.money(c.original) }}</bdi></td>
                   <td class="r mono"><bdi>{{ c.chg === 0 ? '—' : fmt.delta(c.chg) }}</bdi></td>
                   <td class="r mono d-cell-strong"><bdi>{{ fmt.money(c.revised) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ fmt.money(c.spentYear) }}</bdi></td>
                   <td class="r mono"><bdi>{{ fmt.money(c.disbursed) }}</bdi></td>
-                  <td class="r mono d-cell-sub"><bdi>{{ c.certified === 0 ? '—' : fmt.money(c.certified) }}</bdi></td>
-                  <td class="r mono d-cell-sub"><bdi>{{ c.retentionHeld === 0 ? '—' : fmt.money(c.retentionHeld) }}</bdi></td>
-                  <td class="r mono"><bdi>{{ fmt.money(c.balance) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ c.forecast === null ? '—' : fmt.money(c.forecast) }}</bdi></td>
+                  <!-- The variance is a MAGNITUDE and is not coloured by its
+                       sign (05 §7.9): an overrun reads in parentheses, as the
+                       plate prints it, and the number carries its own meaning. -->
+                  <td class="r mono">
+                    <bdi>{{ c.variance === null ? '—' : paren(c.variance) }}</bdi>
+                  </td>
+                  <td><epm-status-pill kind="contract-status" [code]="c.status" /></td>
                 </tr>
 
+                @if (isOpen(c.id)) {
+                  @for (x of c.components; track x.key) {
+                    <tr class="lvl2">
+                      <td>
+                        <span class="d-tree lvl2">
+                          <span class="nm">{{ lang.pick(x.labelAr, x.labelEn) }}</span>
+                        </span>
+                      </td>
+                      <td class="r mono"><bdi>{{ fmt.money(x.original) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ x.chg === 0 ? '—' : fmt.delta(x.chg) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.money(x.revised) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.money(x.spentYear) }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.money(x.spentToDate) }}</bdi></td>
+                      <!-- An expense item has no earned value of its own, so it
+                           has no CPI and no forecast (P-90). Stated, not zeroed. -->
+                      <td class="r d-cell-sub">—</td>
+                      <td class="r d-cell-sub">—</td>
+                      <td></td>
+                    </tr>
+                  }
+                }
               }
             </tbody>
             <tfoot>
@@ -157,287 +220,462 @@
                 <td class="r mono"><bdi>{{ fmt.money(d.totals.approved) }}</bdi></td>
                 <td class="r mono"><bdi>{{ fmt.delta(d.totals.approvedChanges) }}</bdi></td>
                 <td class="r mono d-cell-strong"><bdi>{{ fmt.money(d.totals.revised) }}</bdi></td>
+                <td class="r mono"><bdi>{{ fmt.money(d.totals.spentYear) }}</bdi></td>
                 <td class="r mono"><bdi>{{ fmt.money(d.totals.disbursed) }}</bdi></td>
-                <td class="r mono"><bdi>{{ fmt.money(d.totals.certified) }}</bdi></td>
-                <td class="r mono"><bdi>{{ fmt.money(d.totals.retentionHeld) }}</bdi></td>
-                <td class="r mono"><bdi>{{ fmt.money(d.totals.balance) }}</bdi></td>
+                <td class="r mono"><bdi>{{ forecastTotal() === null ? '—' : fmt.money(forecastTotal()) }}</bdi></td>
+                <td class="r mono">
+                  <bdi>{{ varianceTotal() === null ? '—' : paren(varianceTotal()!) }}</bdi>
+                </td>
+                <td></td>
               </tr>
             </tfoot>
           </table></div>
 
-          <!-- ══ THE THREE EXPENSE ITEMS (01 §2.3) ════════════════════════
-               NOT indented under the contract, because they are not parts of
-               it: `original_value` IS "the awarded value", so the award column
-               below repeats the contract's own figure and the other two sit
-               BESIDE it. Rendered as a partition they would out-total every
-               contract row by exactly the two allowances (P-57). -->
-          <div class="d-sec">
-            <div class="d-sec-h">
-              <span class="n">{{ lang.t('fin_expense_items') }}</span>
-              <span class="d-cell-sub">{{ lang.t('fin_expense_items_sub') }}</span>
-            </div>
-            <div class="d-sec-b">
-              <div class="d-tablewrap"><table class="d-table">
-                <thead>
-                  <tr>
-                    <th>{{ lang.t('boq_contract') }}</th>
-                    @for (k of d.contracts[0].components; track k.key) {
-                      <th class="r">{{ label(k) }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
-                    }
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (c of d.contracts; track c.id) {
-                    <tr>
-                      <td>
-                        <span class="mono d-cell-sub"><bdi>{{ c.id }}</bdi></span>
-                        <div>{{ name(c) }}</div>
-                      </td>
-                      @for (k of c.components; track k.key) {
-                        <td class="r mono">
-                          <bdi>{{ fmt.money(k.revised) }}</bdi>
-                          @if (k.chg !== 0) {
-                            <div class="d-cell-sub"><bdi>{{ fmt.delta(k.chg) }}</bdi></div>
-                          }
-                        </td>
-                      }
-                    </tr>
-                  }
-                </tbody>
-              </table></div>
-              <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('fin_expense_items_note') }}</span></div>
-              </div>
-            </div>
-          </div>
+          <!--
+            «أساسا القياس: الموازنة المعتمدة مقابل الالتزامات التعاقدية».
 
-          <!-- The two liabilities, named. Neither is in `balance`: one is owed
-               BY the ministry and one TO it. -->
-          <div class="d-sec">
-            <div class="d-sec-h"><span class="n">{{ lang.t('fin_positions') }}</span></div>
-            <div class="d-sec-b">
-              <div class="d-form-grid">
-                <div class="d-form-i">
-                  <span class="k">{{ lang.t('fin_retention') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.totals.retentionHeld) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">{{ lang.t('fin_advance_out') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.totals.advanceOutstanding) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">{{ lang.t('fin_certified_unpaid') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.totals.certified) }}</bdi></span>
-                </div>
-              </div>
-              <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('fin_positions_note') }}</span></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- P-56 — the annual allocation, which has no source here. -->
+            THE TWO FIGURES ARE NOT THE SAME QUESTION and the box exists to say
+            so: the project's approved budget is what may be spent, Σ of its
+            contracts' effective values is what has been committed, and a gap
+            means a cost revision or a transfer is needed BEFORE the spending
+            stalls. الشكل 14 puts it under the table it qualifies.
+          -->
           <div class="d-msgbar info">
             <epm-icon name="info" [size]="16" />
             <div>
-              <b>{{ lang.t('fin_alloc_t') }}</b>
-              <span>{{ reason('allocation') }}</span>
+              <b>{{ lang.t('fin_basis_t') }}</b>
+              @if (d.totals.projectBudget === null) {
+                <!-- No budget recorded is a state, not a gap of zero (P-09). -->
+                <span>{{ lang.t('fin_basis_none') }}</span>
+              } @else {
+                <span>
+                  {{ lang.t('fin_basis_budget') }}
+                  <bdi>{{ fmt.money(d.totals.projectBudget) }}</bdi> {{ lang.t('cur_iqd') }}
+                  {{ lang.t('fin_basis_vs') }}
+                  <bdi>{{ fmt.money(d.totals.contractCommitments) }}</bdi> {{ lang.t('cur_iqd') }}
+                  — {{ lang.t('fin_basis_gap') }}
+                  <bdi>{{ fmt.delta(d.totals.budgetGap!) }}</bdi> {{ lang.t('cur_iqd') }}.
+                  {{ d.totals.budgetGap! < 0 ? lang.t('fin_basis_over') : lang.t('fin_basis_under') }}
+                </span>
+              }
             </div>
+          </div>
+
+          <!-- BR-11 as DIAGNOSTICS. الشكل 14's six tabs have no place for the
+               EVM board, and it is financial-position content, so it sits under
+               the sheet it is derived from rather than losing its screen. -->
+          <epm-section [title]="lang.t('fin_tab_evm')" [sub]="lang.t('fin_evm_sub')">
+            <div class="d-fig-row">
+              <div class="d-fig"><span class="k">PV</span>
+                <span class="v num"><bdi>{{ fmt.money(d.evm.pv) }}</bdi></span></div>
+              <div class="d-fig"><span class="k">EV</span>
+                <span class="v num"><bdi>{{ fmt.money(d.evm.ev) }}</bdi></span></div>
+              <div class="d-fig"><span class="k">AC</span>
+                <span class="v num"><bdi>{{ fmt.money(d.evm.ac) }}</bdi></span></div>
+              <div class="d-fig"><span class="k">CPI</span>
+                <span class="v num"><bdi>{{ d.evm.cpi === null ? '—' : d.evm.cpi.toFixed(2) }}</bdi></span></div>
+              <div class="d-fig"><span class="k">SPI</span>
+                <span class="v num"><bdi>{{ d.evm.spi === null ? '—' : d.evm.spi.toFixed(2) }}</bdi></span></div>
+              <div class="d-fig"><span class="k">EAC</span>
+                <span class="v num"><bdi>{{ d.evm.eac === null ? '—' : fmt.money(d.evm.eac) }}</bdi></span></div>
+            </div>
+            <div class="d-msgbar info">
+              <epm-icon name="functions" [size]="16" />
+              <div><span>{{ lang.t('fin_evm_note') }}</span></div>
+            </div>
+          </epm-section>
+
+        } @else if (view() === 'allocation') {
+          <!-- ══ الشكل 15 — التخصيص السنوي ═════════════════════════════════
+               «متابعة التخصيص المالي السنوي ونسبة استهلاكه مقابل المصروف
+               والمتبقي لكل سنة مالية».
+
+               THE THIRD FIGURE ON THIS SCREEN. جدول الكلف compares the approved
+               COST with the contracted COMMITMENT; this tab is the ALLOCATION —
+               what the ministry actually released for the year — and it is the
+               only one of the three that can stop a payment in October (P-92).
+
+               The allocation is recorded; the spend beside it is derived from
+               the payments whose money moved in that year, so this tab and
+               جدول الكلف cannot report a different figure for one year.
+          -->
+          @if (d.allocations.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="account_balance" [size]="30" /></span>
+              <b>{{ lang.t('fin_alloc_none_t') }}</b>
+              <span>{{ lang.t('fin_alloc_none_b') }}</span>
+            </div>
+          } @else {
+            @if (currentAllocation(); as a) {
+              <epm-field-group
+                [title]="lang.t('fin_alloc_card')"
+                [sub]="a.year + ' · ' + (a.closed ? lang.t('fin_alloc_closed') : lang.t('fin_alloc_current'))">
+
+                <!-- «شريط تقدّم لنسبة الاستهلاك». The bar is geometry; the
+                     percentage beside it is the server's (BR-04's rollup over
+                     an allocation rather than a bill). -->
+                <div class="epm-bar">
+                  <div class="h">
+                    <span class="k">{{ lang.t('fin_alloc_pct') }}</span>
+                    <span class="sp"></span>
+                    <span class="v">
+                      <bdi>{{ a.consumptionPct === null ? '—' : fmt.pct(a.consumptionPct, 0) }}</bdi>
+                    </span>
+                  </div>
+                  <span class="track epm-track">
+                    <i [style.width.%]="bar(a.consumptionPct ?? 0)"></i>
+                  </span>
+                </div>
+
+                <div class="d-fig-row">
+                  <div class="d-fig">
+                    <span class="k">{{ lang.t('fin_alloc_amount') }}</span>
+                    <span class="v num"><bdi>{{ fmt.money(a.allocated) }}</bdi></span>
+                  </div>
+                  <div class="d-fig">
+                    <span class="k">{{ lang.t('fin_alloc_spent') }}</span>
+                    <span class="v num"><bdi>{{ fmt.money(a.spent) }}</bdi></span>
+                  </div>
+                  <div class="d-fig">
+                    <span class="k">{{ lang.t('fin_alloc_left') }}</span>
+                    <span class="v num"><bdi>{{ fmt.money(a.remaining) }}</bdi></span>
+                  </div>
+                </div>
+
+                <!--
+                  «أين تُحرَّر هذه القيم». The plate states the governance rule
+                  inside the screen, and it is the reason nothing on this tab is
+                  editable: one editing surface (الشكل 18), and a closed year that
+                  moves only through an approved مناقلة.
+                -->
+                <div class="d-msgbar info">
+                  <epm-icon name="info" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('fin_alloc_where_t') }}</b>
+                    <span>{{ lang.t('fin_alloc_where_b') }}</span>
+                  </div>
+                </div>
+              </epm-field-group>
+            }
+
+            <!-- «جدول سنوي بصف إجمالي» — every recorded year, newest first. -->
+            <div class="d-tablewrap"><table class="d-table">
+              <thead>
+                <tr>
+                  <th style="width:120px">{{ lang.t('fin_alloc_col_year') }}</th>
+                  <th class="r">{{ lang.t('fin_alloc_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                  <th class="r">{{ lang.t('fin_alloc_spent') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                  <th class="r">{{ lang.t('fin_alloc_left') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                  <th style="width:120px">{{ lang.t('fin_alloc_pct') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of d.allocations; track a.year) {
+                  <tr [class.sel]="a.year === currentAllocation()?.year">
+                    <td class="mono d-cell-strong">
+                      <bdi>{{ a.year }}</bdi>
+                      @if (a.closed) {
+                        <span class="d-proposed">{{ lang.t('fin_alloc_closed') }}</span>
+                      }
+                    </td>
+                    <td class="r mono"><bdi>{{ fmt.money(a.allocated) }}</bdi></td>
+                    <td class="r mono"><bdi>{{ fmt.money(a.spent) }}</bdi></td>
+                    <td class="r mono"><bdi>{{ fmt.money(a.remaining) }}</bdi></td>
+                    <td class="mono">
+                      <bdi>{{ a.consumptionPct === null ? '—' : fmt.pct(a.consumptionPct, 0) }}</bdi>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>{{ lang.t('fin_alloc_total') }}</td>
+                  <td class="r mono"><bdi>{{ fmt.money(allocTotals().allocated) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ fmt.money(allocTotals().spent) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ fmt.money(allocTotals().remaining) }}</bdi></td>
+                  <td class="mono">
+                    <bdi>{{ allocTotals().pct === null ? '—' : fmt.pct(allocTotals().pct!, 0) }}</bdi>
+                  </td>
+                </tr>
+              </tfoot>
+            </table></div>
+          }
+        } @else if (view() === 'sla') {
+          <!-- ══ الشكل 17 — مهل التدقيق ════════════════════════════════════
+               «متابعة مراحل تدقيق السلفة الجارية والمدد المستغرقة في كل جهة،
+               وبيان الموعد القانوني للصرف والالتزام بالمهل».
+
+               ONE CERTIFICATE — the one in flight. «تُظهر موضع تعثّر المعاملة
+               ومدة بقائها في كل جهة، فتعالج أهم شكوى تشغيلية: تأخر الصرف دون
+               معرفة سببه»: the point is not that a payment is late but WHICH
+               DESK is holding it and for how long.
+
+               Every duration is BR-12 against the project's data date (D-06).
+          -->
+          @if (d.auditSla; as sla) {
+            <epm-field-group
+              [title]="lang.t('fin_sla_card')"
+              [sub]="sla.letterNo + ' · ' + lang.pick(sla.contractNameAr, sla.contractNameEn)">
+
+              <!-- The overall verdict, in words beside the stages that made it. -->
+              <div class="epm-reghead">
+                <span class="n">
+                  <span class="d-pill {{ sla.overallState === 'overdue' ? 'stalled' : 'completed' }}">
+                    {{ lang.t(sla.overallState === 'overdue' ? 'fin_sla_over' : 'fin_sla_within') }}
+                  </span>
+                </span>
+                <span class="sp"></span>
+                <span class="per">
+                  <span class="k">{{ lang.t('fin_sla_current') }}</span>
+                  <span>{{ lang.pick(sla.currentStageAr ?? '—', sla.currentStageEn ?? '—') }}</span>
+                </span>
+              </div>
+
+              <!-- «بطاقة لكل مرحلة بمؤشر حالة ملوّن» — and never colour alone:
+                   every card states its cap and what has happened to it (05 §7.6). -->
+              <div class="epm-cardgrid">
+                @for (st of sla.stages; track st.no) {
+                  <section class="d-panel epm-hrows epm-slastage">
+                    <div class="hd">
+                      <span class="d-sev-dot {{ stageDot(st.state) }}"></span>
+                      <div class="t">
+                        <b>{{ lookups.label('audit-stage', st.stageKey) }}</b>
+                        <span class="d-cell-sub">{{ lang.pick(st.partyAr, st.partyEn) }}</span>
+                      </div>
+                    </div>
+                    <div class="ft">
+                      <span class="d-cell-sub">
+                        {{ lang.t('fin_sla_cap') }} <bdi>{{ st.capDays }}</bdi> {{ lang.t('fin_sla_days') }}
+                      </span>
+                      <span class="sp"></span>
+                      <span class="d-cell-sub">{{ stageLabel(st) }}</span>
+                    </div>
+                  </section>
+                }
+              </div>
+
+              <!-- «صندوق تنبيه بالموعد القانوني». A date the ministry can be held
+                   to, so it is RECORDED on the certificate and not derived from
+                   the caps above (P-98). -->
+              @if (sla.legalDueDate) {
+                <div class="d-msgbar {{ (sla.daysToDue ?? 0) < 0 ? 'warning' : 'info' }}">
+                  <epm-icon name="warning" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('fin_sla_due') }} <bdi>{{ fmt.date(sla.legalDueDate) }}</bdi></b>
+                    <span>
+                      @if ((sla.daysToDue ?? 0) >= 0) {
+                        {{ lang.t('fin_sla_in') }} <bdi>{{ sla.daysToDue }}</bdi> {{ lang.t('fin_sla_days') }}
+                      } @else {
+                        {{ lang.t('fin_sla_past') }} <bdi>{{ -(sla.daysToDue ?? 0) }}</bdi> {{ lang.t('fin_sla_days') }}
+                      }
+                      · {{ lang.t('fin_sla_current') }}:
+                      {{ lang.pick(sla.currentStageAr ?? '—', sla.currentStageEn ?? '—') }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </epm-field-group>
+          } @else {
+            <!-- No certificate in flight is a real state, not a missing screen. -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="schedule" [size]="30" /></span>
+              <b>{{ lang.t('fin_sla_none_t') }}</b>
+              <span>{{ lang.t('fin_sla_none_b') }}</span>
+            </div>
+          }
+        } @else if (unbuiltTab()) {
+          <!-- الأشكال 15 · 17 · 18 · 19 — named, not drawn empty. -->
+          <div class="d-empty">
+            <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
+            <b>{{ lang.t($any(unbuiltTab()!.label)) }}</b>
+            <span>{{ lang.t($any(unbuiltTab()!.needs)) }}</span>
           </div>
 
         } @else if (view() === 'payments') {
-          <!-- ══ THE REGISTER ═════════════════════════════════════════════
-               FOUR figures per certificate. Collapsing them to one "amount" is
-               what makes a retention balance impossible to find a year later. -->
-          <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
-            <thead>
-              <tr>
-                <th>{{ lang.t('fin_col_no') }}</th>
-                @if (manyContracts()) { <th>{{ lang.t('boq_contract') }}</th> }
-                <th>{{ lang.t('fin_col_kind') }}</th>
-                <th>{{ lang.t('fin_col_letter') }}</th>
-                <th class="r">{{ lang.t('fin_col_gross') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
-                <th class="r">{{ lang.t('fin_col_retention') }}</th>
-                <th class="r">{{ lang.t('fin_col_recovery') }}</th>
-                <th class="r">{{ lang.t('fin_col_net') }}</th>
-                <th>{{ lang.t('fin_col_certified') }}</th>
-                <th>{{ lang.t('fin_col_paid') }}</th>
-                <th>{{ lang.t('scd_col_status') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (p of d.payments; track p.id) {
-                <tr (click)="select(p)" style="cursor: pointer" [class.on]="selected() === p.id">
-                  <td class="mono"><bdi>{{ p.no }}</bdi></td>
-                  @if (manyContracts()) {
-                    <td class="mono d-cell-sub"><bdi>{{ p.contractId }}</bdi></td>
+          <!-- ══ الشكل 16 — سجل الدفعات وتفاصيل الدفعة ═════════════════════
+               «عرض دفعات المشروع وتفصيل توزيع كل دفعة على العقود وعلى بنود
+               الكلفة داخل كل عقد».
+
+               ONE ROW PER FUNDING LETTER, NOT PER CERTIFICATE. «تتيح دفعة واحدة
+               تشمل أكثر من عقد مع توزيع معلن» — this is the PROJECT's register,
+               and what the ministry releases money against is a letter. The
+               per-certificate view is الشكل 9, inside the contract card.
+
+               Nothing new is stored to group them: a payment already carries the
+               letter it was released against, and two contracts sharing one is
+               «عقدان» on one row (P-94).
+          -->
+          @if (d.letters.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
+              <b>{{ lang.t('fin_no_pay_t') }}</b>
+              <span>{{ lang.t('fin_no_pay_b') }}</span>
+            </div>
+          } @else {
+            <epm-field-group
+              [title]="lang.t('fin_pay_register')"
+              [sub]="(year() === null ? lang.t('fin_all_years') : year() + '')
+                     + ' · ' + d.letters.length + ' ' + lang.t('fin_pay_count')">
+
+              <div class="d-tablewrap"><table class="d-table">
+                <thead>
+                  <tr>
+                    <th>{{ lang.t('fin_pay_letter') }}</th>
+                    <th style="width:130px">{{ lang.t('fin_pay_date') }}</th>
+                    <th style="width:110px">{{ lang.t('fin_pay_contracts') }}</th>
+                    <th style="width:150px">{{ lang.t('col_status') }}</th>
+                    <th class="r" style="width:170px">
+                      {{ lang.t('fin_pay_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (l of d.letters; track l.letterNo) {
+                    <tr [class.sel]="openLetter() === l.letterNo" (click)="openLetter.set(l.letterNo)">
+                      <td>
+                        <!-- The letter is the row's identity and its keyboard
+                             target: a <tr> is not focusable (05 §7). -->
+                        <button type="button" class="lnk"
+                                [attr.aria-expanded]="openLetter() === l.letterNo"
+                                (click)="openLetter.set(l.letterNo); $event.stopPropagation()">
+                          <bdi>{{ l.letterNo }}</bdi>
+                        </button>
+                        <div class="d-cell-sub">
+                          @for (sh of l.shares; track sh.contractId) {
+                            <span>{{ lang.pick(sh.contractNameAr, sh.contractNameEn) }}@if (!$last) {<span> · </span>}</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="num d-cell-sub"><bdi>{{ fmt.date(l.letterDate) }}</bdi></td>
+                      <td class="num d-cell-sub"><bdi>{{ l.contractCount }}</bdi></td>
+                      <td>
+                        <!-- One pill per DISTINCT status in the letter. Two of
+                             them means paid on one contract and merely certified
+                             on the other, which is the case a single status
+                             would hide (P-26). -->
+                        @for (st of l.statuses; track st) {
+                          <epm-status-pill kind="payment-status" [code]="st" />
+                        }
+                      </td>
+                      <td class="r mono"><bdi>{{ fmt.money(l.net) }}</bdi></td>
+                    </tr>
                   }
-                  <td>{{ kindLabel(p.kind) }}</td>
-                  <td class="mono"><bdi>{{ p.financeLetterNo }}</bdi>
-                    <div class="d-cell-sub"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></div>
-                  </td>
-                  <td class="r mono"><bdi>{{ fmt.money(p.grossAmount) }}</bdi></td>
-                  <td class="r mono d-cell-sub"><bdi>{{ p.retentionAmount === 0 ? '—' : fmt.money(p.retentionAmount) }}</bdi></td>
-                  <td class="r mono d-cell-sub"><bdi>{{ p.advanceRecovery === 0 ? '—' : fmt.money(p.advanceRecovery) }}</bdi></td>
-                  <td class="r mono d-cell-strong"><bdi>{{ fmt.money(p.netAmount) }}</bdi></td>
-                  <td class="mono d-cell-sub"><bdi>{{ fmt.date(p.certifiedDate) }}</bdi></td>
-                  <!-- CERTIFIED IS NOT PAID. An empty cell here is the whole
-                       point of the column, so it says so rather than staying
-                       blank. -->
-                  <td class="mono">
-                    @if (p.paidDate) {
-                      <bdi>{{ fmt.date(p.paidDate) }}</bdi>
-                    } @else {
-                      <span class="d-cell-sub">{{ lang.t('fin_unpaid') }}</span>
-                    }
-                  </td>
-                  <td><epm-status-pill [code]="p.status" kind="payment-status" /></td>
-                </tr>
-              }
-            </tbody>
-            <tfoot>
-              <tr>
-                <td [attr.colspan]="manyContracts() ? 5 : 4">{{ lang.t('fin_total_paid') }}</td>
-                <td class="r mono"><bdi>{{ fmt.money(d.totals.retentionHeld) }}</bdi></td>
-                <td class="r"></td>
-                <td class="r mono d-cell-strong"><bdi>{{ fmt.money(d.totals.disbursed) }}</bdi></td>
-                <td colspan="3"></td>
-              </tr>
-            </tfoot>
-          </table></div>
-
-          <!-- P-56 — the audit SLA, which has no source here. -->
-          <div class="d-msgbar info">
-            <epm-icon name="info" [size]="16" />
-            <div>
-              <b>{{ lang.t('fin_sla_t') }}</b>
-              <span>{{ reason('sla') }}</span>
-            </div>
-          </div>
-
-        } @else {
-          <!-- ══ THE DIAGNOSTICS (02 §11 · 05 §7.9) ═══════════════════════ -->
-          <div class="d-sec">
-            <div class="d-sec-h">
-              <span class="n">{{ lang.t('prg_evm') }}</span>
-              <span class="d-cell-sub">{{ lang.t('prg_evm_sub') }}</span>
-            </div>
-            <div class="d-sec-b">
-              <div class="d-form-grid">
-                <div class="d-form-i">
-                  <span class="k">SPI</span>
-                  <span class="v num">
-                    <bdi>{{ fmt.index(d.evm.spi) }}</bdi>
-                    <span class="d-cell-sub">{{ spiNote() }}</span>
-                  </span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">CPI</span>
-                  <span class="v num">
-                    <bdi>{{ fmt.index(d.evm.cpi) }}</bdi>
-                    <span class="d-cell-sub">{{ cpiNote() }}</span>
-                  </span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">EAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ d.evm.eac === null ? '—' : fmt.money(d.evm.eac) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">VAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ d.evm.vac === null ? '—' : fmt.money(d.evm.vac) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">PV <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.evm.pv) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">EV <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.evm.ev) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">AC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.evm.ac) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">{{ lang.t('prg_budget') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ fmt.money(d.evm.budget) }}</bdi></span>
-                </div>
-              </div>
-
-              <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('fin_evm_note') }}</span></div>
-              </div>
-            </div>
-          </div>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4">{{ lang.t('fin_alloc_total') }}</td>
+                    <td class="r mono"><bdi>{{ fmt.money(lettersTotal()) }}</bdi></td>
+                  </tr>
+                </tfoot>
+              </table></div>
+            </epm-field-group>
+          }
         }
       </div>
 
-      <!-- ══ Z8 — the certificate ═══════════════════════════════════════ -->
-      @if (selectedPayment(); as p) {
+      <!-- ══ Z8 — لوحة تفاصيل الدفعة (الشكل 16) ═══════════════════════════
+           «لوحة تفاصيل الدفعة بقسمي بيانات الدفعة وتوزيعها على العقود», and
+           «توزيع الدفعة على العقود» is the section that makes a multi-contract
+           letter auditable: every contract's share, split across the three
+           expense items, ending in the letter's own total.
+
+           The split is not computed here — it is the apportionment الشكل 9
+           records on each payment, read once and shown by both screens.
+      -->
+      @if (selectedLetter(); as l) {
         <div class="d-pz8">
           <div class="d-rpane">
             <div class="rp-h">
               <div class="tx">
                 <div class="r1">
-                  <span class="code"><bdi>{{ p.financeLetterNo }}</bdi></span>
+                  <span class="code"><bdi>{{ l.letterNo }}</bdi></span>
+                  @for (st of l.statuses; track st) {
+                    <epm-status-pill kind="payment-status" [code]="st" />
+                  }
                 </div>
-                <b>{{ kindLabel(p.kind) }} <bdi>#{{ p.no }}</bdi></b>
-                <span class="sub">{{ name({ nameAr: p.contractNameAr, nameEn: p.contractNameEn }) }}</span>
+                <b>{{ lang.t('fin_pay_letter') }}</b>
+                <span class="sub"><bdi>{{ fmt.date(l.letterDate) }}</bdi></span>
               </div>
               <div class="acts">
-                <button type="button" class="d-icon-btn sm" [attr.aria-label]="lang.t('scd_rec_close')"
-                        (click)="selected.set(0)">
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('scd_rec_close')" (click)="openLetter.set('')">
                   <epm-icon name="close" [size]="18" />
                 </button>
               </div>
             </div>
+
             <div class="rp-b">
               <div class="d-form-grid">
-                <div class="d-form-i"><span class="k">{{ lang.t('scd_col_status') }}</span>
-                  <span class="v"><epm-status-pill [code]="p.status" kind="payment-status" /></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_gross') }}</span>
-                  <span class="v num"><bdi>{{ fmt.money(p.grossAmount) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_retention') }}</span>
-                  <span class="v num"><bdi>{{ fmt.money(p.retentionAmount) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_recovery') }}</span>
-                  <span class="v num"><bdi>{{ fmt.money(p.advanceRecovery) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_net') }}</span>
-                  <span class="v num"><bdi>{{ fmt.money(p.netAmount) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_letter') }}</span>
-                  <span class="v num"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_certified') }}</span>
-                  <span class="v num"><bdi>{{ fmt.date(p.certifiedDate) }}</bdi></span></div>
-                <div class="d-form-i"><span class="k">{{ lang.t('fin_col_paid') }}</span>
-                  <span class="v num">
-                    <bdi>{{ p.paidDate ? fmt.date(p.paidDate) : lang.t('fin_unpaid') }}</bdi>
-                  </span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('fin_pay_amount') }}</span>
+                  <span class="v num"><bdi>{{ fmt.money(l.net) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('fin_pay_date') }}</span>
+                  <span class="v num"><bdi>{{ fmt.date(l.letterDate) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('fin_pay_letter') }}</span>
+                  <span class="v num"><bdi>{{ l.letterNo }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('fin_pay_contracts') }}</span>
+                  <span class="v num"><bdi>{{ l.contractCount }}</bdi></span></div>
               </div>
 
-              <!-- The arithmetic of a certificate, printed. -->
-              <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('fin_net_note') }}</span></div>
-              </div>
+              <!-- «سجّلتها محللة موازنة في قسم الحسابات» — the plate names who
+                   registered the payment, and nothing records that here: no
+                   screen creates a payment yet (الشكل 20 is its wizard). Named
+                   rather than left blank (04 §9). -->
+              <p class="d-cell-sub epm-rpt-needs">
+                <epm-icon name="lock" [size]="13" />{{ lang.t('fin_pay_recorder_na') }}
+              </p>
 
-              @if (p.note) {
-                <div class="d-sec">
-                  <div class="d-sec-h"><span class="n">{{ lang.t('fin_note') }}</span></div>
-                  <div class="d-sec-b"><span>{{ p.note }}</span></div>
-                </div>
-              }
+              <epm-section [title]="lang.t('fin_pay_split')">
+                <div class="d-tablewrap"><table class="d-table">
+                  <thead>
+                    <tr>
+                      <th>{{ lang.t('fin_cost_item') }}</th>
+                      <th class="r" style="width:150px">
+                        {{ lang.t('fin_pay_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (sh of l.shares; track sh.contractId) {
+                      <!-- The contract heads its own three items, exactly as the
+                           plate groups them. -->
+                      <tr class="lvl1">
+                        <td>
+                          <span class="d-tree lvl1">
+                            <b class="mono"><bdi>{{ sh.contractId }}</bdi></b>
+                            <span class="nm">{{ lang.pick(sh.contractNameAr, sh.contractNameEn) }}</span>
+                          </span>
+                        </td>
+                        <td class="r mono d-cell-strong"><bdi>{{ fmt.money(sh.net) }}</bdi></td>
+                      </tr>
+                      <tr class="lvl2">
+                        <td><span class="d-tree lvl2"><span class="nm">{{ lang.t('con_cost_award') }}</span></span></td>
+                        <td class="r mono"><bdi>{{ fmt.money(sh.award) }}</bdi></td>
+                      </tr>
+                      <tr class="lvl2">
+                        <td><span class="d-tree lvl2"><span class="nm">{{ lang.t('con_cost_reserve') }}</span></span></td>
+                        <td class="r mono"><bdi>{{ fmt.money(sh.reserve) }}</bdi></td>
+                      </tr>
+                      <tr class="lvl2">
+                        <td><span class="d-tree lvl2"><span class="nm">{{ lang.t('con_cost_supervision') }}</span></span></td>
+                        <td class="r mono"><bdi>{{ fmt.money(sh.supervision) }}</bdi></td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td>{{ lang.t('fin_alloc_total') }}</td>
+                      <td class="r mono"><bdi>{{ fmt.money(l.net) }}</bdi></td>
+                    </tr>
+                  </tfoot>
+                </table></div>
+              </epm-section>
+            </div>
 
-              @if (!p.paidDate) {
-                <div class="d-msgbar warning">
-                  <epm-icon name="warning" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('fin_unpaid_t') }}</b>
-                    <span>{{ lang.t('fin_unpaid_b') }}</span>
-                  </div>
-                </div>
-              }
+            <div class="rp-f">
+              <button type="button" class="d-btn sm"
+                      (click)="toast.demo('تصدير الدفعة', 'Export payment')">
+                <epm-icon name="download" [size]="15" />{{ lang.t('con_pay_export') }}
+              </button>
             </div>
           </div>
         </div>

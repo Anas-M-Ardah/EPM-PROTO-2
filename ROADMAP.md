@@ -746,26 +746,65 @@ The most heavily specified part of the system. Read `03-CHANGE-ORDER-PROCESS.md`
 > order can breach either without the other, which is what VO-02 and VO-06 exist to
 > demonstrate.
 
-> **Verified live** at 1440, AR and EN: six orders in six states; RE department sees
-> **1 awaiting** (VO-03, returned to it) and the committee **3** (VO-06 at its stage,
-> VO-05 and VO-04 as execution owner) — the same six rows, different relations, from
-> one persona switch. VO-02 carries متأخر + تجاوزت السقف + بانتظار تثبيت الأسعار;
-> VO-04 carries فشل التطبيق; VO-06 carries none, which is the control. Indicators
-> read net approved **13,000,000**, pending 2, SLA 2, overdue 2, avg cycle **84.0
-> days**. `dotnet test` 149/149, `ng build` clean, no console errors.
+> **Verified live** at 1440, AR and EN: six orders in six states; the RE department sees
+> **3 awaiting** (VO-03 returned to it, and VO-04 + VO-05 sitting at التنفيذ, which
+> `03 §2` gives it), the change-order committee **1** (VO-06 at its stage) and the
+> rate-fixing committee **1** (VO-02 stopped at تثبيت الأسعار) — the same six rows,
+> different relations, from one persona switch. VO-02 carries متأخر + تجاوزت السقف +
+> بانتظار تثبيت الأسعار; VO-04 carries فشل التطبيق; VO-06 carries none, which is the
+> control. Indicators read net approved **13,000,000**, pending 2, SLA 2, overdue 2,
+> avg cycle **30.0 days**. `dotnet test` 259/259, `ng build` clean, no console errors.
+>
+> *(Re-measured in Phase 5.2. The awaiting counts and the cycle average moved when the
+> fixture's stage chain was corrected to `03 §2`'s six — P-100 — because the execution
+> stage did not exist before and the ministerial order is now dated where it happened.)*
 
 **Exit:** the same order shows a different relation to different personas, and the
 «بانتظار إجرائي» count changes with it.
 
-### 5.2 Record page — `DModVO` `vo-record.jsx:436` + `DVORecordPanel`
-- [ ] Sticky header per `03 §9` — no project name, no repeated contract detail
-- [ ] Tab 1 الملخص — order info, inputs preceding entry, impact, contract before/order/after, decision summary, 7-step checklist
-- [ ] Tab 2 الكميات والكلفة — one comparison table under grouped **Before / Requested / Approved / Applied** headers; only changed figures marked, never whole rows
-- [ ] Tab 3 الأثر الزمني — affected activities, requested/analysis/approved days, critical-path effect
-- [ ] Tab 5 المرفقات — table with version and originating stage; **versions accumulate, files are never replaced**
-- [ ] Tab 6 السجل — audit trail with previous → new value
-- [ ] Leave an explicit placeholder for tab 4 (5.4 fills it)
-- [ ] `EP-CHG-02..n` · UML · TRACE rows
+### 5.2 Record page — `DModVO` `vo-record.jsx:960` + `voRecord` :129 · **ملحق الأشكال 30–34** ✅ COMPLETE
+- [x] Sticky header per `03 §9` — no project name, no repeated contract detail; the
+      lifecycle pill, the exception chips and the relation chip travel with the order
+- [x] **Tab 1 الملخص is الشكل 30** — معلومات الأمر · المدخلات السابقة (with their OWN
+      letter numbers, P-103) · ملخص الأثر · أثر الأمر على العقد · ملخص القرار ·
+      **تسع خطوات تطبيق**, not seven (P-101)
+- [x] **Tab 2 الكميات والكلفة is الشكل 31** — one item row and three party rows per line
+      under before / المقاول / د.م.م / المعتمد, the 20% split spelled out per party, and
+      **BR-01 re-run for every column**, so «التحقق من 100%» is a recomputation rather
+      than an assertion. Only changed figures are marked, never whole rows
+- [x] **Tab 3 الأثر الزمني is الشكل 32** — requested · analysis · approved kept apart
+      (P-102), the affected activities, and the standing note about float
+- [x] **Tab 4 المسار is الشكل 33** — the six stages with their own ceilings (3 · 5 · 7 ·
+      10 · 14 · 7), skipped stages LISTED WITH THEIR REASON, external parties as
+      statuses inside the owning stage with the delegate as recorder, and «معدل دوران
+      المعاملة» beside the order's age. The four decisions are 5.4, and the panel says
+      whose they are rather than showing a disabled button
+- [x] **Tab 5 المرفقات is الشكل 34** — version and originating stage; versions accumulate
+- [x] **Tab 6 السجل** — one row per CHANGED FIELD, «القيمة السابقة ← الجديدة», system
+      events told apart from users'
+- [x] الشكل 31's «اضغط أي بند لعرض تفاصيله الكاملة» — a DRAWER, not an expander
+- [x] `EP-CHG-02` · Angular trio · TRACE rows · P-100…P-105 in DECISIONS
+
+> **The fixture's stage chain was wrong and this pass fixed it (P-100).** It ran five
+> stages, two of which `03 §2` does not have: لجنة المراجعة المصادقة is an EXTERNAL
+> PARTY inside stage 4, and المستوى الإداري الأعلى owns nothing. The six now come from
+> `WorkflowMachine.Stages`, so a stage cannot be seeded under one name and rendered
+> under another — and the register's «الجهة المسؤولة» column changed with it. Stage 6
+> التنفيذ belongs to دائرة المهندس المقيم, so it — not the committee — is now `awaiting`
+> on an approved order waiting to be applied.
+
+> **Verified live** at 1440, AR and EN, against the plates: VO-01 reads مقترح المقاول
+> +13,426,000 · مقترح د.م.م +12,400,000 (= its RequestedValue) · المعتمد +10,000,000
+> (= ContractAmendment no. 1), الفرق −2,400,000 · −15 يوم, weights 100.00 → 100.00
+> «مطابق», the trail 3/3 · 5/5 · 7/7 · 9/10 · 6/14 · 7/7 with أطراف خارجية 1/1 and 2/2,
+> «معدل دوران المعاملة 37 يوم» against an age of 180 days, and nine of nine apply steps
+> complete. VO-04 shows the failed weight step with its reason and a redistribution
+> whose impact is a real 0; VO-03 is time-only with تثبيت الأسعار skipped and its reason
+> printed; VO-05's 3,000,000 / 12 days match the amendment still WAITING to be applied.
+> `dotnet test` 259/259, `ng build` clean.
+
+**Exit:** the same order shows a different relation to different personas, and every
+figure on the record traces to a rule file rather than to the projection that printed it.
 
 ### 5.3 Creation wizard — `DVOCreateWizard` `vo-wizard.jsx:6`
 - [ ] **Contract selected FIRST** and scopes everything; read-only context header

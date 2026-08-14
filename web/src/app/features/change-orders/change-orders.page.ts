@@ -1,7 +1,7 @@
 import {
   Component, ViewEncapsulation, computed, effect, inject, signal, untracked,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -50,6 +50,7 @@ import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-or
 export class ChangeOrdersPage {
   private api = inject(ChangeOrdersApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
@@ -121,6 +122,18 @@ export class ChangeOrdersPage {
   }
 
   toggleAttn(k: string) { this.attn.update(v => (v === k ? '' : k)); }
+
+  /** `03 §9`'s record. The number is the segment — a record has to be linkable. */
+  open(no: string) {
+    this.router.navigate(['/projects', this.projectId(), 'changeorders', no]);
+  }
+
+  onRowKey(e: KeyboardEvent, no: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.open(no);
+    }
+  }
 
   slaCount = computed(() => this.rows().filter(r => r.exceptions.some(x => x.code === 'sla-breached')).length);
   overdueCount = computed(() => this.rows().filter(r => r.exceptions.some(x => x.code === 'overdue')).length);

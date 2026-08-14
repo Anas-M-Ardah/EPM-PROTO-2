@@ -23,6 +23,17 @@ public class Payment
     public string FinanceLetterNo { get; set; } = "";
     public DateOnly? FinanceLetterDate { get; set; }
 
+    /// <summary>
+    /// «الموعد القانوني للصرف» — الشكل 17's warning box.
+    ///
+    /// RECORDED, not derived. It is set by the instruction that governs the
+    /// certificate, and deriving it from the stage caps would be inventing a
+    /// rule: the plate's own due date is not the sum of its two caps, and a
+    /// date the ministry can be held to must not move because someone edited
+    /// a cap. Null when none has been set.
+    /// </summary>
+    public DateOnly? LegalDueDate { get; set; }
+
     /// <summary>interim · advance · final · retention-release</summary>
     public string Kind { get; set; } = "interim";
 

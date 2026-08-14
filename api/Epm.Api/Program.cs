@@ -31,6 +31,13 @@ builder.Services.AddDbContext<EpmDb>(o =>
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(
         "http://localhost:4200",                    // dev Angular server
+        // CLAUDE.md §7 — this project's web actually serves on :4300 (4200 is
+        // taken by another project on the dev machine), and launch.json's own
+        // config on :4301. Without them every dev request failed CORS, because
+        // environment.ts points the client straight at :5080 rather than at the
+        // proxy.
+        "http://localhost:4300",
+        "http://localhost:4301",
         "https://emp-infinite.netlify.app",       // prod Netlify
         "https://emp-infinite.runasp.net")        // prod RunASP
     .AllowAnyHeader()
@@ -75,6 +82,7 @@ app.MapOverviewEndpoints();
 app.MapInformationEndpoints();
 app.MapContractEndpoints();
 app.MapBoqEndpoints();
+app.MapBoqImportEndpoints();
 app.MapScheduleEndpoints();
 app.MapProgressEndpoints();
 app.MapFinancialsEndpoints();

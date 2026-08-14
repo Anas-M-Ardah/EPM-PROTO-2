@@ -22,6 +22,16 @@ export interface FinancialsTotals {
   advanceOutstanding: number;
   balance: number;
   spendPct: number;
+  /** مصروف السنة — the filtered year only, across every contract. */
+  spentYear: number;
+  /**
+   * «أساسا القياس» — الشكل 14 sets the project’s APPROVED BUDGET against what
+   * its contracts commit, and the gap is the point. Null when المسار 1
+   * recorded no cost: no budget is a state, not a gap of zero.
+   */
+  projectBudget: number | null;
+  contractCommitments: number;
+  budgetGap: number | null;
 }
 
 export interface FinancialsComponent {
@@ -32,6 +42,14 @@ export interface FinancialsComponent {
   /** An applied change moves the AWARD only — never reserve or supervision. */
   chg: number;
   revised: number;
+  spentYear: number;
+  spentToDate: number;
+  /**
+   * NULL on a component, always: BR-11 forecasts from a CPI and an expense
+   * item has no earned value of its own to form one (P-90).
+   */
+  forecast: number | null;
+  variance: number | null;
 }
 
 export interface FinancialsContract {
@@ -48,6 +66,11 @@ export interface FinancialsContract {
   advanceOutstanding: number;
   balance: number;
   paymentCount: number;
+  spentYear: number;
+  /** عند الإنجاز — BR-11’s EAC on this contract. Null until it has spent. */
+  forecast: number | null;
+  /** Revised − forecast. Negative means the forecast overruns the budget. */
+  variance: number | null;
   components: FinancialsComponent[];
 }
 
@@ -89,6 +112,88 @@ export interface FinancialsUnavailable {
   needsEn: string;
 }
 
+/**
+ * One fiscal year on الشكل 15. The ALLOCATION is recorded; the spend, the
+ * remainder and the consumption are derived from it and from the payments
+ * whose money moved in that year.
+ */
+export interface FinancialsAllocation {
+  year: number;
+  allocated: number;
+  spent: number;
+  /** Allocated − spent. Negative means the year overspent its release. */
+  remaining: number;
+  /** Null when nothing was released: no consumption to report is not 0%. */
+  consumptionPct: number | null;
+  /** «سجلّ مقفل» — a closed year moves only by an approved transfer. */
+  closed: boolean;
+  actorName: string;
+  actorRole: string;
+  actorParty: string;
+  at: string | null;
+}
+
+/** One contract's share of a funding letter, split across the three items. */
+export interface FinancialsLetterShare {
+  contractId: string;
+  contractNameAr: string;
+  contractNameEn: string;
+  status: string;
+  award: number;
+  reserve: number;
+  supervision: number;
+  net: number;
+}
+
+/**
+ * الشكل 16 — one FUNDING LETTER, which can cover more than one contract. The
+ * grouping is derived from ; nothing new is stored.
+ */
+export interface FinancialsLetter {
+  letterNo: string;
+  letterDate: string | null;
+  contractCount: number;
+  net: number;
+  /** Distinct statuses inside the letter — two means paid on one contract only. */
+  statuses: string[];
+  shares: FinancialsLetterShare[];
+}
+
+/** One desk on a certificate’s route — الشكل 17’s stage card. */
+export interface FinancialsAuditStage {
+  no: number;
+  stageKey: string;
+  partyAr: string;
+  partyEn: string;
+  capDays: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** Days at this desk. Null before it received the file. */
+  elapsedDays: number | null;
+  /** done · current · overdue · waiting — BR-12 against the data date. */
+  state: string;
+}
+
+/**
+ * مهلة تدقيق السلفة الجارية — ONE certificate: the one certified and not yet
+ * paid. A paid one has no lead time left to watch.
+ */
+export interface FinancialsAuditSla {
+  contractId: string;
+  contractNameAr: string;
+  contractNameEn: string;
+  paymentNo: number;
+  letterNo: string;
+  /** within · overdue. */
+  overallState: string;
+  legalDueDate: string | null;
+  /** Due − data date. Negative once the date has passed. */
+  daysToDue: number | null;
+  currentStageAr: string | null;
+  currentStageEn: string | null;
+  stages: FinancialsAuditStage[];
+}
+
 export interface FinancialsResponse {
   projectId: string;
   projectNameAr: string;
@@ -99,4 +204,14 @@ export interface FinancialsResponse {
   contracts: FinancialsContract[];
   payments: FinancialsPayment[];
   unavailable: FinancialsUnavailable[];
+  /** التخصيص السنوي — one row per fiscal year, newest first (الشكل 15). */
+  allocations: FinancialsAllocation[];
+  /** سجل الدفعات — one row per funding letter, newest first (الشكل 16). */
+  letters: FinancialsLetter[];
+  /** مهل التدقيق — the certificate in flight, or null (الشكل 17). */
+  auditSla: FinancialsAuditSla | null;
+  /** Years carrying a paid certificate, newest first — the filter’s options. */
+  years: number[];
+  /** The year in force, or null for «كل السنوات». */
+  year: number | null;
 }

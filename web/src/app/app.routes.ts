@@ -263,6 +263,16 @@ export const routes: Routes = [
               import('./features/change-orders/change-orders.page').then(m => m.ChangeOrdersPage),
           },
 
+          // SCR-W8 record · features/change-orders · [EP-CHG-02]
+          // The order number is a URL segment for the same reason the contract
+          // is on SCR-W3: a change order is an official record, and a link to
+          // one has to survive being pasted into a letter.
+          {
+            path: 'changeorders/:no',
+            loadComponent: () =>
+              import('./features/change-orders/change-order.page').then(m => m.ChangeOrderPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

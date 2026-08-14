@@ -417,72 +417,122 @@
       </button>
     </div>
 
-    <div class="d-pbody no-aside">
+    <!-- The aside is الشكل 9's payment panel and nothing else, so the body is
+         `no-aside` on every other tab — including الدفعات with none selected. -->
+    <div class="d-pbody" [class.no-aside]="!selectedPayment()">
       <div class="d-pz7">
 
         @if (tab() === 'overview') {
+          <!-- ══ الشكل 7 — بطاقة العقد: نظرة عامة ═══════════════════════════
+               «ملخص العقد الواحد: أطرافه وتواريخه وقيمه ومصروفاته وتفصيل كلفته
+               على بنودها الثلاثة» — three blocks, in the plate's order: the
+               header strip, the ONE percentage the contract is read by, and the
+               collapsible cost breakdown.
+
+               WHAT USED TO BE HERE AND IS NOT ON الشكل 7: the
+               original + أثر الملاحق = النافذة strip and the projection notice —
+               both are الشكل 10's subject and its chain table already carries
+               every figure they showed, row by row. And the five-line
+               «الموقف المالي» list: المصادق عليه and استرداد السلفة are per-payment
+               facts of الشكل 9, not summary figures of this card.
+          -->
           <dl class="d-meta">
+            <div class="d-meta-i"><dt>{{ lang.t('con_hd_contract') }}</dt>
+              <dd>{{ lang.pick(c.nameAr, c.nameEn) }}</dd>
+              <dd class="sub"><bdi>{{ c.id }}</bdi></dd></div>
             <div class="d-meta-i"><dt>{{ lang.t('col_status') }}</dt>
               <dd><epm-status-pill kind="contract-status" [code]="c.status" /></dd></div>
-            <div class="d-meta-i"><dt>{{ lang.t('col_contractor') }}</dt><dd>{{ c.contractor }}</dd></div>
-            <div class="d-meta-i"><dt>{{ lang.t('con_consultant') }}</dt><dd>{{ c.consultant }}</dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('con_hd_contractor') }}</dt><dd>{{ c.contractor }}</dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('con_f_component') }}</dt><dd>{{ c.component }}</dd></div>
             <div class="d-meta-i"><dt>{{ lang.t('col_start') }}</dt>
               <dd class="num"><bdi>{{ fmt.date(c.start) }}</bdi></dd></div>
-            <div class="d-meta-i"><dt>{{ lang.t('col_baseline_finish') }}</dt>
+            <!-- The finish IN FORCE, not the awarded one: an applied ملحق moves
+                 «الإنجاز التعاقدي», and الشكل 10 is where the original stays
+                 readable beside it. -->
+            <div class="d-meta-i"><dt>{{ lang.t('con_hd_finish') }}</dt>
               <dd class="num"><bdi>{{ fmt.date(c.effectiveFinish) }}</bdi></dd></div>
-            <div class="d-meta-i"><dt>{{ lang.t('con_incoming') }}</dt>
-              <dd class="num"><bdi>{{ c.incomingNo }}</bdi></dd></div>
+            <!--
+              THE PLATE LABELS THIS ONE «مبلغ الإحالة» AND PRINTS 520,200,000 —
+              which is the contract's ORIGINAL value, not its الإحالة cost item
+              (479,400,000, three rows down in تفصيل الكلفة on this same screen).
+              العرض الفني §11 is what settles it: «القيمة الأصلية (مبلغ الإحالة عند
+              التعاقد)» — the two names, one figure. So the number is the plate's
+              and the label is الشكل 6's, because one screen may not print
+              «الإحالة» against two different amounts.
+            -->
+            <div class="d-meta-i"><dt>{{ lang.t('con_original_value') }}</dt>
+              <dd class="num"><bdi>{{ fmt.money(c.originalValue) }}</bdi> {{ lang.t('cur_iqd') }}</dd></div>
+            <div class="d-meta-i"><dt>{{ lang.t('con_effective_value') }}</dt>
+              <dd class="num"><bdi>{{ fmt.money(c.effectiveValue) }}</bdi> {{ lang.t('cur_iqd') }}</dd></div>
+            @if (money(); as m) {
+              <div class="d-meta-i"><dt>{{ lang.t('con_disbursed') }}</dt>
+                <dd class="num"><bdi>{{ fmt.money(m.disbursed) }}</bdi> {{ lang.t('cur_iqd') }}</dd></div>
+            }
           </dl>
 
-          <section class="d-recon">
-            <div class="tm">
-              <span class="k">{{ lang.t('con_original_value') }}</span>
-              <b class="num"><bdi>{{ fmt.money(c.originalValue) }}</bdi></b>
-              <span class="n"><bdi>{{ c.originalDurationDays }}</bdi> {{ lang.t('con_days') }}</span>
-            </div>
-            <span class="op" aria-hidden="true">{{ c.effectiveValue < c.originalValue ? '−' : '+' }}</span>
-            <div class="tm">
-              <span class="k">{{ lang.t('con_addenda_impact') }}</span>
-              <b class="num"><bdi>{{ fmt.money(c.effectiveValue < c.originalValue ? c.originalValue - c.effectiveValue : c.effectiveValue - c.originalValue) }}</bdi></b>
-              <span class="n">
-                <bdi>{{ c.effectiveDurationDays - c.originalDurationDays }}</bdi> {{ lang.t('con_days') }}
-              </span>
-            </div>
-            <span class="op" aria-hidden="true">=</span>
-            <div class="tm strong">
-              <span class="k">{{ lang.t('con_effective_value') }}</span>
-              <b class="num"><bdi>{{ fmt.money(c.effectiveValue) }}</bdi></b>
-              <span class="n"><bdi>{{ c.effectiveDurationDays }}</bdi> {{ lang.t('con_days') }}</span>
-            </div>
-          </section>
-
-          @if (hasProjection()) {
-            <div class="d-scopebar">
-              <epm-icon name="info" [size]="15" />
-              <span>{{ lang.t('ovw_projection') }}
-                <b><bdi>{{ fmt.money(c.projectionValue) }}</bdi></b>
-                — {{ lang.t('ovw_projection_note') }}
-                (<bdi>{{ pending().length }}</bdi>)</span>
-            </div>
-          }
-
           @if (money(); as m) {
-            <epm-section [title]="lang.t('con_position')" [sub]="lang.t('con_position_sub')">
-              <ul class="epm-ben-list">
-                <li><span class="n">{{ lang.t('con_disbursed') }}</span>
-                  <span class="num"><bdi>{{ fmt.money(m.disbursed) }}</bdi></span></li>
-                <li><span class="n">{{ lang.t('con_certified') }}</span>
-                  <span class="num"><bdi>{{ fmt.money(m.certified) }}</bdi></span></li>
-                <li><span class="n">{{ lang.t('con_retention') }}</span>
-                  <span class="num"><bdi>{{ fmt.money(m.retention) }}</bdi></span></li>
-                <li><span class="n">{{ lang.t('con_advance_recovery') }}</span>
-                  <span class="num"><bdi>{{ fmt.money(m.advanceRecovery) }}</bdi></span></li>
-                <li><span class="n">{{ lang.t('con_remaining') }}</span>
-                  <span class="num"><bdi>{{ fmt.money(m.remaining) }}</bdi></span></li>
-              </ul>
-              <span class="track epm-track"><i [style.width.%]="detailSpentPct()"></i></span>
-              <p class="d-cell-sub"><bdi>{{ detailSpentPct() }}%</bdi> {{ lang.t('con_of_effective') }}</p>
-            </epm-section>
+            <!--
+              «22 % من كلفة العقد الكلية» — THE CARD NAMES ITS OWN DENOMINATOR,
+              and it is كلفة العقد الكلية, never the effective value. The same
+              figure is «الإنجاز المالي» on the bar below it: one number, printed
+              twice, arriving once (EP-CON-02 `money.spentPct`).
+            -->
+            <section class="d-panel epm-hrows">
+              <div class="epm-reghead">
+                <span class="n">
+                  <b><bdi>{{ pct0(m.spentPct) }}</bdi></b>
+                  <span>{{ lang.t('con_of_total_cost') }}</span>
+                </span>
+                <span class="sp"></span>
+                <span class="per">
+                  <span class="k">{{ lang.t('con_total_cost') }}</span>
+                  <bdi class="num">{{ fmt.money(m.totalCost) }}</bdi> {{ lang.t('cur_iqd') }}
+                </span>
+              </div>
+
+              <!--
+                المادي against المالي, the comparison this card exists to make.
+                The physical rail is ticked at the financial %, so "spending ahead
+                of building" is one glance rather than two readings — the same
+                device الشكل 6 uses one level up.
+              -->
+              <div class="epm-barpair">
+                <div class="epm-bar">
+                  <div class="h">
+                    <span class="k">{{ lang.t('con_physical') }}</span>
+                    <span class="sp"></span>
+                    <span class="v"><bdi>{{ pct0(m.physicalPct) }}</bdi></span>
+                  </div>
+                  <span class="track epm-track"
+                        [class.marked]="m.physicalPct !== null && m.spentPct !== null">
+                    <i [style.width.%]="bar(m.physicalPct)"></i>
+                    @if (m.physicalPct !== null && m.spentPct !== null) {
+                      <span class="mk" [style.inset-inline-start.%]="bar(m.spentPct)"></span>
+                    }
+                  </span>
+                  <!-- No bill on this contract means the figure is not
+                       measurable — say so rather than draw a 0% bar (P-09). -->
+                  <p class="d-cell-sub">
+                    {{ m.physicalPct === null ? lang.t('con_no_physical') : lang.t('con_physical_sub') }}
+                  </p>
+                </div>
+
+                <div class="epm-bar">
+                  <div class="h">
+                    <span class="k">{{ lang.t('con_financial') }}</span>
+                    <span class="sp"></span>
+                    <span class="v"><bdi>{{ pct0(m.spentPct) }}</bdi></span>
+                  </div>
+                  <span class="track epm-track"><i class="spend" [style.width.%]="bar(m.spentPct)"></i></span>
+                  <p class="d-cell-sub">
+                    {{ lang.t('con_spent_short') }}
+                    <bdi>{{ fmt.money(m.disbursed) }}</bdi> {{ lang.t('cur_iqd') }}
+                    · {{ lang.t('con_remaining_short') }}
+                    <bdi>{{ fmt.money(m.remaining) }}</bdi> {{ lang.t('cur_iqd') }}
+                  </p>
+                </div>
+              </div>
+            </section>
 
             <!--
               الشكل 7 — «قسم قابل للطي تفصيل كلفة العقد… وأشرطة تقدّم لكل بند
@@ -547,15 +597,20 @@
         }
 
         @if (tab() === 'activity') {
-          <!--
-            الشكل 11 — «خط زمني لكل ما جرى على العقد… بمن نفّذها وصفته
-            وتاريخها». The .d-trail the project card uses, fed by
-            ContractActivityEvents through EP-CON-02.
+          <!-- ══ الشكل 11 — بطاقة العقد: سجل النشاط ═══════════════════════════
+               «خط زمني لكل ما جرى على العقد: أوامر تغييرية، وتحديثات إنجاز،
+               وتعديلات مبالغ وبيانات، بمن نفّذها وصفته وتاريخها».
 
-            الشكل 11 also shows change orders, progress updates and per-field
-            «قبل ← بعد» diffs. This table records the four attribution facts §7
-            asks for and no diff, so a step states its action rather than
-            inventing one. Reported, not faked.
+               THE DIFF IS THE SCREEN. The tab used to render one line per save
+               — «عدّل بيانات العقد» — which says that something changed and not
+               what. الشكل 11 asks for «القيمة السابقة مشطوبة ← القيمة الجديدة» in
+               as many words, so `ContractActivityEvent` now records the field
+               and both values and EP-CON-04 writes ONE ROW PER CHANGED FIELD.
+
+               `.d-trail` · `.d-tstep` · `.chg` are the reference's own timeline
+               classes, copied into the stylesheet long before this screen and
+               unused until now — including `.chg .from`'s line-through, which
+               is the plate's «مشطوبة» exactly.
           -->
           @if (events().length === 0) {
             <div class="d-empty">
@@ -568,17 +623,53 @@
               <div class="d-trail">
                 @for (e of events(); track e.id) {
                   <div class="d-tstep">
-                    <span class="tdot"><epm-icon name="edit" [size]="11" /></span>
+                    <!-- «تمييز أحداث النظام الآلية عن أحداث المستخدمين»: the dot
+                         is the distinction, and the row states «حدث آلي» beside
+                         the party — never colour alone (05 §7.6). -->
+                    <span class="tdot" [class.sys]="e.source === 'system'">
+                      <epm-icon [name]="eventIcon(e)" [size]="11" />
+                    </span>
                     <div class="th">
                       <span>{{ e.actorName }}</span>
-                      <time class="tm"><bdi>{{ e.at }}</bdi></time>
+                      <time class="tm"><bdi>{{ fmt.date(e.at) }}</bdi></time>
                     </div>
                     <div class="tr">
                       <span class="ro">{{ e.actorRole }}</span>
                       <span class="sep">·</span>
                       <span class="og">{{ e.actorParty }}</span>
                     </div>
-                    <div class="tb">{{ actionLabel(e.action) }}</div>
+
+                    @switch (e.action) {
+                      @case ('change-order') {
+                        <!-- «أمر تغييري VO-01 — زيادة كميات أعمال الكهرباء» -->
+                        <div class="tb">
+                          {{ lang.t('con_act_order') }}
+                          <bdi class="mono">{{ e.refId }}</bdi>
+                          @if (e.note) { <span>— {{ e.note }}</span> }
+                        </div>
+                      }
+                      @case ('progress') {
+                        <!-- The figure is the point of the line, so it is marked. -->
+                        <div class="tb">
+                          {{ lang.t('con_act_progress') }}
+                          <mark><bdi>{{ e.after }}%</bdi></mark>
+                        </div>
+                      }
+                      @default {
+                        @if (e.field) {
+                          <div class="chg">
+                            <span class="f">{{ fieldLabel(e.field) }}</span>
+                            <span class="from"><bdi>{{ eventValue(e, e.before) }}</bdi></span>
+                            <span class="arw" aria-hidden="true">←</span>
+                            <span class="to"><bdi>{{ eventValue(e, e.after) }}</bdi></span>
+                          </div>
+                        } @else {
+                          <!-- A create, or an update from before the diff was
+                               recorded: the verb is all there is to say. -->
+                          <div class="tb">{{ actionLabel(e.action) }}</div>
+                        }
+                      }
+                    }
                   </div>
                 }
               </div>
@@ -587,6 +678,22 @@
         }
 
         @if (tab() === 'payments') {
+          <!-- ══ الشكل 9 — بطاقة العقد: الدفعات ═══════════════════════════
+               «سجل دفعات العقد المرتبطة بكتب التمويل، مع لوحة تفصيل لكل دفعة
+               تبيّن توزيعها على بنود الكلفة ومرفقاتها».
+
+               FIVE COLUMNS, as the plate prints them: رقم الدفعة · كتاب التمويل ·
+               التاريخ · البنود · المبلغ — and a «صف إجمالي». The port had seven,
+               led with the certificate arithmetic (إجمالي · ضمان · صافي) and had
+               no panel at all, so the apportionment and the attachments — the
+               two things this screen exists for — were unreachable.
+
+               THE STATUS PILL IS KEPT, under the number, though the plate's own
+               table has no status anywhere. Paid ≠ certified (P-26): the total
+               below sums every row, while الشكل 7's المصروف counts the PAID ones
+               only, and on this project the two differ by 41,225,000. Without
+               the pill the two screens would look like they disagree.
+          -->
           @if (payments().length === 0) {
             <div class="d-empty">
               <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
@@ -598,176 +705,487 @@
               <table class="d-table">
                 <thead>
                   <tr>
-                    <th style="width:70px">{{ lang.t('con_pay_no') }}</th>
-                    <th style="width:130px">{{ lang.t('con_pay_kind') }}</th>
+                    <th style="width:150px">{{ lang.t('con_pay_no') }}</th>
                     <th>{{ lang.t('con_finance_letter') }}</th>
-                    <th style="width:120px">{{ lang.t('col_status') }}</th>
-                    <th style="width:130px">{{ lang.t('con_gross') }}</th>
-                    <th style="width:120px">{{ lang.t('con_retention') }}</th>
-                    <th style="width:130px">{{ lang.t('con_net') }}</th>
+                    <th style="width:130px">{{ lang.t('con_pay_date') }}</th>
+                    <th style="width:90px">{{ lang.t('con_pay_items') }}</th>
+                    <th style="width:170px">{{ lang.t('con_pay_amount') }} (<bdi>{{ lang.t('cur_iqd') }}</bdi>)</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (p of payments(); track p.no) {
-                    <tr>
-                      <td class="num d-cell-sub"><bdi>{{ p.no }}</bdi></td>
-                      <td class="d-cell-sub">{{ lookups.label('payment-kind', p.kind) }}</td>
-                      <td class="d-cell-strong">
-                        <bdi>{{ p.financeLetterNo }}</bdi>
-                        <div class="d-cell-sub num"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></div>
-                        @if (p.note) { <div class="d-cell-sub">{{ p.note }}</div> }
-                      </td>
+                    <tr [class.sel]="openPayment() === p.no" (click)="togglePayment(p)">
+                      <!-- The row is the pointer target and the number is the
+                           KEYBOARD one: `05 §7` wants a :focus-visible element,
+                           and a <tr> is not one. Same argument as الشكل 6's
+                           «فتح العقد». -->
                       <td>
-                        <epm-status-pill kind="payment-status" [code]="p.status" />
-                        <!-- Certified and paid are different facts and the gap
-                             between them is where a delayed project's money
-                             sits, so both dates are shown. -->
-                        <div class="d-cell-sub num">
-                          <bdi>{{ p.status === 'paid' ? fmt.date(p.paidDate) : fmt.date(p.certifiedDate) }}</bdi>
+                        <button type="button" class="lnk"
+                                [attr.aria-expanded]="openPayment() === p.no"
+                                (click)="togglePayment(p); $event.stopPropagation()">
+                          <bdi>{{ lang.t('con_pay_no_short') }} {{ p.no }}</bdi>
+                        </button>
+                        <div class="d-cell-sub">
+                          <epm-status-pill kind="payment-status" [code]="p.status" />
                         </div>
                       </td>
-                      <td class="num"><bdi>{{ fmt.money(p.grossAmount) }}</bdi></td>
-                      <td class="num d-cell-sub"><bdi>{{ fmt.money(p.retentionAmount) }}</bdi></td>
+                      <td class="d-cell-strong">
+                        <bdi>{{ p.financeLetterNo }}</bdi>
+                        @if (p.note) { <div class="d-cell-sub">{{ p.note }}</div> }
+                      </td>
+                      <td class="num d-cell-sub"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></td>
+                      <!-- «3 بنود» — how many of the three cost items this
+                           payment actually touched, not how many exist. -->
+                      <td class="num d-cell-sub"><bdi>{{ portionCount(p) }}</bdi></td>
                       <td class="num"><bdi>{{ fmt.money(p.netAmount) }}</bdi></td>
                     </tr>
                   }
                 </tbody>
+                <!-- «جدول دفعات بصف إجمالي». Every row, whatever its status —
+                     it is the register's own total, not the contract's spend. -->
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="d-cell-strong">{{ lang.t('con_pay_total') }}</td>
+                    <td class="num d-cell-strong"><bdi>{{ fmt.money(paymentsTotal()) }}</bdi></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           }
         }
 
         @if (tab() === 'amend') {
-          <!--
-            THE VERSION CHAIN. Row 0 is the original contract and stays labelled
-            «العقد الأصلي» however many amendments follow it — `original` is the
-            row's identity, not a claim about which version is in force (P-16).
+          <!-- ══ الشكل 10 — بطاقة العقد: الملاحق والتعديلات ═══════════════════
+               «الشاشة التي يظهر فيها أثر الأوامر التغييرية على العقد: القيمة
+               والمدة قبل التعديل وبعده، والغرامات، والكميات والأنشطة النافذة».
+
+               FIVE COLLAPSIBLE SECTIONS, the plate's own: العقد النافذ · سجل
+               التعديلات التعاقدية · أثر التعديلات على الغرامات · الكميات النافذة ·
+               الأنشطة النافذة. The tab used to be three bare tables and carried
+               neither the summary the first section exists to give nor the
+               penalty figures the third one is named after.
           -->
-          <epm-section [title]="lang.t('con_chain')" [sub]="lang.t('con_chain_sub')">
+
+          <!-- ── 1 · العقد النافذ ──────────────────────────────────────────
+               EVERY EFFECTIVE FIGURE CARRIES ITS ORIGINAL, in the sub-line
+               under it. That pairing IS the section: «القيمة النافذة
+               587,673,564 (الأصلية 520,200,000)» is one statement, and printing
+               only the first half is how the two get confused (02 §9). -->
+          <epm-field-group [title]="lang.t('con_effective_grp')" [sub]="effectiveSub()">
+            @if (effectiveVersion(); as ev) {
+              <dl class="d-meta">
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_f_effVersion') }}</dt>
+                  <dd>{{ versionLabel(ev) }}</dd>
+                  @if (ev.sourceChangeOrderId; as src) {
+                    <dd class="sub"><bdi>{{ src }}</bdi></dd>
+                  }
+                </div>
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_f_effValue') }}</dt>
+                  <dd class="num"><bdi>{{ fmt.money(c.effectiveValue) }}</bdi> {{ lang.t('cur_iqd') }}</dd>
+                  <dd class="sub">{{ lang.t('con_eff_orig_v') }}
+                    <bdi>{{ fmt.money(c.originalValue) }}</bdi></dd>
+                </div>
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_f_effFinish') }}</dt>
+                  <dd class="num"><bdi>{{ fmt.date(c.effectiveFinish) }}</bdi></dd>
+                  <dd class="sub">{{ lang.t('con_eff_orig_f') }}
+                    <bdi>{{ fmt.date(c.originalFinish) }}</bdi></dd>
+                </div>
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_f_effDuration') }}</dt>
+                  <dd class="num"><bdi>{{ c.effectiveDurationDays }}</bdi> {{ lang.t('con_days') }}</dd>
+                  @if (durationDelta() !== 0) {
+                    <dd class="sub"><bdi>{{ fmt.delta(durationDelta()) }}</bdi> {{ lang.t('con_days') }}</dd>
+                  }
+                </div>
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_f_netApplied') }}</dt>
+                  <dd class="num"><bdi>{{ fmt.delta(netApplied()) }}</bdi> {{ lang.t('cur_iqd') }}</dd>
+                </div>
+                <div class="d-meta-i">
+                  <dt>{{ lang.t('con_eff_pending') }}</dt>
+                  <dd class="num"><bdi>{{ pending().length }}</bdi></dd>
+                  @if (pending().length) {
+                    <dd class="sub"><bdi>{{ fmt.delta(pendingValue()) }}</bdi> {{ lang.t('cur_iqd') }}
+                      · <bdi>{{ fmt.delta(pendingDays()) }}</bdi> {{ lang.t('con_days') }}</dd>
+                  }
+                </div>
+              </dl>
+            }
+
+            <!--
+              «تنبيه صريح بأن الأوامر المعتمدة غير المطبَّقة لم تُدرج في العقد
+              النافذ مع بيان القيمة المتوقعة بعد التطبيق». Inside this section,
+              beside the effective figures it qualifies — not on نظرة عامة, which
+              الشكل 7 gives no projection line at all.
+            -->
+            @if (pending().length) {
+              <div class="d-msgbar warning">
+                <epm-icon name="warning" [size]="16" />
+                <div>
+                  <b>{{ lang.t('con_pending_title') }}</b>
+                  <span>{{ lang.t('ovw_projection_note') }} —
+                    <bdi>{{ fmt.money(c.projectionValue) }}</bdi> {{ lang.t('cur_iqd') }}
+                    · <bdi>{{ fmt.date(projectionFinish()) }}</bdi></span>
+                </div>
+              </div>
+            }
+          </epm-field-group>
+
+          <!-- ── 2 · سجل التعديلات التعاقدية ───────────────────────────────
+               ONE TABLE, as the plate draws it — the original, every applied
+               amendment, and the approved-but-unapplied ones, each carrying its
+               own state pill. The projection is still not FOLDED IN: no column
+               here is summed, every total on every other screen excludes those
+               rows, and a pending row's value and change render subdued so the
+               last line cannot be read as what the contract is worth (P-80).
+          -->
+          <epm-field-group [title]="lang.t('con_chain')" [sub]="lang.t('con_chain_sub')">
             <div class="d-tablewrap">
               <table class="d-table">
                 <thead>
                   <tr>
+                    <th style="width:110px">{{ lang.t('con_chain_code') }}</th>
                     <th>{{ lang.t('con_version') }}</th>
-                    <th style="width:180px">{{ lang.t('col_status') }}</th>
-                    <th style="width:110px">{{ lang.t('con_source') }}</th>
-                    <th style="width:140px">{{ lang.t('con_delta_value') }}</th>
-                    <th style="width:90px">{{ lang.t('con_delta_days') }}</th>
-                    <th style="width:150px">{{ lang.t('con_value_after') }}</th>
-                    <th style="width:120px">{{ lang.t('con_finish_after') }}</th>
+                    <th style="width:120px">{{ lang.t('con_pay_date') }}</th>
+                    <th style="width:150px">{{ lang.t('con_chain_value') }}</th>
+                    <th style="width:140px">{{ lang.t('con_chain_change') }}</th>
+                    <th style="width:100px">{{ lang.t('con_card_period') }}</th>
+                    <th style="width:120px">{{ lang.t('con_f_finish') }}</th>
+                    <th style="width:70px">{{ lang.t('con_chain_lines') }}</th>
+                    <th style="width:70px">{{ lang.t('con_chain_acts') }}</th>
+                    <th style="width:150px">{{ lang.t('col_status') }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (v of versions(); track v.no) {
+                  @for (v of chainRows(); track v.no + (v.applied ? 'a' : 'p')) {
                     <tr>
-                      <td class="d-cell-strong">
-                        {{ versionLabel(v) }}
-                        @if (v.date) {
-                          <div class="d-cell-sub num"><bdi>{{ fmt.date(v.date) }}</bdi></div>
-                        }
-                      </td>
-                      <td><span class="d-pill {{ stateClass(v) }}">{{ stateLabel(v) }}</span></td>
                       <td class="d-cell-sub mono"><bdi>{{ v.sourceChangeOrderId ?? '—' }}</bdi></td>
-                      <td class="num"><bdi>{{ v.no === 0 ? '—' : fmt.delta(v.deltaValue) }}</bdi></td>
-                      <td class="num"><bdi>{{ v.no === 0 ? '—' : fmt.delta(v.deltaDays) }}</bdi></td>
-                      <td class="num"><bdi>{{ fmt.money(v.value) }}</bdi></td>
-                      <td class="num"><bdi>{{ fmt.date(v.finish) }}</bdi></td>
+                      <td class="d-cell-strong">{{ versionLabel(v) }}</td>
+                      <td class="num d-cell-sub"><bdi>{{ v.date ? fmt.date(v.date) : '—' }}</bdi></td>
+                      <td class="num" [class.d-cell-sub]="!v.applied">
+                        <bdi>{{ fmt.money(v.value) }}</bdi>
+                      </td>
+                      <td class="num" [class.d-cell-sub]="!v.applied">
+                        <bdi>{{ v.no === 0 ? '—' : fmt.delta(v.deltaValue) }}</bdi>
+                      </td>
+                      <td class="num d-cell-sub">
+                        <bdi>{{ v.durationDays }}</bdi> {{ lang.t('con_days') }}
+                      </td>
+                      <td class="num d-cell-sub"><bdi>{{ fmt.date(v.finish) }}</bdi></td>
+                      <!-- «بنود» and «أنشطة» — how much of the bill and the
+                           schedule each amendment moved. An em dash on every
+                           row, with the note below saying why. -->
+                      <td class="num d-cell-sub"><bdi>—</bdi></td>
+                      <td class="num d-cell-sub"><bdi>—</bdi></td>
+                      <td><span class="d-pill {{ stateClass(v) }}">{{ stateLabel(v) }}</span></td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
-            <!-- The source column is an em dash on every row, and that is a
-                 statement rather than a gap: nothing can link an amendment to
-                 its order until the change-order register exists (P-09). -->
             <p class="d-cell-sub epm-rpt-needs">
               <epm-icon name="lock" [size]="13" />{{ need('amendment-source') }}
             </p>
-          </epm-section>
+          </epm-field-group>
 
-          @if (pending().length) {
-            <!--
-              A SEPARATE TABLE, NOT MORE ROWS IN THE CHAIN ABOVE. Approving
-              changes nothing; only applying moves the contract (02 §9). These
-              rows show what the contract WOULD become, and their figures are in
-              none of the effective totals anywhere on this screen.
-            -->
-            <epm-section [title]="lang.t('con_pending_title')" [sub]="lang.t('con_pending_sub')"
-                         [n]="pending().length">
-              <div class="d-tablewrap">
-                <table class="d-table">
-                  <thead>
-                    <tr>
-                      <th>{{ lang.t('con_version') }}</th>
-                      <th style="width:180px">{{ lang.t('col_status') }}</th>
-                      <th style="width:110px">{{ lang.t('con_source') }}</th>
-                      <th style="width:140px">{{ lang.t('con_delta_value') }}</th>
-                      <th style="width:90px">{{ lang.t('con_delta_days') }}</th>
-                      <th style="width:150px">{{ lang.t('con_would_be') }}</th>
-                      <th style="width:120px">{{ lang.t('con_finish_would') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (v of pending(); track v.no) {
-                      <tr>
-                        <td class="d-cell-strong">{{ versionLabel(v) }}</td>
-                        <td><span class="d-pill {{ stateClass(v) }}">{{ stateLabel(v) }}</span></td>
-                        <td class="d-cell-sub mono"><bdi>{{ v.sourceChangeOrderId ?? '—' }}</bdi></td>
-                        <td class="num"><bdi>{{ fmt.delta(v.deltaValue) }}</bdi></td>
-                        <td class="num"><bdi>{{ fmt.delta(v.deltaDays) }}</bdi></td>
-                        <td class="num d-cell-sub"><bdi>{{ fmt.money(v.value) }}</bdi></td>
-                        <td class="num d-cell-sub"><bdi>{{ fmt.date(v.finish) }}</bdi></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </epm-section>
-          }
-
+          <!-- ── 3 · أثر التعديلات على الغرامات التأخيرية ──────────────────── -->
           @if (penalty(); as pen) {
-            <epm-section [title]="lang.t('con_penalty')" [sub]="lang.t('con_penalty_sub')">
+            <epm-field-group [title]="lang.t('con_penalty')" [sub]="lang.t('con_pen_grp_sub')">
               @if (pen.unavailable) {
                 <p class="d-cell-sub epm-rpt-needs">
                   <epm-icon name="lock" [size]="13" />{{ lang.t('con_penalty_na') }}
                 </p>
               } @else {
+                <dl class="d-meta">
+                  <div class="d-meta-i">
+                    <dt>{{ lang.t('con_pen_rate') }}</dt>
+                    <dd class="num"><bdi>{{ ratePct(pen.perDayPct) }}</bdi> / {{ lang.t('con_day') }}</dd>
+                  </div>
+                  <div class="d-meta-i">
+                    <dt>{{ lang.t('con_pen_perday') }}</dt>
+                    <dd class="num"><bdi>{{ fmt.money(pen.perDayAfter) }}</bdi> {{ lang.t('cur_iqd') }}</dd>
+                  </div>
+                  <div class="d-meta-i">
+                    <dt>{{ lang.t('con_pen_cap') }}</dt>
+                    <dd class="num"><bdi>{{ fmt.money(pen.capAfter) }}</bdi> {{ lang.t('cur_iqd') }}</dd>
+                    <dd class="sub">{{ lang.t('con_pen_cap_sub') }}</dd>
+                  </div>
+                  <div class="d-meta-i">
+                    <dt>{{ lang.t('con_pen_forecast') }}</dt>
+                    <dd class="num"><bdi>{{ fmt.date(c.forecastFinish) }}</bdi></dd>
+                  </div>
+                </dl>
+
+                <!-- «ومعادلة الغرامة معروضة داخل الشاشة» — the rule this build
+                     applies (02 §10 · D-02), which is NOT the plate's formula.
+                     See P-81: a formula that its own figures do not satisfy
+                     would be worse than either rule. -->
+                <div class="d-msgbar info">
+                  <epm-icon name="functions" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('con_pen_how') }}</b>
+                    <span>{{ lang.t('con_pen_how_b') }}</span>
+                  </div>
+                </div>
+
                 <!--
-                  BEFORE vs AFTER, and what the extension BOUGHT. An applied
-                  amendment moves both terms of BR-10 — the value raises the
-                  per-day charge and the cap, the finish cuts the days — so a
-                  single current figure would hide the most consequential thing
-                  the amendment did.
+                  «جداول مقارنة قبل / بعد مع عمود الفرق». An applied amendment
+                  moves BOTH terms of BR-10, so all five rows move together, and
+                  the الفرق on the last one is what the extension bought — the
+                  figure that used to need a «المتنازَل عنه» line of its own.
                 -->
-                <ul class="epm-ben-list">
-                  <li>
-                    <span class="n">{{ lang.t('con_penalty_before') }}</span>
-                    <span class="d-cell-sub"><bdi>{{ pen.daysBefore }}</bdi> {{ lang.t('con_days') }}</span>
-                    <span class="num"><bdi>{{ fmt.money(pen.amountBefore) }}</bdi></span>
-                  </li>
-                  <li>
-                    <span class="n">{{ lang.t('con_penalty_after') }}</span>
-                    <span class="d-cell-sub"><bdi>{{ pen.daysAfter }}</bdi> {{ lang.t('con_days') }}</span>
-                    <span class="num"><bdi>{{ fmt.money(pen.amountAfter) }}</bdi></span>
-                  </li>
-                  <li>
-                    <span class="n">{{ lang.t('con_penalty_waived') }}</span>
-                    <span class="d-cell-sub">{{ lang.t('con_penalty_waived_sub') }}</span>
-                    <span class="num"><bdi>{{ fmt.money(pen.waived) }}</bdi></span>
-                  </li>
-                </ul>
-                <p class="d-cell-sub">
-                  {{ lang.t('con_penalty_rule') }}
-                  <bdi>{{ ratePct(pen.perDayPct) }}</bdi> / {{ lang.t('con_day') }},
-                  {{ lang.t('con_capped_at') }} <bdi>{{ ratePct(pen.capPct) }}</bdi>
-                  (<bdi>{{ fmt.money(pen.capAfter) }}</bdi>) — D-02
-                </p>
+                <div class="d-tablewrap">
+                  <table class="d-table">
+                    <thead>
+                      <tr>
+                        <th>{{ lang.t('con_pen_item') }}</th>
+                        <th style="width:150px">{{ lang.t('con_penalty_before') }}</th>
+                        <th style="width:150px">{{ lang.t('con_penalty_after') }}</th>
+                        <th style="width:130px">{{ lang.t('con_pen_diff') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="d-cell-strong">{{ lang.t('con_f_effFinish') }}</td>
+                        <td class="num"><bdi>{{ fmt.date(c.originalFinish) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.date(c.effectiveFinish) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(durationDelta()) }}</bdi> {{ lang.t('con_days') }}</td>
+                      </tr>
+                      <tr>
+                        <td class="d-cell-strong">{{ lang.t('con_pen_row_days') }}</td>
+                        <td class="num"><bdi>{{ pen.daysBefore }}</bdi></td>
+                        <td class="num"><bdi>{{ pen.daysAfter }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(pen.daysAfter - pen.daysBefore) }}</bdi></td>
+                      </tr>
+                      <tr>
+                        <td class="d-cell-strong">{{ lang.t('con_pen_row_perday') }}</td>
+                        <td class="num"><bdi>{{ fmt.money(pen.perDayBefore) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.money(pen.perDayAfter) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(pen.perDayAfter - pen.perDayBefore) }}</bdi></td>
+                      </tr>
+                      <tr>
+                        <td class="d-cell-strong">{{ lang.t('con_pen_row_cap') }}</td>
+                        <td class="num"><bdi>{{ fmt.money(pen.capBefore) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.money(pen.capAfter) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(pen.capAfter - pen.capBefore) }}</bdi></td>
+                      </tr>
+                      <tr>
+                        <td class="d-cell-strong">{{ lang.t('con_pen_row_due') }}</td>
+                        <td class="num"><bdi>{{ fmt.money(pen.amountBefore) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.money(pen.amountAfter) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.delta(pen.amountAfter - pen.amountBefore) }}</bdi></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                @if (pen.amountAfter === 0) {
+                  <div class="d-msgbar info">
+                    <epm-icon name="info" [size]="16" />
+                    <div>
+                      <b>{{ lang.t('con_pen_none_t') }}</b>
+                      <span>{{ lang.t('con_pen_none_b') }}</span>
+                    </div>
+                  </div>
+                }
               }
-            </epm-section>
+            </epm-field-group>
           }
+
+          <!-- ── 4 · الكميات النافذة · 5 · الأنشطة النافذة ──────────────────
+               REAL SECTIONS WITH A PRINTED REASON, not omissions (04 §9). Both
+               read what an amendment changed from the change order it came
+               from, and no amendment carries one yet — the same gap the chain's
+               «الأمر التغييري» column shows as an em dash. -->
+          <epm-field-group [title]="lang.t('con_eff_qty')" [sub]="lang.t('con_eff_qty_sub')">
+            <p class="d-cell-sub epm-rpt-needs">
+              <epm-icon name="lock" [size]="13" />{{ need('amendment-quantities') }}
+            </p>
+          </epm-field-group>
+
+          <epm-field-group [title]="lang.t('con_eff_act')" [sub]="lang.t('con_eff_act_sub')">
+            <p class="d-cell-sub epm-rpt-needs">
+              <epm-icon name="lock" [size]="13" />{{ need('amendment-activities') }}
+            </p>
+          </epm-field-group>
         }
       </div>
+
+      <!-- ══ Z8 — «لوحة تفاصيل جانبية قابلة للتصغير والإغلاق» ══════════════
+           الشكل 9's own panel: the payment's identity, «تفصيل الدفعة لهذا العقد»
+           over the contract's three cost items, «المرفقات», and «تصدير الدفعة».
+           The `.d-rpane` the financials certificate panel already uses — one
+           panel primitive, two screens (CLAUDE.md §7). -->
+      @if (selectedPayment(); as p) {
+        <div class="d-pz8">
+          <div class="d-rpane">
+            <div class="rp-h">
+              <div class="tx">
+                <div class="r1">
+                  <span class="code"><bdi>{{ lang.t('con_pay_no_short') }} {{ p.no }}</bdi></span>
+                  <epm-status-pill kind="payment-status" [code]="p.status" />
+                </div>
+                <b>{{ lookups.label('payment-kind', p.kind) }}</b>
+                <span class="sub"><bdi>{{ p.financeLetterNo }}</bdi></span>
+              </div>
+              <div class="acts">
+                <!-- «قابلة للتصغير» — the header stays, the body folds. The
+                     table beside it is the reason: a reader comparing rows
+                     wants the panel out of the way without losing which
+                     payment is selected. -->
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-expanded]="!panelMin()"
+                        [attr.aria-label]="lang.t(panelMin() ? 'con_pay_expand' : 'con_pay_minimise')"
+                        (click)="panelMin.set(!panelMin())">
+                  <epm-icon [name]="panelMin() ? 'open_in_full' : 'unfold_more'" [size]="16" />
+                </button>
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('con_pay_close')"
+                        (click)="openPayment.set(null)">
+                  <epm-icon name="close" [size]="18" />
+                </button>
+              </div>
+            </div>
+
+            @if (!panelMin()) {
+              <div class="rp-b">
+                <div class="d-form-grid">
+                  <div class="d-form-i"><span class="k">{{ lang.t('con_pay_amount') }}</span>
+                    <span class="v num"><bdi>{{ fmt.money(p.netAmount) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('con_pay_date') }}</span>
+                    <span class="v num"><bdi>{{ fmt.date(p.financeLetterDate) }}</bdi></span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('con_finance_letter') }}</span>
+                    <span class="v num"><bdi>{{ p.financeLetterNo }}</bdi></span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('con_hd_contract') }}</span>
+                    <span class="v num"><bdi>{{ c.id }}</bdi></span></div>
+                </div>
+
+                <!--
+                  THE APPORTIONMENT, RECORDED AND NOT COMPUTED. الشكل 9 is where
+                  the three portions come from — they are read off the funding
+                  letter — and they are what makes الشكل 7's per-item spend a sum
+                  rather than a split nobody authorised. The three add to المبلغ.
+                -->
+                <epm-section [title]="lang.t('con_pay_split')">
+                  <div class="d-tablewrap">
+                    <table class="d-table">
+                      <thead>
+                        <tr>
+                          <th>{{ lang.t('con_pay_item') }}</th>
+                          <th style="width:140px">{{ lang.t('con_pay_amount') }} (<bdi>{{ lang.t('cur_iqd') }}</bdi>)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (l of p.portions; track l.key) {
+                          <tr>
+                            <td>{{ lang.t($any('con_cost_' + l.key)) }}</td>
+                            <td class="num"><bdi>{{ fmt.money(l.amount) }}</bdi></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </epm-section>
+
+                <!-- «قسم مرفقات بمعاينة الملفات». Metadata only — nothing is
+                     stored (CLAUDE.md §4), so the card opens nothing and says
+                     so through the demo toast rather than a dead link. -->
+                <epm-section [title]="lang.t('con_pay_files')" [n]="p.files.length">
+                  @if (p.files.length === 0) {
+                    <p class="d-cell-sub epm-rpt-needs">
+                      <epm-icon name="lock" [size]="13" />{{ lang.t('con_pay_no_files') }}
+                    </p>
+                  } @else {
+                    <div class="d-files">
+                      @for (f of p.files; track f.fileName) {
+                        <button type="button" class="d-file"
+                                (click)="toast.demo('فتح المرفق', 'Open attachment')">
+                          <span class="fi pdf"><epm-icon name="attach_file" [size]="16" /></span>
+                          <span class="fm">
+                            <b>{{ lang.pick(f.titleAr, f.titleEn) }}</b>
+                            <span><bdi>{{ f.fileName }}</bdi> · <bdi>{{ fileSize(f.sizeBytes) }}</bdi></span>
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </epm-section>
+              </div>
+
+              <div class="rp-f">
+                <button type="button" class="d-btn sm"
+                        (click)="toast.demo('تصدير الدفعة', 'Export payment')">
+                  <epm-icon name="download" [size]="15" />{{ lang.t('con_pay_export') }}
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
+
+    <!--
+      الشكل 10's «تذييل ثابت بعدد الملاحق والقيمة النافذة». The count is every
+      ملحق on the contract — applied AND awaiting — because it is the count of
+      what the section above lists. The value beside it is the EFFECTIVE one,
+      and the projection is not in it (02 §9).
+    -->
+    @if (tab() === 'amend' && contract(); as cc) {
+      <div class="d-z9 epm-regfoot">
+        <span class="it">
+          <span class="k">{{ lang.t('con_addenda_f') }}</span>
+          <bdi class="num">{{ appliedCount() + pending().length }}</bdi>
+        </span>
+        <span class="it">
+          <span class="k">{{ lang.t('con_effective_value') }}</span>
+          <bdi class="num">{{ fmt.money(cc.effectiveValue) }}</bdi>
+          <span class="k">{{ lang.t('cur_iqd') }}</span>
+        </span>
+        <span class="sp"></span>
+        @if (totals()?.dataDate; as d) {
+          <span class="it">
+            <span class="k">{{ lang.t('con_asof') }}</span>
+            <bdi class="num">{{ fmt.date(d) }}</bdi>
+          </span>
+        }
+      </div>
+    }
+    <!--
+      الشكل 9's «تذييل ثابت»: العدد, الإجمالي and the data date — the same strip
+      الشكل 6 carries under the register. المصروف joins it ONLY when it differs
+      from the total, which is exactly when a reader would otherwise think this
+      screen and نظرة عامة contradict each other (P-26).
+    -->
+    @if (tab() === 'payments' && payments().length && money(); as m) {
+      <div class="d-z9 epm-regfoot">
+        <span class="it">
+          <span class="k">{{ lang.t('con_payments_n') }}</span>
+          <bdi class="num">{{ payments().length }}</bdi>
+        </span>
+        <span class="it">
+          <span class="k">{{ lang.t('con_pay_total') }}</span>
+          <bdi class="num">{{ fmt.money(paymentsTotal()) }}</bdi>
+          <span class="k">{{ lang.t('cur_iqd') }}</span>
+        </span>
+        @if (m.disbursed !== paymentsTotal()) {
+          <span class="it">
+            <span class="k">{{ lang.t('con_disbursed') }}</span>
+            <bdi class="num">{{ fmt.money(m.disbursed) }}</bdi>
+            <span class="k">{{ lang.t('cur_iqd') }}</span>
+          </span>
+        }
+        <span class="sp"></span>
+        @if (totals()?.dataDate; as d) {
+          <span class="it">
+            <span class="k">{{ lang.t('con_asof') }}</span>
+            <bdi class="num">{{ fmt.date(d) }}</bdi>
+          </span>
+        }
+      </div>
+    }
 
     <!--
       Z9 — the edit action bar, present only while editing. الشكل 5's own bar,

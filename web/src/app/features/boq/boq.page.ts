@@ -6,6 +6,10 @@ import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { BoqImportWizard } from './boq-import.wizard';
+import { BoqImportApi } from './boq-import.api';
+import { BoqImportVersionDto } from './boq-import.types';
+import { SectionComponent } from '../../shared/section.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -71,7 +75,8 @@ interface ShareDraft {
   // NgTemplateOutlet: one BOQ line renders in three states (reading, inline
   // edit, delete confirm) and is used from two places in the grid — grouped
   // under a division, and ungrouped. One template, one definition of a row.
-  imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent],
+  imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
+    SectionComponent, BoqImportWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './boq.page.html',
 })
@@ -79,6 +84,7 @@ export class BoqPage {
   private api = inject(BoqApi);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private importApi = inject(BoqImportApi);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   toast = inject(ToastService);
@@ -120,6 +126,49 @@ export class BoqPage {
   deleting = signal('');
   /** The row whose overflow menu is open. One at a time, by code. */
   rowMenu = signal('');
+
+  // ── الشكل 12 — بطاقة البند ───────────────────────────────────────────
+  /**
+   * «لوحة تفاصيل البند بتبويبات» — the open item's code, or none. Component
+   * state and not the URL, by the same argument الشكل 9's payment panel
+   * settles: an item is a row of one contract's bill, and the contract is
+   * already what the link carries.
+   */
+  // ── الشكل 13 — استيراد جدول الكميات ──────────────────────────────────
+  /** The wizard is a modal, so it is open or it is not. */
+  importOpen = signal(false);
+
+  /**
+   * Submitted versions on this contract. Read so the register can say one is
+   * waiting — «لا يُمحى إصدار سابق» is only true if a submission is visible
+   * afterwards, and nothing else on this screen would show it.
+   */
+  importVersions = signal<BoqImportVersionDto[]>([]);
+  pendingImport = computed(() =>
+    this.importVersions().find(v => v.state === 'submitted') ?? null);
+
+  loadImportVersions() {
+    const p = this.projectId(); const c = this.contractId();
+    if (!p || !c) return;
+    this.importApi.versions(p, c).subscribe({
+      next: v => this.importVersions.set(v),
+      // A missing version list must never take the register down with it:
+      // the bill is what this screen is for.
+      error: () => this.importVersions.set([]),
+    });
+  }
+
+  /** EP-BOQ-10 wrote a version; the bill is deliberately unchanged. */
+  importSubmitted(v: BoqImportVersionDto) {
+    this.importVersions.update(list => [v, ...list]);
+    this.toast.show(this.lang.t('boq_imp_done_t'));
+  }
+
+  card = signal('');
+  cardTab = signal('general');
+
+  /** The open row, read back out of the register so it re-derives on reload. */
+  cardRow = computed(() => this.rows().find(r => r.code === this.card()) ?? null);
 
   // ── the distribution drawer ────────────────────────────────────────────
   distCode = signal('');
@@ -210,6 +259,34 @@ export class BoqPage {
   toggleDivision(key: string) {
     this.collapsed.update(c => ({ ...c, [key]: !c[key] }));
   }
+
+  /** الشكل 12 — «فتح بطاقة البند وتعديله». Always opens on عام. */
+  openCard(code: string) {
+    this.card.set(code);
+    this.cardTab.set('general');
+  }
+
+  /**
+   * «تعديل البند» from inside the card. The card CLOSES: the edit happens in
+   * the row, and leaving a panel open beside a row that has turned into a set
+   * of inputs shows the same item twice, in two states.
+   */
+  editFromCard() {
+    const r = this.cardRow();
+    if (!r) return;
+    this.card.set('');
+    this.startEdit(r);
+  }
+
+  /** The six tabs, in the plate's order. */
+  readonly cardTabs = [
+    { k: 'general', label: 'boq_card_general' },
+    { k: 'alloc', label: 'boq_card_alloc' },
+    { k: 'dist', label: 'boq_card_dist' },
+    { k: 'prog', label: 'boq_card_prog' },
+    { k: 'cost', label: 'boq_card_cost' },
+    { k: 'log', label: 'boq_card_log' },
+  ] as const;
 
   toggleCol(k: string) {
     this.cols.update(c => ({ ...c, [k]: !c[k] }));
@@ -425,7 +502,14 @@ export class BoqPage {
         if (!cid) { this.reg.set(null); this.asn.set(null); this.loading.set(false); return; }
 
         this.api.register(pid, cid).subscribe({
-          next: r => { this.reg.set(r); this.loading.set(false); },
+          next: r => {
+            this.reg.set(r);
+            this.loading.set(false);
+            // الشكل 13 — whether a submitted version is waiting on this
+            // contract. Its own call: a failure here must not take the
+            // register down, and the register must not wait on it.
+            this.loadImportVersions();
+          },
           error: e => this.fail(e),
         });
       },
@@ -786,6 +870,15 @@ export class BoqPage {
       case 'over': return 'delayed';
       default: return 'cancelled';
     }
+  }
+
+  /**
+   * A bar width. Display geometry — the one thing a page may compute
+   * (CLAUDE.md §3.1) — clamped because a bar overrunning its rail is a
+   * layout bug, while the number printed beside it reports the overrun.
+   */
+  bar(pct: number): number {
+    return Math.max(0, Math.min(100, pct));
   }
 
   description(r: { descriptionAr: string; descriptionEn: string }): string {

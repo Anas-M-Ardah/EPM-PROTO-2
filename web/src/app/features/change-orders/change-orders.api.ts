@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
 import { ChangeOrdersResponse } from './change-orders.types';
+import { ChangeOrderRecordResponse } from './change-order-record.types';
 
 /**
  * Every call SCR-W8's register makes — one, and it reads.
@@ -19,5 +20,16 @@ export class ChangeOrdersApi {
   list(projectId: string) {
     return this.api.get<ChangeOrdersResponse>(
       `/api/projects/${encodeURIComponent(projectId)}/change-orders`);
+  }
+
+  // [EP-CHG-02] GET /api/projects/{id}/change-orders/{no}
+  //   → api/Features/ChangeOrders/ChangeOrdersEndpoints.cs
+  //
+  // ONE call for all six tabs (`03 §9`). The page is a document about a
+  // decision somebody is being asked to take, and a tab that arrives late is a
+  // tab that gets skipped.
+  record(projectId: string, no: string) {
+    return this.api.get<ChangeOrderRecordResponse>(
+      `/api/projects/${encodeURIComponent(projectId)}/change-orders/${encodeURIComponent(no)}`);
   }
 }

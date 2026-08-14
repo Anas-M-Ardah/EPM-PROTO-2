@@ -94,6 +94,16 @@ const CANONICAL_TO_CSS: Record<string, string> = {
   // a published baseline is settled, one still awaited is not.
   'schedule-import-status:published': 'completed',
   'schedule-import-status:pending': 'suspended',
+
+  // `payment-status` (الشكل 9). All three used to fall through to the neutral
+  // pill, so مصروف and مصادق عليه rendered IDENTICALLY — and those two are the
+  // whole of P-26: only a paid certificate is spend. The gap is 41,225,000 on
+  // the fixture's own contract, and الشكل 9's total row prints both figures, so
+  // the pill has to tell them apart. Settled · in motion · held, the same three
+  // readings the two lists above already use.
+  'payment-status:paid': 'completed',
+  'payment-status:certified': 'ongoing',
+  'payment-status:pending': 'suspended',
 };
 
 /** Every .d-pill.<x> that exists in src/styles/desktop.css:688-692. */

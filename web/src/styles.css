@@ -795,6 +795,56 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
 
+/* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
+   The stage card is  — the same two-row card الشكل 6 uses
+   — and needs only its two rows laid out. The dot is , the
+   severity marker the alerts screens already use, so a desk holding a file too
+   long reads the same as any other overdue thing; it is never the only carrier,
+   since the card prints its cap and its elapsed days beside it (05 §7.6). */
+.epm-slastage > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
+.epm-slastage > .hd > .t { min-inline-size: 0; }
+.epm-slastage > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.epm-slastage > .hd > .t > .d-cell-sub { display: block; }
+.epm-slastage > .ft { display: flex; align-items: baseline; gap: var(--space-8); }
+.epm-slastage > .ft > .sp { flex: 1; }
+
+/* ══ الشكل 11 — «تمييز أحداث النظام الآلية عن أحداث المستخدمين» ═══════════
+   The automatic half of the log reads as a different KIND of row, not as a
+   more important one: the dot inverts to the tertiary plane while a user
+   event keeps the neutral outline `.d-tstep > .tdot` already gives it. The
+   distinction is never colour-only — every row states «حدث آلي · نظام إدارة
+   المشاريع» in words beside it (05 §7.6), and the icon differs too.
+
+   `.d-trail`, `.d-tstep` and `.chg` themselves are NOT new: they were copied
+   verbatim from the reference (desktop.css:2238-2270) and had no caller until
+   this screen — including `.chg .from`'s line-through, which is the plate's
+   «القيمة السابقة مشطوبة». */
+.d-tstep > .tdot.sys {
+  background: var(--surface-container-high);
+  border-color: var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+/* A change order's id inside a log line — mono, like every other id. */
+.d-tstep > .tb .mono { font-family: var(--font-mono); font-weight: var(--fw-medium); }
+/* ══ الشكل 9 — the two places a BUTTON has to look like what it replaces ═══
+   Both are `05 §7` compliance, not decoration: a row that opens a panel and a
+   card that opens a file each need a :focus-visible target, and a <tr> or a
+   <div> is not one. `.d-table .lnk` and `.d-file` already carry the LOOK
+   (desktop.css:233 · :972) — these two rules only strip the user-agent button
+   chrome that would otherwise sit on top of it, the same reset
+   `.d-crumbs button.lnk` already makes for the breadcrumb. */
+.d-line-table button.lnk,
+.d-table button.lnk {
+  background: none; border: 0; padding: 0; font: inherit; text-align: start;
+}
+button.d-file { font: inherit; text-align: start; cursor: pointer; }
+
+/* الشكل 12 — «الأوزان من قيمة العقد؛ نسبة التنفيذ من الأنشطة المرتبطة»: the
+   register's own caveat, under the table it qualifies. */
+.boq-basis-note { display: flex; align-items: center; gap: var(--space-6); margin: var(--space-8) 0 0; }
+button.d-file > .fm { align-items: flex-start; }
+
 /* ══ الشكل 7 — «تفصيل كلفة العقد» ═════════════════════════════════════════
    A tile per expense item: name, amount, its own spend bar, and what has been
    disbursed against it. Three tiles that wrap to one column on a narrow pane,

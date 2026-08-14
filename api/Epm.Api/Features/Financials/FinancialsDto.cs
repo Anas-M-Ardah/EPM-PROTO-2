@@ -57,7 +57,20 @@ public record FinancialsTotals(
     decimal RetentionHeld,
     decimal AdvanceOutstanding,
     decimal Balance,
-    decimal SpendPct);
+    decimal SpendPct,
+    /// <summary>مصروف السنة across every contract, for the filtered year.</summary>
+    decimal SpentYear,
+    /// <summary>
+    /// «أساسا القياس» — الشكل 14's note box sets the project's APPROVED BUDGET
+    /// against Σ of its contracts' effective values, and the gap is the point:
+    /// commitments above budget need a cost revision or a transfer before
+    /// spending stalls. Two different questions, so two figures and never one.
+    /// </summary>
+    /// <summary>NULL when المسار 1 recorded no cost for the project — «لا موازنة
+    /// معتمدة مسجّلة» is a real state and not a gap of zero (P-09).</summary>
+    decimal? ProjectBudget,
+    decimal ContractCommitments,
+    decimal? BudgetGap);
 
 /// <summary>
 /// One of `01 §2.3`'s "three expense items". They are NOT a partition of the
@@ -75,13 +88,25 @@ public record FinancialsTotals(
 /// An applied change order moves the AWARD, never the reserve and never the
 /// supervision allowance.
 /// </param>
+/// <param name="SpentYear">مصروف السنة — PAID certificates whose money moved in the filtered year.</param>
+/// <param name="SpentToDate">مصروف تراكمي — every PAID certificate, whatever the year.</param>
+/// <param name="Forecast">
+/// عند الإنجاز. NULL on a component, and deliberately: BR-11 forecasts from
+/// a CPI, a component has no earned value of its own to form one, and
+/// apportioning the contract's forecast across three lines would be an
+/// allocation rule no document states (P-90).
+/// </param>
 public record FinancialsComponentDto(
     string Key,
     string LabelAr,
     string LabelEn,
     decimal Original,
     decimal Chg,
-    decimal Revised);
+    decimal Revised,
+    decimal SpentYear,
+    decimal SpentToDate,
+    decimal? Forecast,
+    decimal? Variance);
 
 public record FinancialsContractDto(
     string Id,
@@ -97,6 +122,16 @@ public record FinancialsContractDto(
     decimal AdvanceOutstanding,
     decimal Balance,
     int PaymentCount,
+    /// <summary>مصروف السنة — the filtered year only.</summary>
+    decimal SpentYear,
+    /// <summary>
+    /// عند الإنجاز — BR-11's EAC on THIS contract: revised ÷ CPI, where CPI is
+    /// its own earned value over its own disbursement. Null when the contract
+    /// has spent nothing, because a CPI needs a denominator (P-09).
+    /// </summary>
+    decimal? Forecast,
+    /// <summary>Revised − forecast. Negative means the forecast overruns the budget.</summary>
+    decimal? Variance,
     IReadOnlyList<FinancialsComponentDto> Components);
 
 /// <param name="Kind">`interim` · `advance` · `final` · `retention-release` (lookup `payment-kind`).</param>
@@ -141,6 +176,124 @@ public record FinancialsEvm(
     decimal? Vac);
 
 /// <summary>
+/// One desk on a certificate's route — الشكل 17's «بطاقة لكل مرحلة».
+/// </summary>
+/// <param name="State">
+/// done · current · overdue · waiting. Derived from BR-12 against the
+/// project's DATA DATE, never a clock (D-06): `overdue` is a `current` stage
+/// that has been sitting longer than its own cap.
+/// </param>
+/// <param name="ElapsedDays">
+/// Days at this desk — to its finish if it let the file go, to the data date
+/// if it still has it. Null before it ever received it.
+/// </param>
+public record FinancialsAuditStageDto(
+    int No,
+    string StageKey,
+    string PartyAr,
+    string PartyEn,
+    int CapDays,
+    string? StartedAt,
+    string? FinishedAt,
+    int? ElapsedDays,
+    string State);
+
+/// <summary>
+/// مهلة تدقيق السلفة الجارية — الشكل 17.
+///
+/// ONE certificate: the one in flight. «السلفة الجارية» is the certificate
+/// that has been certified and not yet paid — the transaction whose delay
+/// this screen exists to locate («تُظهر موضع تعثّر المعاملة ومدة بقائها في كل
+/// جهة»). A paid certificate has no lead time left to watch.
+/// </summary>
+/// <param name="OverallState">within · overdue — «ضمن المهلة» or past a cap.</param>
+/// <param name="DaysToDue">
+/// Legal due date − data date. NEGATIVE when the date has passed, and that
+/// is the number the box exists to show.
+/// </param>
+public record FinancialsAuditSlaDto(
+    string ContractId,
+    string ContractNameAr,
+    string ContractNameEn,
+    int PaymentNo,
+    string LetterNo,
+    string OverallState,
+    string? LegalDueDate,
+    int? DaysToDue,
+    string? CurrentStageAr,
+    string? CurrentStageEn,
+    IReadOnlyList<FinancialsAuditStageDto> Stages);
+
+/// <summary>
+/// One contract's share of a funding letter, split across the three expense
+/// items — the inner half of الشكل 16's «توزيع الدفعة على العقود».
+/// </summary>
+public record FinancialsLetterShareDto(
+    string ContractId,
+    string ContractNameAr,
+    string ContractNameEn,
+    string Status,
+    decimal Award,
+    decimal Reserve,
+    decimal Supervision,
+    decimal Net);
+
+/// <summary>
+/// الشكل 16 — «عرض دفعات المشروع وتفصيل توزيع كل دفعة على العقود وعلى بنود
+/// الكلفة داخل كل عقد».
+///
+/// ── ONE LETTER, SEVERAL CONTRACTS ────────────────────────────────────
+/// The plate's PAY-102 covers «عقدان» — «تتيح دفعة واحدة تشمل أكثر من عقد مع
+/// توزيع معلن». Nothing new is stored to say so: a payment already carries the
+/// official letter it was released against (`Payment.FinanceLetterNo`), which
+/// is what the ministry's files are indexed by, and a letter covering two
+/// contracts is two payment rows sharing it. This record is that GROUPING,
+/// derived at projection time (P-94).
+/// </summary>
+/// <param name="Statuses">
+/// The distinct payment statuses inside the letter. Usually one; two when a
+/// letter has been paid on one contract and only certified on the other, and
+/// that is exactly the case a single status would hide (P-26).
+/// </param>
+public record FinancialsLetterDto(
+    string LetterNo,
+    string? LetterDate,
+    int ContractCount,
+    decimal Net,
+    IReadOnlyList<string> Statuses,
+    IReadOnlyList<FinancialsLetterShareDto> Shares);
+
+/// <summary>
+/// One fiscal year on الشكل 15 — «متابعة التخصيص المالي السنوي ونسبة استهلاكه
+/// مقابل المصروف والمتبقي لكل سنة مالية».
+///
+/// The allocation is RECORDED (`ProjectAllocations`); everything else here is
+/// derived from it and from the payments whose money moved in that year, so
+/// this screen cannot disagree with الشكل 14 about what a year cost.
+/// </summary>
+/// <param name="Spent">Σ net of PAID certificates whose `PaidDate` falls in this year.</param>
+/// <param name="Remaining">Allocated − spent. Negative means the year overspent its release.</param>
+/// <param name="ConsumptionPct">
+/// نسبة الاستهلاك. Null when the year has an allocation of zero — a year with
+/// nothing released has no consumption to report, which is not 0% (P-09).
+/// </param>
+/// <param name="Closed">
+/// «السنوات السابقة سجلّ مقفل»: a closed year moves only through an approved
+/// transfer, never by editing it in place.
+/// </param>
+public record FinancialsAllocationDto(
+    int Year,
+    decimal Allocated,
+    decimal Spent,
+    decimal Remaining,
+    decimal? ConsumptionPct,
+    bool Closed,
+    string ActorName,
+    string ActorRole,
+    string ActorParty,
+    string? At);
+
+/// <summary>
 /// A headline figure this system cannot derive. Same shape and reason as
 /// SCR-E1's and SCR-E5's: "never render 0 for a missing input — show
 /// unavailable + reason" (P-09).
@@ -156,4 +309,14 @@ public record FinancialsResponse(
     FinancialsEvm Evm,
     IReadOnlyList<FinancialsContractDto> Contracts,
     IReadOnlyList<FinancialsPaymentDto> Payments,
-    IReadOnlyList<FinancialsUnavailable> Unavailable);
+    IReadOnlyList<FinancialsUnavailable> Unavailable,
+    /// <summary>التخصيص السنوي — one row per fiscal year, newest first (الشكل 15).</summary>
+    IReadOnlyList<FinancialsAllocationDto> Allocations,
+    /// <summary>سجل الدفعات — one row per funding letter, newest first (الشكل 16).</summary>
+    IReadOnlyList<FinancialsLetterDto> Letters,
+    /// <summary>مهل التدقيق — the certificate in flight, or null (الشكل 17).</summary>
+    FinancialsAuditSlaDto? AuditSla,
+    /// <summary>Years that actually carry a paid certificate, newest first — the filter's options.</summary>
+    IReadOnlyList<int> Years,
+    /// <summary>The year in force, or null for «كل السنوات».</summary>
+    int? Year);

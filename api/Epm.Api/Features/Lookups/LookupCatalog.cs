@@ -352,6 +352,12 @@ public static class LookupCatalog
         yield return L("payment-kind", "retention-release", "إطلاق الضمان",       "Retention release");
 
         sort = 0;
+        // الشكل 17 — the desks a certificate passes on its way to payment.
+        yield return L("audit-stage", "resident-engineer", "تدقيق المهندس المقيم", "Resident engineer review");
+        yield return L("audit-stage", "finance", "تدقيق الدائرة المالية", "Finance department review");
+        yield return L("audit-stage", "audit", "التدقيق الداخلي", "Internal audit");
+        yield return L("audit-stage", "disbursement", "الصرف", "Disbursement");
+
         yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
         yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
         yield return L("payment-status", "paid",      "مصروف",       "Paid");

@@ -105,6 +105,13 @@ export class ContractPage {
    */
   openPayment = signal<number | null>(null);
 
+  /**
+   * «قابلة للتصغير» — الشكل 9 gives the panel a minimise control beside its
+   * close. Folded, the header stays: which payment is selected is the one thing
+   * that must survive getting the panel out of the way.
+   */
+  panelMin = signal(false);
+
   // ── الشكل 8's «تحرير البيانات» ──────────────────────────────────────────
   editing = signal(false);
   saving = signal(false);
@@ -132,19 +139,18 @@ export class ContractPage {
   /** The contract being shown, or none — the register is the other branch. */
   private effectiveContractId = computed(() => this.contractId());
 
-  detailSpentPct = computed(() => {
-    const c = this.contract(); const m = this.money();
-    if (!c || !m || c.effectiveValue === 0) return 0;
-    return Math.round((m.disbursed / c.effectiveValue) * 100);
-  });
-
-  /** True when the amendments moved the value, the finish, or both. */
+  /**
+   * True when the amendments moved the value, the finish, or both.
+   *
+   * `detailSpentPct` is GONE: it divided by the effective value, and الشكل 7
+   * fixes the contract card's denominator as كلفة العقد الكلية. The percentage
+   * now arrives as `money.spentPct`, derived once by EP-CON-02 — this page does
+   * not divide (CLAUDE.md §3.1).
+   */
   amended = computed(() => {
     const c = this.contract();
     return !!c && (c.effectiveValue !== c.originalValue || c.effectiveFinish !== c.originalFinish);
   });
-
-  hasProjection = computed(() => this.pending().length > 0);
 
   // ── الشكل 8 — التفاصيل ──────────────────────────────────────────────────
 
@@ -374,6 +380,55 @@ export class ContractPage {
     return this.lang.isAr() ? `ملحق عقد رقم ${v.no}` : `Amendment no. ${v.no}`;
   }
 
+  // ── الشكل 10 — الملاحق والتعديلات ──────────────────────────────────────
+
+  /** «بعد 2 ملحق مطبّق» — applied only. The pending ones have their own field. */
+  appliedCount = computed(() => Math.max(0, this.versions().length - 1));
+
+  effectiveSub = computed(() =>
+    this.appliedCount()
+      ? this.lang.t('con_effective_after').replace('{n}', String(this.appliedCount()))
+      : this.lang.t('con_effective_none'));
+
+  /**
+   * «الإصدار النافذ» — the LAST APPLIED link, which is row 0 when none has been
+   * applied. Never a pending one: that is the whole distinction this screen
+   * exists to draw (02 §9).
+   */
+  effectiveVersion = computed(() => {
+    const v = this.versions();
+    return v.length ? v[v.length - 1] : null;
+  });
+
+  /** Signed, and 0 when no ملحق has moved the contract. */
+  netApplied = computed(() => {
+    const c = this.contract();
+    return c ? c.effectiveValue - c.originalValue : 0;
+  });
+
+  durationDelta = computed(() => {
+    const c = this.contract();
+    return c ? c.effectiveDurationDays - c.originalDurationDays : 0;
+  });
+
+  /** What the approved-but-unapplied ones WOULD add. Never added here. */
+  pendingValue = computed(() => this.pending().reduce((a, v) => a + v.deltaValue, 0));
+  pendingDays = computed(() => this.pending().reduce((a, v) => a + v.deltaDays, 0));
+
+  /** The finish the projection would land on — the last pending link carries it. */
+  projectionFinish = computed(() => {
+    const p = this.pending();
+    return p.length ? p[p.length - 1].finish : this.contract()?.effectiveFinish ?? null;
+  });
+
+  /**
+   * الشكل 10 draws ONE «سجل التعديلات التعاقدية» — the original, the applied
+   * chain, then the approved-but-unapplied, each with its own state pill. They
+   * are still two lists in the API and two meanings on screen (P-80); this is
+   * the display order, not a merge of the figures.
+   */
+  chainRows = computed(() => [...this.versions(), ...this.pending()]);
+
   /** Only the rate is a percentage; the amounts are money. */
   ratePct(v: number): string {
     return (v * 100).toFixed(1).replace(/\.0$/, '') + '%';
@@ -526,7 +581,11 @@ export class ContractPage {
     this.payments().find(p => p.no === this.openPayment()) ?? null);
 
   togglePayment(p: ContractPayment) {
-    this.openPayment.set(this.openPayment() === p.no ? null : p.no);
+    const same = this.openPayment() === p.no;
+    this.openPayment.set(same ? null : p.no);
+    // A new selection always opens expanded: a folded panel would look like
+    // the click did nothing.
+    if (!same) this.panelMin.set(false);
   }
 
   /** «3 بنود» — how many of the three cost items this payment actually touched. */
@@ -541,9 +600,52 @@ export class ContractPage {
     return Math.round(bytes / 1024) + ' KB';
   }
 
+  // ── الشكل 11 — سجل النشاط ───────────────────────────────────────────────
+
   /** Activity-log verbs. Workflow verbs are chrome, not business value lists (06). */
   actionLabel(action: string): string {
     return action === 'created' ? this.lang.t('con_act_created') : this.lang.t('con_act_updated');
+  }
+
+  /**
+   * «أيقونات نوعية للأوامر التغييرية» — one icon per KIND of event, so the
+   * timeline is scannable before it is read. Never the only carrier: every row
+   * also states its actor, its capacity and what it did (05 §7.6).
+   */
+  eventIcon(e: ContractEvent): string {
+    switch (e.action) {
+      case 'change-order': return 'sync_alt';
+      case 'progress': return 'trending_up';
+      case 'created': return 'add';
+      default: return 'edit';
+    }
+  }
+
+  /**
+   * The label for the field a row changed — the SAME `con_f_*` key الشكل 8
+   * prints over that field's cell, so the log and the card cannot name one
+   * field two ways.
+   */
+  fieldLabel(field: string): string {
+    return this.lang.t(('con_f_' + field) as StrKey);
+  }
+
+  /**
+   * One side of a diff, formatted the way that field is formatted everywhere
+   * else: money grouped, dates as dates, a lookup code as its label. The log
+   * stores what the field HELD (a raw string); presentation stays here, with
+   * every other presentation decision.
+   *
+   * An empty side is «—», not a blank: a field that was unset and now has a
+   * value is exactly the change the row is reporting.
+   */
+  eventValue(e: ContractEvent, raw: string | null): string {
+    if (raw === null || raw.trim() === '') return '—';
+
+    if (MoneyFields.has(e.field ?? '')) return fmt.money(Number(raw));
+    if (DateFields.has(e.field ?? '')) return fmt.date(raw);
+    if (e.field === 'status') return this.lookups.label('contract-status', raw);
+    return raw;
   }
 }
 
@@ -553,6 +655,13 @@ export class ContractPage {
  * decides; this is the same list on the other side of the wire, and a test
  * pins the server's to the rule that enforces it.
  */
+/**
+ * How a logged value is read back. Keyed by the DTO member name, which is what
+ * `ContractActivityEvent.Field` stores — one list, not a switch per call site.
+ */
+const MoneyFields = new Set(['awardAmount', 'reserveAmount', 'supervisionAmount', 'monitoringAmount']);
+const DateFields = new Set(['start', 'finish', 'incomingDate']);
+
 const ContractRequired = new Set([
   'nameAr', 'start', 'finish', 'contractor', 'executingParty',
 ]);

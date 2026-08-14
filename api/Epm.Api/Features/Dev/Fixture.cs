@@ -1,6 +1,7 @@
 using Epm.Api.Data;
 using Epm.Api.Data.Entities;
 using Epm.Api.Features.Lookups;
+using Epm.Api.Domain;
 
 namespace Epm.Api.Features.Dev;
 
@@ -162,7 +163,7 @@ public static class Fixture
                 OriginalFinish = new DateOnly(2026, 6, 30),
                 OriginalDurationDays = 486,
                 ForecastFinish = new DateOnly(2026, 8, 30),
-                AwardAmount = 240_000_000m, ReserveAmount = 12_000_000m, SupervisionAmount = 6_000_000m,
+                AwardAmount = 222_000_000m, ReserveAmount = 12_000_000m, SupervisionAmount = 6_000_000m,
                 IncomingNo = "3421", IncomingDate = new DateOnly(2025, 2, 11),
                 Contractor = "شركة الفاو الهندسية", Consultant = "دار الهندسة",
                 Component = "المكوّن المدني", ExecutingParty = "شركة الفاو العامة", ContactInfo = "+964 771 222 3333",
@@ -176,7 +177,7 @@ public static class Fixture
                 OriginalFinish = new DateOnly(2026, 6, 30),
                 OriginalDurationDays = 394,
                 ForecastFinish = new DateOnly(2026, 8, 30),
-                AwardAmount = 100_000_000m, ReserveAmount = 5_000_000m, SupervisionAmount = 2_500_000m,
+                AwardAmount = 92_500_000m, ReserveAmount = 5_000_000m, SupervisionAmount = 2_500_000m,
                 IncomingNo = "3588", IncomingDate = new DateOnly(2025, 5, 6),
                 Contractor = "شركة المنصور للتجهيزات", Consultant = "دار الهندسة",
                 Component = "المكوّن الكهربائي", ExecutingParty = "شركة الطاقة العامة", ContactInfo = "+964 780 444 5555",
@@ -190,7 +191,7 @@ public static class Fixture
                 OriginalFinish = new DateOnly(2026, 3, 31),
                 OriginalDurationDays = 562,
                 ForecastFinish = new DateOnly(2026, 4, 20),
-                AwardAmount = 68_500_000m, ReserveAmount = 3_400_000m, SupervisionAmount = 1_700_000m,
+                AwardAmount = 63_400_000m, ReserveAmount = 3_400_000m, SupervisionAmount = 1_700_000m,
                 IncomingNo = "2914", IncomingDate = new DateOnly(2024, 8, 22),
                 Contractor = "شركة بغداد للمقاولات", Consultant = "المكتب الاستشاري",
                 Component = "المكوّن المدني", ExecutingParty = "شركة بغداد العامة للمقاولات", ContactInfo = "+964 790 111 2222",
@@ -204,7 +205,7 @@ public static class Fixture
                 OriginalFinish = new DateOnly(2025, 12, 31),
                 OriginalDurationDays = 355,
                 ForecastFinish = new DateOnly(2026, 5, 15),
-                AwardAmount = 31_200_000m, ReserveAmount = 1_500_000m, SupervisionAmount = 800_000m,
+                AwardAmount = 28_900_000m, ReserveAmount = 1_500_000m, SupervisionAmount = 800_000m,
                 IncomingNo = "3102", IncomingDate = new DateOnly(2024, 12, 3),
                 Contractor = "شركة الموصل", Consultant = "دار الهندسة",
                 Component = "المكوّن البنى التحتية", ExecutingParty = "شركة الرافدين العامة", ContactInfo = "+964 751 666 7777",
@@ -227,7 +228,10 @@ public static class Fixture
                 Value = 250_000_000m,
                 Finish = new DateOnly(2026, 8, 14), DurationDays = 531,
                 State = "effective",
-                AppliedAt = new DateTime(2026, 5, 18),
+                // The day VO-01's التنفيذ stage closed. The amendment and the
+                // order that produced it are one event in two tables, so they
+                // may not carry two different dates.
+                AppliedAt = new DateTime(2026, 3, 12),
             },
             new ContractAmendment
             {
@@ -411,6 +415,8 @@ public static class Fixture
                 AwardPortion = 38_300_000m, ReservePortion = 1_975_000m, SupervisionPortion = 950_000m,
                 FinanceLetterNo = "0931/2026", FinanceLetterDate = new DateOnly(2026, 7, 12),
                 CertifiedDate = new DateOnly(2026, 7, 9), PaidDate = null,
+                // الشكل 17 — «الموعد القانوني للصرف», recorded not derived.
+                LegalDueDate = new DateOnly(2026, 8, 12),
                 Status = "certified", Note = "مصادق عليه — بانتظار التخصيص المالي" },
 
             // CNT-0279-EM — electromechanical, one certificate only.
@@ -421,6 +427,23 @@ public static class Fixture
                 FinanceLetterNo = "1655/2025", FinanceLetterDate = new DateOnly(2025, 7, 8),
                 CertifiedDate = new DateOnly(2025, 7, 2), PaidDate = new DateOnly(2025, 7, 20),
                 Status = "paid", Note = "سلفة تشغيلية" },
+
+            // ── الشكل 16 — ONE LETTER, TWO CONTRACTS ─────────────────────
+            // «تتيح دفعة واحدة تشمل أكثر من عقد مع توزيع معلن». This shares
+            // `0931/2026` with CNT-0279's third certificate above, which is
+            // what makes the payments register show «عقدان» on one row.
+            //
+            // CERTIFIED, not paid: the letter is issued and the works are
+            // signed off, and no money has moved yet — so it changes nothing
+            // in المصروف, in الشكل 15's consumed allocation, or in الشكل 14's
+            // actual columns, all of which count PAID only (P-26).
+            new Payment { ContractId = "CNT-0279-EM", No = 2, Kind = "interim",
+                GrossAmount = 14_120_000m, RetentionAmount = 706_000m, AdvanceRecovery = 1_412_000m,
+                NetAmount = 12_002_000m,
+                AwardPortion = 11_100_000m, ReservePortion = 600_000m, SupervisionPortion = 302_000m,
+                FinanceLetterNo = "0931/2026", FinanceLetterDate = new DateOnly(2026, 7, 12),
+                CertifiedDate = new DateOnly(2026, 7, 9), PaidDate = null,
+                Status = "certified", Note = "المستخلص الأول — أعمال التمديدات" },
 
             // CNT-0148 — the library, furthest along.
             new Payment { ContractId = "CNT-0148", No = 1, Kind = "interim",
@@ -473,6 +496,15 @@ public static class Fixture
 
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
+
+        // الشكل 11 — سجل نشاط العقد.
+        ContractActivity(db);
+
+        // الشكل 15 — التخصيص المالي السنوي.
+        Allocations(db);
+
+        // الشكل 17 — مراحل تدقيق السلفة الجارية.
+        AuditStages(db);
 
         // ── next pages append their fixture rows here ────────────────────
 
@@ -841,10 +873,18 @@ public static class Fixture
 
         // The two committees that own the conditional stages (03 §2).
         const string ReDept = "دائرة المهندس المقيم";
-        const string CoCommittee = "لجنة أوامر الغيار";
-        const string RateCommittee = "لجنة تثبيت الأسعار";
+
+        // THESE TWO OWN NO STAGE. `03 §2` gives all six stages to the three
+        // parties above; لجنة المراجعة المصادقة is an EXTERNAL PARTY inside
+        // stage 4 (`03 §3`) and الدائرة الإدارية والمالية beside it, while the
+        // minister endorses inside stage 5. Seeding either as a stage owner —
+        // which this fixture did until Phase 5.2 — invents a stage the ministry
+        // does not have and puts the wrong party's name in the register's
+        // «الجهة المسؤولة» column.
         const string Endorsement = "لجنة المراجعة المصادقة";
-        const string SeniorMgmt = "المستوى الإداري الأعلى";
+        const string FinanceDept = "الدائرة الإدارية والمالية";
+        const string Minister = "الوزير / المفوَّض";
+        const string ContractsSection = "قسم العقود الحكومية";
 
         var orders = new List<ChangeOrder>
         {
@@ -859,12 +899,18 @@ public static class Fixture
                 Justification = "زيادة كميات الحفر والخرسانة بعد الكشف الموقعي على طبيعة التربة.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "3312/2025", IncomingDate = Ago(180),
+                ContractorLetterNo = "4200/2025", ContractorLetterDate = Ago(189),
+                ConsultantLetterNo = "4300/2025", ConsultantLetterDate = Ago(183),
                 Lifecycle = "closed",
-                RequestedValue = 12_400_000m, RequestedDays = 60,
+                RequestedValue = 12_400_000m, RequestedDays = 60, AnalysisDays = 45,
                 ApprovedValue = 10_000_000m, ApprovedDays = 45,
                 AppliedValue = 10_000_000m, AppliedDays = 45,
-                DecisionDate = Ago(96), ApprovingAuthority = SeniorMgmt,
-                DecisionReason = "اعتُمد بقيمة أقل من المطلوب بعد مراجعة الأسعار.",
+                // The date the ministerial order was signed — stage 5's own
+                // action date, not a separate figure. الشكل 30 prints both the
+                // authority and the reason for the gap to the RE department's
+                // proposal, in these words.
+                DecisionDate = Ago(150), ApprovingAuthority = Minister,
+                DecisionReason = "تخفيض كميات بعد التدقيق الفني.",
                 WeightRecalcState = "done",
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
@@ -879,8 +925,14 @@ public static class Fixture
                 Justification = "تغيير مواصفة الإكساء بطلب الجهة المستفيدة.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "0455/2026", IncomingDate = Ago(22),
+                ContractorLetterNo = "0411/2026", ContractorLetterDate = Ago(31),
+                ConsultantLetterNo = "0428/2026", ConsultantLetterDate = Ago(25),
                 Lifecycle = "pending",
-                RequestedValue = 8_600_000m, RequestedDays = 0,
+                // Σ of the RE department's column on its one line, and nothing
+                // else: `02 §6` makes that proposal the governing figure, so a
+                // header value that did not equal it would contradict the
+                // record's own table (7,680,000 + 240 × 3,800).
+                RequestedValue = 8_592_000m, RequestedDays = 0,
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
 
@@ -895,8 +947,10 @@ public static class Fixture
                 Justification = "تأخر توريد مواد الواجهة من المنشأ.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "0219/2026", IncomingDate = Ago(60),
+                ContractorLetterNo = "0177/2026", ContractorLetterDate = Ago(69),
+                ConsultantLetterNo = "0203/2026", ConsultantLetterDate = Ago(63),
                 Lifecycle = "returned",
-                RequestedValue = 0m, RequestedDays = 120,
+                RequestedValue = 0m, RequestedDays = 120, AnalysisDays = 60,
                 DecisionReason = "أُعيد للتعديل: المدة المطلوبة تتجاوز ما يبرره التحليل الزمني المرفق.",
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
@@ -911,10 +965,12 @@ public static class Fixture
                 Justification = "إعادة توزيع الكميات بين الطوابق دون تغيير القيمة الكلية.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "3901/2025", IncomingDate = Ago(120),
+                ContractorLetterNo = "3844/2025", ContractorLetterDate = Ago(129),
+                ConsultantLetterNo = "3877/2025", ConsultantLetterDate = Ago(123),
                 Lifecycle = "applied_partial",
                 RequestedValue = 0m, RequestedDays = 0,
                 ApprovedValue = 0m, ApprovedDays = 0,
-                DecisionDate = Ago(74), ApprovingAuthority = CoCommittee,
+                DecisionDate = Ago(98), ApprovingAuthority = Minister,
                 // What raises فشل التطبيق on the register.
                 WeightRecalcState = "failed",
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
@@ -931,10 +987,16 @@ public static class Fixture
                 Justification = "إضافة أعمال تبليط وإنارة للساحات بطلب الجهة المستفيدة.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "0712/2026", IncomingDate = Ago(9),
+                ContractorLetterNo = "0688/2026", ContractorLetterDate = Ago(18),
+                ConsultantLetterNo = "0701/2026", ConsultantLetterDate = Ago(12),
                 Lifecycle = "approved",
-                RequestedValue = 3_400_000m, RequestedDays = 15,
-                ApprovedValue = 3_000_000m, ApprovedDays = 0,
-                DecisionDate = Ago(2), ApprovingAuthority = CoCommittee,
+                // 3,375,000 is Σ of the RE department's two lines; 3,000,000 and
+                // 12 days are what ContractAmendments no. 2 on CNT-0279 is
+                // WAITING to apply. The order and its pending amendment are the
+                // same fact seen from two tables, so they carry the same pair.
+                RequestedValue = 3_375_000m, RequestedDays = 15, AnalysisDays = 12,
+                ApprovedValue = 3_000_000m, ApprovedDays = 12,
+                DecisionDate = Ago(2), ApprovingAuthority = Minister,
                 WeightRecalcState = "none",
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
@@ -950,6 +1012,11 @@ public static class Fixture
                 Justification = "عدم توفر المواصفة المتعاقد عليها لدى المجهّز.",
                 ResponsibleParty = ReDept,
                 IncomingNo = "0748/2026", IncomingDate = Ago(5),
+                // A SUPPLY order: the مجهّز writes, and the technical opinion
+                // comes from the inspection side rather than a design consultant
+                // — so the consultant letter is absent and the section shows one
+                // input, not an invented second one.
+                ContractorLetterNo = "0730/2026", ContractorLetterDate = Ago(12),
                 Lifecycle = "pending",
                 RequestedValue = 1_250_000m, RequestedDays = 0,
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
@@ -961,96 +1028,662 @@ public static class Fixture
 
         var byNo = orders.ToDictionary(o => o.No, o => o.Id);
 
+        // WHICH ORDER EACH AMENDMENT CAME FROM. The amendments are seeded
+        // earlier — SCR-E3 and SCR-W3 read them long before this method runs —
+        // so the link is stamped here, once the orders have ids. No. 1 on
+        // CNT-0279 is VO-01 applied; no. 2 is VO-05 approved and waiting, which
+        // is the pair «معتمد ≠ مطبَّق» is demonstrated with.
+        foreach (var (no, orderNo) in new[] { (1, "VO-01"), (2, "VO-05") })
+        {
+            var a = db.ContractAmendments.First(x => x.ContractId == "CNT-0279" && x.No == no);
+            a.SourceChangeOrderId = byNo[orderNo];
+        }
+        db.SaveChanges();
+
         // ── THE STAGE CHAINS ─────────────────────────────────────────────
         // Six stages (BR-13), two of them CONDITIONAL (03 §2): rate fixing only
         // when a line trips the 20% rule, endorsement only when the extension
         // exceeds a quarter of the contract duration. A stage that does not
         // apply is kept with its REASON rather than dropped — 5.4 renders that
         // list, and this phase already stores it.
-        ChangeOrderStage St(string no, int n, string ar, string en, string owner,
-            string status, int? sentAgo = null, int? actionedAgo = null,
-            bool applicable = true, string? skip = null, string? decision = null) => new()
+        // THE NAMES, OWNERS AND CEILINGS ARE NOT TYPED HERE. They come from
+        // Domain/WorkflowMachine.Stages — `03 §2`'s table as code — so a stage
+        // this fixture seeds cannot be named one thing and rendered another.
+        // Only the CLOCK and the DECISION are per-order data.
+        //
+        // The per-stage ceilings are the reference's (`vo-record.jsx` SLA_OF)
+        // and الشكل 33 prints them: 3 · 5 · 7 · 10 · 14 · 7. A request study and
+        // a ministerial endorsement do not answer to the same clock, which is
+        // why D-03's flat 5 is a DEFAULT and not the rule.
+        int[] slaOf = [3, 5, 7, 10, 14, 7];
+
+        ChangeOrderStage St(string no, int n, string status,
+            int? sentAgo = null, int? actionedAgo = null,
+            bool applicable = true, string? skip = null, string? decision = null,
+            string? decidedBy = null, string? note = null)
         {
-            ChangeOrderId = byNo[no], StageNo = n, NameAr = ar, NameEn = en,
-            OwnerParty = owner, Status = status, Applicable = applicable, SkipReason = skip,
-            SentAt = sentAgo is null ? null : Ago(sentAgo.Value),
-            ActionedAt = actionedAgo is null ? null : Ago(actionedAgo.Value),
-            Decision = decision,
-        };
+            var def = WorkflowMachine.Stages[n - 1];
+            return new()
+            {
+                ChangeOrderId = byNo[no], StageNo = def.No, NameAr = def.Ar, NameEn = def.En,
+                OwnerParty = def.Owner, Status = status, Applicable = applicable, SkipReason = skip,
+                SentAt = sentAgo is null ? null : Ago(sentAgo.Value),
+                ActionedAt = actionedAgo is null ? null : Ago(actionedAgo.Value),
+                Decision = decision, DecisionNote = note, DecidedByUserId = decidedBy,
+                SlaDays = slaOf[n - 1],
+            };
+        }
 
-        db.ChangeOrderStages.AddRange(
-            // VO-01 — every applicable stage done, in order.
-            St("VO-01", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 180, 172, decision: "approve"),
-            St("VO-01", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 172, 160, decision: "approve"),
-            St("VO-01", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "done", 160, 140, decision: "approve"),
-            St("VO-01", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "done", 140, 120, decision: "approve"),
-            St("VO-01", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "done", 120, 96, decision: "approve"),
+        var stages = new List<ChangeOrderStage>
+        {
+            // VO-01 — the full path, every applicable stage done in order, and
+            // the six of الشكل 33: 3/3 · 5/5 · 7/7 · 9/10 · 6/14 · 7/7. Stage 5
+            // is where the ministerial order was signed, so its action date IS
+            // the order's DecisionDate; stage 6 ends where ContractAmendment
+            // no. 1 on CNT-0279 was applied.
+            St("VO-01", 1, "done", 180, 177, decision: "approve"),
+            St("VO-01", 2, "done", 177, 172, decision: "approve"),
+            St("VO-01", 3, "done", 172, 165, decision: "approve"),
+            St("VO-01", 4, "done", 165, 156, decision: "approve"),
+            St("VO-01", 5, "done", 156, 150, decision: "approve"),
+            St("VO-01", 6, "done", 150, 143, decision: "approve"),
 
-            // VO-02 — sitting at rate fixing, and that stage is past its SLA.
-            St("VO-02", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 22, 18, decision: "approve"),
-            St("VO-02", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 18, 14, decision: "approve"),
-            St("VO-02", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "active", 14),
-            St("VO-02", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "pending",
-                applicable: false, skip: "التمديد المطلوب صفر، فلا تنطبق مراجعة المصادقة."),
-            St("VO-02", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending"),
+            // VO-02 — sitting at rate fixing, and that stage is past its
+            // 7-day ceiling by a week. Stage 4 APPLIES: the order adds
+            // 8,592,000 to the contract and that allocation has to be secured
+            // (`03 §2` — "if endorsement OR FUNDING is needed").
+            St("VO-02", 1, "done", 22, 19, decision: "approve"),
+            St("VO-02", 2, "done", 19, 14, decision: "approve"),
+            St("VO-02", 3, "active", 14),
+            St("VO-02", 4, "pending"),
+            St("VO-02", 5, "pending"),
+            St("VO-02", 6, "pending"),
 
-            // VO-03 — RETURNED by the endorsement committee, and now back with
-            // the RE department to revise. Stage 1 is ACTIVE AGAIN: a returned
-            // order is not parked, it is somebody's work — which is what makes
-            // it the order that exercises «بانتظار إجرائي» for the default
-            // persona. Stage 4 keeps its `returned` decision as HISTORY rather
-            // than being reset, because `03 §5` requires the return to stay on
-            // the record.
-            St("VO-03", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "active", 30),
-            St("VO-03", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 55, 44, decision: "approve"),
-            St("VO-03", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
-                applicable: false, skip: "لا تغيير في الكميات يتجاوز 20%، فلا تنطبق مرحلة تثبيت الأسعار."),
-            St("VO-03", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "returned", 44, 30, decision: "return"),
-            St("VO-03", 5, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending"),
+            // VO-03 — RETURNED at المصادقة والتخصيص, and now back with the RE
+            // department to revise. Stage 1 is ACTIVE AGAIN: a returned order
+            // is not parked, it is somebody's work — which is what makes it the
+            // order that exercises «بانتظار إجرائي» for the default persona.
+            // Stage 4 keeps its `returned` decision as HISTORY rather than
+            // being reset, because `03 §5` requires the return to stay on the
+            // record.
+            St("VO-03", 1, "active", 30),
+            St("VO-03", 2, "done", 55, 44, decision: "approve"),
+            St("VO-03", 3, "pending", applicable: false,
+                skip: "لا يشمل الأمر أي بند من جدول الكميات — الأثر زمني فقط، فلا كمية تتجاوز 20%."),
+            St("VO-03", 4, "returned", 44, 30, decision: "return",
+                note: "المدة المطلوبة تتجاوز ما يبرره التحليل الزمني المرفق."),
+            St("VO-03", 5, "pending"),
+            St("VO-03", 6, "pending"),
 
-            // VO-04 — chain complete; the application is what failed.
-            St("VO-04", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 120, 114, decision: "approve"),
-            St("VO-04", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 114, 74, decision: "approve"),
-            St("VO-04", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
-                applicable: false, skip: "إعادة توزيع دون تغيير في القيمة، فلا تنطبق مرحلة تثبيت الأسعار."),
-            St("VO-04", 4, "لجنة المراجعة المصادقة", "Endorsement review committee", Endorsement, "pending",
-                applicable: false, skip: "لا تمديد مطلوب، فلا تنطبق مراجعة المصادقة."),
+            // VO-04 — the approval chain is complete; the APPLICATION is what
+            // failed, which is why stage 6 التنفيذ is still active 98 days on.
+            St("VO-04", 1, "done", 120, 117, decision: "approve"),
+            St("VO-04", 2, "done", 117, 112, decision: "approve"),
+            St("VO-04", 3, "pending", applicable: false,
+                skip: "إعادة توزيع دون تغيير في القيمة، فلا كمية تتجاوز 20%."),
+            St("VO-04", 4, "pending", applicable: false,
+                skip: "لا أثر مالي ولا تمديد، فلا مصادقة ولا تخصيص."),
+            St("VO-04", 5, "done", 112, 98, decision: "approve"),
+            St("VO-04", 6, "active", 98),
 
-            // VO-05 — approved two days ago, nothing applied.
-            St("VO-05", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 9, 7, decision: "approve"),
-            St("VO-05", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "done", 7, 2, decision: "approve"),
-            St("VO-05", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending",
-                applicable: false, skip: "لا تغيير في الكميات يتجاوز 20%، فلا تنطبق مرحلة تثبيت الأسعار."),
+            // VO-05 — approved two days ago and NOT applied: stage 6 is the one
+            // still open, and it is open with دائرة المهندس المقيم. That is
+            // «approved ≠ applied» as a row in a table.
+            St("VO-05", 1, "done", 9, 7, decision: "approve"),
+            St("VO-05", 2, "done", 7, 5, decision: "approve"),
+            St("VO-05", 3, "pending", applicable: false,
+                skip: "لا كمية تتجاوز 20% في أي بند، فلا تنطبق مرحلة تثبيت الأسعار."),
+            St("VO-05", 4, "done", 5, 3, decision: "approve"),
+            St("VO-05", 5, "done", 3, 2, decision: "approve"),
+            St("VO-05", 6, "active", 2),
 
             // VO-06 — five days old, still with the change-order committee and
-            // comfortably inside its SLA.
-            St("VO-06", 1, "دراسة دائرة المهندس المقيم", "RE department review", ReDept, "done", 5, 3, decision: "approve"),
-            St("VO-06", 2, "لجنة أوامر الغيار", "Change-order committee", CoCommittee, "active", 3),
-            St("VO-06", 3, "لجنة تثبيت الأسعار", "Rate-fixing committee", RateCommittee, "pending"),
-            St("VO-06", 4, "المستوى الإداري الأعلى", "Senior management", SeniorMgmt, "pending")
+            // comfortably inside its 5-day ceiling. It proposes a NEW UNIT
+            // RATE, so تثبيت الأسعار applies to it and simply has not been
+            // reached — which is why it carries no «بانتظار تثبيت الأسعار»
+            // chip while VO-02, sitting AT that stage, does.
+            St("VO-06", 1, "done", 5, 3, decision: "approve"),
+            St("VO-06", 2, "active", 3),
+            St("VO-06", 3, "pending"),
+            St("VO-06", 4, "pending", applicable: false,
+                skip: "تعديل سعر ضمن قيمة العقد، فلا تخصيص إضافياً ولا مصادقة."),
+            St("VO-06", 5, "pending"),
+            St("VO-06", 6, "pending"),
+        };
+
+        db.ChangeOrderStages.AddRange(stages);
+        db.SaveChanges();
+
+        // ── PHASE 5.2 — WHAT THE RECORD PAGE READS (ملحق الأشكال 30–34) ───
+        // Ids, not navigation properties: the parents are saved, and the
+        // children are built from the ids that came back.
+        var stageId = stages.ToDictionary(
+            s => db.ChangeOrders.First(o => o.Id == s.ChangeOrderId).No + "|" + s.StageNo, s => s.Id);
+        var boq = db.BoqItems.ToDictionary(i => i.ContractId + "|" + i.Code, i => i.Id);
+        var acts = db.Activities.ToDictionary(a => a.ContractId + "|" + a.ActivityId, a => a.Id);
+
+        // ── الشكل 31 — بنود الكميات والكلفة ───────────────────────────────
+        // FOUR SETS OF COLUMNS, NONE OF WHICH OVERWRITES ANOTHER (D-01,
+        // non-negotiable #6): before · المقاول · دائرة المهندس المقيم ·
+        // المعتمد, and `applied` once the order has been applied.
+        //
+        // Every figure the record prints is DERIVED from these by
+        // Domain/ChangeOrderRecord — nothing here stores a resulting quantity,
+        // a resulting value or an impact. The one arithmetic claim this seed
+        // makes is that the RE department's column sums to the order's
+        // RequestedValue and the approved column to its ApprovedValue, because
+        // a header that disagreed with its own table would be the first thing
+        // a reader noticed.
+        db.ChangeOrderLines.AddRange(
+            // VO-01 · BQ-006 — the line that TRIPS 20% and therefore puts
+            // تثبيت الأسعار in the chain (BR-05, `03 §2`). Original 1,400 →
+            // threshold 280: everything up to 280 moves at 24,000, and only the
+            // excess carries a rate — 28,800 proposed by the contractor, 26,800
+            // by the RE department, and 26,000 FIXED by لجنة تثبيت الأسعار.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-01"], BoqItemId = boq["CNT-0279|BQ-006"], ChangeType = "inc",
+                ContractedQty = 1_400m, ExecutedQty = 1_400m,
+                BeforeQty = 1_400m, BeforeRate = 24_000m, BeforeAmount = 33_600_000m,
+                ContractorDeltaQty = 400m, ContractorExcessRate = 28_800m,
+                ReDeptDeltaQty = 380m, ReDeptExcessRate = 26_800m,
+                ApprovedDeltaQty = 310m, ApprovedExcessRate = 26_000m,
+                AppliedDeltaQty = 310m, AppliedAmount = 7_500_000m,
+                ApplyStatus = "done",
+            },
+            // VO-01 · BQ-001 — inside the limit (threshold 3,600), so it has no
+            // excess rate at all and prints «—» rather than a rate nobody set.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-01"], BoqItemId = boq["CNT-0279|BQ-001"], ChangeType = "inc",
+                ContractedQty = 18_000m, ExecutedQty = 18_000m,
+                BeforeQty = 18_000m, BeforeRate = 1_250m, BeforeAmount = 22_500_000m,
+                ContractorDeltaQty = 2_600m,
+                ReDeptDeltaQty = 2_400m,
+                ApprovedDeltaQty = 2_000m,
+                AppliedDeltaQty = 2_000m, AppliedAmount = 2_500_000m,
+                ApplyStatus = "done",
+            },
+
+            // VO-02 · BQ-009 — trips 20% (threshold 2,560) and is SITTING at
+            // rate fixing, so its approved column is empty: `02 §5` gives that
+            // rate to لجنة تثبيت الأسعار and to nobody else.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-02"], BoqItemId = boq["CNT-0279|BQ-009"], ChangeType = "inc",
+                ContractedQty = 12_800m, ExecutedQty = 2_560m,
+                BeforeQty = 12_800m, BeforeRate = 3_000m, BeforeAmount = 38_400_000m,
+                ContractorDeltaQty = 3_000m, ContractorExcessRate = 4_000m,
+                ReDeptDeltaQty = 2_800m, ReDeptExcessRate = 3_800m,
+                ApplyStatus = "todo",
+            },
+
+            // VO-04 · BQ-008 → BQ-009 — إعادة توزيع: 500 م² leave one line and
+            // arrive at another at the same rate, so the contract value does
+            // not move. The zero impact is the POINT of the order.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-04"], BoqItemId = boq["CNT-0279|BQ-008"], ChangeType = "redist",
+                ContractedQty = 8_800m, ExecutedQty = 3_960m,
+                BeforeQty = 8_800m, BeforeRate = 3_000m, BeforeAmount = 26_400_000m,
+                ContractorDeltaQty = -500m, ReDeptDeltaQty = -500m, ApprovedDeltaQty = -500m,
+                AppliedDeltaQty = -500m, AppliedAmount = 0m,
+                TargetBoqItemId = boq["CNT-0279|BQ-009"], DrawnQty = 500m, DistributedQty = 500m,
+                // The line the failed weight recalculation surfaces on (`03 §6`).
+                ApplyStatus = "fail",
+            },
+
+            // VO-05 · two lines, both inside 20% — which is exactly why its
+            // rate-fixing stage carries a skip reason instead of a date.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-05"], BoqItemId = boq["CNT-0279|BQ-012"], ChangeType = "inc",
+                ContractedQty = 2_460m, ExecutedQty = 0m,
+                BeforeQty = 2_460m, BeforeRate = 1_500m, BeforeAmount = 3_690_000m,
+                ContractorDeltaQty = 492m, ReDeptDeltaQty = 450m, ApprovedDeltaQty = 400m,
+                ApplyStatus = "todo",
+            },
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-05"], BoqItemId = boq["CNT-0279|BQ-009"], ChangeType = "inc",
+                ContractedQty = 12_800m, ExecutedQty = 2_560m,
+                BeforeQty = 12_800m, BeforeRate = 3_000m, BeforeAmount = 38_400_000m,
+                ContractorDeltaQty = 1_000m, ReDeptDeltaQty = 900m, ApprovedDeltaQty = 800m,
+                ApplyStatus = "todo",
+            },
+
+            // VO-06 · BQ-002 (EM) — a RATE change, not a quantity one. There is
+            // no 20% tier on a rate (`02 §5`), so the whole line re-prices and
+            // the record's «سعر الزائد» column has nothing to show.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-06"], BoqItemId = boq["CNT-0279-EM|BQ-002"], ChangeType = "rate",
+                ContractedQty = 4m, ExecutedQty = 1m,
+                BeforeQty = 4m, BeforeRate = 14_032_750m, BeforeAmount = 56_131_000m,
+                ContractorNewRate = 14_500_000m,
+                ReDeptNewRate = 14_345_250m,
+                ApplyStatus = "todo",
+            }
         );
 
-        // A few attachments so the register's count column has something real
-        // to say. `03 §9`'s six categories and the version chain are 5.2's.
+        // ── الشكل 32 — الأنشطة المتأثرة ───────────────────────────────────
+        // THREE DIFFERENT DAY COUNTS, kept apart on purpose: what was asked,
+        // what the schedule analysis concluded, and what was approved. الشكل 32
+        // prints all three side by side so a longer request cannot pass itself
+        // off as an entitlement.
+        db.ChangeOrderActivities.AddRange(
+            // VO-01 — the foundation quantities grew, and what that actually
+            // delayed is the structure that sits on them: A4 then A5. 35 + 25
+            // requested = the order's 60; 26 + 19 approved = its 45.
+            new ChangeOrderActivity
+            {
+                ChangeOrderId = byNo["VO-01"], ActivityId = acts["CNT-0279|A4"], ChangeType = "inc",
+                BeforeStart = new DateOnly(2025, 11, 19), BeforeFinish = new DateOnly(2026, 4, 25),
+                BeforeRemainingDuration = 150,
+                RequestedDeltaDays = 35, AnalysisDays = 26, ApprovedDeltaDays = 26,
+                ApprovedFinish = new DateOnly(2026, 5, 21),
+                AppliedDeltaDays = 26, ApplyStatus = "done",
+            },
+            new ChangeOrderActivity
+            {
+                ChangeOrderId = byNo["VO-01"], ActivityId = acts["CNT-0279|A5"], ChangeType = "inc",
+                BeforeStart = new DateOnly(2026, 1, 26), BeforeFinish = new DateOnly(2026, 5, 26),
+                BeforeRemainingDuration = 121,
+                RequestedDeltaDays = 25, AnalysisDays = 19, ApprovedDeltaDays = 19,
+                ApprovedFinish = new DateOnly(2026, 6, 14),
+                AppliedDeltaDays = 19, ApplyStatus = "done",
+            },
+
+            // VO-03 — TIME ONLY, and the gap between 120 requested and 60 from
+            // the analysis is the whole reason it was returned.
+            new ChangeOrderActivity
+            {
+                ChangeOrderId = byNo["VO-03"], ActivityId = acts["CNT-0279|A8"], ChangeType = "inc",
+                BeforeStart = new DateOnly(2026, 4, 1), BeforeFinish = new DateOnly(2026, 6, 29),
+                BeforeRemainingDuration = 90,
+                RequestedDeltaDays = 120, AnalysisDays = 60,
+                ApplyStatus = "na",
+            },
+
+            // VO-05 — 15 requested, 12 approved, and 12 is what
+            // ContractAmendment no. 2 is waiting to apply.
+            new ChangeOrderActivity
+            {
+                ChangeOrderId = byNo["VO-05"], ActivityId = acts["CNT-0279|A10"], ChangeType = "inc",
+                BeforeStart = new DateOnly(2026, 5, 1), BeforeFinish = new DateOnly(2026, 8, 30),
+                BeforeRemainingDuration = 60,
+                RequestedDeltaDays = 15, AnalysisDays = 12, ApprovedDeltaDays = 12,
+                ApprovedFinish = new DateOnly(2026, 9, 11),
+                ApplyStatus = "todo",
+            }
+        );
+
+        // ── الشكل 33 — أطراف خارجية داخل المرحلة، لا مراحل ────────────────
+        // `03 §3`–§4 and non-negotiable #5: the outcome is attributed to the
+        // DECIDING party and the delegate appears as the RECORDER, against an
+        // official letter number and date. A party with nothing to decide is
+        // `na` — which is a different fact from `wait`, and the counter says so.
+        ChangeOrderExternalParty Ext(string no, int stageNo, string ar, string en, string state,
+            bool canCancel, string? letterNo = null, int? letterAgo = null, string? note = null) => new()
+        {
+            ChangeOrderId = byNo[no], ChangeOrderStageId = stageId[no + "|" + stageNo],
+            PartyAr = ar, PartyEn = en, State = state, CanCancel = canCancel,
+            LetterNo = letterNo,
+            LetterDate = letterAgo is null ? null : Ago(letterAgo.Value),
+            RecordedByUserId = letterNo is null ? null : "user.co-rapporteur",
+            RecordedAt = letterNo is null ? null : DateTime.UtcNow,
+            Note = note,
+        };
+
+        db.ChangeOrderExternalParties.AddRange(
+            // VO-01 — stage 4 carries ONE party (1/1 on الشكل 33) and stage 5
+            // TWO (2/2). لجنة المراجعة المصادقة is absent from stage 4 because
+            // 45 days is not a quarter of a 486-day contract (`03 §3`).
+            Ext("VO-01", 4, FinanceDept, "Admin & finance directorate", "in", true, "OUT-5107", 160),
+            Ext("VO-01", 5, Minister, "Minister / delegate", "in", false, "OUT-5121", 152),
+            Ext("VO-01", 5, ContractsSection, "Government contracts section", "in", false, "OUT-5126", 150),
+
+            // VO-02 — the funding party has not answered yet; the endorsement
+            // committee has nothing to answer, because the order asks for no
+            // days at all.
+            Ext("VO-02", 4, FinanceDept, "Admin & finance directorate", "wait", true),
+            Ext("VO-02", 4, Endorsement, "Endorsement review committee", "na", true,
+                note: "لا تمديد مطلوب في هذا الأمر."),
+
+            // VO-03 — THE RETURN CAME FROM HERE. 120 days on a 486-day contract
+            // is past the quarter, so the committee had to answer, and its
+            // answer was «أُعيد» — recorded inside stage 4 by the rapporteur,
+            // never as a stage of its own.
+            Ext("VO-03", 4, Endorsement, "Endorsement review committee", "back", true, "OUT-5088", 30,
+                note: "المدة المطلوبة تتجاوز ما يبرره التحليل الزمني المرفق."),
+            Ext("VO-03", 4, FinanceDept, "Admin & finance directorate", "na", true,
+                note: "لا أثر مالي — الأمر زمني فقط."),
+
+            // VO-05 — approved, so both stages' parties have answered.
+            Ext("VO-05", 4, FinanceDept, "Admin & finance directorate", "in", true, "OUT-5203", 4),
+            Ext("VO-05", 5, Minister, "Minister / delegate", "in", false, "OUT-5209", 3),
+            Ext("VO-05", 5, ContractsSection, "Government contracts section", "in", false, "OUT-5210", 2)
+        );
+
+        // ── الشكل 30 — حالة تطبيق الأمر التغييري ──────────────────────────
+        // The LIST is Domain/WorkflowMachine.ApplyChecklist — nine steps, and
+        // this seed stores only what each one DID. An order that has not been
+        // applied has no rows at all and the record renders the nine as `todo`,
+        // which is the difference between "not done" and "not started".
+        ChangeOrderApplyStep Step(string no, int stepNo, string status, int? doneAgo = null,
+            string? message = null)
+        {
+            var s = WorkflowMachine.ApplyChecklist(true).Single(x => x.No == stepNo);
+            return new()
+            {
+                ChangeOrderId = byNo[no], StepNo = s.No, NameAr = s.Ar, NameEn = s.En,
+                Status = status, Message = message,
+                CompletedAt = doneAgo is null ? null : Ago(doneAgo.Value).ToDateTime(TimeOnly.MinValue),
+            };
+        }
+
+        db.ChangeOrderApplySteps.AddRange(
+            // VO-01 — nine of nine complete, which is what «مغلق» MEANS.
+            Step("VO-01", 1, "done", 148), Step("VO-01", 2, "done", 147),
+            Step("VO-01", 3, "done", 146), Step("VO-01", 4, "done", 146),
+            Step("VO-01", 5, "done", 145), Step("VO-01", 6, "done", 145),
+            Step("VO-01", 7, "done", 144), Step("VO-01", 8, "done", 144),
+            Step("VO-01", 9, "done", 143),
+
+            // VO-04 — the weight recalculation FAILED, and everything after it
+            // is honestly still open. This is the order that proves «معتمد» and
+            // «مطبَّق» are different states (`02 §9`).
+            Step("VO-04", 1, "done", 97), Step("VO-04", 2, "done", 97),
+            Step("VO-04", 3, "done", 96),
+            Step("VO-04", 4, "na"),
+            // The message says what FAILED TO RUN, not a sum that disagrees with
+            // the one on screen: this order moves 500 م² between two lines at
+            // the same rate, so the weights genuinely do not move and BR-01
+            // still totals 100.00%. A seeded «99.94%» would have been a number
+            // the record's own weight panel contradicts two tabs away.
+            Step("VO-04", 5, "fail", message:
+                "تعذّر إكمال إعادة احتساب الأوزان: البند BQ-009 مرتبط بنشاط جدول مُعاد ترقيمه. يتطلب تصحيح الربط ثم إعادة التشغيل."),
+            Step("VO-04", 6, "na"), Step("VO-04", 7, "na"), Step("VO-04", 8, "na"),
+            Step("VO-04", 9, "todo")
+        );
+
+        // ── الشكل 34 — المرفقات ───────────────────────────────────────────
+        // VERSIONS ACCUMULATE AND FILES ARE NEVER REPLACED (`03 §9`): the
+        // priced estimate below exists as v1 AND v2, both rows, both readable.
+        // Each row records the STAGE it arrived at and the party that raised
+        // it, which is what makes the file list an audit surface rather than a
+        // folder.
         db.ChangeOrderAttachments.AddRange(
-            Att("VO-01", byNo, "كتاب دائرة المهندس المقيم 3312.pdf", "letter", 1),
-            Att("VO-01", byNo, "جدول الكميات المعدل.xlsx", "boq", 1),
-            Att("VO-01", byNo, "قرار اللجنة.pdf", "decision", 1),
-            Att("VO-02", byNo, "كتاب الجهة المستفيدة 0455.pdf", "letter", 1),
-            Att("VO-02", byNo, "تحليل الأسعار.xlsx", "pricing", 1),
-            Att("VO-03", byNo, "التحليل الزمني.pdf", "schedule", 1),
-            Att("VO-04", byNo, "جدول إعادة التوزيع.xlsx", "boq", 1),
-            Att("VO-05", byNo, "كتاب الوارد 0712.pdf", "letter", 1)
+            Att("VO-01", byNo, "VO-1-request.pdf", "letter", 1, 1, "user.re-dept", 180),
+            Att("VO-01", byNo, "VO-1-boq.xlsx", "boq", 1, 2, "user.re-dept", 177),
+            Att("VO-01", byNo, "VO-1-boq.xlsx", "boq", 2, 2, "user.re-dept", 174),
+            Att("VO-01", byNo, "VO-1-site.jpg", "photos", 1, 1, "user.re-dept", 176),
+            Att("VO-01", byNo, "VO-1-rate-decision.pdf", "support", 1, 3, "user.rate-committee", 165),
+            Att("VO-02", byNo, "VO-2-request.pdf", "letter", 1, 1, "user.re-dept", 22),
+            Att("VO-02", byNo, "VO-2-pricing.xlsx", "analysis", 1, 2, "user.re-dept", 19),
+            Att("VO-03", byNo, "VO-3-schedule.pdf", "analysis", 1, 2, "user.re-dept", 55),
+            Att("VO-04", byNo, "VO-4-redistribution.xlsx", "boq", 1, 1, "user.re-dept", 120),
+            Att("VO-05", byNo, "VO-5-request.pdf", "letter", 1, 1, "user.re-dept", 9)
+        );
+
+        // ── السجل — one row per CHANGED FIELD (`03 §9` tab 6) ─────────────
+        // «القيمة السابقة ← القيمة الجديدة», with the stage it happened in and
+        // the version it belongs to. A delegated record names the DECIDING
+        // party in the note and the delegate as the user, per `03 §4`.
+        ChangeOrderAuditEntry Log(string no, int daysAgo, string time, string user, string action,
+            int? stageNo, string? field, string? prev, string? next, string? note = null, int version = 1) => new()
+        {
+            ChangeOrderId = byNo[no],
+            At = Ago(daysAgo).ToDateTime(TimeOnly.Parse(time)),
+            UserId = user, Action = action, StageNo = stageNo,
+            Field = field, PreviousValue = prev, NewValue = next, Note = note, Version = version,
+        };
+
+        db.ChangeOrderAuditEntries.AddRange(
+            // VO-01 — the whole life of an order, from a letter that preceded
+            // it to the closure that verified its application.
+            Log("VO-01", 180, "09:14", "user.re-dept", "create", 1, null, null, "VO-01",
+                "زيادة كميات الحفر والخرسانة بعد الكشف الموقعي على طبيعة التربة."),
+            Log("VO-01", 179, "11:02", "user.re-dept", "edit", 1, "BQ-006.qty", "1,400", "1,780",
+                "مقترح دائرة المهندس المقيم بعد مراجعة الكشف."),
+            Log("VO-01", 178, "08:40", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-01", 177, "10:15", "user.co-committee", "approve", 2, "stage", "دراسة الطلب", "لجنة أوامر الغيار"),
+            Log("VO-01", 165, "10:40", "user.rate-committee", "approve", 3, "BQ-006.excessRate", "26,800", "26,000",
+                "يسري على الكمية الزائدة عن 20% فقط.", 2),
+            Log("VO-01", 160, "12:05", "user.co-rapporteur", "record-external", 4, "الدائرة الإدارية والمالية", "بانتظار الجهة", "وردت",
+                "سُجِّل نيابةً عن الدائرة الإدارية والمالية بموجب الكتاب OUT-5107.", 2),
+            Log("VO-01", 150, "12:30", "user.co-rapporteur", "approve", 5, "value", "12,400,000", "10,000,000",
+                "الاعتماد النهائي — أمر وزاري. سُجِّل نيابةً عن الوزير / المفوَّض.", 2),
+            Log("VO-01", 147, "09:00", "system", "apply", 6, "contractValue", "240,000,000", "250,000,000",
+                "ملحق العقد رقم 1.", 2),
+            Log("VO-01", 145, "09:20", "system", "apply", 6, "weightsSum", "100.00%", "100.00%",
+                "أُعيد احتساب الأوزان وتحقّق بلوغها 100.00%.", 2),
+            Log("VO-01", 143, "15:45", "user.project-manager", "close", 6, "lifecycle", "مطبَّق", "مغلق", null, 2),
+
+            // VO-02 — three rows and then silence, which is what «متأخر» looks
+            // like in a log: nothing has happened for fourteen days.
+            Log("VO-02", 22, "09:05", "user.re-dept", "create", 1, null, null, "VO-02",
+                "تغيير مواصفة الإكساء بطلب الجهة المستفيدة."),
+            Log("VO-02", 21, "13:10", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-02", 14, "10:00", "user.co-committee", "approve", 2, "stage", "لجنة أوامر الغيار", "تثبيت الأسعار"),
+
+            // VO-03 — the return, with the previous value kept beside the new
+            // one and the deciding party named in the note (`03 §4`, §5).
+            Log("VO-03", 60, "08:55", "user.re-dept", "create", 1, null, null, "VO-03",
+                "تأخر توريد مواد الواجهة من المنشأ."),
+            Log("VO-03", 59, "10:30", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-03", 44, "11:20", "user.co-committee", "approve", 2, "stage", "لجنة أوامر الغيار", "المصادقة والتخصيص"),
+            Log("VO-03", 30, "14:10", "user.co-rapporteur", "return", 4, "lifecycle", "قيد الاعتماد", "معاد للتعديل",
+                "سُجِّل نيابةً عن لجنة المراجعة المصادقة بموجب الكتاب OUT-5088."),
+
+            // VO-04 — approved, applied, and the step that failed is in the log
+            // as a value change like any other.
+            Log("VO-04", 120, "09:30", "user.re-dept", "create", 1, null, null, "VO-04",
+                "إعادة توزيع الكميات بين الطوابق دون تغيير القيمة الكلية."),
+            Log("VO-04", 119, "10:05", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-04", 98, "11:45", "user.co-rapporteur", "approve", 5, "lifecycle", "قيد الاعتماد", "معتمد",
+                "سُجِّل نيابةً عن الوزير / المفوَّض.", 2),
+            Log("VO-04", 96, "09:10", "system", "apply", 6, "BQ-008.qty", "8,800", "8,300", null, 2),
+            Log("VO-04", 96, "09:10", "system", "apply", 6, "BQ-009.qty", "12,800", "13,300", null, 2),
+            Log("VO-04", 96, "09:12", "system", "apply-failed", 6, "weightsSum", "100.00%", "99.94%",
+                "فشل إعادة احتساب الأوزان — يتطلب إعادة تشغيل.", 2),
+
+            // VO-05 — approved two days ago and NOT applied: the log stops at
+            // the approval, exactly where the contract stops changing.
+            Log("VO-05", 9, "08:20", "user.re-dept", "create", 1, null, null, "VO-05",
+                "إضافة أعمال تبليط وإنارة للساحات بطلب الجهة المستفيدة."),
+            Log("VO-05", 8, "09:40", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-05", 3, "10:15", "user.co-rapporteur", "record-external", 4, "الدائرة الإدارية والمالية", "بانتظار الجهة", "وردت",
+                "سُجِّل نيابةً عن الدائرة الإدارية والمالية بموجب الكتاب OUT-5203.", 2),
+            Log("VO-05", 2, "13:25", "user.co-rapporteur", "approve", 5, "value", "3,375,000", "3,000,000",
+                "الاعتماد النهائي — أمر وزاري. سُجِّل نيابةً عن الوزير / المفوَّض.", 2),
+
+            // VO-06 — five days old and moving.
+            Log("VO-06", 5, "09:00", "user.re-dept", "create", 1, null, null, "VO-06",
+                "عدم توفر المواصفة المتعاقد عليها لدى المجهّز."),
+            Log("VO-06", 4, "11:30", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-06", 3, "09:45", "user.co-committee", "edit", 2, "BQ-002.rate", "14,500,000", "14,345,250",
+                "سعر دائرة المهندس المقيم بعد مطابقة العرض الفني.")
         );
 
         db.SaveChanges();
     }
 
+    /// <param name="stageNo">Which of the six stages the file arrived at (`03 §9`).</param>
+    /// <param name="uploadedBy">
+    /// The party that RAISED it — الشكل 34's «المستخدم» column. A file raised by
+    /// the rate-fixing committee attributed to the resident engineer would make
+    /// the provenance the tab exists for worthless.
+    /// </param>
     private static ChangeOrderAttachment Att(
-        string no, Dictionary<string, int> byNo, string file, string category, int version) => new()
+        string no, Dictionary<string, int> byNo, string file, string category, int version,
+        int stageNo, string uploadedBy, int uploadedAgo) => new()
     {
         ChangeOrderId = byNo[no], FileName = file, Category = category,
-        Version = version, SizeBytes = 240_000, UploadedByUserId = "user.re-dept",
-        UploadedAt = DateTime.UtcNow,
+        Version = version, OriginStageNo = stageNo, SizeBytes = 240_000,
+        UploadedByUserId = uploadedBy,
+        // D-06 — measured back from the data date like every other age here,
+        // never from the wall clock.
+        UploadedAt = new DateOnly(2026, 8, 2).AddDays(-uploadedAgo).ToDateTime(TimeOnly.MinValue),
     };
+
+    /// <summary>
+    /// سجل نشاط العقد — الشكل 11.
+    ///
+    /// The log is WRITTEN by EP-CON-03/04 as a contract is created and edited,
+    /// so on a freshly loaded fixture it is empty and the tab shows its empty
+    /// state. These rows are the history those endpoints would have written had
+    /// the demo contracts been entered through the screens — plus the two event
+    /// kinds the plate shows that come from OTHER modules and that nothing
+    /// writes yet (an applied change order, a progress update). They are marked
+    /// `system` and attributed to «النظام», exactly as الشكل 11 draws them.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void ContractActivity(EpmDb db)
+    {
+        // Two people, so «بواسطة» is a real attribution and not one name
+        // repeated: §7 wants the actor, the capacity and the party on each row.
+        static ContractActivityEvent User(
+            string contractId, string at, string field, string? before, string? after) => new()
+        {
+            ContractId = contractId, Action = "updated", Source = "user",
+            Field = field, Before = before, After = after,
+            ActorId = "user.univ-specialist", ActorName = "أحمد فؤاد",
+            ActorRole = "مهندس مشروع", ActorParty = "دائرة الإعمار والمشاريع",
+            At = DateOnly.Parse(at),
+        };
+
+        static ContractActivityEvent System(
+            string contractId, string at, string action,
+            string? refId, string? note, string? before, string? after) => new()
+        {
+            ContractId = contractId, Action = action, Source = "system",
+            RefId = refId, Note = note, Before = before, After = after,
+            Field = action == "progress" ? "physicalPct" : null,
+            ActorId = "system", ActorName = "النظام",
+            ActorRole = "حدث آلي", ActorParty = "نظام إدارة المشاريع",
+            At = DateOnly.Parse(at),
+        };
+
+        db.ContractActivityEvents.AddRange(
+            // The contract as it was entered, oldest first — the tab reverses it.
+            new ContractActivityEvent
+            {
+                ContractId = "CNT-0279", Action = "created", Source = "user",
+                ActorId = "user.univ-specialist", ActorName = "أحمد فؤاد",
+                ActorRole = "مهندس مشروع", ActorParty = "دائرة الإعمار والمشاريع",
+                At = new DateOnly(2025, 2, 18),
+            },
+            // «تغيير المكوّن من الإنشائي إلى الميكانيكي بواسطة محللة موازنة في
+            // الدائرة المالية» — the plate's own example of a second actor.
+            new ContractActivityEvent
+            {
+                ContractId = "CNT-0279", Action = "updated", Source = "user",
+                Field = "component", Before = "المكوّن الإنشائي", After = "المكوّن المدني",
+                ActorId = "user.fin-analyst", ActorName = "ليلى حسن",
+                ActorRole = "محللة موازنة", ActorParty = "الدائرة المالية",
+                At = new DateOnly(2025, 3, 6),
+            },
+            System("CNT-0279", "2026-01-26", "change-order", "VO-01",
+                "زيادة كميات أعمال الكهرباء", null, null),
+            User("CNT-0279", "2026-02-27", "contactInfo", "+964 771 111 2222", "+964 771 222 3333"),
+            // The award amount an applied ملحق moved. The plate prints this one
+            // as its worked example of a money diff.
+            User("CNT-0279", "2026-04-06", "awardAmount", "230000000", "240000000"),
+            System("CNT-0279", "2026-04-14", "progress", null, null, "18", "25"),
+            System("CNT-0279", "2026-04-21", "change-order", "VO-02",
+                "تمديد مدة الإنجاز", null, null),
+            System("CNT-0279", "2026-05-15", "progress", null, null, "25", "31"),
+
+            // The second contract carries a short log, so switching between the
+            // two shows a different history rather than the same one twice.
+            new ContractActivityEvent
+            {
+                ContractId = "CNT-0279-EM", Action = "created", Source = "user",
+                ActorId = "user.univ-specialist", ActorName = "أحمد فؤاد",
+                ActorRole = "مهندس مشروع", ActorParty = "دائرة الإعمار والمشاريع",
+                At = new DateOnly(2025, 5, 12),
+            },
+            User("CNT-0279-EM", "2025-06-02", "contractor", "شركة المنصور", "شركة المنصور للتجهيزات"),
+            System("CNT-0279-EM", "2026-05-15", "progress", null, null, "28", "35"));
+    }
+
+    /// <summary>
+    /// التخصيص المالي السنوي — الشكل 15.
+    ///
+    /// Two years on the flagship project, so the screen shows what it exists to
+    /// show: a CLOSED year read back beside a current one that is being spent.
+    /// The 2025 allocation is set to exactly what 2025 disbursed — a year that
+    /// closed clean — while 2026 is deliberately tighter than the work left,
+    /// which is the «اقتراب استهلاك التخصيص» this screen warns about.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void Allocations(EpmDb db)
+    {
+        static ProjectAllocation A(string projectId, int year, decimal amount, bool closed) => new()
+        {
+            ProjectId = projectId, Year = year, Amount = amount, Closed = closed,
+            ActorName = "ليلى حسن", ActorRole = "محللة موازنة", ActorParty = "الدائرة المالية",
+            At = new DateOnly(year, 1, 15),
+        };
+
+        db.ProjectAllocations.AddRange(
+            // PRJ-0279 spent 86,700,000 in 2025 against a 90,000,000 release.
+            A("PRJ-0279", 2025, 90_000_000m, closed: true),
+            A("PRJ-0279", 2026, 120_000_000m, closed: false),
+
+            A("PRJ-0148", 2025, 45_000_000m, closed: true),
+            A("PRJ-0148", 2026, 30_000_000m, closed: false),
+
+            A("PRJ-0207", 2026, 12_000_000m, closed: false));
+    }
+
+    /// <summary>
+    /// مهل التدقيق — الشكل 17.
+    ///
+    /// The route of the ONE certificate that is in flight: `CNT-0279`'s third,
+    /// certified on 2026-07-09 and not yet paid. Its first desk is done, its
+    /// second still has it, and against the project's data date (2026-08-02)
+    /// that second desk is past its 7-day cap — which is the case this screen
+    /// exists to surface: «تُظهر موضع تعثّر المعاملة ومدة بقائها في كل جهة».
+    ///
+    /// Keyed by (contract, no) like the payment attachments, because
+    /// `PaymentAuditStage.PaymentId` points at a generated key.
+    /// </summary>
+    private static void AuditStages(EpmDb db)
+    {
+        // The ids the stages hang off, the same way PaymentFiles gets them.
+        db.SaveChanges();
+
+        var p = db.Payments.FirstOrDefault(x => x.ContractId == "CNT-0279" && x.No == 3);
+        if (p is null) return;
+
+        db.PaymentAuditStages.AddRange(
+            new PaymentAuditStage
+            {
+                PaymentId = p.Id, No = 1, StageKey = "resident-engineer",
+                PartyAr = "المهندس المقيم", PartyEn = "Resident engineer",
+                CapDays = 7,
+                StartedAt = new DateOnly(2026, 7, 9),
+                FinishedAt = new DateOnly(2026, 7, 14),
+            },
+            new PaymentAuditStage
+            {
+                PaymentId = p.Id, No = 2, StageKey = "finance",
+                PartyAr = "الدائرة المالية", PartyEn = "Finance department",
+                CapDays = 7,
+                StartedAt = new DateOnly(2026, 7, 14),
+                // Still there — this is the stage the file is stuck at.
+                FinishedAt = null,
+            },
+            new PaymentAuditStage
+            {
+                PaymentId = p.Id, No = 3, StageKey = "disbursement",
+                PartyAr = "قسم الحسابات", PartyEn = "Accounts section",
+                CapDays = 5,
+                StartedAt = null, FinishedAt = null,
+            });
+    }
 }

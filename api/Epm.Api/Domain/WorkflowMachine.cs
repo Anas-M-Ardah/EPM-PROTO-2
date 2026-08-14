@@ -18,31 +18,40 @@ namespace Epm.Api.Domain;
 public static class WorkflowMachine
 {
     /// <param name="Condition">always · exceeds20 · needsEndorsement.</param>
-    public record StageDef(int No, string Ar, string En, string Owner, string Condition, string NoteAr, string NoteEn);
+    /// <param name="Owner">
+    /// The owning party's name AS STORED — BR-14 matches a persona's Party
+    /// against this string, so it is the Arabic one and stays that way.
+    /// </param>
+    /// <param name="OwnerEn">
+    /// The same party for an English reader. A LABEL, never a key: nothing
+    /// matches on it, and no rule may read it.
+    /// </param>
+    public record StageDef(int No, string Ar, string En, string Owner, string OwnerEn,
+        string Condition, string NoteAr, string NoteEn);
 
     public static readonly IReadOnlyList<StageDef> Stages =
     [
-        new(1, "دراسة الطلب", "Request study", "دائرة المهندس المقيم", "always",
+        new(1, "دراسة الطلب", "Request study", "دائرة المهندس المقيم", "RE department", "always",
             "يُدخله المهندس المقيم بعد طلب المقاول ورأي الاستشاري، ثم يُراجع؛ يُعاد إلى المقاول إن كان ناقصاً.",
             "Entered by the resident engineer after the contractor's request and the consultant's opinion; returned to the contractor if incomplete."),
 
-        new(2, "لجنة أوامر الغيار", "Change-order committee", "لجنة أوامر الغيار", "always",
+        new(2, "لجنة أوامر الغيار", "Change-order committee", "لجنة أوامر الغيار", "Change-order committee", "always",
             "تراجع الطلب وتعدّ الاستمارات؛ تُعيده إلى المهندس المقيم إن كان ناقصاً.",
             "Reviews the request and prepares the forms; returns it to the resident engineer if incomplete."),
 
-        new(3, "تثبيت الأسعار", "Rate fixing", "لجنة تثبيت الأسعار", "exceeds20",
+        new(3, "تثبيت الأسعار", "Rate fixing", "لجنة تثبيت الأسعار", "Rate-fixing committee", "exceeds20",
             "تثبّت سعر الكمية الزائدة عن 20%، ثم تعيد القرار إلى لجنة أوامر الغيار.",
             "Fixes the rate for quantity beyond 20%, then returns the decision to the change-order committee."),
 
-        new(4, "المصادقة والتخصيص", "Endorsement & allocation", "لجنة أوامر الغيار", "needsEndorsement",
+        new(4, "المصادقة والتخصيص", "Endorsement & allocation", "لجنة أوامر الغيار", "Change-order committee", "needsEndorsement",
             "يُرفع محضر إلى الوزير مع الموافقات الخارجية المطلوبة.",
             "Minute raised to the Minister, with the required external approvals."),
 
-        new(5, "الأمر الوزاري وملحق العقد", "Ministerial order & addendum", "لجنة أوامر الغيار", "always",
+        new(5, "الأمر الوزاري وملحق العقد", "Ministerial order & addendum", "لجنة أوامر الغيار", "Change-order committee", "always",
             "يصدر الأمر الوزاري ثم ملحق العقد.",
             "Ministerial order issued, then the contract addendum."),
 
-        new(6, "التنفيذ", "Execution", "دائرة المهندس المقيم", "always",
+        new(6, "التنفيذ", "Execution", "دائرة المهندس المقيم", "RE department", "always",
             "تحديث العقد وجدول الكميات والجدول الزمني.",
             "Contract, BOQ and schedule updated."),
     ];
@@ -108,22 +117,45 @@ public static class WorkflowMachine
         }
     }
 
-    public record ApplyStep(int No, string Ar, string En, bool Required);
+    /// <param name="No">Display order, 1..9 — the order الشكل 30 prints them in.</param>
+    /// <param name="SpecStep">
+    /// The same step's number in `03 §6`'s list of seven, or null for the two
+    /// the plate adds. Both numbers travel because both are cited: a reader
+    /// checking the written rule counts to seven, and a reader holding الشكل 30
+    /// counts to nine.
+    /// </param>
+    public record ApplyStep(int No, int? SpecStep, string Ar, string En, bool Required);
 
     /// <summary>
-    /// 03 §6 — the seven application steps. Step 3 applies only if a rate
-    /// changed. Step 4 is genuinely failable: a failure keeps the order in
-    /// applied_partial and raises فشل التطبيق in the register.
+    /// The application checklist. `03 §6` lists SEVEN steps; **الشكل 30 prints
+    /// NINE** — «قسم حالة تطبيق الأمر يعرض تسع خطوات» — and names them. The two
+    /// it adds are not decoration:
+    ///
+    ///   إصدار ملحق العقد          — BR-09's amendment row is what MAKES the new
+    ///                               figures effective; without it "approved ≠
+    ///                               applied" has no step that separates them.
+    ///   إعادة احتساب الغرامات     — BR-10 charges the penalty against the
+    ///                               contractual finish, so an approved
+    ///                               extension moves the baseline it is
+    ///                               measured from.
+    ///
+    /// So the nine are rendered and each carries its `03 §6` number where it
+    /// has one. Step 4 (spec 3) applies only if a rate changed; step 8 only if
+    /// the order carries approved days; step 5 (spec 4) is the genuinely
+    /// failable one — a failure keeps the order in applied_partial and raises
+    /// فشل التطبيق in the register.
     /// </summary>
-    public static IReadOnlyList<ApplyStep> ApplyChecklist(bool anyRateChanged) =>
+    public static IReadOnlyList<ApplyStep> ApplyChecklist(bool anyRateChanged, bool extendsTime = true) =>
     [
-        new(1, "تحديث قيمة العقد",     "Update the contract value", true),
-        new(2, "تحديث كميات البنود",   "Update BOQ quantities",     true),
-        new(3, "تحديث أسعار الوحدات",  "Update unit rates",         anyRateChanged),
-        new(4, "إعادة احتساب الأوزان", "Recalculate weights",       true),
-        new(5, "تحديث الأنشطة",        "Update activities",         true),
-        new(6, "تحديث الجدول الزمني",  "Update the schedule",       true),
-        new(7, "التحقق النهائي",       "Final verification",        true),
+        new(1, null, "إصدار ملحق العقد",              "Issue the contract amendment", true),
+        new(2, 1,    "تحديث قيمة العقد النافذة",       "Update the effective contract value", true),
+        new(3, 2,    "تحديث كميات البنود",             "Update BOQ quantities",     true),
+        new(4, 3,    "تحديث أسعار الوحدات",            "Update unit rates",         anyRateChanged),
+        new(5, 4,    "إعادة احتساب الأوزان",           "Recalculate weights",       true),
+        new(6, 5,    "تحديث الأنشطة",                  "Update activities",         true),
+        new(7, 6,    "تحديث الجدول الزمني",            "Update the schedule",       true),
+        new(8, null, "إعادة احتساب الغرامات التأخيرية", "Recalculate delay penalties", extendsTime),
+        new(9, 7,    "التحقق النهائي",                 "Final verification",        true),
     ];
 
     /// <summary>03 §6 — everything done or not-required → closed.</summary>
