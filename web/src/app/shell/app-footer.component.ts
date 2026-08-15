@@ -1,5 +1,6 @@
 import { Component, ViewEncapsulation, inject } from '@angular/core';
 import { IconComponent } from '../core/icon.component';
+import { RouterLink } from '@angular/router';
 import { LangService } from '../core/lang';
 
 /**
@@ -22,7 +23,7 @@ import { LangService } from '../core/lang';
   selector: 'epm-app-footer',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [IconComponent],
+  imports: [IconComponent, RouterLink],
   template: `
     <footer class="d-appfoot">
       <span class="org">
@@ -46,6 +47,17 @@ import { LangService } from '../core/lang';
         {{ lang.t('support') }}
         <a href="tel:+9647701002440"><bdi>2440</bdi></a>
         <a href="mailto:support@mohe.gov.iq"><bdi>support&#64;mohe.gov.iq</bdi></a>
+      </span>
+
+      <!--
+        The rules reference, reachable without inventing a nav entry the
+        reference's own rail does not have. It belongs beside the version for
+        the same reason the version does: this is the band a reviewer reads
+        when they want to know what they are looking at.
+      -->
+      <span class="it hide-sm">
+        <epm-icon name="functions" [size]="13" />
+        <a routerLink="/docs">{{ lang.t('doc_r_title') }}</a>
       </span>
 
       <span class="it">

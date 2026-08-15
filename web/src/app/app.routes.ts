@@ -140,6 +140,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports.page').then(m => m.ReportsPage),
       },
 
+      // /docs · features/docs · Features/Docs · [EP-DOCS-01]
+      //
+      // The one page that reads NO table: the rules are code, so it works on
+      // an empty database. It says what the system knows how to compute
+      // rather than what it currently holds.
+      {
+        path: 'docs',
+        loadComponent: () => import('./features/docs/docs.page').then(m => m.DocsPage),
+      },
+
       // ── PHASE 3 · the project workspace ───────────────────────────────
       // `/projects/:id/:module`. It must come AFTER the `projects` route
       // above: a terminal route only matches when it consumes the whole URL,

@@ -1,0 +1,184 @@
+<!--
+  The rules reference — /docs, over EP-DOCS-01.
+
+  Four things per rule, side by side:
+    what the spec SAYS           ← 02-BUSINESS-RULES.md, verbatim
+    the worked example's INPUTS  ← the catalogue's own
+    what the spec says it IS     ← prose, from the document
+    what the system RETURNED     ← executed on this request, through Domain/
+
+  No tick and no cross: `expect` is prose and `result` is a value, and nothing
+  can compare them. A tick this page computed would be the one claim on it that
+  nothing checks.
+
+  Every number and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('doc_r_title') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="functions" [size]="30" /></span>
+        <b>{{ lang.t('loading') }}</b>
+      </div>
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('doc_r_title') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('doc_r_title') }}
+        <em><bdi>{{ d.rules.length }}</bdi> {{ lang.t('doc_r_n') }}</em>
+      </span>
+
+      <div class="grp">
+        @for (x of docs(); track x.code) {
+          <button type="button" class="d-fchip" [class.on]="doc() === x.code"
+                  (click)="doc.set(x.code)">
+            {{ docLabel(x.code) }}
+            <span class="n"><bdi>{{ x.count }}</bdi></span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <!-- Why this page exists, said before the first rule. -->
+        <div class="d-msgbar info">
+          <epm-icon name="functions" [size]="16" />
+          <div>
+            <b>{{ lang.t('doc_r_norm_t') }}</b>
+            <span>{{ lang.t('doc_r_norm_b') }}</span>
+          </div>
+        </div>
+
+        <epm-section [title]="lang.t('doc_r_rules')"
+                     [sub]="shown().length + ' ' + lang.t('doc_r_of') + ' ' + d.rules.length">
+
+          <div class="d-toolbar">
+            <div class="d-field">
+              <epm-icon name="search" [size]="16" />
+              <input type="search" class="epm-bare-input"
+                     [attr.aria-label]="lang.t('doc_r_search')"
+                     [attr.placeholder]="lang.t('doc_r_search')"
+                     [value]="q()" (input)="q.set($any($event.target).value)" />
+            </div>
+            @if (filtered()) {
+              <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+              </button>
+            }
+          </div>
+
+          @if (shown().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+              <b>{{ lang.t('doc_r_nomatch_t') }}</b>
+              <span>{{ lang.t('doc_r_nomatch_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="clearFilters()">
+                {{ lang.t('clear_filters') }}
+              </button>
+            </div>
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('doc_r_col_rule') }}</th>
+                  <th>{{ lang.t('doc_r_col_spec') }}</th>
+                  <th>{{ lang.t('doc_r_col_source') }}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of shown(); track r.id) {
+                  <tr [class.is-open]="open() === r.id">
+                    <td>
+                      <span class="mono d-cell-sub">
+                        <bdi>{{ r.br }}</bdi> · <bdi>{{ r.section }}</bdi>
+                      </span>
+                      <div class="d-cell-strong">{{ r.title }}</div>
+                      <span class="mono d-cell-sub"><bdi>{{ r.id }}</bdi></span>
+                    </td>
+                    <td class="d-cell-sub">{{ r.spec }}</td>
+                    <!-- The path a reader greps. This repo has no public URL,
+                         so the honest link is the file, not a fabricated one. -->
+                    <td class="mono d-cell-sub"><bdi>{{ sourcePath(r) }}</bdi></td>
+                    <td>
+                      <button type="button" class="d-btn sm"
+                              [attr.aria-expanded]="open() === r.id"
+                              (click)="toggle(r.id)" (keydown)="onCardKey($event, r.id)">
+                        <epm-icon [name]="open() === r.id ? 'expand_less' : 'expand_more'" [size]="15" />
+                        {{ open() === r.id ? lang.t('doc_r_hide') : lang.t('doc_r_show') }}
+                      </button>
+                    </td>
+                  </tr>
+
+                  @if (open() === r.id) {
+                    <tr>
+                      <td colspan="4">
+                        <!-- The three panes: inputs, what the document says,
+                             what the function returned just now. -->
+                        <div class="d-form-grid">
+                          <div class="d-form-i f-full">
+                            <span class="k">{{ lang.t('doc_r_example') }}</span>
+                            <pre class="mono d-cell-sub"
+                                 style="white-space: pre-wrap; margin: 0"><bdi>{{ json(r.example) }}</bdi></pre>
+                          </div>
+
+                          <div class="d-form-i f-full">
+                            <span class="k">{{ lang.t('doc_r_expect') }}</span>
+                            <span class="v"><bdi>{{ r.expect }}</bdi></span>
+                          </div>
+
+                          <div class="d-form-i f-full">
+                            <span class="k">{{ lang.t('doc_r_result') }}</span>
+                            <pre class="mono d-cell-strong"
+                                 style="white-space: pre-wrap; margin: 0"><bdi>{{ json(r.result) }}</bdi></pre>
+                          </div>
+                        </div>
+
+                        <div class="d-msgbar">
+                          <epm-icon name="info" [size]="16" />
+                          <div>
+                            <b>{{ lang.t('doc_r_compare_t') }}</b>
+                            <span>{{ lang.t('doc_r_compare_b') }}</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table></div>
+
+            <div class="d-pager">
+              <span>
+                {{ lang.t('doc_r_rules') }}
+                <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.rules.length }}</bdi></b>
+              </span>
+              <span class="sp"></span>
+              <span class="d-cell-sub">{{ lang.t('doc_r_notables') }}</span>
+            </div>
+          }
+        </epm-section>
+
+      </div>
+    </div>
+   }
+  }
+</div>

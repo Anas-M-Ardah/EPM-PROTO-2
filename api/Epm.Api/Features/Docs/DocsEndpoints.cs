@@ -28,6 +28,9 @@ public static class DocsEndpoints
                 r.Spec,
                 r.Example,
                 r.Expect,
+                // The Domain file below the result, so a reader can open the
+                // function that produced it.
+                r.Source,
                 // Executed on every request, not cached: a stale result would
                 // be worse than no page at all.
                 Result = r.Run(),

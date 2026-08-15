@@ -928,7 +928,7 @@ Light, independent, parallelisable.
 
 ## Phase 7 — Closeout
 
-- [ ] `/docs` Angular route rendering `EP-DOCS-01` — rule text, inputs, live-computed example, source link
+- [x] `/docs` Angular route rendering `EP-DOCS-01` — all fifteen rules with spec text, inputs, the result computed through the REAL Domain function on every request, and the source file. No pass mark: `expect` is prose and `result` is a value, and nothing can compare them (P-124). Reachable from the footer beside the version — the reference rail has no entry for it and inventing one was not warranted
 - [ ] `DECISIONS.md` complete — D-01…D-12 carried over plus everything resolved during the build
 - [ ] `TRACE.md` complete — every screen, endpoint, rule, table
 - [ ] `docs/uml/_global-er.md` · `_feature-map.md` · `_changeorder-lifecycle.md`
