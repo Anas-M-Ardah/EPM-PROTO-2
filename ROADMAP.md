@@ -920,8 +920,8 @@ Light, independent, parallelisable.
 - [x] SCR-W11 Meetings — **ملحق الشكل 45** — محاضر الاجتماعات with one قرار each, plus إجراءات المتابعة. «متأخر» is a **stored** status, not a comparison against the data date — the plate itself refutes the derivation (P-116). `EP-MTG-01`
 - [x] SCR-W12 Documents — **ملحق الشكل 46** — `Documents` (identity) and `DocumentRevisions` (history) are separate tables; `Domain/DocumentRevisions` names the current one and everything earlier stays ملغاة with its own date, transmittal and file. «آخر مراجعة فقط» is a view over one payload. `EP-DOC-01`
 - [x] SCR-W13 Alerts — **ملحق الشكل 47** — the inbox and the twelve rules, from one read. `Domain/AlertInbox` decides which alerts are live (a disabled rule withdraws its own), which of the four fixed groups each falls in, and how many need action — open AND due at the data date. `EP-PAL-01` · `EP-PAL-02`
-- [ ] SCR-W14 Reports — `DModReports`
-- [ ] SCR-W15 Audit History — `DModAudit`
+- [x] SCR-W14 Reports — the project tab over the SAME `ReportCatalog` SCR-E7 renders, asking whether each report is producible **for this project** rather than at all. `EP-PRP-01`
+- [x] SCR-W15 Audit History — a union of the three logs the system already keeps; no audit table and none wanted (P-122). `EP-AUD-01`
 - [x] SCR-W10 3D Model — **ملحق الشكل 44**, stub per `07 §8`: the tab, the tree, the element panel and its links to the BOQ line and the activity are real; the scene is a placeholder that says why. `ModelObject`'s massing columns were dropped — the viewer that would have drawn them is out of Phase 1, so they would have existed unread. `EP-MDL-01`
 
 ---

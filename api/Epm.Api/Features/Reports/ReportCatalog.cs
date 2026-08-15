@@ -141,7 +141,11 @@ public static class ReportCatalog
             "سجل كامل للتغييرات والاعتمادات مع المستخدم والتاريخ.",
             "Full change and approval log with user and timestamp.",
             ["PDF", "XLSX"],
-            ["AuditEvents"]),
+            // SCR-W15 proved there is no single audit table and should not be
+            // one: the trail is the three logs kept beside the records they
+            // belong to (P-122). A report that reads all three declares all
+            // three, so the availability check asks about what exists.
+            ["ProjectActivityEvents", "ContractActivityEvents", "ChangeOrderAuditEntries"]),
 
         new("RPT-12", "prog", "project", "monthly",
             "التجهيز والاستلامات", "Supply and receipts",

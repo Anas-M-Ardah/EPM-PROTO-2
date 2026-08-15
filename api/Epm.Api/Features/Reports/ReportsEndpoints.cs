@@ -65,9 +65,6 @@ public static class ReportsEndpoints
         ["ChangeOrders"] = (
             "سجل الأوامر التغييرية (المرحلة 5.1)",
             "the change-order register (Phase 5.1)"),
-        ["AuditEvents"] = (
-            "سجل التدقيق (المرحلة 6)",
-            "the audit trail (Phase 6)"),
         // The only source with no documented starting point in Data/Entities/
         // at all. Saying "not modelled yet" is the honest answer; naming a
         // phase it does not appear in would not be.

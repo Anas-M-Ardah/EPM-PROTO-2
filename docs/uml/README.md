@@ -23,6 +23,8 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Documents | SCR-W12 الوثائق والمخططات · الشكل 46 | `EP-DOC-01` | [documents.md](documents.md) |
 | Project alerts | SCR-W13 التنبيهات · الشكل 47 | `EP-PAL-01` · `EP-PAL-02` | [project-alerts.md](project-alerts.md) |
 | 3D model | SCR-W10 النموذج ثلاثي الأبعاد · الشكل 44 | `EP-MDL-01` | [model.md](model.md) |
+| Project reports | SCR-W14 التقارير (تبويب المشروع) | `EP-PRP-01` | [project-reports.md](project-reports.md) |
+| Audit | SCR-W15 سجل التدقيق | `EP-AUD-01` | [audit.md](audit.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |

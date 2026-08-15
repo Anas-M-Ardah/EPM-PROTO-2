@@ -84,8 +84,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     key: 'mod_group_oversight',
     modules: [
       { id: 'alerts',       icon: 'notifications',  key: 'mod_alerts',       built: true,  phase: '6' },
-      { id: 'reports',      icon: 'assessment',     key: 'mod_reports',      built: false, phase: '6' },
-      { id: 'audit',        icon: 'history',        key: 'mod_audit',        built: false, phase: '6' },
+      { id: 'reports',      icon: 'assessment',     key: 'mod_reports',      built: true,  phase: '6' },
+      { id: 'audit',        icon: 'history',        key: 'mod_audit',        built: true,  phase: '6' },
     ],
   },
 ];

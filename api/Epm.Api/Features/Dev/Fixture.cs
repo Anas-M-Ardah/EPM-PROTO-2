@@ -539,6 +539,10 @@ public static class Fixture
         // ملحق الشكل 44 — النموذج ثلاثي الأبعاد (07 §8: the tab, not the viewer).
         ModelElements(db);
 
+        // الشكل 5's «سجل النشاط» — the project's own trail, and one third of
+        // SCR-W15's union.
+        ProjectActivity(db);
+
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
 
@@ -1571,6 +1575,50 @@ public static class Fixture
         // never from the wall clock.
         UploadedAt = new DateOnly(2026, 8, 2).AddDays(-uploadedAgo).ToDateTime(TimeOnly.MinValue),
     };
+
+/// <summary>
+    /// **الشكل 5 tab 2** — «سجل النشاط» on the project definition, and one of
+    /// the three trails SCR-W15 unions.
+    ///
+    /// ── WHY THIS EXISTS ─────────────────────────────────────────────────
+    /// Every other record in this fixture carries its own history: the
+    /// contract has `ContractActivityEvents` (الشكل 11) and each change order
+    /// has `ChangeOrderAuditEntries` (03 §9 tab 6). The PROJECT had none —
+    /// its rows are only written by EP-PRJ-02 and EP-PRJ-03 — so الشكل 5's
+    /// second tab rendered its empty state on a project that plainly did get
+    /// created and edited. SCR-W14 found it: RPT-11 «سجل التدقيق» reported
+    /// «سجل نشاط المشروع» as an empty source.
+    ///
+    /// The dates track the project's own story: defined before the contract
+    /// was awarded (2025-11-02), then edited as the definition firmed up.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void ProjectActivity(EpmDb db)
+    {
+        ProjectActivityEvent E(string action, string actorId, string name,
+                               string role, string party, DateOnly at) => new()
+        {
+            ProjectId = "PRJ-0279", Action = action,
+            ActorId = actorId, ActorName = name, ActorRole = role, ActorParty = party,
+            At = at,
+        };
+
+        // The same actors the contract log names (الشكل 11), so one reader
+        // following a change from the project to its contract meets the same
+        // people rather than a second cast.
+        db.ProjectActivityEvents.AddRange(
+            E("created", "user.univ-specialist", "أحمد فؤاد",
+                "مهندس مشروع", "دائرة الإعمار والمشاريع", new DateOnly(2025, 10, 12)),
+            E("updated", "user.univ-specialist", "أحمد فؤاد",
+                "مهندس مشروع", "دائرة الإعمار والمشاريع", new DateOnly(2025, 11, 2)),
+            E("updated", "user.univ-specialist", "أحمد فؤاد",
+                "مهندس مشروع", "دائرة الإعمار والمشاريع", new DateOnly(2026, 3, 18)),
+            E("updated", "user.project-manager", "حيدر الجبوري",
+                "مدير مشروع", "دائرة الإعمار والمشاريع", new DateOnly(2026, 7, 6)));
+
+        db.SaveChanges();
+    }
 
     /// <summary>
     /// ملحق الشكل 43 — سجل المخاطر, the plate's own seven rows.

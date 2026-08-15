@@ -1,0 +1,162 @@
+<!--
+  SCR-W14 — التقارير والتحليلات (project tab) · 04 §3.
+
+  The catalogue SCR-E7 renders, narrowed to `project` scope and asked a
+  sharper question: not «does this table exist» but «does THIS project have
+  rows in it». An unavailable row names the empty source rather than greying
+  out a button and saying nothing (04 §9).
+
+  Every number and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_reports') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="9" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_reports') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_reports') }}
+        <em>
+          <bdi>{{ d.availableCount }}</bdi> {{ lang.t('prp_of') }}
+          <bdi>{{ d.total }}</bdi> {{ lang.t('prp_producible') }}
+        </em>
+      </span>
+
+      <div class="grp">
+        @for (c of d.chips; track c.code) {
+          <button type="button" class="d-fchip" [class.on]="category() === c.code"
+                  (click)="category.set(c.code)">
+            {{ categoryLabel(c.code) }}
+            <span class="n"><bdi>{{ c.count }}</bdi></span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <epm-section [title]="lang.t('prp_library')"
+                     [sub]="shown().length + ' ' + lang.t('prp_of') + ' ' + d.total">
+
+          <div class="d-toolbar">
+            <!-- A VIEW over the same payload, like SCR-W12's «آخر مراجعة فقط».
+                 Off by default: a register's job is to show everything it
+                 defines, including what it cannot produce yet. -->
+            <button type="button" class="d-fchip" [class.on]="availableOnly()"
+                    [attr.aria-pressed]="availableOnly()"
+                    (click)="availableOnly.set(!availableOnly())">
+              <epm-icon name="filter_alt" [size]="13" />{{ lang.t('prp_available_only') }}
+            </button>
+            <span class="sp" style="flex: 1"></span>
+            @if (filtered()) {
+              <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+              </button>
+            }
+          </div>
+
+          @if (shown().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="filter_alt_off" [size]="30" /></span>
+              <b>{{ lang.t('prp_nomatch_t') }}</b>
+              <span>{{ lang.t('prp_nomatch_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="clearFilters()">
+                {{ lang.t('clear_filters') }}
+              </button>
+            </div>
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('prp_col_report') }}</th>
+                  <th>{{ lang.t('prp_col_category') }}</th>
+                  <th>{{ lang.t('prp_col_frequency') }}</th>
+                  <th>{{ lang.t('prp_col_sources') }}</th>
+                  <th>{{ lang.t('col_status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of shown(); track r.id) {
+                  <tr>
+                    <td>
+                      <span class="mono d-cell-sub"><bdi>{{ r.id }}</bdi></span>
+                      <div class="d-cell-strong">{{ title(r) }}</div>
+                      <div class="d-cell-sub">{{ description(r) }}</div>
+                    </td>
+                    <td>{{ categoryLabel(r.category) }}</td>
+                    <td class="d-cell-sub">{{ frequencyLabel(r.frequency) }}</td>
+                    <!-- Each source with the count THIS project has in it. The
+                         zero is the whole answer to why a row is unavailable. -->
+                    <td class="d-cell-sub">
+                      @for (s of r.sources; track s.table) {
+                        <div>
+                          {{ sourceName(s) }}
+                          <bdi [class.d-cell-strong]="s.rows === 0">{{ s.rows }}</bdi>
+                        </div>
+                      }
+                    </td>
+                    <td>
+                      @if (r.available) {
+                        <span class="d-pill completed">{{ lang.t('prp_available') }}</span>
+                        <div class="d-rowacts" style="margin-block-start: 6px">
+                          <button type="button" class="d-btn sm" (click)="run(r)">
+                            <epm-icon name="play_arrow" [size]="15" />{{ lang.t('prp_run') }}
+                          </button>
+                          <span class="d-cell-sub"><bdi>{{ r.formats.join(' · ') }}</bdi></span>
+                        </div>
+                      } @else {
+                        <span class="d-pill suspended">{{ lang.t('prp_unavailable') }}</span>
+                        <!-- 04 §9 — name what is missing. A greyed-out button
+                             that explains nothing is the defect this avoids. -->
+                        <div class="d-cell-sub">{{ lang.t('prp_needs') }} {{ missing(r) }}</div>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+
+            <div class="d-pager">
+              <span>
+                {{ lang.t('mod_reports') }}
+                <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.total }}</bdi></b>
+              </span>
+              <span class="sp"></span>
+              <span class="d-cell-sub">
+                {{ lang.t('prp_f_available') }} <bdi>{{ d.availableCount }}</bdi>
+              </span>
+            </div>
+          }
+        </epm-section>
+
+        <div class="d-msgbar info">
+          <epm-icon name="info" [size]="16" />
+          <div>
+            <b>{{ lang.t('prp_norm_t') }}</b>
+            <span>{{ lang.t('prp_norm_b') }}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+   }
+  }
+</div>

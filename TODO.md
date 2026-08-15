@@ -79,3 +79,26 @@ is CSV the expected exchange format?
 ---
 
 *Every entry above has its full reasoning in `DECISIONS.md` under the same number.*
+
+---
+
+## Bundle size — the one build number that had to move
+
+Phase 6's last screen tripped `angular.json`'s `initial` **error** budget: the
+initial chunk is now just over 1 MB, so the error ceiling went to 1.5 MB. The
+**warning** stays at 500 kB deliberately — it is the signal, and it has been
+lit since Phase 4.
+
+Nothing about this is a page's fault; every feature is lazily loaded. Two files
+are eagerly loaded and grow with every screen:
+
+- **`core/lang.ts`** — one dictionary for the whole app, now well past 1,900
+  entries. Splitting it per feature (each page importing its own `*_ *` block)
+  is the real fix and touches every page, so it is a task of its own rather
+  than something to fold into a screen.
+- **`web/src/styles/`** — 2,947 lines copied verbatim from the reference, plus
+  `styles.css`. It is a design contract (CLAUDE.md §3.7) and is not a candidate
+  for trimming.
+
+Raising a budget is not a fix. It is recorded here so the next person reads
+this rather than the diff.
