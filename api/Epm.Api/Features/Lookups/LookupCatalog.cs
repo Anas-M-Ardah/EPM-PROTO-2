@@ -252,6 +252,40 @@ public static class LookupCatalog
         yield return L("attachment-category", "photos",   "صور موقع",               "Site photos");
         yield return L("attachment-category", "support",  "مستند داعم",             "Supporting document");
 
+
+        // ── ملحق الشكل 43 — سجل المخاطر ───────────────────────────────────
+        // The plate's own seven categories. No written section defines a risk
+        // taxonomy, so the screen is the specification (see Domain/RiskSeverity).
+        sort = 0;
+        yield return L("risk-category", "schedule",  "زمني",     "Schedule");
+        yield return L("risk-category", "financial", "مالي",     "Financial");
+        yield return L("risk-category", "operational", "تشغيلي", "Operational");
+        yield return L("risk-category", "legal",     "قانوني",   "Legal");
+        yield return L("risk-category", "technical", "فني",      "Technical");
+        yield return L("risk-category", "quality",   "جودة",     "Quality");
+        yield return L("risk-category", "safety",    "سلامة",    "Safety");
+
+        // Three levels on BOTH axes, and the SAME three on the product — which
+        // is what «الخطورة = الاحتمالية × التأثير» means on a screen that shows
+        // منخفض · متوسط · عالي in all three columns.
+        sort = 0;
+        yield return L("risk-level", "low",    "منخفض", "Low");
+        yield return L("risk-level", "medium", "متوسط", "Medium");
+        yield return L("risk-level", "high",   "عالي",  "High");
+
+        sort = 0;
+        yield return L("risk-status", "open",       "مفتوح",        "Open");
+        yield return L("risk-status", "mitigating", "تحت المعالجة", "Being mitigated");
+        yield return L("risk-status", "suspended",  "معلق",         "On hold");
+
+        // BR-11's four, as the register's «المؤشر» column names them. They are
+        // the tie between a risk and a number somebody can check.
+        sort = 0;
+        yield return L("risk-indicator", "SPI", "SPI", "SPI");
+        yield return L("risk-indicator", "CPI", "CPI", "CPI");
+        yield return L("risk-indicator", "EAC", "EAC", "EAC");
+        yield return L("risk-indicator", "VAC", "VAC", "VAC");
+
         // ── 06 §8 — amendment state (02 §9) ───────────────────────────────
         sort = 0;
         yield return L("amendment-state", "original",   "العقد الأصلي",              "Original contract");

@@ -494,6 +494,9 @@ public static class Fixture
         // PHASE 5.1 — the six change orders 06 §12 asks for, in six states.
         ChangeOrders(db);
 
+        // ملحق الشكل 43 — سجل المخاطر.
+        Risks(db);
+
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
 
@@ -1526,6 +1529,63 @@ public static class Fixture
         // never from the wall clock.
         UploadedAt = new DateOnly(2026, 8, 2).AddDays(-uploadedAgo).ToDateTime(TimeOnly.MinValue),
     };
+
+    /// <summary>
+    /// ملحق الشكل 43 — سجل المخاطر, the plate's own seven rows.
+    ///
+    /// They are seeded verbatim because they are the SPECIFICATION: nothing in
+    /// `01`–`06` defines a risk model, and these seven are what fix
+    /// Domain/RiskSeverity's bands (RSK-05 and RSK-06 both score 3 and both
+    /// read متوسط; RSK-03 scores 2 and reads منخفض).
+    ///
+    /// Severity is NOT stored — the register derives it, so a row here cannot
+    /// disagree with the screen that prints the rule.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void Risks(EpmDb db)
+    {
+        const int Low = 1, Med = 2, High = 3;
+
+        Risk R(string code, string ar, string en, string category,
+            int probability, int impact, string owner, string indicator, string status,
+            int raisedAgo) => new()
+        {
+            ProjectId = "PRJ-0279", Code = code, TitleAr = ar, TitleEn = en,
+            Category = category, Probability = probability, Impact = impact,
+            Owner = owner, Indicator = indicator, Status = status,
+            RaisedDate = new DateOnly(2026, 8, 2).AddDays(-raisedAgo),
+        };
+
+        db.Risks.AddRange(
+            // متوسط × عالي = 6 → عالي. The one high risk on the plate, and the
+            // one the register's «عالي 1» tab counts.
+            R("RSK-01", "تأخر تجهيز المواد الكهربائية", "Delay in supplying the electrical materials",
+                "schedule", Med, High, "مدير المشروع", "SPI", "suspended", 96),
+
+            R("RSK-02", "تجاوز الكلفة التقديرية", "Overrun against the estimated cost",
+                "financial", Low, Low, "القسم المالي", "CPI", "mitigating", 88),
+
+            R("RSK-03", "نقص الأيدي العاملة الماهرة", "Shortage of skilled labour",
+                "operational", Med, Low, "القسم الهندسي", "VAC", "suspended", 74),
+
+            R("RSK-04", "نزاع تعاقدي حول التمديد", "Contractual dispute over the extension",
+                "legal", Low, Low, "المقاول", "EAC", "mitigating", 61),
+
+            // منخفض × عالي = 3 → متوسط, and RSK-06 is its mirror. The pair is
+            // what pins the band boundary at 2/3.
+            R("RSK-05", "تعارض في المخططات التنفيذية", "Conflict in the shop drawings",
+                "technical", Low, High, "مدير المشروع", "SPI", "suspended", 47),
+
+            R("RSK-06", "عدم مطابقة خرسانة الأساس", "Foundation concrete does not conform",
+                "quality", High, Low, "القسم المالي", "CPI", "mitigating", 33),
+
+            R("RSK-07", "مخاطر السلامة في أعمال الارتفاعات", "Safety risk in work at height",
+                "safety", Low, Med, "القسم الهندسي", "VAC", "open", 19)
+        );
+
+        db.SaveChanges();
+    }
 
     /// <summary>
     /// سجل نشاط العقد — الشكل 11.

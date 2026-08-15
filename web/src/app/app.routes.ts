@@ -273,6 +273,12 @@ export const routes: Routes = [
               import('./features/change-orders/change-order.page').then(m => m.ChangeOrderPage),
           },
 
+          // SCR-W9 · features/risks · Features/Risks · [EP-RSK-01]
+          {
+            path: 'risk',
+            loadComponent: () => import('./features/risks/risks.page').then(m => m.RisksPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

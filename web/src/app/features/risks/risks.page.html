@@ -1,0 +1,166 @@
+<!--
+  SCR-W9 — سجل المخاطر · ملحق الشكل 43.
+
+  The plate, taken literally:
+    the title carries the RULE — «الخطورة = الاحتمالية × التأثير»
+    severity tabs with counts: الكل 7 · عالي 1 · متوسط 2 · منخفض 4
+    a COLLAPSIBLE register card with its own result counter
+    one search field: بالرقم أو الوصف أو الجهة
+    nine columns, with a coloured-and-LABELLED pill on الخطورة
+    a footer strip: المخاطر 7 / 7 · عالية 1 · متوسطة 2
+
+  Every number and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_risk') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="7" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_risk') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <!-- ══ Z6 — the title carries the rule, exactly as الشكل 43 prints it ══
+         A severity column whose formula is on screen may not be a stored
+         value; it is Domain/RiskSeverity's answer. -->
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_risk') }}
+        <em>{{ lang.t('rsk_rule') }}</em>
+      </span>
+
+      <div class="grp">
+        <button type="button" class="d-fchip" [class.on]="band() === 'all'" (click)="band.set('all')">
+          {{ lang.t('rsk_all') }}
+          <span class="n"><bdi>{{ d.rows.length }}</bdi></span>
+        </button>
+        @for (b of bands(); track b.band) {
+          <button type="button" class="d-fchip" [class.on]="band() === b.band"
+                  [disabled]="b.count === 0" (click)="band.set(b.band)">
+            {{ bandLabel(b.band) }}
+            <span class="n"><bdi>{{ b.count }}</bdi></span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <epm-section [title]="lang.t('rsk_register')"
+                     [sub]="shown().length + ' ' + lang.t('rsk_of') + ' ' + d.rows.length"
+                     icon="warning" [collapsible]="true" [defaultOpen]="true">
+
+          <div class="d-toolbar">
+            <label class="d-field">
+              <epm-icon name="search" [size]="16" />
+              <input type="search" [value]="q()" (input)="q.set($any($event.target).value)"
+                     [attr.aria-label]="lang.t('rsk_search')"
+                     [attr.placeholder]="lang.t('rsk_search')" />
+            </label>
+            <span class="sp"></span>
+            @if (filtered()) {
+              <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+              </button>
+            }
+          </div>
+
+          @if (d.rows.length === 0) {
+            <!-- An empty database is not the same state as a filter that
+                 excluded everything (04 §9). -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="warning" [size]="30" /></span>
+              <b>{{ lang.t('rsk_empty_t') }}</b>
+              <span>{{ lang.t('rsk_empty_b') }}</span>
+            </div>
+
+          } @else if (shown().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+              <b>{{ lang.t('rsk_nomatch_t') }}</b>
+              <span>{{ lang.t('rsk_nomatch_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="clearFilters()">
+                {{ lang.t('clear_filters') }}
+              </button>
+            </div>
+
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('rsk_col_code') }}</th>
+                  <th>{{ lang.t('rsk_col_desc') }}</th>
+                  <th>{{ lang.t('rsk_col_type') }}</th>
+                  <th>{{ lang.t('rsk_col_prob') }}</th>
+                  <th>{{ lang.t('rsk_col_impact') }}</th>
+                  <th>{{ lang.t('rsk_col_severity') }}</th>
+                  <th>{{ lang.t('rsk_col_owner') }}</th>
+                  <th>{{ lang.t('rsk_col_indicator') }}</th>
+                  <th>{{ lang.t('col_status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of shown(); track r.code) {
+                  <tr>
+                    <td class="mono d-cell-sub"><bdi>{{ r.code }}</bdi></td>
+                    <td class="d-cell-strong">{{ title(r) }}</td>
+                    <td>{{ categoryLabel(r.category) }}</td>
+                    <td>{{ levelLabel(r.probability) }}</td>
+                    <td>{{ levelLabel(r.impact) }}</td>
+                    <!-- 05 §7.6 — coloured AND labelled. The colour is the
+                         attention channel; the word is what makes it readable. -->
+                    <td><span class="d-pill {{ severityClass(r.severity) }}">{{ bandLabel(r.severity) }}</span></td>
+                    <td>{{ r.owner }}</td>
+                    <!-- BR-11's index, and the reason this register is not a
+                         list of opinions: each risk names a number to check. -->
+                    <td class="mono"><bdi>{{ r.indicator }}</bdi></td>
+                    <td><span class="d-pill {{ statusClass(r.status) }}">{{ statusLabel(r.status) }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+
+            <!-- الشكل 43's footer strip. -->
+            <div class="d-pager">
+              <span>
+                {{ lang.t('mod_risk') }}
+                <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.rows.length }}</bdi></b>
+              </span>
+              <span class="sp"></span>
+              <span class="d-cell-sub">
+                {{ lang.t('rsk_high_n') }} <bdi>{{ highCount() }}</bdi> ·
+                {{ lang.t('rsk_medium_n') }} <bdi>{{ mediumCount() }}</bdi>
+              </span>
+            </div>
+          }
+        </epm-section>
+
+        <!-- What this screen does NOT do, said plainly rather than left as a
+             missing button: Raising and mitigating a risk are not on الشكل 43
+             and no endpoint writes here. -->
+        <div class="d-msgbar info">
+          <epm-icon name="info" [size]="16" />
+          <div>
+            <b>{{ lang.t('rsk_readonly_t') }}</b>
+            <span>{{ lang.t('rsk_readonly_b') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+   }
+  }
+</div>

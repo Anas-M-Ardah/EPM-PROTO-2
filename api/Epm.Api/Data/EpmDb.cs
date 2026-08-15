@@ -66,6 +66,11 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // stop a payment in October (P-92).
     public DbSet<ProjectAllocation> ProjectAllocations => Set<ProjectAllocation>();
 
+    // ── SCR-W9 سجل المخاطر (ملحق الشكل 43) ───────────────────────────────
+    // Severity is NOT here: the screen prints «الخطورة = الاحتمالية × التأثير»
+    // beside its own title, so it is derived by Domain/RiskSeverity (01 §3).
+    public DbSet<Risk> Risks => Set<Risk>();
+
     // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
     public DbSet<Lookup> Lookups => Set<Lookup>();
 
