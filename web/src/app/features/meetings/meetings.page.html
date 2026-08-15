@@ -51,7 +51,7 @@
 
       <button type="button" class="d-btn sm primary"
               (click)="toast.demo('محضر اجتماع جديد', 'New meeting minute')">
-        <epm-icon name="group_add" [size]="15" />{{ lang.t('mtg_new') }}
+        <epm-icon name="person_add" [size]="15" />{{ lang.t('mtg_new') }}
       </button>
     </div>
 
@@ -77,7 +77,7 @@
               <ol class="d-votrail">
                 @for (m of meetings(); track m.id) {
                   <li class="ok">
-                    <span class="ic"><epm-icon name="event" [size]="14" /></span>
+                    <span class="ic"><epm-icon name="calendar_month" [size]="14" /></span>
                     <div class="bd">
                       <div class="hd">
                         <b>{{ title(m) }}</b>
@@ -118,7 +118,7 @@
 
           @if (actions().length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="task_alt" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="done" [size]="30" /></span>
               <b>{{ lang.t('mtg_noact_t') }}</b>
               <span>{{ lang.t('mtg_noact_b') }}</span>
             </div>

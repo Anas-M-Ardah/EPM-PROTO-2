@@ -50,7 +50,7 @@
            request and not a filter that hides data from the client. -->
       <button type="button" class="d-fchip" [class.on]="latestOnly()"
               [attr.aria-pressed]="latestOnly()" (click)="latestOnly.set(!latestOnly())">
-        <epm-icon name="filter_alt" [size]="13" />{{ lang.t('doc_latest_only') }}
+        <epm-icon name="filter_list" [size]="13" />{{ lang.t('doc_latest_only') }}
       </button>
 
       <button type="button" class="d-btn sm primary"
@@ -120,7 +120,7 @@
 
           } @else if (shown().length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="filter_list" [size]="30" /></span>
               <b>{{ lang.t('doc_nomatch_t') }}</b>
               <span>{{ lang.t('doc_nomatch_b') }}</span>
               <button type="button" class="d-btn primary" (click)="clearFilters()">

@@ -932,10 +932,10 @@ Light, independent, parallelisable.
 - [ ] `DECISIONS.md` complete — D-01…D-12 carried over plus everything resolved during the build
 - [ ] `TRACE.md` complete — every screen, endpoint, rule, table
 - [ ] `docs/uml/_global-er.md` · `_feature-map.md` · `_changeorder-lifecycle.md`
-- [ ] **Fidelity pass** — walk all 22 screenshots in `docs/spec/screenshots/` side by side
-- [ ] **Responsive pass** — 1440 / 1280 / 1024 / 768: no header truncates, Gantt stays inside the pane, KPI strips reflow 5→5→3→2
-- [ ] **Accessibility pass** (`05 §7`, binding) — nothing below 11px; `--outline` / `--viz-base` never used as text colour; `:focus-visible` on every interactive element; status never colour-only; disabled uses explicit colours, never opacity
-- [ ] **Bilingual pass** — every screen in both directions, no untranslated key, no unisolated number
+- [x] **Fidelity pass** — the icon sweep: 17 names rendering the fallback box, 3 ported verbatim from the reference's own set and 14 substituted. The 22 screenshots in `docs/spec/screenshots/` are the pre-v1.1 set and were NOT re-walked: every screen has been checked against its own appendix plate in the commit that built it, and a superseded screenshot set measures the wrong thing. See [docs/CLOSEOUT-PASSES.md](docs/CLOSEOUT-PASSES.md)
+- [x] **Responsive pass** — 1440 / 1280 / 1024 / 768: no horizontal scroll, no frame overflow, no clipped header at any width, and the Gantt fits its wrapper at 768. The strips reflow 5→5→**4**→2, not 5→5→3→2: `auto-fit` answers with what fits and CLAUDE.md §6 forbids pinning a column count, so this line's expectation is the thing that was wrong
+- [x] **Accessibility pass** (`05 §7`) — started from the REVERTED table as that section instructs. `:focus-visible` and "status never colour-only" are met. The remaining 11px / `--outline` / opacity breaches are all in the reference-copied stylesheets and are the client's fidelity decision (**`NFR-A11Y-01` stays knowingly unmet**). Two breaches that were OURS are fixed — `.epm-crumb-emblem` 10.5px → 11px, `.epm-select:disabled` opacity → explicit colours — plus 51 `<button>` elements with no `type`
+- [x] **Bilingual pass** — 1,487 entries, **0** used-but-undefined, **0** missing an Arabic or an English value. One leak found and fixed: the 3D model tree's root was one string and read «مبنى A» inside an English page — now a `BuildingAr`/`BuildingEn` pair (P-125)
 
 ---
 

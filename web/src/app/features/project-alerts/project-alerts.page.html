@@ -84,7 +84,7 @@
                Domain/AlertInbox.Live is this sentence, and the switch below
                proves it — the inbox count in the footer moves with it. -->
           <div class="d-msgbar info">
-            <epm-icon name="rule" [size]="16" />
+            <epm-icon name="verified_shield" [size]="16" />
             <div>
               <b>{{ lang.t('pal_norm_t') }}</b>
               <span>{{ lang.t('pal_norm_b') }}</span>
@@ -95,7 +95,7 @@
                        [sub]="d.enabledRuleCount + ' ' + lang.t('pal_enabled_of') + ' ' + d.ruleCount">
             @if (rules().length === 0) {
               <div class="d-empty">
-                <span class="d-empty-ico"><epm-icon name="rule" [size]="30" /></span>
+                <span class="d-empty-ico"><epm-icon name="verified_shield" [size]="30" /></span>
                 <b>{{ lang.t('pal_norules_t') }}</b>
                 <span>{{ lang.t('pal_norules_b') }}</span>
               </div>
@@ -188,7 +188,7 @@
             </div>
           } @else if (groups().length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="filter_alt_off" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
               <b>{{ lang.t('pal_nomatch_t') }}</b>
               <span>{{ lang.t('pal_nomatch_b') }}</span>
               <button type="button" class="d-btn sm" (click)="severity.set('all')">

@@ -13,7 +13,8 @@ export interface ModelElementRow {
   status: string;
   /** A RING, never a colour — the colour channel belongs to status. */
   isCritical: boolean;
-  building: string;
+  buildingAr: string;
+  buildingEn: string;
   level: string;
   zone: string;
   qty: number;
@@ -36,7 +37,8 @@ export interface ModelLevel {
 }
 
 export interface ModelBuilding {
-  building: string;
+  buildingAr: string;
+  buildingEn: string;
   elementCount: number;
   levels: ModelLevel[];
 }

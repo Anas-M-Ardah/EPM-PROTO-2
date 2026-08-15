@@ -35,7 +35,7 @@
     <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
     <b>{{ lang.t('error_t') }}</b>
     <span><bdi>{{ error() }}</bdi></span>
-    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+    <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (total() === 0) {
   <!-- empty BECAUSE THE DATABASE IS EMPTY. Distinct from the filtered-empty
@@ -47,7 +47,7 @@
   </div>
 } @else {
 
-  <!-- The severity band. Each card is a filter toggle, so it is a <button>
+  <!-- The severity band. Each card is a filter toggle, so it is a <button type="button">
        with aria-pressed — not a div with a click handler. -->
   <div class="d-sevcards">
     @for (c of cards(); track c.key) {
@@ -84,22 +84,22 @@
       </div>
 
       <div class="grp">
-        <button class="d-fchip" [class.on]="isUnfiltered()" (click)="clearFilters()">
+        <button type="button" class="d-fchip" [class.on]="isUnfiltered()" (click)="clearFilters()">
           {{ lang.t('all') }}<span class="n"><bdi>{{ total() }}</bdi></span>
         </button>
 
         <!-- Status first: "what still needs doing" is the question this screen
              is opened to answer. -->
-        <button class="d-fchip" [class.on]="status() === 'open'" (click)="setStatus('open')">
+        <button type="button" class="d-fchip" [class.on]="status() === 'open'" (click)="setStatus('open')">
           {{ lang.t('alerts_unack') }}<span class="n"><bdi>{{ open() }}</bdi></span>
         </button>
-        <button class="d-fchip" [class.on]="status() === 'acknowledged'" (click)="setStatus('acknowledged')">
+        <button type="button" class="d-fchip" [class.on]="status() === 'acknowledged'" (click)="setStatus('acknowledged')">
           {{ lang.t('alerts_ack') }}<span class="n"><bdi>{{ acknowledged() }}</bdi></span>
         </button>
 
         <!-- Severities in the addendum lookup's order — worst first. -->
         @for (s of severities(); track s.code) {
-          <button class="d-fchip" [class.on]="severity() === s.code" (click)="setSeverity(s.code)">
+          <button type="button" class="d-fchip" [class.on]="severity() === s.code" (click)="setSeverity(s.code)">
             {{ sevHeading(s.code) }}<span class="n"><bdi>{{ sevCount(s.code) }}</bdi></span>
           </button>
         }
@@ -108,7 +108,7 @@
       <span class="sp"></span>
 
       @if (!isUnfiltered()) {
-        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button type="button" class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       }
       <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
     </div>
@@ -118,7 +118,7 @@
         <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
         <b>{{ lang.t('empty_filter_t') }}</b>
         <span>{{ lang.t('empty_filter_b') }}</span>
-        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button type="button" class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
       <table class="d-table">

@@ -69,6 +69,11 @@ export class ModelPage {
     return this.lang.pick(e.nameAr, e.nameEn);
   }
 
+  /** «مبنى A» / «Building A» — a pair, like every other name (P-125). */
+  building(b: { buildingAr: string; buildingEn: string }): string {
+    return this.lang.pick(b.buildingAr, b.buildingEn);
+  }
+
   versionLabel(v: { labelAr: string; labelEn: string }): string {
     return this.lang.pick(v.labelAr, v.labelEn);
   }
@@ -103,7 +108,8 @@ export class ModelPage {
     const d = this.discipline();
     return (this.data()?.tree ?? [])
       .map(b => ({
-        building: b.building,
+        buildingAr: b.buildingAr,
+        buildingEn: b.buildingEn,
         levels: b.levels
           .map(l => ({
             level: l.level,

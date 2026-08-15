@@ -166,6 +166,8 @@ so the next person inherits the *why* and not just the code.
 
 | P-124 | The `/docs` page shows what the spec says a rule returns and what the function actually returned. Should it also show a pass/fail mark? | **No mark.** The two are rendered side by side and the reader compares them; a short note says why there is no tick. | `Expect` is prose from `02-BUSINESS-RULES.md` («61 days × 100,000 = 6,100,000 (below the 10,000,000 cap)») and `Result` is a JSON value. Nothing in the code can compare them, so any tick would be hard-coded — and it would be the single claim on a page whose whole purpose is that its claims are verified on every load. A green tick nobody checks is worse than no tick, on this page most of all. | Resolved |
 
+| P-125 | SCR-W10 stored the model tree's root as one string, `Building = "مبنى A"`. The bilingual pass found it rendering Arabic at the top of an English page | **`BuildingAr` / `BuildingEn`, a pair like every other name in the system.** | One string cannot be two languages, and nothing about a building's name makes it the exception — `NameAr`/`NameEn`, `TitleAr`/`TitleEn`, `LabelAr`/`LabelEn` are the pattern everywhere else, including on the same entity. It slipped through because الشكل 44 is an Arabic plate and the screen was built and verified in Arabic; the defect was invisible until the language was switched, which is exactly what a bilingual pass is for. | Resolved |
+
 ## REVERTED — visual fidelity chosen over the 05 §7 floors
 
 **Client decision.** Where the reference prototype breaks the binding

@@ -56,8 +56,14 @@ public class ModelElement
     /// </summary>
     public bool IsCritical { get; set; }
 
-    /// <summary>«مبنى A» — the root of the model tree.</summary>
-    public string Building { get; set; } = "";
+    /// <summary>
+    /// «مبنى A» / «Building A» — the root of the model tree. A PAIR, like
+    /// every other name in this system: the bilingual pass caught this field
+    /// rendering Arabic inside an English page, because one string cannot be
+    /// two languages (P-125).
+    /// </summary>
+    public string BuildingAr { get; set; } = "";
+    public string BuildingEn { get; set; } = "";
 
     /// <summary>L00 · L01 · L02 — «الطابق», and the tree's middle level.</summary>
     public string Level { get; set; } = "";

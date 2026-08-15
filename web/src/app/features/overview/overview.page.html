@@ -26,7 +26,7 @@
           <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
           <b>{{ lang.t('error_t') }}</b>
           <span><bdi>{{ error() }}</bdi></span>
-          <button class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
+          <button type="button" class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
         </div>
       } @else if (project()) {
 

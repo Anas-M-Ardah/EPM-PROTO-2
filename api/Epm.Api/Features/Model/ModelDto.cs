@@ -24,7 +24,8 @@ public record ModelElementRow(
     string Discipline,
     string Status,
     bool IsCritical,
-    string Building,
+    string BuildingAr,
+    string BuildingEn,
     string Level,
     string Zone,
     decimal Qty,
@@ -42,8 +43,9 @@ public record ModelElementRow(
 /// <summary>One floor of the tree, with the elements standing on it.</summary>
 public record ModelLevel(string Level, IReadOnlyList<ModelElementRow> Elements);
 
-/// <summary>«مبنى A» — the tree's root, and everything under it.</summary>
-public record ModelBuilding(string Building, int ElementCount, IReadOnlyList<ModelLevel> Levels);
+/// <summary>«مبنى A» / «Building A» — the tree's root, and everything under it.</summary>
+public record ModelBuilding(
+    string BuildingAr, string BuildingEn, int ElementCount, IReadOnlyList<ModelLevel> Levels);
 
 public record ModelVersionRow(
     string Code,

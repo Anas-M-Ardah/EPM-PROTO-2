@@ -572,7 +572,10 @@ epm-change-orders-page { display: contents; }
   display: inline-grid; place-items: center; min-inline-size: 32px;
   padding: 2px var(--space-6, 6px); border-radius: var(--r-sm);
   background: rgba(255, 255, 255, .12); color: var(--topbar-fg);
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: var(--fw-bold);
+  /* 11px is the floor (05 §2 · CLAUDE.md §6) and this badge is ours, not
+     the reference's — the REVERTED table covers the reference's breaches,
+     not one this build introduced. */
+  font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-bold);
 }
 
 /* ── THE WAY OUT OF A WORKSPACE ───────────────────────────────────────────
@@ -752,7 +755,11 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
   display: flex; align-items: center; gap: var(--space-8);
   text-align: start; cursor: pointer;
 }
-.epm-select:disabled { cursor: not-allowed; opacity: .6; }
+/* Disabled is EXPLICIT COLOUR, never opacity (05 §7): opacity fades the text
+   and its background together and lands wherever it lands, which is how a
+   disabled control ends up below contrast without anybody choosing it. */
+.epm-select:disabled { cursor: not-allowed;
+  background: var(--surface-container); color: var(--on-surface-variant); }
 /* The value truncates; the chevron never does. */
 .epm-select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-v.ph { color: var(--fg-subtle, var(--on-surface-variant)); }

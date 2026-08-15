@@ -92,8 +92,8 @@
                 <div class="d-cell-sub">{{ lang.t('mdl_nomatch') }}</div>
               }
 
-              @for (b of tree(); track b.building) {
-                <div class="d-model-node grp">{{ b.building }}</div>
+              @for (b of tree(); track b.buildingAr) {
+                <div class="d-model-node grp">{{ building(b) }}</div>
                 @for (l of b.levels; track l.level) {
                   <div class="d-model-node lvl"><bdi>{{ l.level }}</bdi></div>
                   @for (e of l.elements; track e.code) {

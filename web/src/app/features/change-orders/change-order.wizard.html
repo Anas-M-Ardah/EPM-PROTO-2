@@ -644,7 +644,7 @@
             <!-- الشكل 40's own sentence: the weights are re-approved AFTER the
                  final approval, not before it (BR-01). -->
             <div class="d-pager calcnote">
-              <epm-icon name="donut_small" [size]="14" />
+              <epm-icon name="donut_large" [size]="14" />
               <span>
                 {{ lang.t('chg_w_weight_note') }}
                 <bdi>{{ fmt.pct(pv.weights.weightDelta) }}</bdi>
@@ -928,7 +928,7 @@
         </button>
         <button type="button" class="d-btn primary"
                 [disabled]="saving() || !ckey() || blocking().length > 0" (click)="save('submit')">
-          <epm-icon name="send" [size]="15" />{{ lang.t('chg_w_submit') }}
+          <epm-icon name="forward_to_inbox" [size]="15" />{{ lang.t('chg_w_submit') }}
         </button>
       } @else {
         <button type="button" class="d-btn primary" [disabled]="!canLeaveStep1()" (click)="next()">
@@ -966,7 +966,7 @@
         @if (what === 'boq') {
           @if (boqPool().length === 0) {
             <div class="d-vow-empty">
-              <epm-icon name="filter_alt" [size]="22" />
+              <epm-icon name="filter_list" [size]="22" />
               <b>{{ lang.t('chg_w_pool_empty') }}</b>
             </div>
           } @else {
@@ -1000,7 +1000,7 @@
         } @else {
           @if (actPool().length === 0) {
             <div class="d-vow-empty">
-              <epm-icon name="filter_alt" [size]="22" />
+              <epm-icon name="filter_list" [size]="22" />
               <b>{{ lang.t('chg_w_pool_empty') }}</b>
             </div>
           } @else {

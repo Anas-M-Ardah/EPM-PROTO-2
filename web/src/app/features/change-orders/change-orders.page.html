@@ -77,7 +77,7 @@
                party so a reader knows whose answer the chips are. -->
           @if (d.awaitingMe > 0) {
             <div class="d-msgbar warning">
-              <epm-icon name="pending_actions" [size]="16" />
+              <epm-icon name="pending" [size]="16" />
               <div>
                 <b>{{ awaitingTitle() }}</b>
                 <span>{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
@@ -105,7 +105,7 @@
             <button type="button" class="d-fchip" [class.on]="attn() === 'mine'"
                     [attr.aria-pressed]="attn() === 'mine'" [disabled]="d.awaitingMe === 0"
                     (click)="toggleAttn('mine')">
-              <epm-icon name="pending_actions" [size]="13" />{{ lang.t('chg_f_mine') }}
+              <epm-icon name="pending" [size]="13" />{{ lang.t('chg_f_mine') }}
               <span class="n"><bdi>{{ d.awaitingMe }}</bdi></span>
             </button>
             <button type="button" class="d-fchip" [class.on]="attn() === 'sla'"
@@ -141,7 +141,7 @@
 
           } @else if (shown().length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="filter_list" [size]="30" /></span>
               <b>{{ lang.t('chg_nomatch_t') }}</b>
               <span>{{ lang.t('chg_nomatch_b') }}</span>
               <button type="button" class="d-btn primary" (click)="clearFilters()">

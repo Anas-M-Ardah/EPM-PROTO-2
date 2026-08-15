@@ -59,7 +59,7 @@ public static class ModelEndpoints
             var elements = (await db.ModelElements.AsNoTracking()
                 .Where(e => e.ProjectId == projectId)
                 .ToListAsync())
-                .OrderBy(e => e.Building)
+                .OrderBy(e => e.BuildingAr)
                 .ThenBy(e => e.Level)
                 .ThenBy(e => order.IndexOf(e.Discipline) is var i && i >= 0 ? i : int.MaxValue)
                 .ThenBy(e => e.Code)
@@ -84,7 +84,7 @@ public static class ModelEndpoints
 
                 return new ModelElementRow(
                     e.Code, e.NameAr, e.NameEn, e.Discipline, e.Status, e.IsCritical,
-                    e.Building, e.Level, e.Zone, e.Qty, e.Unit, e.ProgressPct, e.Revision,
+                    e.BuildingAr, e.BuildingEn, e.Level, e.Zone, e.Qty, e.Unit, e.ProgressPct, e.Revision,
                     e.ContractId,
                     e.BoqCode, line?.DescriptionAr, line?.DescriptionEn,
                     e.ActivityCode, act?.NameAr, act?.NameEn);
@@ -94,9 +94,10 @@ public static class ModelEndpoints
             // is built here for the same reason SCR-W5's WBS is: a client that
             // assembled it would be a second place the shape is decided.
             var tree = rows
-                .GroupBy(r => r.Building)
+                .GroupBy(r => new { r.BuildingAr, r.BuildingEn })
                 .Select(b => new ModelBuilding(
-                    b.Key,
+                    b.Key.BuildingAr,
+                    b.Key.BuildingEn,
                     b.Count(),
                     b.GroupBy(r => r.Level)
                         .OrderBy(l => l.Key)

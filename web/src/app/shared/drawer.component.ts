@@ -4,7 +4,7 @@ import { IconComponent } from '../core/icon.component';
 /**
  * <epm-drawer title="توزيع الكميات" sub="BQ-003" (closed)="open = false">
  *   …body…
- *   <ng-container footer><button class="d-btn primary">حفظ</button></ng-container>
+ *   <ng-container footer><button type="button" class="d-btn primary">حفظ</button></ng-container>
  * </epm-drawer>
  *
  * Ported from DDrawer — docs/spec/reference/app/desktop-admin.jsx:18.

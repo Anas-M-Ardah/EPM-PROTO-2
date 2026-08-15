@@ -60,7 +60,7 @@
       <span class="sp"></span>
 
       <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
-        <epm-icon name="print" [size]="15" />{{ lang.t('chg_print') }}
+        <epm-icon name="download" [size]="15" />{{ lang.t('chg_print') }}
       </button>
       <button type="button" class="d-btn sm" (click)="toast.demo('تصدير البطاقة', 'Export record')">
         <epm-icon name="download" [size]="15" />{{ lang.t('chg_export') }}
@@ -581,7 +581,7 @@
 
           @if (d.time.activities.length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="event_busy" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="schedule" [size]="30" /></span>
               <b>{{ lang.t('chg_noacts_t') }}</b>
               <span>{{ lang.t('chg_noacts_b') }}</span>
             </div>
@@ -820,7 +820,7 @@
               <!-- «ماذا سيحدث بعد ذلك» — the consequences BEFORE the act. It is
                    the part of a decision a reader cannot infer from its name. -->
               <div class="d-msgbar" [class.warning]="chosen()?.danger" [class.info]="!chosen()?.danger">
-                <epm-icon name="alt_route" [size]="16" />
+                <epm-icon name="account_tree" [size]="16" />
                 <div>
                   <b>{{ lang.t('chg_d_next_t') }}</b>
                   @if (chosen(); as c) {

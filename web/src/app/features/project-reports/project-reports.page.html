@@ -63,7 +63,7 @@
             <button type="button" class="d-fchip" [class.on]="availableOnly()"
                     [attr.aria-pressed]="availableOnly()"
                     (click)="availableOnly.set(!availableOnly())">
-              <epm-icon name="filter_alt" [size]="13" />{{ lang.t('prp_available_only') }}
+              <epm-icon name="filter_list" [size]="13" />{{ lang.t('prp_available_only') }}
             </button>
             <span class="sp" style="flex: 1"></span>
             @if (filtered()) {
@@ -75,7 +75,7 @@
 
           @if (shown().length === 0) {
             <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="filter_alt_off" [size]="30" /></span>
+              <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
               <b>{{ lang.t('prp_nomatch_t') }}</b>
               <span>{{ lang.t('prp_nomatch_b') }}</span>
               <button type="button" class="d-btn primary" (click)="clearFilters()">
@@ -118,7 +118,7 @@
                         <span class="d-pill completed">{{ lang.t('prp_available') }}</span>
                         <div class="d-rowacts" style="margin-block-start: 6px">
                           <button type="button" class="d-btn sm" (click)="run(r)">
-                            <epm-icon name="play_arrow" [size]="15" />{{ lang.t('prp_run') }}
+                            <epm-icon name="bolt" [size]="15" />{{ lang.t('prp_run') }}
                           </button>
                           <span class="d-cell-sub"><bdi>{{ r.formats.join(' · ') }}</bdi></span>
                         </div>

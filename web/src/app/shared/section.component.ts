@@ -3,7 +3,7 @@ import { IconComponent } from '../core/icon.component';
 
 /**
  * <epm-section icon="list_alt" title="بنود الكميات" [n]="12">
- *   <button actions class="d-btn">…</button>
+ *   <button type="button" actions class="d-btn">…</button>
  *   …body…
  * </epm-section>
  *

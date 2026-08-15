@@ -1701,7 +1701,8 @@ public static class Fixture
     /// </summary>
     private static void ModelElements(EpmDb db)
     {
-        const string BuildingA = "مبنى A";
+        const string BuildingAr = "مبنى A";
+        const string BuildingEn = "Building A";
         const string ZoneA = "Zone A";
 
         ModelElement E(string code, string ar, string en, string discipline, string status,
@@ -1711,7 +1712,7 @@ public static class Fixture
         {
             ProjectId = "PRJ-0279", Code = code, NameAr = ar, NameEn = en,
             Discipline = discipline, Status = status, IsCritical = critical,
-            Building = BuildingA, Level = level, Zone = ZoneA,
+            BuildingAr = BuildingAr, BuildingEn = BuildingEn, Level = level, Zone = ZoneA,
             Qty = qty, Unit = unit,
             ContractId = contract, BoqCode = boq, ActivityCode = activity,
             ProgressPct = progress, Revision = revision,
