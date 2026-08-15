@@ -291,6 +291,13 @@ export const routes: Routes = [
             loadComponent: () => import('./features/documents/documents.page').then(m => m.DocumentsPage),
           },
 
+          // SCR-W13 · features/project-alerts · Features/ProjectAlerts · [EP-PAL-01]
+          {
+            path: 'alerts',
+            loadComponent: () =>
+              import('./features/project-alerts/project-alerts.page').then(m => m.ProjectAlertsPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

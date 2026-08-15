@@ -919,7 +919,7 @@ Light, independent, parallelisable.
 - [x] SCR-W9 Risk — **ملحق الشكل 43** — severity chips + the nine-column register + المؤشر المتأثر. The plate scores on **three levels, not five** (P-117); `Domain/RiskSeverity` scores الخطورة = الاحتمالية × التأثير and returns all three bands even at zero. `EP-RSK-01`
 - [x] SCR-W11 Meetings — **ملحق الشكل 45** — محاضر الاجتماعات with one قرار each, plus إجراءات المتابعة. «متأخر» is a **stored** status, not a comparison against the data date — the plate itself refutes the derivation (P-116). `EP-MTG-01`
 - [x] SCR-W12 Documents — **ملحق الشكل 46** — `Documents` (identity) and `DocumentRevisions` (history) are separate tables; `Domain/DocumentRevisions` names the current one and everything earlier stays ملغاة with its own date, transmittal and file. «آخر مراجعة فقط» is a view over one payload. `EP-DOC-01`
-- [ ] SCR-W13 Alerts — `DModAlerts`
+- [x] SCR-W13 Alerts — **ملحق الشكل 47** — the inbox and the twelve rules, from one read. `Domain/AlertInbox` decides which alerts are live (a disabled rule withdraws its own), which of the four fixed groups each falls in, and how many need action — open AND due at the data date. `EP-PAL-01` · `EP-PAL-02`
 - [ ] SCR-W14 Reports — `DModReports`
 - [ ] SCR-W15 Audit History — `DModAudit`
 - [ ] SCR-W10 3D Model — **stub per `07 §8`**: keep the tab, massing placeholder + object list, no BIM

@@ -21,6 +21,7 @@ using Epm.Api.Features.Documents;
 using Epm.Api.Features.Meetings;
 using Epm.Api.Features.Risks;
 using Epm.Api.Features.Workspaces;
+using Epm.Api.Features.ProjectAlerts;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -95,6 +96,7 @@ app.MapChangeOrderWorkflowEndpoints();
 app.MapRisksEndpoints();
 app.MapMeetingsEndpoints();
 app.MapDocumentsEndpoints();
+app.MapProjectAlertsEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

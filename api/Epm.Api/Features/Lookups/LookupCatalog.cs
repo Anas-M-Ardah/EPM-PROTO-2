@@ -392,6 +392,24 @@ public static class LookupCatalog
         yield return L("alert-status", "open",         "مفتوح", "Open");
         yield return L("alert-status", "acknowledged", "مُقَر",  "Acknowledged");
 
+        // ── ملحق الشكل 47 — alert rule recurrence (SCR-W13) ────────────────
+        // «التكرار» on the rules table: how often a firing rule re-notifies.
+        // Labels verbatim from the plate.
+        sort = 0;
+        yield return L("alert-recurrence", "daily",        "يومي",              "Daily");
+        yield return L("alert-recurrence", "weekly",       "أسبوعي",            "Weekly");
+        yield return L("alert-recurrence", "once",         "مرة واحدة",         "Once");
+        yield return L("alert-recurrence", "stage-change", "عند تغيّر المرحلة", "On stage change");
+
+        // The inbox groups, in their fixed order (Domain/AlertInbox). They are
+        // labelled here so the group heading resolves the same way every other
+        // enum does — not so the order can be edited: the order is the rule.
+        sort = 0;
+        yield return L("alert-bucket", "overdue", "متأخرة",           "Overdue");
+        yield return L("alert-bucket", "today",   "مستحقة اليوم",     "Due today");
+        yield return L("alert-bucket", "week",    "خلال هذا الأسبوع", "Due this week");
+        yield return L("alert-bucket", "later",   "لاحقاً",            "Later");
+
         // ── ADDENDUM §A4 — schedule import status (SCR-E5) ────────────────
         // Whether a Primavera P6 baseline has been imported and published for a
         // project. Labels verbatim from DScheduleControl. DERIVED, not stored:

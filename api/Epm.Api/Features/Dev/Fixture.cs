@@ -288,33 +288,63 @@ public static class Fixture
                 RaisedAt = new DateTime(2026, 7, 4),
                 Acknowledged = true, AcknowledgedByUserId = "user.project-manager" },
 
-            // PRJ-0279 — the two-contract project, incl. the unapplied amendment.
+            // PRJ-0279 — the two-contract project, and the one SCR-W13 opens on.
+            //
+            // ملحق الشكل 47's footer is the target: **التنبيهات 8 · تحتاج إجراءً
+            // 3 · حرجة 1**, read at the data date 2026-08-02. `RuleCode` names the
+            // rule that would have produced each one, and switching that rule
+            // off withdraws it — the plate's own promise, demonstrable.
+            //
+            // Three of the eight name no rule: a failed apply, an unapplied
+            // amendment and a blocked distribution are events the system raises
+            // on itself, not thresholds anybody set. They survive every rule
+            // being switched off, which is exactly why the column is nullable.
             new Alert { ProjectId = "PRJ-0279", Severity = "critical", Kind = "apply-failed",
                 TitleAr = "تعذّر تطبيق الملحق رقم 2 — خطوة إعادة احتساب الأوزان لم تنجح",
                 TitleEn = "Amendment no. 2 could not be applied — the weight recalculation step failed",
-                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 30) },
+                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 30),
+                DueOn = new DateOnly(2026, 8, 1) },
             new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "sla-overdue",
                 TitleAr = "الملحق رقم 2 معتمد منذ 21 يوماً ولم يُطبَّق بعد",
                 TitleEn = "Amendment no. 2 has been approved for 21 days and is still unapplied",
-                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 22) },
+                TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 7, 22),
+                DueOn = new DateOnly(2026, 8, 14) },
             new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "distribution-blocked",
                 TitleAr = "توزيع الكميات على الجهات المستفيدة غير مكتمل لبندين",
                 TitleEn = "Quantity distribution to beneficiaries is incomplete on two items",
-                TargetRef = "CNT-0279-EM", RaisedAt = new DateTime(2026, 7, 19) },
+                TargetRef = "CNT-0279-EM", RaisedAt = new DateTime(2026, 7, 19),
+                DueOn = new DateOnly(2026, 8, 9) },
             new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "schedule-slip",
                 TitleAr = "معلم «إنجاز الهيكل» يقترب خلال 10 أيام",
                 TitleEn = "Milestone “Structure complete” is 10 days away",
-                RaisedAt = new DateTime(2026, 7, 9),
+                RuleCode = "R3", RaisedAt = new DateTime(2026, 7, 9),
+                DueOn = new DateOnly(2026, 8, 12),
                 Acknowledged = true, AcknowledgedByUserId = "user.re-dept" },
+            // R5 fires on the documents register: six of its fourteen documents
+            // are on a draft current revision (ملحق الشكل 46).
             new Alert { ProjectId = "PRJ-0279", Severity = "info", Kind = "other",
-                TitleAr = "وثيقة إلزامية مفقودة: شهادة فحص المواد",
-                TitleEn = "Mandatory document missing: material test certificate",
-                RaisedAt = new DateTime(2026, 7, 2) },
+                TitleAr = "وثيقة إلزامية بانتظار الاعتماد: شهادة فحص المواد",
+                TitleEn = "Mandatory document awaiting approval: material test certificate",
+                RuleCode = "R5", RaisedAt = new DateTime(2026, 7, 2),
+                DueOn = new DateOnly(2026, 7, 26) },
             new Alert { ProjectId = "PRJ-0279", Severity = "info", Kind = "budget",
                 TitleAr = "سلفة تشغيلية مصروفة بقيمة 24,000,000 د.ع",
                 TitleEn = "Operating advance of IQD 24,000,000 disbursed",
                 TargetRef = "CNT-0279", RaisedAt = new DateTime(2026, 6, 24),
                 Acknowledged = true, AcknowledgedByUserId = "user.re-dept" },
+            // R8 on VO-02, which is sitting at التدقيق المالي (ملحق الشكل 29).
+            new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "other",
+                TitleAr = "أمر تغييري VO-02 بانتظار قرار مرحلة التدقيق المالي",
+                TitleEn = "Change order VO-02 is awaiting the financial review decision",
+                TargetRef = "VO-02", RuleCode = "R8", RaisedAt = new DateTime(2026, 7, 21),
+                DueOn = new DateOnly(2026, 8, 2) },
+            // R6 on ACT-01, the meeting action الشكل 45 marks «متأخر».
+            new Alert { ProjectId = "PRJ-0279", Severity = "warning", Kind = "other",
+                TitleAr = "إجراء اجتماع متأخر: تسريع أعمال الكهرباء",
+                TitleEn = "Overdue meeting action: accelerate the electrical works",
+                TargetRef = "ACT-01", RuleCode = "R6", RaisedAt = new DateTime(2026, 7, 14),
+                DueOn = new DateOnly(2026, 8, 5),
+                Acknowledged = true, AcknowledgedByUserId = "user.project-manager" },
 
             // PRJ-0277 — suspended.
             new Alert { ProjectId = "PRJ-0277", Severity = "critical", Kind = "schedule-slip",
@@ -502,6 +532,9 @@ public static class Fixture
 
         // ملحق الشكل 46 — الوثائق والمخططات.
         Documents(db);
+
+        // ملحق الشكل 47 — قواعد التنبيه على مستوى المشروع.
+        AlertRules(db);
 
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
@@ -1672,6 +1705,61 @@ public static class Fixture
                 Priority = "high", Status = "closed",
             }
         );
+
+        db.SaveChanges();
+    }
+
+/// <summary>
+    /// **ملحق الشكل 47** — the twelve alert rules of «قواعد التنبيه على مستوى
+    /// المشروع», in the plate's own order with the plate's own conditions,
+    /// severities, channels, recurrences and escalation ceilings. All twelve
+    /// are enabled, which is what «12 مفعلة من 12» reports.
+    ///
+    /// ── THE CONDITIONS ARE TEXT, DELIBERATELY ────────────────────────────
+    /// «انزياح ≥ 5 أيام» is stored as prose because nothing evaluates it: no
+    /// scheduler runs in this prototype and `07 §2` lists the delivery engine
+    /// as POC work. The alerts below are seeded rows that NAME the rule they
+    /// would have come from, which is enough to make الشكل 47's own promise
+    /// real — switch a rule off and its alerts leave the inbox (P-119).
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void AlertRules(EpmDb db)
+    {
+        AlertRule R(string code, string ar, string en, string trigAr, string trigEn,
+                    string sev, bool email, bool sms, string recurrence, int? escalateHours) => new()
+        {
+            ProjectId = "PRJ-0279", Code = code, NameAr = ar, NameEn = en,
+            TriggerAr = trigAr, TriggerEn = trigEn, Severity = sev,
+            ChannelInApp = true, ChannelEmail = email, ChannelSms = sms,
+            Recurrence = recurrence, EscalateAfterHours = escalateHours, Enabled = true,
+        };
+
+        db.AlertRules.AddRange(
+            R("R1", "تأخر نشاط على المسار الحرج", "Critical-path activity delay",
+                "انزياح ≥ 5 أيام", "Slip ≥ 5 days", "critical", true, true, "daily", 48),
+            R("R2", "تجاوز الصرف للتخصيص", "Spend exceeds allocation",
+                "الصرف ≥ 90%", "Spend ≥ 90%", "warning", true, false, "weekly", 120),
+            R("R3", "اقتراب معلم", "Milestone approaching",
+                "خلال 45 يوماً", "Within 45 days", "warning", false, false, "once", null),
+            R("R4", "تقرير إنجاز شهري مفقود", "Monthly progress report missing",
+                "لا تحديث منذ 40 يوماً", "No update for 40 days", "warning", true, false, "daily", 72),
+            R("R5", "وثيقة إلزامية بانتظار الاعتماد", "Mandatory document awaiting approval",
+                "حالة الوثيقة ≠ معتمدة", "Document status ≠ approved", "info", false, false, "stage-change", null),
+            R("R6", "إجراء اجتماع متأخر", "Overdue meeting action",
+                "إجراء مفتوح > 21 يوماً", "Open action > 21 days", "warning", true, false, "weekly", 120),
+            R("R7", "خطر مرتفع مفتوح", "Open high risk",
+                "شدة عالية + مفتوح", "High severity + open", "critical", true, true, "daily", 48),
+            R("R8", "أمر تغييري بانتظار القرار", "Change order awaiting a decision",
+                "الحالة = قيد الاعتماد", "Status = under approval", "warning", true, false, "weekly", 120),
+            R("R9", "تجاوز الصرف التراكمي للكلفة", "Cumulative spend exceeds cost",
+                "الصرف التراكمي ≥ 90%", "Cumulative spend ≥ 90%", "critical", true, true, "weekly", 120),
+            R("R10", "مهلة تقديم مطالبة التمديد", "Extension claim submission window",
+                "خلال 28 يوماً من الإشعار", "Within 28 days of the notice", "warning", true, true, "daily", 168),
+            R("R11", "موعد حسم لجنة التمديد", "Extension committee decision date",
+                "قبل المهلة القانونية", "Before the statutory deadline", "warning", true, false, "weekly", 240),
+            R("R12", "تجاوز مهلة تدقيق المعاملة", "Audit desk SLA breached",
+                "تجاوز سقف مرحلة التدقيق", "Past the audit stage ceiling", "critical", true, true, "daily", 48));
 
         db.SaveChanges();
     }

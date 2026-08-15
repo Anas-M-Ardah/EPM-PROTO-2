@@ -21,6 +21,7 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Risks | SCR-W9 سجل المخاطر · الشكل 43 | `EP-RSK-01` | [risks.md](risks.md) |
 | Meetings | SCR-W11 محاضر وإجراءات · الشكل 45 | `EP-MTG-01` | [meetings.md](meetings.md) |
 | Documents | SCR-W12 الوثائق والمخططات · الشكل 46 | `EP-DOC-01` | [documents.md](documents.md) |
+| Project alerts | SCR-W13 التنبيهات · الشكل 47 | `EP-PAL-01` · `EP-PAL-02` | [project-alerts.md](project-alerts.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |

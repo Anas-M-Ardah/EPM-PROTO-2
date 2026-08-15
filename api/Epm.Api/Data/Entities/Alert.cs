@@ -49,6 +49,22 @@ public class Alert
     /// </summary>
     public DateTime RaisedAt { get; set; }
 
+    /// <summary>
+    /// → AlertRule.Code. **The rule is the source of the alert** (الشكل 47):
+    /// disabling the rule withdraws this alert from the inbox, and that is a
+    /// filter at read time, not a column written here. Null for an alert no
+    /// rule produced — the plate's own inbox has some.
+    /// </summary>
+    public string? RuleCode { get; set; }
+
+    /// <summary>
+    /// «الاستحقاق» — when this alert must be acted on, at the DATA DATE (D-06).
+    /// The inbox groups by it in a fixed order (متأخرة · مستحقة اليوم · خلال
+    /// هذا الأسبوع · لاحقاً) and «تحتاج إجراءً الآن» counts the open ones that
+    /// have reached it. Null means the alert is a notice with no deadline.
+    /// </summary>
+    public DateOnly? DueOn { get; set; }
+
     public bool Acknowledged { get; set; }
 
     /// <summary>The persona that acknowledged it (X-Epm-User), null while open.</summary>

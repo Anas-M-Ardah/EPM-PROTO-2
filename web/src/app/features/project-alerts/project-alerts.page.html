@@ -1,0 +1,264 @@
+<!--
+  SCR-W13 — التنبيهات · ملحق الشكل 47.
+
+  The plate, taken literally:
+    the title carries «N تحتاج إجراءً الآن»
+    a segmented control: التنبيهات | القواعد
+    a notice: «القاعدة هي مصدر التنبيه»
+    قواعد التنبيه — «12 مفعلة من 12»
+    eight columns: الرمز · القاعدة · شرط الإطلاق · الخطورة · القنوات ·
+                   التكرار · التصعيد بعد · الحالة, with a switch on each row
+    a footer strip: التنبيهات 8 / 8 · تحتاج إجراءً 3 · حرجة 1 · محدد 0
+
+  Every number, ID and date is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_alerts') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="ruleColCount" [rows]="8" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_alerts') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <!-- ══ Z6 — «N تحتاج إجراءً الآن», and the two views ═══════════════════
+         The sub-line is the count of alerts that are OPEN **and** due, from
+         Domain/AlertInbox — not the count of open ones, and not the count of
+         overdue ones. When it is zero the plate's own words are «لا شيء متأخر»,
+         which is a healthy state and not an empty result. -->
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_alerts') }}
+        <em>
+          @if (d.needsAction > 0) {
+            <bdi>{{ d.needsAction }}</bdi> {{ lang.t('pal_need_action') }}
+          } @else {
+            {{ lang.t('pal_nothing_overdue') }}
+          }
+        </em>
+      </span>
+
+      <div class="grp">
+        @if (view() === 'inbox') {
+          @for (s of d.severities; track s.code) {
+            <button type="button" class="d-fchip" [class.on]="severity() === s.code"
+                    [disabled]="s.count === 0 && s.code !== 'all'"
+                    (click)="severity.set(s.code)">
+              {{ severityLabel(s.code) }}
+              <span class="n"><bdi>{{ s.count }}</bdi></span>
+            </button>
+          }
+        }
+
+        <div class="d-seg">
+          <button type="button" [class.on]="view() === 'inbox'" (click)="view.set('inbox')">
+            <epm-icon name="notifications" [size]="14" />{{ lang.t('pal_v_inbox') }}
+          </button>
+          <button type="button" [class.on]="view() === 'rules'" (click)="view.set('rules')">
+            <epm-icon name="settings" [size]="14" />{{ lang.t('pal_v_rules') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <!-- ══ القواعد ═══════════════════════════════════════════════════ -->
+        @if (view() === 'rules') {
+
+          <!-- الشكل 47's own notice, in its own words. It is not decoration:
+               Domain/AlertInbox.Live is this sentence, and the switch below
+               proves it — the inbox count in the footer moves with it. -->
+          <div class="d-msgbar info">
+            <epm-icon name="rule" [size]="16" />
+            <div>
+              <b>{{ lang.t('pal_norm_t') }}</b>
+              <span>{{ lang.t('pal_norm_b') }}</span>
+            </div>
+          </div>
+
+          <epm-section [title]="lang.t('pal_rules')"
+                       [sub]="d.enabledRuleCount + ' ' + lang.t('pal_enabled_of') + ' ' + d.ruleCount">
+            @if (rules().length === 0) {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="rule" [size]="30" /></span>
+                <b>{{ lang.t('pal_norules_t') }}</b>
+                <span>{{ lang.t('pal_norules_b') }}</span>
+              </div>
+            } @else {
+              <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
+                <thead>
+                  <tr>
+                    <th>{{ lang.t('pal_col_code') }}</th>
+                    <th>{{ lang.t('pal_col_rule') }}</th>
+                    <th>{{ lang.t('pal_col_trigger') }}</th>
+                    <th>{{ lang.t('pal_col_severity') }}</th>
+                    <th>{{ lang.t('pal_col_channels') }}</th>
+                    <th>{{ lang.t('pal_col_recurrence') }}</th>
+                    <th>{{ lang.t('pal_col_escalate') }}</th>
+                    <th>{{ lang.t('col_status') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of rules(); track r.code) {
+                    <tr>
+                      <td class="mono d-cell-sub"><bdi>{{ r.code }}</bdi></td>
+                      <td class="d-cell-strong">{{ ruleName(r) }}</td>
+                      <td class="d-cell-sub">{{ ruleTrigger(r) }}</td>
+                      <!-- 05 §7.6 — coloured AND labelled, always. -->
+                      <td>
+                        <span class="d-pill {{ severityClass(r.severity) }}">
+                          {{ severityLabel(r.severity) }}
+                        </span>
+                      </td>
+                      <td class="d-cell-sub">{{ channels(r) }}</td>
+                      <td class="d-cell-sub">{{ recurrenceLabel(r.recurrence) }}</td>
+                      <td class="d-cell-sub"><bdi>{{ escalation(r) }}</bdi></td>
+                      <!-- The one write on this screen. It sets a bool; what it
+                           appears to do to the inbox is the re-read. -->
+                      <td>
+                        <button type="button" class="d-fchip" [class.on]="r.enabled"
+                                [attr.aria-pressed]="r.enabled"
+                                [disabled]="busyRule() !== null"
+                                (click)="toggleRule(r)">
+                          {{ r.enabled ? lang.t('pal_on') : lang.t('pal_off') }}
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table></div>
+
+              <!-- 04 §9 — say which of the two empties this is. The conditions
+                   above are recorded prose, and nothing evaluates them at the
+                   data date: no scheduler runs here and 07 §2 lists the
+                   delivery engine as POC work (P-119). -->
+              <div class="d-msgbar">
+                <epm-icon name="info" [size]="16" />
+                <div>
+                  <b>{{ lang.t('pal_engine_t') }}</b>
+                  <span>{{ lang.t('pal_engine_b') }}</span>
+                </div>
+              </div>
+            }
+          </epm-section>
+        }
+
+        <!-- ══ التنبيهات ═════════════════════════════════════════════════ -->
+        @if (view() === 'inbox') {
+
+          @if (pickedOpen().length > 0) {
+            <!-- One comment per record is the reference's rule for a workflow
+                 decision; an acknowledgement is not one — it is the same mark
+                 written on each alert, so the loop below IS the batch. -->
+            <div class="d-rowacts">
+              <span class="d-cell-sub">
+                {{ lang.t('pal_selected') }} <bdi>{{ pickedOpen().length }}</bdi>
+              </span>
+              <button type="button" class="d-btn sm primary" (click)="acknowledgePicked()">
+                <epm-icon name="check" [size]="15" />{{ lang.t('pal_ack_all') }}
+              </button>
+              <span class="sp"></span>
+              <button type="button" class="d-btn sm ghost" (click)="clearPicked()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('pal_clear_sel') }}
+              </button>
+            </div>
+          }
+
+          @if (rows().length === 0) {
+            <!-- An empty inbox is a SUCCESS state, not "no records found". -->
+            <div class="d-empty ok">
+              <span class="d-empty-ico ok"><epm-icon name="check_circle" [size]="30" /></span>
+              <b>{{ lang.t('pal_zero_t') }}</b>
+              <span>{{ lang.t('pal_zero_b') }}</span>
+            </div>
+          } @else if (groups().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="filter_alt_off" [size]="30" /></span>
+              <b>{{ lang.t('pal_nomatch_t') }}</b>
+              <span>{{ lang.t('pal_nomatch_b') }}</span>
+              <button type="button" class="d-btn sm" (click)="severity.set('all')">
+                {{ lang.t('pal_show_all') }}
+              </button>
+            </div>
+          } @else {
+            @for (g of groups(); track g.code) {
+              <epm-section [title]="bucketLabel(g.code)" [n]="g.items.length" [flush]="true">
+                <ul class="d-inbox">
+                  @for (a of g.items; track a.id) {
+                    <li [class.bad]="g.code === 'overdue'" [class.warn]="g.code === 'today'">
+                      <input type="checkbox" [checked]="isPicked(a.id)"
+                             [attr.aria-label]="lang.t('pal_pick') + ' ' + a.id"
+                             (change)="togglePick(a.id)" />
+                      <span class="it">
+                        <span class="d-sev-dot" role="img"
+                              [attr.aria-label]="severityLabel(a.severity)"
+                              [attr.title]="severityLabel(a.severity)">
+                          <epm-icon [name]="severityIcon(a.severity)" [size]="15" />
+                        </span>
+                        <span class="bd">
+                          <span class="t">
+                            <span class="no"><bdi>AL-{{ a.id }}</bdi></span>
+                            <b>{{ title(a) }}</b>
+                          </span>
+                          <span class="mt">
+                            <span class="due {{ dueTone(a) }}"><bdi>{{ dueLabel(a) }}</bdi></span>
+                            <span>·</span><span>{{ kindLabel(a.kind) }}</span>
+                            <span>·</span>
+                            <!-- The rule this alert came from — «—» when the
+                                 system raised it on itself and no rule can
+                                 silence it. -->
+                            <span class="mono"><bdi>{{ a.ruleCode ?? '—' }}</bdi></span>
+                            @if (a.targetRef) {
+                              <span>·</span><span class="mono"><bdi>{{ a.targetRef }}</bdi></span>
+                            }
+                          </span>
+                        </span>
+                        <span class="d-pill {{ statusClass(a.status) }}">{{ statusLabel(a.status) }}</span>
+                      </span>
+                      @if (a.status === 'open') {
+                        <button type="button" class="d-btn sm primary" (click)="acknowledge(a)">
+                          <epm-icon name="check" [size]="15" />{{ lang.t('pal_ack') }}
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              </epm-section>
+            }
+          }
+        }
+
+        <!-- ══ the plate's footer strip ══════════════════════════════════ -->
+        <div class="d-pager">
+          <span>
+            {{ lang.t('mod_alerts') }}
+            <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.alertCount }}</bdi></b>
+          </span>
+          <span class="sp"></span>
+          <span class="d-cell-sub">
+            {{ lang.t('pal_f_need') }} <bdi>{{ d.needsAction }}</bdi> ·
+            {{ lang.t('pal_f_critical') }} <bdi>{{ criticalCount() }}</bdi> ·
+            {{ lang.t('pal_selected') }} <bdi>{{ picked().size }}</bdi>
+          </span>
+        </div>
+
+      </div>
+    </div>
+   }
+  }
+</div>

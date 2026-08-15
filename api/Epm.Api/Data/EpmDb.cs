@@ -98,6 +98,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // alert is a real state change (EP-ALR-02), not a client-side toggle.
     public DbSet<Alert> Alerts => Set<Alert>();
 
+    // ── SCR-W13 project alerts · الشكل 47 ────────────────────────────────
+    // The rule the alert came from. Disabling it withdraws the alert.
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+
     // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
     // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
     // resolves it to names; nothing else reads the table yet, so its columns
