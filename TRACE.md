@@ -52,7 +52,7 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | The assignments | `api/Epm.Api/Features/Dev/Personas.cs` — `Workspaces` / `MinistryWide` |
 | The guard | `api/Epm.Api/Features/Workspaces/WorkspaceScope.cs` — `Deny` · `Visible` · `Effective` |
 | Guarded on `?workspace=` | `EP-PRJ-01` `EP-CNT-01` `EP-ALR-01` `EP-PRT-01` `EP-SCT-01` `EP-RPT-01` `EP-WSP-01` |
-| Guarded on the project's workspace | `EP-OVW-01` `EP-INF-01` `EP-PRJ-03/04` `EP-CON-01/02` `EP-BOQ-01`…`08` `EP-SCD-01/02` `EP-PRG-01/02` `EP-FIN-01` `EP-CHG-01` `EP-CHG-02` `EP-WIZ-01` `EP-WIZ-02` `EP-WIZ-03` |
+| Guarded on the project's workspace | `EP-OVW-01` `EP-INF-01` `EP-PRJ-03/04` `EP-CON-01/02` `EP-BOQ-01`…`08` `EP-SCD-01/02` `EP-PRG-01/02` `EP-FIN-01` `EP-CHG-01` `EP-CHG-02` `EP-WIZ-01` `EP-WIZ-02` `EP-WIZ-03` `EP-WFL-01` `EP-WFL-02` `EP-WFL-03` |
 | Guarded on the workspace being CREATED in | `EP-PRJ-02` — a specialist may not plant a project in another university's register |
 | Filtered, not guarded | `EP-ENT-01` — it IS the list of what you may open |
 | The client | `core/workspaces.ts` `has()` + `ShellComponent.guardScope()` — corrects a bad `?ws=` before six requests each 403. Convenience, never the enforcement |
@@ -103,6 +103,9 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-WIZ-01` | `GET /api/projects/{id}/change-orders/new` | `Features/ChangeOrders/ChangeOrderWizardEndpoints.cs` | `change-orders.api.ts` `wizardSource()` → `change-order.wizard.ts` | BR-01 · BR-04 · BR-09 | Projects · Contracts · ContractAmendments · BoqItems · BoqRateBands · BoqActivityLinks · BoqDistributions · Activities |
 | `EP-WIZ-02` | `POST /api/projects/{id}/change-orders/preview` | `Features/ChangeOrders/ChangeOrderWizardEndpoints.cs` | `change-orders.api.ts` `preview()` → `change-order.wizard.ts` | BR-01 · BR-05 · BR-06 · BR-07 · BR-13 | *(reads only)* Contracts · ContractAmendments · BoqItems · Activities |
 | `EP-WIZ-03` | `POST /api/projects/{id}/change-orders?kind=draft|submit` | `Features/ChangeOrders/ChangeOrderWizardEndpoints.cs` | `change-orders.api.ts` `create()` → `change-order.wizard.ts` | BR-07 · BR-13 | **writes** ChangeOrders · ChangeOrderLines · ChangeOrderActivities · ChangeOrderStages · ChangeOrderAttachments · ChangeOrderAuditEntries |
+| `EP-WFL-01` | `POST /api/projects/{id}/change-orders/{no}/decisions` | `Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs` | `change-orders.api.ts` `decide()` → `change-order.page.ts` | BR-13 · BR-14 | **writes** ChangeOrders · ChangeOrderStages · ContractAmendments *(the PENDING row — P-111)* · ChangeOrderAuditEntries |
+| `EP-WFL-02` | `POST /api/projects/{id}/change-orders/{no}/external/{partyId}` | `Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs` | `change-orders.api.ts` `recordExternal()` → `change-order.page.ts` | BR-14 | **writes** ChangeOrderExternalParties · ChangeOrders *(cancel only)* · ChangeOrderAuditEntries |
+| `EP-WFL-03` | `POST /api/projects/{id}/change-orders/{no}/apply` | `Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs` | `change-orders.api.ts` `apply()` → `change-order.page.ts` | BR-01 · BR-05 · BR-09 · BR-10 | **writes** ContractAmendments · BoqRateBands · Activities · ChangeOrders · ChangeOrderLines · ChangeOrderActivities · ChangeOrderApplySteps · ChangeOrderAuditEntries |
 | `EP-CHG-02` | `GET /api/projects/{id}/change-orders/{no}` | `Features/ChangeOrders/ChangeOrdersEndpoints.cs` | `change-orders.api.ts` `record()` → `change-order.page.ts` | BR-01 · BR-05 · BR-06 · BR-09 · BR-10 · BR-12 · BR-13 · BR-14 | Projects · Contracts · ContractAmendments · ChangeOrders · ChangeOrderLines · ChangeOrderActivities · ChangeOrderStages · ChangeOrderExternalParties · ChangeOrderApplySteps · ChangeOrderAttachments · ChangeOrderAuditEntries · BoqItems · Activities |
 | `EP-FIN-01` | `GET /api/projects/{id}/financials` | `Features/Financials/FinancialsEndpoints.cs` | `financials.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Payments · BoqItems · Activities |
 
@@ -121,7 +124,8 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | BR-06 | Two proposals, one approved value | 02 §6 | `Domain/Proposals.cs` | `ProposalsTests` | ✅ |
 | BR-07 | Change-order validation gates | 02 §7 | `Domain/ChangeOrderGates.cs` | `ChangeOrderGatesTests` | ✅ |
 | BR-08 | Quantity distribution to beneficiaries | 02 §8 | `Domain/Distribution.cs` | `DistributionTests` | ✅ **on screen** (Phase 4.2) — the drawer caps every input; gates 2 and 4 checked in `EP-BOQ-06` |
-| BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ (see P-16) |
+| BR-09 | Contract amendment + effective values | 02 §9 | `Domain/Amendments.cs` | `AmendmentsTests` | ✅ **written** (Phase 5.4) — `EP-WFL-01` creates the pending row, `EP-WFL-03` flips it (P-111) |
+| P-112 | **Applying a change order** — the amendment, the rate bands, the activity dates and the failable weight check, computed as a PLAN before anything is written | 03 §6 · 02 §9 *(arrangement of BR-01 · BR-05 · BR-09 · BR-10)* | `Domain/ChangeOrderApply.cs` | `ChangeOrderApplyTests` | ✅ **added** (Phase 5.4) — 13 cases incl. the all-or-nothing failure |
 | BR-10 | Delay penalty, 0.1%/day capped 10% | 02 §10 | `Domain/Penalty.cs` | `PenaltyTests` | ✅ **`DelayDays()` exposed** (Phase 2.5) — SCR-E5 shows the same days the penalty is charged on · **`Result.PerDay` reaches a screen** (الشكل 10) — ⚠️ **the client documents state a DIFFERENT formula (value ÷ duration × 10%); see P-81, unresolved** |
 | المسار 3 | BOQ import: validate + compare | المسار 3 · الشكل 13 | `Domain/BoqImport.cs` | `BoqImportTests` (12) | ✅ **added** (الشكل 13) — the four checks المسار 3 names, and the added/removed/changed diff the wizard shows before submission |
 | BR-11 | Earned value | 02 §11 | `Domain/EarnedValue.cs` | `EarnedValueTests` | ✅ **on screen** (Phase 4.4) — SCR-W6, SCR-W7 and SCR-W1, all from ONE call so no two can disagree |
@@ -147,6 +151,7 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `Beneficiaries` | Phase 3 | `EP-OVW-01` — resolves the `Projects.BeneficiaryCodes` CSV (01 §2.1) |
 | `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` · `EP-FIN-01` · `EP-PRG-01` · `EP-OVW-01` — the first table that can say what was actually paid |
 | `BoqItems` | Phase 4.2 | `EP-BOQ-01` … `EP-BOQ-08` — **written** by `EP-BOQ-03` / `EP-BOQ-04` |
+| `ContractAmendments` | PAGE-02 | **written** by `EP-WFL-01` (pending) and `EP-WFL-03` (effective) — BR-09's row is what MAKES a change effective |
 | `BoqRateBands` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-03` · `EP-BOQ-05` — read only; Phase 5.4 writes a band |
 | `BoqDistributions` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-05` — **written** by `EP-BOQ-06` |
 | `BoqActivityLinks` | Phase 4.2 | `EP-BOQ-02` · `EP-BOQ-07` — **written** by `EP-BOQ-08` |

@@ -731,6 +731,17 @@
                                   } @else { {{ lang.t('chg_no_letter') }} }
                                 </span>
                                 <span class="d-pill {{ extClass(x.state) }}">{{ extLabel(x.state) }}</span>
+
+                                <!-- `03 §4` — only the DELEGATE records, and only
+                                     on the stage that is actually open. The
+                                     decision stays the party's; this button is
+                                     how it reaches the record. -->
+                                @if (x.state === 'wait' && d.viewerIsDelegate
+                                     && (s.status === 'active' || s.breached)) {
+                                  <button type="button" class="d-btn sm" (click)="openRecording(s, x)">
+                                    <epm-icon name="edit_note" [size]="14" />{{ lang.t('chg_d_record') }}
+                                  </button>
+                                }
                               </div>
                             }
                           </div>
@@ -762,22 +773,80 @@
           <epm-section [title]="lang.t('chg_sec_decision_panel')" icon="gavel"
                        [sub]="d.relation.canAct ? lang.t('chg_yours') : lang.t('chg_view_only')"
                        [collapsible]="true" [defaultOpen]="true">
-            <div class="d-msgbar info">
-              <epm-icon name="lock" [size]="16" />
-              <div>
-                @if (d.relation.canAct) {
-                  <b>{{ lang.t('chg_decide_soon_t') }}</b>
-                  <span>{{ lang.t('chg_decide_soon_b') }}</span>
-                } @else if (d.transaction.stalledAtAr) {
+            <!-- `03 §7` — the actions render ONLY for `awaiting` or `recorder`.
+                 Anything else gets the explicit locked note naming whose
+                 decision it is, never a bare disabled button. -->
+            @if (decisions().length === 0) {
+              <div class="d-msgbar info">
+                <epm-icon name="lock" [size]="16" />
+                <div>
                   <b>{{ lang.t('chg_locked_t') }}</b>
-                  <span>{{ lang.t('chg_locked_b') }}
-                    <bdi>{{ lang.pick(d.transaction.stalledAtAr, d.transaction.stalledAtEn || '') }}</bdi></span>
-                } @else {
-                  <b>{{ lang.t('chg_locked_t') }}</b>
-                  <span>{{ lang.t('chg_locked_done') }}</span>
+                  @if (d.transaction.stalledAtAr) {
+                    <span>{{ lang.t('chg_locked_b') }}
+                      <bdi>{{ lang.pick(d.transaction.stalledAtAr, d.transaction.stalledAtEn || '') }}</bdi></span>
+                  } @else {
+                    <span>{{ lang.t('chg_locked_done') }}</span>
+                  }
+                </div>
+              </div>
+
+            } @else {
+              <div class="d-form-field f-full">
+                <label for="vo-dec">{{ lang.t('chg_d_action') }}<span class="req" aria-hidden="true">*</span></label>
+                <select id="vo-dec" class="d-form-input" required
+                        (change)="chooseDecision($any($event.target).value)">
+                  <option value="">{{ lang.t('chg_d_pick') }}</option>
+                  @for (o of decisions(); track o.key) {
+                    <option [value]="o.key" [selected]="o.key === decision()">{{ decisionLabelOf(o.key) }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="d-form-field f-full">
+                <label for="vo-dec-note">{{ lang.t('chg_d_comment') }}
+                  @if (chosen()?.needsNote) { <span class="req" aria-hidden="true">*</span> }</label>
+                <textarea id="vo-dec-note" rows="4" class="d-form-input"
+                          [class.bad]="decisionTouched() && noteMissing()"
+                          [disabled]="!chosen()"
+                          [attr.aria-invalid]="decisionTouched() && noteMissing() ? 'true' : null"
+                          [attr.placeholder]="chosen()?.needsNote ? lang.t('chg_d_note_req_ph') : lang.t('chg_d_note_ph')"
+                          [value]="decisionNote()"
+                          (input)="decisionNote.set($any($event.target).value)"></textarea>
+                @if (decisionTouched() && noteMissing()) {
+                  <span class="d-form-err">{{ lang.t('chg_d_note_err') }}</span>
                 }
               </div>
-            </div>
+
+              <!-- «ماذا سيحدث بعد ذلك» — the consequences BEFORE the act. It is
+                   the part of a decision a reader cannot infer from its name. -->
+              <div class="d-msgbar" [class.warning]="chosen()?.danger" [class.info]="!chosen()?.danger">
+                <epm-icon name="alt_route" [size]="16" />
+                <div>
+                  <b>{{ lang.t('chg_d_next_t') }}</b>
+                  @if (chosen(); as c) {
+                    <ul class="d-conseq">
+                      @for (w of consequences(c.key); track w) { <li>{{ w }}</li> }
+                    </ul>
+                  } @else {
+                    <span>{{ lang.t('chg_d_next_b') }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="d-l14-decfoot">
+                <button type="button" class="d-btn sm"
+                        [disabled]="!decision() && !decisionNote()"
+                        (click)="chooseDecision(''); decisionNote.set('')">
+                  {{ lang.t('chg_d_reset') }}
+                </button>
+                <span class="sp"></span>
+                <button type="button" class="d-btn sm primary" [class.danger]="chosen()?.danger"
+                        [disabled]="!chosen() || deciding()" (click)="submitDecision()">
+                  <epm-icon [name]="chosen()?.key === 'apply' ? 'done_all' : 'gavel'" [size]="15" />
+                  {{ chosen() ? decisionLabelOf(chosen()!.key) : lang.t('chg_d_submit') }}
+                </button>
+              </div>
+            }
           </epm-section>
 
           <epm-section [title]="lang.t('chg_sec_transaction')" icon="schedule"
@@ -1092,6 +1161,71 @@
             </div>
           </div>
         }
+      </epm-drawer>
+    }
+
+    <!-- ══ `03 §4` — تسجيل قرار جهة خارجية ═══════════════════════════════
+         The decision is attributed to the PARTY; the delegate is the recorder,
+         and the official letter number and date are what make it a record
+         rather than an assertion. -->
+    @if (recording(); as x) {
+      <epm-drawer [title]="lang.t('chg_d_record_t')" [sub]="lang.pick(x.partyAr, x.partyEn)"
+                  [closeLabel]="lang.t('scd_rec_close')" [hasFooter]="true"
+                  (closed)="recording.set(null)">
+        <div class="d-msgbar info">
+          <epm-icon name="edit_note" [size]="16" />
+          <div>
+            <b>{{ lang.t('chg_d_attribution_t') }}</b>
+            <span>{{ lang.t('chg_d_attribution_b') }}
+              <bdi>{{ lang.pick(x.partyAr, x.partyEn) }}</bdi> ·
+              {{ lang.t('chg_recorded_by') }} <bdi>{{ d.viewerParty }}</bdi></span>
+          </div>
+        </div>
+
+        <div class="d-form-field f-full">
+          <label for="ext-state">{{ lang.t('chg_d_outcome') }}<span class="req" aria-hidden="true">*</span></label>
+          <select id="ext-state" class="d-form-input" (change)="recordState.set($any($event.target).value)">
+            <option value="in" [selected]="recordState() === 'in'">{{ extLabel('in') }}</option>
+            <option value="back" [selected]="recordState() === 'back'">{{ extLabel('back') }}</option>
+            <option value="na" [selected]="recordState() === 'na'">{{ extLabel('na') }}</option>
+          </select>
+          @if (recordState() === 'back' && x.canCancel) {
+            <span class="d-cell-sub">{{ lang.t('chg_d_cancels') }}</span>
+          }
+        </div>
+
+        <div class="d-form-grid">
+          <div class="d-form-field">
+            <label for="ext-no">{{ lang.t('chg_d_letter_no') }}<span class="req" aria-hidden="true">*</span></label>
+            <input id="ext-no" class="d-form-input mono" [value]="letterNo()"
+                   [class.bad]="decisionTouched() && !letterNo().trim()"
+                   (input)="letterNo.set($any($event.target).value)" placeholder="OUT-0000" />
+          </div>
+          <div class="d-form-field">
+            <label for="ext-date">{{ lang.t('chg_d_letter_date') }}<span class="req" aria-hidden="true">*</span></label>
+            <input id="ext-date" class="d-form-input mono" type="date" [value]="letterDate()"
+                   [class.bad]="decisionTouched() && !letterDate().trim()"
+                   (input)="letterDate.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="d-form-field f-full">
+          <label for="ext-note">{{ lang.t('chg_d_comment') }}</label>
+          <textarea id="ext-note" rows="3" class="d-form-input" [value]="recordNote()"
+                    (input)="recordNote.set($any($event.target).value)"></textarea>
+        </div>
+
+        @if (decisionTouched() && letterMissing()) {
+          <span class="d-form-err">{{ lang.t('chg_d_letter_err') }}</span>
+        }
+
+        <ng-container footer>
+          <button type="button" class="d-btn" (click)="recording.set(null)">{{ lang.t('cancel') }}</button>
+          <span style="flex: 1"></span>
+          <button type="button" class="d-btn primary" [disabled]="deciding()" (click)="submitRecording()">
+            <epm-icon name="check" [size]="15" />{{ lang.t('chg_d_record_save') }}
+          </button>
+        </ng-container>
       </epm-drawer>
     }
    }

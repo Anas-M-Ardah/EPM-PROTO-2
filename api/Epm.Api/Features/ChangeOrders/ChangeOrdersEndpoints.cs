@@ -412,7 +412,7 @@ public static class ChangeOrdersEndpoints
                     def?.NoteAr ?? "", def?.NoteEn ?? "",
                     received, required,
                     mine.Select(x => new RecordExternalParty(
-                        x.PartyAr, x.PartyEn, x.State, x.CanCancel,
+                        x.Id, x.PartyAr, x.PartyEn, x.State, x.CanCancel,
                         x.LetterNo, x.LetterDate?.ToString("yyyy-MM-dd"),
                         x.RecordedByUserId is null ? null : Personas.Resolve(x.RecordedByUserId).RoleAr,
                         x.Note)).ToList());

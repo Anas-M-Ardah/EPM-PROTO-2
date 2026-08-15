@@ -860,22 +860,55 @@ figure on the record traces to a rule file rather than to the projection that pr
 rate-fixing stage appears in the expected path. A decrease beyond the remaining
 quantity cannot be submitted.
 
-### 5.4 Workflow + apply
-- [ ] Register `ChangeOrderStage`, `ChangeOrderExternalParty`, `ChangeOrderApplyStep`, `ChangeOrderAuditEntry`
-- [ ] Six-stage machine (BR-13) with **conditional** stages — rate-fixing only if a line trips 20%; endorsement only if the extension exceeds ¼ of the contract duration
-- [ ] **Skipped stages listed explicitly with the reason** — never silently omitted (`03 §2`)
-- [ ] External parties as **statuses inside the owning stage**, with letter number + date (`03 §3`)
-- [ ] Delegate attribution — "لجنة المراجعة المصادقة — سُجِّل بواسطة مقرّر لجنة أوامر الغيار" (`03 §4`)
-- [ ] Four decisions incl. **return with history retained**
-- [ ] Persona gating (BR-14) — actions render only for `awaiting` / `recorder`; otherwise an explicit locked note, **never a bare disabled button**
-- [ ] SLA / overdue / escalation (BR-12) measured from the **data date**, never the wall clock
-- [ ] **Apply** → creates a `ContractAmendment`, moves quantities into rate bands, dates, penalty baseline
-- [ ] 7-step application checklist with a **genuinely failable** weight step
-- [ ] `EP-WFL-01..n` · UML · TRACE rows
+### 5.4 Workflow + apply — **ملحق الشكل 33** · `03 §3`–§7 ✅ COMPLETE
+- [x] `ChangeOrderStage` · `ChangeOrderExternalParty` · `ChangeOrderApplyStep` ·
+      `ChangeOrderAuditEntry` registered — done in 5.2, written here
+- [x] Six-stage machine (BR-13) with **conditional** stages, planned at submission
+      (5.3) and advanced by `EP-WFL-01`
+- [x] **Skipped stages listed explicitly with the reason** — never silently omitted
+- [x] **External parties as statuses inside the owning stage**, recorded against a
+      letter number and date that are REQUIRED (`03 §3`–§4)
+- [x] Delegate attribution — the decision is the party's, the delegate is the
+      recorder, and the audit row carries both («سُجِّل نيابةً عن الدائرة الإدارية
+      والمالية بموجب الكتاب OUT-9014»)
+- [x] Four decisions incl. **return with history retained**: the returning stage
+      keeps its `returned` status and its comment, and the stage it goes back to
+      reopens with a fresh clock (P-114)
+- [x] **Persona gating (BR-14) on the SERVER** — `03 §7`'s locked note where a
+      control would be, and a 403 for anyone who calls anyway (P-115)
+- [x] SLA / overdue measured from the **data date**, never the wall clock (D-06)
+- [x] **Apply** → creates the `ContractAmendment` (BR-09), moves quantities into
+      **rate bands** with the beyond-20% portion flagged as its own band (`02 §5`),
+      moves the activity finishes, and moves BR-10's penalty baseline with the
+      contractual finish
+- [x] Nine-step checklist with a **genuinely failable** weight step: a plan whose
+      weights do not total 100.00% writes NOTHING and returns 422 (P-112)
+- [x] `EP-WFL-01` · `EP-WFL-02` · `EP-WFL-03` · `Domain/ChangeOrderApply.cs` ·
+      `WorkflowMachine.Available` · TRACE rows · `docs/uml/change-order-workflow.md`
+      · P-111…P-115 in DECISIONS
 
-**Exit:** approving VO-05 changes nothing. Applying it increments the amendment number and moves
-contract value, finish, BOQ quantities, weights and the penalty baseline. VO-04 sits in *applying*
-with the weight step failed and raises فشل التطبيق in the register.
+> **Approving still changes nothing (`02 §9`).** `EP-WFL-01` moves a lifecycle and
+> a stage pointer and creates the PENDING amendment the projection is rendered
+> from (P-111); `EP-WFL-03` is the only endpoint in this system that moves a
+> contract, and it flips that same row rather than adding another.
+
+> **Verified live** at 1440, AR, through the record page: as لجنة أوامر الغيار,
+> VO-06's المسار offers موافقة · إعادة للتعديل · رفض with the consequence list
+> («تُحال إلى تثبيت الأسعار — لجنة تثبيت الأسعار»); approving closes stage 2, opens
+> stage 3 from the data date, and the viewer's own relation flips to «تم إجراؤك»
+> with nothing further offered. As مقرّر لجنة أوامر الغيار on VO-02 at المصادقة
+> والتخصيص, **موافقة is absent while الدائرة الإدارية والمالية is out** and returns
+> the moment its outcome is recorded — the counter moves 0/1 → 1/1 and the audit
+> row names the party and the recorder separately. Recording without a letter is
+> refused (422) and a non-delegate is refused (403). Applying VO-05 as دائرة
+> المهندس المقيم issues amendment no. 2, moves the contract 250,000,000 →
+> 253,000,000 and its finish to 2026-08-26, writes both BOQ lines, closes the
+> order, and the contracts register reads the new figures with **pending 0**.
+> `dotnet test` 279/279, `ng build` clean.
+
+**Exit:** approving VO-05 changed nothing; applying it incremented the amendment
+number and moved the contract value, the finish, the BOQ quantities, the weights
+and the penalty baseline.
 
 ---
 

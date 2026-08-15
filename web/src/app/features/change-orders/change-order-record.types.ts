@@ -106,6 +106,8 @@ export interface RecordTimeImpact {
 }
 
 export interface RecordExternalParty {
+  /** The row id — EP-WFL-02 records against it. */
+  id: number;
   partyAr: string;
   partyEn: string;
   /** wait · in · back · na (`03 §3`). */
@@ -300,4 +302,16 @@ export interface ChangeOrderRecordResponse {
 
   attachments: RecordAttachment[];
   audit: RecordAuditEntry[];
+}
+
+/**
+ * What EP-WFL-01…03 answer with. Identical to
+ * ChangeOrderWorkflowEndpoints.WorkflowResult (CLAUDE.md §2).
+ */
+export interface WorkflowResult {
+  no: string;
+  lifecycle: string;
+  currentStageNo: number | null;
+  /** Arabic, and written by the endpoint — the toast says what actually happened. */
+  message: string;
 }

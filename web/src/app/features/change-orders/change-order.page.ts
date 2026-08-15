@@ -16,7 +16,7 @@ import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
 import {
-  ChangeOrderRecordResponse, RecordColumn, RecordLine, RecordStage,
+  ChangeOrderRecordResponse, RecordColumn, RecordExternalParty, RecordLine, RecordStage,
 } from './change-order-record.types';
 
 /**
@@ -95,6 +95,178 @@ export class ChangeOrderPage {
   openLine = signal<string | null>(null);
 
   line = computed(() => this.data()?.lines.find(l => l.code === this.openLine()) ?? null);
+
+  // ── `03 §5` — the decision, and `03 §4` — recording for a party ────────
+
+  /** The chosen decision key, or null while nothing is selected. */
+  decision = signal<string | null>(null);
+  decisionNote = signal('');
+  /** Set once the user has tried to submit — errors appear then, not while typing. */
+  decisionTouched = signal(false);
+  deciding = signal(false);
+
+  /** The external party whose outcome is being recorded, and its letter. */
+  recording = signal<RecordExternalParty | null>(null);
+  recordingStage = signal<RecordStage | null>(null);
+  letterNo = signal('');
+  letterDate = signal('');
+  recordNote = signal('');
+  recordState = signal('in');
+
+  /**
+   * WHICH decisions this viewer may take, mirrored from
+   * `Domain/WorkflowMachine.Available`. The server refuses anything else
+   * (BR-14 · `03 §7`) — this list is what the page OFFERS, and the two are
+   * derived from the same rule so they cannot drift.
+   */
+  decisions = computed(() => {
+    const d = this.data();
+    if (!d || !d.relation.canAct) return [];
+
+    const current = d.stages.find(s => s.applicable && (s.status === 'active' || s.breached));
+    const externalsOut = (current?.external ?? []).some(x => x.state === 'wait');
+
+    switch (d.lifecycle) {
+      case 'pending': {
+        const set: { key: string; needsNote: boolean; danger: boolean }[] = [];
+        // `03 §3` — the stage cannot complete while a party is still out.
+        if (!externalsOut) set.push({ key: 'approve', needsNote: false, danger: false });
+        set.push({ key: 'return', needsNote: true, danger: false });
+        set.push({ key: 'reject', needsNote: true, danger: true });
+        if (d.viewerIsDelegate) set.push({ key: 'cancel', needsNote: true, danger: true });
+        return set;
+      }
+      case 'returned':
+        return [{ key: 'resubmit', needsNote: false, danger: false }];
+      case 'approved':
+      case 'applied_partial':
+        return [{ key: 'apply', needsNote: false, danger: false }];
+      default:
+        return [];
+    }
+  });
+
+  chosen = computed(() => this.decisions().find(d => d.key === this.decision()) ?? null);
+
+  noteMissing = computed(() =>
+    !!this.chosen()?.needsNote && !this.decisionNote().trim());
+
+  decisionLabelOf(key: string): string {
+    return key === 'resubmit' ? this.lang.t('chg_d_resubmit')
+      : key === 'apply' ? this.lang.t('chg_d_apply')
+      : this.lookups.label('decision', key);
+  }
+
+  /**
+   * «ماذا سيحدث بعد ذلك» — what the decision DOES, before it is taken. The
+   * reference states this per decision and it is the reason the panel is not
+   * just a dropdown: the consequences are the part a reader cannot infer.
+   */
+  consequences(key: string): string[] {
+    const d = this.data();
+    const next = d?.stages.find(s => s.applicable && s.status === 'pending');
+    const owner = next ? this.lang.pick(next.ownerParty, next.ownerPartyEn) : '';
+    const nextName = next ? this.lang.pick(next.nameAr, next.nameEn) : '';
+
+    switch (key) {
+      case 'approve':
+        return [
+          next ? this.lang.t('chg_c_forward').replace('{s}', nextName).replace('{o}', owner)
+               : this.lang.t('chg_c_complete'),
+          this.lang.t('chg_c_sla_reset'),
+          this.lang.t('chg_c_nothing_posts'),
+        ];
+      case 'return':
+        return [this.lang.t('chg_c_return_1'), this.lang.t('chg_c_note_kept')];
+      case 'reject':
+        return [this.lang.t('chg_c_reject_1'), this.lang.t('chg_c_note_kept')];
+      case 'cancel':
+        return [this.lang.t('chg_c_cancel_1'), this.lang.t('chg_c_note_kept')];
+      case 'resubmit':
+        return [this.lang.t('chg_c_resubmit_1'), this.lang.t('chg_c_sla_reset')];
+      case 'apply':
+        return [
+          this.lang.t('chg_c_apply_1'),
+          this.lang.t('chg_c_apply_2'),
+          this.lang.t('chg_c_apply_3'),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  chooseDecision(key: string) {
+    this.decision.set(key || null);
+    this.decisionTouched.set(false);
+  }
+
+  submitDecision() {
+    const key = this.chosen()?.key;
+    if (!key || this.deciding()) return;
+
+    if (this.noteMissing()) { this.decisionTouched.set(true); return; }
+
+    this.deciding.set(true);
+    const note = this.decisionNote().trim() || null;
+
+    const call = key === 'apply'
+      ? this.api.apply(this.projectId(), this.no())
+      : this.api.decide(this.projectId(), this.no(), key, note);
+
+    call.subscribe({
+      next: r => {
+        this.deciding.set(false);
+        this.decision.set(null);
+        this.decisionNote.set('');
+        this.toast.show(r.message);
+        this.load();
+      },
+      error: e => {
+        this.deciding.set(false);
+        // A 422 from apply is `03 §6`'s failable step: nothing moved, and the
+        // message names the step that stopped.
+        this.error.set(e?.error?.message ?? e?.message ?? 'request failed');
+        this.load();
+      },
+    });
+  }
+
+  openRecording(stage: RecordStage, party: RecordExternalParty) {
+    this.recording.set(party);
+    this.recordingStage.set(stage);
+    this.recordState.set('in');
+    this.letterNo.set('');
+    this.letterDate.set(this.data()?.dataDate ?? '');
+    this.recordNote.set('');
+    this.decisionTouched.set(false);
+  }
+
+  letterMissing = computed(() => !this.letterNo().trim() || !this.letterDate().trim());
+
+  submitRecording() {
+    const party = this.recording();
+    if (!party || this.deciding()) return;
+    if (this.letterMissing()) { this.decisionTouched.set(true); return; }
+
+    this.deciding.set(true);
+    this.api.recordExternal(this.projectId(), this.no(), party.id, {
+      state: this.recordState(),
+      letterNo: this.letterNo().trim(),
+      letterDate: this.letterDate(),
+      note: this.recordNote().trim() || null,
+    }).subscribe({
+      next: r => {
+        this.deciding.set(false);
+        this.recording.set(null);
+        this.toast.show(r.message);
+        this.load();
+      },
+      error: e => {
+        this.deciding.set(false);
+        this.error.set(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
+  }
 
   title = computed(() => {
     const d = this.data();

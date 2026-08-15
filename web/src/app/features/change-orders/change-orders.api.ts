@@ -5,6 +5,7 @@ import { ChangeOrderRecordResponse } from './change-order-record.types';
 import {
   WizardCreateResponse, WizardDraft, WizardPreviewResponse, WizardSourceResponse,
 } from './change-order-wizard.types';
+import { WorkflowResult } from './change-order-record.types';
 
 /**
  * Every call SCR-W8's register makes — one, and it reads.
@@ -66,5 +67,39 @@ export class ChangeOrdersApi {
   create(projectId: string, draft: WizardDraft, kind: 'draft' | 'submit') {
     return this.api.post<WizardCreateResponse>(
       `/api/projects/${encodeURIComponent(projectId)}/change-orders?kind=${kind}`, draft);
+  }
+
+  // [EP-WFL-01] POST /api/projects/{id}/change-orders/{no}/decisions
+  //   → api/Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs
+  //
+  // `03 §5`'s four decisions, plus resubmit. The endpoint re-resolves BR-14
+  // from the persona header and refuses anything the relation does not allow —
+  // the page hiding a control is courtesy, not the rule.
+  decide(projectId: string, no: string, decision: string, note: string | null) {
+    return this.api.post<WorkflowResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/change-orders/${encodeURIComponent(no)}/decisions`,
+      { decision, note });
+  }
+
+  // [EP-WFL-02] POST /api/projects/{id}/change-orders/{no}/external/{partyId}
+  //   → api/Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs
+  //
+  // `03 §4` — the DELEGATE records; the decision belongs to the party, and the
+  // official letter number and date are what make it a record.
+  recordExternal(projectId: string, no: string, partyId: number,
+                 body: { state: string; letterNo: string; letterDate: string; note: string | null }) {
+    return this.api.post<WorkflowResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/change-orders/${encodeURIComponent(no)}/external/${partyId}`,
+      body);
+  }
+
+  // [EP-WFL-03] POST /api/projects/{id}/change-orders/{no}/apply
+  //   → api/Features/ChangeOrders/ChangeOrderWorkflowEndpoints.cs
+  //
+  // The only call in this app that moves a contract (`02 §9`). A weight check
+  // that fails comes back 422 and NOTHING has changed.
+  apply(projectId: string, no: string) {
+    return this.api.post<WorkflowResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/change-orders/${encodeURIComponent(no)}/apply`, {});
   }
 }

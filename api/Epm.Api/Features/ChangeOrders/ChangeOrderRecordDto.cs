@@ -126,6 +126,7 @@ public record RecordTimeImpact(
 /// this name is the recorder, and the two are never merged (`03 §4`).
 /// </param>
 public record RecordExternalParty(
+    int Id,
     string PartyAr,
     string PartyEn,
     string State,

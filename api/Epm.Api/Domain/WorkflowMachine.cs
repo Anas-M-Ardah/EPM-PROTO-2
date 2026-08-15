@@ -89,6 +89,71 @@ public static class WorkflowMachine
 
     public record Transition(string Lifecycle, int? StageNo);
 
+    /// <param name="Key">approve · return · reject · cancel · resubmit · apply.</param>
+    /// <param name="NeedsNote">
+    /// `03 §5` — a return or a rejection without a stated reason is a decision
+    /// the next reader cannot act on, so the comment is REQUIRED and the record
+    /// keeps it.
+    /// </param>
+    public record Decision(string Key, bool NeedsNote, bool Danger);
+
+    /// <summary>
+    /// 03 §5 · §3 · §7 — WHICH decisions this viewer can take on this order,
+    /// from where it actually stands. Availability is a rule, not a UI state:
+    /// the browser renders what this returns and adds nothing.
+    ///
+    /// Three things narrow it:
+    ///   1. BR-14 — only `awaiting` (the stage's owner) or `recorder` (the
+    ///      delegate, and then only for external parties) may act at all.
+    ///   2. `03 §3` — a stage with a PENDING external party cannot be
+    ///      completed, so `approve` disappears while one is outstanding. The
+    ///      order can still be RETURNED: a defective order should not have to
+    ///      wait on a ministry reply to be sent back.
+    ///   3. The lifecycle — a returned order is resubmitted, an approved one is
+    ///      applied, and a closed or rejected one takes nothing.
+    /// </summary>
+    public static IReadOnlyList<Decision> Available(
+        string lifecycle, string relation, IReadOnlyList<string> externalStates)
+    {
+        var canAct = ViewerRelation.CanAct(relation);
+        if (!canAct) return [];
+
+        switch (lifecycle)
+        {
+            case "pending":
+            {
+                var list = new List<Decision>();
+
+                // `03 §3` — the stage cannot complete while a party is out.
+                if (CanCompleteStage(externalStates))
+                    list.Add(new("approve", false, false));
+
+                list.Add(new("return", true, false));
+                list.Add(new("reject", true, true));
+                // D-04 — only the two stage-4 parties may cancel, and the
+                // endpoint checks that; offering it here at all is what makes
+                // the check reachable.
+                list.Add(new("cancel", true, true));
+                return list;
+            }
+
+            // `03 §5` — a returned order is with its originator to revise, and
+            // the one thing they do with it is send it back in.
+            case "returned":
+                return [new("resubmit", false, false)];
+
+            // `02 §9` — approving changed nothing; APPLYING is what moves the
+            // contract. `applied_partial` is a run that stopped, so it offers
+            // the same action again rather than a different one.
+            case "approved":
+            case "applied_partial":
+                return [new("apply", false, false)];
+
+            default:
+                return [];
+        }
+    }
+
     /// <summary>
     /// 03 §5 — one decision at the current stage. `return` moves the pointer
     /// back; the caller APPENDS an audit entry, since full history and prior

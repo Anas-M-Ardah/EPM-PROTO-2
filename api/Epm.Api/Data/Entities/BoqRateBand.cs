@@ -14,10 +14,10 @@ namespace Epm.Api.Data.Entities;
 /// with bands has no single stored rate to show. It is EMPTY until Phase 5
 /// applies an order that re-prices, which is the only thing that creates a band.
 ///
-/// PRUNED for 4.2 (the register shows neither): `SourceChangeOrderId` — the
-/// applied order that produced the band — and `IsExcessBand` — true for the
-/// re-priced portion beyond the 20% threshold. Phase 5.4 restores both when
-/// applying an order is what writes here.
+/// RESTORED IN 5.4, exactly as 4.2 said they would be: `SourceChangeOrderId` —
+/// the applied order that produced the band — and `IsExcessBand`, true for the
+/// portion beyond the 20% threshold that was re-priced. Applying an order
+/// (EP-WFL-03) is the only thing that writes here.
 /// </summary>
 public class BoqRateBand
 {
@@ -30,4 +30,19 @@ public class BoqRateBand
 
     public decimal Qty { get; set; }
     public decimal Rate { get; set; }
+
+    /// <summary>
+    /// → ChangeOrder.Id — WHICH applied order created this band. `01 §4`: a BOQ
+    /// line must be able to answer "which change orders amended me, in what
+    /// order, and what did each one do", and without this column the bands are
+    /// an unattributed list of rates.
+    /// </summary>
+    public int? SourceChangeOrderId { get; set; }
+
+    /// <summary>
+    /// True for the band beyond the 20% threshold — the one لجنة تثبيت الأسعار
+    /// priced (`02 §5`). The distinction is not cosmetic: it is what lets a
+    /// reader see that a line carries two rates BY RULE rather than by error.
+    /// </summary>
+    public bool IsExcessBand { get; set; }
 }
