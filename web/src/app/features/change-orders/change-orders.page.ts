@@ -8,6 +8,7 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
@@ -46,7 +47,7 @@ import { ChangeOrderWizard } from './change-order.wizard';
   standalone: true,
   imports: [
     IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    ChangeOrderWizard,
+    ChangeOrderWizard, PersonaSwitcherComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-orders.page.html',
@@ -75,11 +76,40 @@ export class ChangeOrdersPage {
   attn = signal('');
   /** Free text over the fields someone would actually type. */
   q = signal('');
+  /**
+   * الشكل 29's «المرحلة» filter. The plate lists it beside the three attention
+   * filters and it answers a different question from them: not «is something
+   * wrong with this order» but «where in the six stages is it sitting».
+   */
+  stage = signal('');
+  /** الشكل 29's «مرشح نوع الأمر» — lookup `co-type`. */
+  type = signal('');
 
   readonly colCount = 7;
 
   rows = computed(() => this.data()?.rows ?? []);
   groups = computed(() => (this.data()?.groups ?? []).filter(g => g.key !== 'draft' || g.count > 0));
+
+  /**
+   * The stages actually present on this project's orders, in stage order — not
+   * the six `WorkflowMachine` defines. A stage nothing is sitting in is not a
+   * filter anybody needs, and offering it would be offering an empty result.
+   */
+  stagesPresent = computed(() => {
+    const seen = new Map<number, string>();
+    for (const r of this.rows()) {
+      if (r.currentStageNo != null && !seen.has(r.currentStageNo)) {
+        seen.set(r.currentStageNo, this.lang.pick(r.currentStageNameAr ?? '', r.currentStageNameEn ?? ''));
+      }
+    }
+    return [...seen].sort((a, b) => a[0] - b[0]).map(([no, name]) => ({ no, name }));
+  });
+
+  /** Likewise: the types present, labelled from the `co-type` lookup. */
+  typesPresent = computed(() => {
+    const seen = new Set(this.rows().map(r => r.type));
+    return [...seen].sort().map(code => ({ code, label: this.lookups.label('co-type', code) }));
+  });
 
   /**
    * A row's lifecycle group. `approved` and `applied_partial` share one —
@@ -105,8 +135,13 @@ export class ChangeOrdersPage {
     const attn = this.attn();
     const q = this.q().trim().toLowerCase();
 
+    const stage = this.stage();
+    const type = this.type();
+
     return this.rows().filter(r => {
       if (life !== 'all' && this.groupOf(r) !== life) return false;
+      if (stage && String(r.currentStageNo ?? '') !== stage) return false;
+      if (type && r.type !== type) return false;
 
       if (attn === 'mine' && !r.relation.canAct) return false;
       if (attn === 'sla' && !r.exceptions.some(x => x.code === 'sla-breached')) return false;
@@ -120,11 +155,14 @@ export class ChangeOrdersPage {
     });
   });
 
-  filtered = computed(() => this.life() !== 'all' || !!this.attn() || !!this.q().trim());
+  filtered = computed(() =>
+    this.life() !== 'all' || !!this.attn() || !!this.stage() || !!this.type() || !!this.q().trim());
 
   clearFilters() {
     this.life.set('all');
     this.attn.set('');
+    this.stage.set('');
+    this.type.set('');
     this.q.set('');
   }
 

@@ -559,6 +559,16 @@ public static class ChangeOrdersEndpoints
                     a.Field, a.PreviousValue, a.NewValue, a.Note, a.Version);
             }).ToList();
 
+            // الشكل 30's «منتقي الأمر» — the project's other orders, reached
+            // through its CONTRACTS because an order has no project column
+            // (CLAUDE.md §5.1). Ordered by number so the picker reads like the
+            // register it saves a trip to.
+            var siblings = await db.ChangeOrders.AsNoTracking()
+                .Where(x => contractIds.Contains(x.ContractId))
+                .OrderBy(x => x.No)
+                .Select(x => new RecordSibling(x.No, x.TitleAr, x.TitleEn, x.Lifecycle, x.No == no))
+                .ToListAsync();
+
             return Results.Ok(new ChangeOrderRecordResponse(
                 p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
                 persona.Id, persona.Party, persona.IsDelegate,
@@ -570,7 +580,7 @@ public static class ChangeOrdersEndpoints
                 exceptions, card,
                 preInputs, impact, contractImpact, decision, applySteps,
                 recordLines, netContractor, netReDept, netApproved, weights, redistribution,
-                time, recordStages, transaction, attachments, auditRows));
+                time, recordStages, transaction, attachments, auditRows, siblings));
         });
     }
 

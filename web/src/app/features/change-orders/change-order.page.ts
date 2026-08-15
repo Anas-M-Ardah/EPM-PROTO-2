@@ -9,6 +9,7 @@ import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
@@ -50,7 +51,8 @@ import {
 @Component({
   selector: 'epm-change-order-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SectionComponent, DrawerComponent, TableSkeletonComponent],
+  imports: [IconComponent, StatusPillComponent, SectionComponent, DrawerComponent, TableSkeletonComponent,
+            PersonaSwitcherComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-order.page.html',
 })
@@ -290,6 +292,18 @@ export class ChangeOrderPage {
   activityCount = computed(() => this.data()?.time.activities.length ?? 0);
   fileCount = computed(() => this.data()?.attachments.length ?? 0);
   logCount = computed(() => this.data()?.audit.length ?? 0);
+
+  /**
+   * الشكل 30's «منتقي الأمر». It navigates — the record is a ROUTE, so moving
+   * between orders is a navigation and not a signal swap; the back button then
+   * walks the orders a reader actually looked at.
+   */
+  siblings = computed(() => this.data()?.siblings ?? []);
+
+  openSibling(no: string) {
+    if (!no || no === this.no()) return;
+    this.router.navigate(['/projects', this.projectId(), 'changeorders', no]);
+  }
 
   stageCount = computed(() => {
     const s = this.data()?.stages ?? [];

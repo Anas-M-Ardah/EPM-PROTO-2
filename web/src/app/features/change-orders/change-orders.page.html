@@ -121,12 +121,51 @@
               <span class="n"><bdi>{{ overdueCount() }}</bdi></span>
             </button>
 
+            <!-- الشكل 29's fourth filter, listed with the other three:
+                 «بانتظار إجرائي، تجاوزت السقف الزمني، متأخرة، المرحلة». Only
+                 the stages orders are actually SITTING in are offered — a
+                 stage with nothing in it is a filter onto an empty result. -->
+            @if (stagesPresent().length > 1) {
+              <label class="d-field">
+                <span class="epm-sr-only">{{ lang.t('chg_f_stage') }}</span>
+                <select class="epm-bare-input" [value]="stage()"
+                        [attr.aria-label]="lang.t('chg_f_stage')"
+                        (change)="stage.set($any($event.target).value)">
+                  <option value="">{{ lang.t('chg_f_stage_all') }}</option>
+                  @for (st of stagesPresent(); track st.no) {
+                    <option [value]="st.no">{{ st.no }} · {{ st.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+
             <span class="sp"></span>
 
             @if (filtered()) {
               <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
                 <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
               </button>
+            }
+
+            <!-- الشكل 29 lists «مبدّل «العرض بصفة»» in this bar, right after
+                 «مسح الفلاتر». It is a filter on THIS screen, not an app-wide
+                 identity control (P-126). -->
+            <epm-persona-switcher />
+
+            <!-- الشكل 29's «مرشح نوع الأمر». هندسي / تجهيزي — the two the
+                 `co-type` lookup defines, and only the ones present. -->
+            @if (typesPresent().length > 1) {
+              <label class="d-field">
+                <span class="epm-sr-only">{{ lang.t('chg_ff_type') }}</span>
+                <select class="epm-bare-input" [value]="type()"
+                        [attr.aria-label]="lang.t('chg_ff_type')"
+                        (change)="type.set($any($event.target).value)">
+                  <option value="">{{ lang.t('chg_ff_type_all') }}</option>
+                  @for (t of typesPresent(); track t.code) {
+                    <option [value]="t.code">{{ t.label }}</option>
+                  }
+                </select>
+              </label>
             }
           </div>
 

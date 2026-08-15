@@ -724,6 +724,10 @@ const STR = {
 
   // chrome
   persona:         { ar: 'العرض بصفة',                     en: 'Viewing as' },
+  persona_where:   { ar: 'تُبدَّل من سجل الأوامر التغييرية أو من بطاقة الأمر',
+                     en: 'Switched from the change-order register or an order record' },
+  persona_note:    { ar: 'تُحسم الصفة على الخادم: العلاقة بالأمر والإجراءات المتاحة ونطاق مساحات العمل كلها تُقرأ من هذه الصفة، لا من هذه الشاشة. التبديل يعيد تحميل الصفحة بصفتها الجديدة.',
+                     en: 'The capacity is resolved on the server: the viewer relation, the available actions and the workspace scope are all read from it, not from this screen. Switching reloads the page under the new capacity.' },
   language:        { ar: 'English',                        en: 'العربية' },
 
   // shell chrome — ported from v1.1 DSidebar / DTopbar / DAppFooter.
@@ -1295,6 +1299,10 @@ const STR = {
   chg_f_mine:      { ar: 'بانتظار إجرائي',                  en: 'Awaiting me' },
   chg_f_sla:       { ar: 'تجاوزت السقف',                    en: 'SLA exceeded' },
   chg_f_overdue:   { ar: 'متأخرة',                          en: 'Overdue' },
+  chg_f_stage:     { ar: 'المرحلة',                          en: 'Stage' },
+  chg_f_stage_all: { ar: 'كل المراحل',                      en: 'All stages' },
+  chg_ff_type:     { ar: 'نوع الأمر',                       en: 'Order type' },
+  chg_ff_type_all: { ar: 'كل الأنواع',                      en: 'All types' },
 
   chg_awaiting_t:  { ar: '{n} من الأوامر بانتظار إجرائك',    en: '{n} order(s) await your action' },
   chg_awaiting_b:  { ar: 'بصفة',                            en: 'as' },
@@ -1330,6 +1338,7 @@ const STR = {
 
   // ── SCR-W8 · بطاقة الأمر التغييري — ملحق الأشكال 30–34, `03 §9` ──────
   chg_back:        { ar: 'السجل',                           en: 'Register' },
+  chg_picker:      { ar: 'منتقي الأمر',                      en: 'Order picker' },
   chg_print:       { ar: 'طباعة',                           en: 'Print' },
   chg_export:      { ar: 'تصدير',                           en: 'Export' },
 

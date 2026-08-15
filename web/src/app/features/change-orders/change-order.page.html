@@ -59,7 +59,33 @@
 
       <span class="sp"></span>
 
-      <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
+<!-- الشكل 30 names «مبدّل «العرض بصفة»» on the record itself, and
+           this is the screen it matters most on: the same order shows a
+           different set of actions to a different صفة (BR-14 · P-126). -->
+      <epm-persona-switcher />
+
+      <!-- الشكل 30's «منتقي الأمر» — move between the project's orders
+           without going back to the register. It NAVIGATES: the record is a
+           route, so the back button then walks the orders a reader actually
+           opened, which a signal swap would not. -->
+      @if (siblings().length > 1) {
+        <label class="d-field">
+          <span class="epm-sr-only">{{ lang.t('chg_picker') }}</span>
+          <!-- `[selected]` on the OPTION, not `[value]` on the select:
+               the select is bound before its options exist, so the value lands
+               on nothing and the picker opens on the first order rather than
+               the one being read. `isCurrent` comes from the server. -->
+          <select class="epm-bare-input"
+                  [attr.aria-label]="lang.t('chg_picker')"
+                  (change)="openSibling($any($event.target).value)">
+            @for (sib of siblings(); track sib.no) {
+              <option [value]="sib.no" [selected]="sib.isCurrent">{{ sib.no }} — {{ lang.pick(sib.titleAr, sib.titleEn) }}</option>
+            }
+          </select>
+        </label>
+      }
+
+            <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
         <epm-icon name="download" [size]="15" />{{ lang.t('chg_print') }}
       </button>
       <button type="button" class="d-btn sm" (click)="toast.demo('تصدير البطاقة', 'Export record')">

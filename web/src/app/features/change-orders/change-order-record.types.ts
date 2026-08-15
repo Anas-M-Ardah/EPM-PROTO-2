@@ -302,6 +302,8 @@ export interface ChangeOrderRecordResponse {
 
   attachments: RecordAttachment[];
   audit: RecordAuditEntry[];
+  /** الشكل 30's «منتقي الأمر». */
+  siblings: RecordSibling[];
 }
 
 /**
@@ -314,4 +316,13 @@ export interface WorkflowResult {
   currentStageNo: number | null;
   /** Arabic, and written by the endpoint — the toast says what actually happened. */
   message: string;
+}
+
+/** الشكل 30's «منتقي الأمر» — one of the project's other orders. */
+export interface RecordSibling {
+  no: string;
+  titleAr: string;
+  titleEn: string;
+  lifecycle: string;
+  isCurrent: boolean;
 }

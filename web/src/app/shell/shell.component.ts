@@ -469,13 +469,8 @@ export class ShellComponent {
     this.router.navigate(['/']);
   }
 
-  onPersona(id: string) {
-    this.closeOverlays();
-    this.persona.select(id);
-    // Every request carries X-Epm-User, so a persona change means the current
-    // page's data may now differ. Reload rather than invalidating per-feature
-    // caches — this is a prototype and correctness beats subtlety.
-    location.reload();
-  }
+  //  moved to <epm-persona-switcher /> with the control itself
+  // (P-126). The shell still INJECTS PersonaService — it names the capacity in
+  // the account menu and the sidebar, and the workspace guard reads its scope.
 
 }

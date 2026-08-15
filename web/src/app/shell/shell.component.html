@@ -354,40 +354,25 @@
     <hr />
 
     <!--
-      العرض بصفة — the persona switcher (03 §7). In a real system this comes
-      from the session identity; here it IS the identity. Keeping it one click
-      from anywhere is deliberate: it is the fastest way to review the
-      permission model, which is what 03 §7 asks the switcher for.
+      ── THE CAPACITY IS SHOWN HERE, AND CHANGED ON THE SCREEN ────────────
+      «العرض بصفة» used to be a list in this menu, which read as an app-wide
+      identity control. It is not one. The appendix names the switcher exactly
+      three times and all three are change-order screens — الشكل 29's filter
+      bar and الشكل 30's header — because that is the one place a record shows
+      a different face to a different صفة (BR-14). `03 §7` agrees: the
+      switcher exists to review the change-order permission model.
+
+      So this menu STATES the capacity in effect, and the two screens that
+      depend on it carry the control (P-126). The line below is a reading, not
+      a button.
     -->
     <div class="d-pop-lbl">{{ lang.t('persona') }}</div>
-    <!--
-      THE LIST SCROLLS, NOT THE MENU. `.d-pop` is capped at 70vh by the
-      reference's own sheet, and the reference's menu never reaches it — it has
-      six rows. Ours has the capacities on top of them, which overran the cap
-      and pushed SIGN OUT, the last row, below an internal scroll where it could
-      not be found. The furniture around this list is now always visible and
-      only the capacities scroll, so the menu's terminal action never leaves the
-      box however many 03 §7 grows to.
-
-      ── THESE ARE CAPACITIES, NOT COLLEAGUES ─────────────────────────────
-      There is ONE user. Each row is a صفة that one person acts in, so the row
-      leads with the ROLE and names the PARTY beneath it. It used to lead with
-      a different personal name per row, which read as eight separate employees
-      and was the confusion this list now avoids — «العرض بصفة» means *viewing
-      as*, and the name never changes.
-    -->
-    <div class="epm-persona-list">
-      @for (p of persona.all(); track p.id) {
-        <button type="button" class="d-pop-row"
-                [class.on]="persona.currentId() === p.id"
-                (click)="onPersona(p.id)">
-          <span class="d-pop-row-tx">
-            <b>{{ lang.pick(p.roleAr, p.roleEn) }}</b>
-            <span>{{ p.party }}</span>
-          </span>
-          @if (persona.currentId() === p.id) { <epm-icon name="check" [size]="18" /> }
-        </button>
-      }
+    <div class="d-pop-row" style="cursor:default">
+      <span class="epm-pop-ico"><epm-icon name="badge" [size]="18" /></span>
+      <span class="d-pop-row-tx">
+        <b>{{ personaRole() }}</b>
+        <span>{{ lang.t('persona_where') }}</span>
+      </span>
     </div>
 
     <hr />

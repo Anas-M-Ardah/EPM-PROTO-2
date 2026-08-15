@@ -280,6 +280,16 @@ public record RecordCard(
     int? ApprovedDays,
     string? ContractualFinish);
 
+/// <summary>
+/// One entry of الشكل 30's «منتقي الأمر» — every other order on this PROJECT,
+/// so a reader can move between records without going back to the register.
+///
+/// Deliberately thin: a number, a title and a lifecycle. The picker is a way
+/// to navigate, not a second register, and sending each sibling's relation and
+/// figures would be sending a register nobody asked for.
+/// </summary>
+public record RecordSibling(string No, string TitleAr, string TitleEn, string Lifecycle, bool IsCurrent);
+
 public record ChangeOrderRecordResponse(
     string ProjectId,
     string ProjectNameAr,
@@ -325,4 +335,7 @@ public record ChangeOrderRecordResponse(
     RecordTransaction Transaction,
 
     IReadOnlyList<RecordAttachment> Attachments,
-    IReadOnlyList<RecordAuditEntry> Audit);
+    IReadOnlyList<RecordAuditEntry> Audit,
+
+    /// <summary>الشكل 30's «منتقي الأمر» — the project's other orders.</summary>
+    IReadOnlyList<RecordSibling> Siblings);
