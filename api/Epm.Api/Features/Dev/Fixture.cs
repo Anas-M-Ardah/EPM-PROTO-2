@@ -536,6 +536,9 @@ public static class Fixture
         // ملحق الشكل 47 — قواعد التنبيه على مستوى المشروع.
         AlertRules(db);
 
+        // ملحق الشكل 44 — النموذج ثلاثي الأبعاد (07 §8: the tab, not the viewer).
+        ModelElements(db);
+
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
 
@@ -1622,6 +1625,80 @@ public static class Fixture
             R("RSK-07", "مخاطر السلامة في أعمال الارتفاعات", "Safety risk in work at height",
                 "safety", Low, Med, "القسم الهندسي", "VAC", "open", 19)
         );
+
+        db.SaveChanges();
+    }
+
+/// <summary>
+    /// **ملحق الشكل 44** — the six elements of «شجرة النموذج», their three
+    /// versions, and the links that are the point of the screen.
+    ///
+    /// ── THE PLATE'S TREE, ON THIS FIXTURE'S CONTRACTS ────────────────────
+    /// الشكل 44 draws مبنى A with L00 · L01 · L02 and names its selected
+    /// element COL-L1 «أعمدة الطابق الأول» — إنشائي, منجز, Zone A, 68 عمود,
+    /// R2, 100%, linked to a concrete-columns BOQ line and to activity **A4**.
+    /// This fixture's CNT-0279 carries BQ-007 «الأعمدة والجسور الخرسانية» and
+    /// activity A4 of the same name, so the plate's link is reproduced against
+    /// rows that actually exist rather than copied as dead text.
+    ///
+    /// The mechanical and electrical elements cross to the OTHER contract and
+    /// to CNT-0279's first-fix line, which is what makes `ContractId` on the
+    /// element necessary: BQ-002 exists on both contracts and means two
+    /// different things.
+    ///
+    /// One element is متأخر and three are حرج, so the colour key and the ring
+    /// both have something to show.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void ModelElements(EpmDb db)
+    {
+        const string BuildingA = "مبنى A";
+        const string ZoneA = "Zone A";
+
+        ModelElement E(string code, string ar, string en, string discipline, string status,
+                       bool critical, string level, decimal qty, string unit,
+                       string contract, string boq, string activity, decimal progress,
+                       string revision) => new()
+        {
+            ProjectId = "PRJ-0279", Code = code, NameAr = ar, NameEn = en,
+            Discipline = discipline, Status = status, IsCritical = critical,
+            Building = BuildingA, Level = level, Zone = ZoneA,
+            Qty = qty, Unit = unit,
+            ContractId = contract, BoqCode = boq, ActivityCode = activity,
+            ProgressPct = progress, Revision = revision,
+        };
+
+        db.ModelElements.AddRange(
+            E("FND-01", "الأساسات", "Foundations", "structural", "completed", true,
+                "L00", 420m, "م³", "CNT-0279", "BQ-006", "A3", 100m, "R2"),
+            // الشكل 44's selected element, field for field.
+            E("COL-L1", "أعمدة الطابق الأول", "Level 1 columns", "structural", "completed", true,
+                "L01", 68m, "عمود", "CNT-0279", "BQ-007", "A4", 100m, "R2"),
+            E("SLB-L1", "سقف الطابق الأول", "Level 1 slab", "structural", "completed", false,
+                "L01", 640m, "م²", "CNT-0279", "BQ-003", "A5", 100m, "R2"),
+            E("SLB-L2", "سقف الطابق الثاني", "Level 2 slab", "structural", "inprogress", false,
+                "L02", 640m, "م²", "CNT-0279", "BQ-003", "A5", 72m, "R2"),
+            // Mechanical — the electromechanical contract's HVAC line.
+            E("DUCT-L2-01", "مجرى هواء — ميكانيكي", "Duct run — mechanical", "mechanical", "inprogress", false,
+                "L02", 85m, "م.ط", "CNT-0279-EM", "BQ-004", "E3", 25m, "R3"),
+            // Electrical — the civil contract's first-fix line, and the one
+            // element the key needs to show متأخر.
+            E("CND-L2-01", "مسارات كهرباء", "Electrical conduit", "electrical", "delayed", true,
+                "L02", 120m, "م.ط", "CNT-0279", "BQ-011", "A9", 40m, "R2"));
+
+        // «الحالي · 01-06-2026» on the selector, with the two it replaced kept
+        // readable — a re-issue never deletes what it replaced.
+        db.ModelVersions.AddRange(
+            new ModelVersion { ProjectId = "PRJ-0279", Code = "m1",
+                LabelAr = "الإصدار 1", LabelEn = "Version 1",
+                IssuedOn = new DateOnly(2025, 11, 20), By = "م. مصطفى" },
+            new ModelVersion { ProjectId = "PRJ-0279", Code = "m2",
+                LabelAr = "الإصدار 2", LabelEn = "Version 2",
+                IssuedOn = new DateOnly(2026, 2, 15), By = "م. ليلى حسن" },
+            new ModelVersion { ProjectId = "PRJ-0279", Code = "m3",
+                LabelAr = "الإصدار الحالي", LabelEn = "Current version",
+                IssuedOn = new DateOnly(2026, 6, 1), By = "م. أحمد فؤاد", IsCurrent = true });
 
         db.SaveChanges();
     }

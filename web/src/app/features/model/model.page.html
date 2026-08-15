@@ -1,0 +1,279 @@
+<!--
+  SCR-W10 — النموذج ثلاثي الأبعاد · ملحق الشكل 44.
+
+  The plate, taken literally, minus the one thing 07 §8 puts out of Phase 1:
+    a version selector — «الحالي · 01-06-2026»
+    a view toggle — الحالة | التخصص
+    شجرة النموذج with discipline filters: الكل · إنشائي · ميكانيكي · كهربائي
+    مبنى A → L00 · L01 · L02 → the elements
+    the colour key: مكتمل · قيد التنفيذ · متأخر, and حرج as a RING
+    لوحة تفاصيل العنصر — properties, then روابط
+
+  The SCENE is stubbed and says so (07 §8 · P-120), and the floating toolbar
+  is not drawn: measure and section controls over an empty viewport would be
+  the same defect as a tab that opens onto nothing.
+
+  Every number, ID and date is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_model') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-model-canvas3" style="height: 320px">
+        <div class="d-model-viewport">
+          <div class="d-model-loading">
+            <epm-icon name="deployed_code" [size]="30" />
+            <span>{{ lang.t('loading') }}</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_model') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <!-- ══ Z6 — the version selector and the view toggle ══════════════════ -->
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_model') }}
+        @if (current(); as v) {
+          <em>{{ versionLabel(v) }} · <bdi>{{ fmt.date(v.issuedOn) }}</bdi></em>
+        }
+      </span>
+
+      <div class="grp">
+        <div class="d-seg">
+          <button type="button" [class.on]="colourBy() === 'status'"
+                  (click)="colourBy.set('status')">{{ lang.t('mdl_by_status') }}</button>
+          <button type="button" [class.on]="colourBy() === 'discipline'"
+                  (click)="colourBy.set('discipline')">{{ lang.t('mdl_by_discipline') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        @if (d.elementCount === 0) {
+          <div class="d-empty">
+            <span class="d-empty-ico"><epm-icon name="deployed_code" [size]="30" /></span>
+            <b>{{ lang.t('mdl_empty_t') }}</b>
+            <span>{{ lang.t('mdl_empty_b') }}</span>
+          </div>
+        } @else {
+
+          <!-- الشكل 44's three panes: tree · scene · element details. -->
+          <div class="d-model-shell3">
+
+            <!-- ══ شجرة النموذج ══════════════════════════════════════════ -->
+            <div>
+              <div class="d-model-filter">
+                @for (c of d.disciplines; track c.code) {
+                  <button type="button" class="d-chip2" [class.on]="discipline() === c.code"
+                          (click)="discipline.set(c.code)">
+                    {{ disciplineLabel(c.code) }} <bdi>{{ c.count }}</bdi>
+                  </button>
+                }
+              </div>
+
+              @if (tree().length === 0) {
+                <div class="d-cell-sub">{{ lang.t('mdl_nomatch') }}</div>
+              }
+
+              @for (b of tree(); track b.building) {
+                <div class="d-model-node grp">{{ b.building }}</div>
+                @for (l of b.levels; track l.level) {
+                  <div class="d-model-node lvl"><bdi>{{ l.level }}</bdi></div>
+                  @for (e of l.elements; track e.code) {
+                    <button type="button" class="d-model-node obj"
+                            [class.on]="selected() === e.code"
+                            [attr.aria-pressed]="selected() === e.code"
+                            (click)="select(e.code)" (keydown)="onNodeKey($event, e.code)">
+                      <!-- Status is the colour and criticality is the RING;
+                           the title carries the word, so neither is ever
+                           colour alone (05 §7.6). -->
+                      <i class="epm-model-mark {{ markClass(e) }}"
+                         [attr.title]="markTitle(e)" [attr.aria-label]="markTitle(e)"></i>
+                      <span class="nm">{{ name(e) }}</span>
+                      @if (colourBy() === 'discipline') {
+                        <span class="d-cell-sub">{{ disciplineLabel(e.discipline) }}</span>
+                      }
+                    </button>
+                  }
+                }
+              }
+            </div>
+
+            <!-- ══ the scene — stubbed, and it says so ═══════════════════ -->
+            <div class="d-model-canvas3">
+              <div class="d-model-viewport">
+                <div class="d-model-loading">
+                  <epm-icon name="deployed_code" [size]="34" />
+                  <b>{{ lang.t('mdl_stub_t') }}</b>
+                  <span style="max-inline-size: 46ch; text-align: center; line-height: 1.7">
+                    {{ lang.t('mdl_stub_b') }}
+                  </span>
+                  <span class="d-demo-tag">{{ lang.t('mdl_stub_tag') }}</span>
+                </div>
+              </div>
+
+              <!-- مفتاح ألوان حالات العناصر, under the scene as the plate has
+                   it. حرج is the fourth entry and the only one drawn as a
+                   ring — it is not a fourth status (CLAUDE.md §6). -->
+              <div class="d-model-legend">
+                @for (s of d.statuses; track s.code) {
+                  <span class="li">
+                    <i class="epm-model-mark {{ s.code }}"></i>
+                    {{ statusLabel(s.code) }} <bdi>{{ s.count }}</bdi>
+                  </span>
+                }
+                <span class="li">
+                  <i class="ring"></i>
+                  {{ lang.t('mdl_critical') }} <bdi>{{ d.criticalCount }}</bdi>
+                </span>
+                <span class="sp" style="flex: 1"></span>
+                <span class="li">
+                  {{ lang.t('mdl_elements') }}
+                  <bdi>{{ shownCount() }}</bdi> / <bdi>{{ d.elementCount }}</bdi>
+                </span>
+              </div>
+            </div>
+
+            <!-- ══ لوحة تفاصيل العنصر ════════════════════════════════════ -->
+            @if (opened(); as e) {
+              <div class="d-model-props">
+                <div class="d-model-props-head">
+                  <b>{{ name(e) }}</b>
+                  <span class="d-pill {{ statusClass(e.status) }}">{{ statusLabel(e.status) }}</span>
+                  @if (e.isCritical) {
+                    <span class="d-pill critical">{{ lang.t('mdl_critical') }}</span>
+                  }
+                </div>
+
+                <div class="d-model-plist">
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_code') }}</span>
+                    <span class="v mono"><bdi>{{ e.code }}</bdi></span>
+                  </div>
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_discipline') }}</span>
+                    <span class="v">{{ disciplineLabel(e.discipline) }}</span>
+                  </div>
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_level') }}</span>
+                    <span class="v mono"><bdi>{{ e.level }}</bdi></span>
+                  </div>
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_zone') }}</span>
+                    <span class="v"><bdi>{{ e.zone }}</bdi></span>
+                  </div>
+                  <!-- The element's OWN quantity, not the BOQ line's: one line
+                       of concrete covers several elements. -->
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_qty') }}</span>
+                    <span class="v num"><bdi>{{ fmt.qty(e.qty) }} {{ e.unit }}</bdi></span>
+                  </div>
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_revision') }}</span>
+                    <span class="v mono"><bdi>{{ e.revision }}</bdi></span>
+                  </div>
+                  <div class="d-plist-i">
+                    <span class="k">{{ lang.t('mdl_progress') }}</span>
+                    <span class="v num"><bdi>{{ fmt.pct(e.progressPct, 0) }}</bdi></span>
+                  </div>
+                </div>
+
+                <!-- الشكل 44's «قسم روابط» — and the reason the screen exists:
+                     the element names one BOQ line and one activity, each in
+                     its own contract. -->
+                <div class="d-model-link">
+                  <span class="lk-t">{{ lang.t('mdl_links') }}</span>
+
+                  <button type="button" class="d-linkrow" (click)="openBoq(e)">
+                    <epm-icon name="list_alt" [size]="15" />
+                    <span><bdi>{{ boqText(e) }}</bdi></span>
+                    <epm-icon name="chevron_left" [size]="15" />
+                  </button>
+
+                  <button type="button" class="d-linkrow" (click)="openActivity(e)">
+                    <epm-icon name="timeline" [size]="15" />
+                    <span><bdi>{{ activityText(e) }}</bdi></span>
+                    <epm-icon name="chevron_left" [size]="15" />
+                  </button>
+
+                  <span class="d-cell-sub">
+                    {{ lang.t('mdl_contract') }} <bdi>{{ e.contractId }}</bdi>
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- ══ إصدارات النموذج ═════════════════════════════════════════
+               The selector on the plate picks a version. Only the current one
+               can be rendered here — elements belong to the project, not to a
+               version — so the list is shown as a RECORD and says so, rather
+               than offering a choice that would quietly show today's elements
+               under yesterday's label (P-120). -->
+          <div class="d-model-split">
+            <div class="d-model-split-head">
+              <epm-icon name="history" [size]="16" />
+              <b>{{ lang.t('mdl_versions') }}</b>
+              <span class="d-cell-sub"><bdi>{{ versions().length }}</bdi></span>
+            </div>
+            <div class="d-tablewrap"><table class="d-table">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('mdl_v_code') }}</th>
+                  <th>{{ lang.t('mdl_v_label') }}</th>
+                  <th>{{ lang.t('mdl_v_date') }}</th>
+                  <th>{{ lang.t('mdl_v_by') }}</th>
+                  <th>{{ lang.t('col_status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of versions(); track v.code) {
+                  <tr>
+                    <td class="mono d-cell-sub"><bdi>{{ v.code }}</bdi></td>
+                    <td class="d-cell-strong">{{ versionLabel(v) }}</td>
+                    <td class="mono"><bdi>{{ fmt.date(v.issuedOn) }}</bdi></td>
+                    <td>{{ v.by }}</td>
+                    <td>
+                      @if (v.isCurrent) {
+                        <span class="d-pill completed">{{ lang.t('mdl_v_current') }}</span>
+                      } @else {
+                        <span class="d-pill">{{ lang.t('mdl_v_previous') }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+
+            <div class="d-msgbar">
+              <epm-icon name="info" [size]="16" />
+              <div>
+                <b>{{ lang.t('mdl_ver_t') }}</b>
+                <span>{{ lang.t('mdl_ver_b') }}</span>
+              </div>
+            </div>
+          </div>
+        }
+
+      </div>
+    </div>
+   }
+  }
+</div>

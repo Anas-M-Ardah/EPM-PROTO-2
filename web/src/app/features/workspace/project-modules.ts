@@ -75,7 +75,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   {
     key: 'mod_group_records',
     modules: [
-      { id: 'model',        icon: 'deployed_code',  key: 'mod_model',        built: false, phase: '6' },
+      { id: 'model',        icon: 'deployed_code',  key: 'mod_model',        built: true,  phase: '6' },
       { id: 'meetings',     icon: 'groups',         key: 'mod_meetings',     built: true,  phase: '6' },
       { id: 'documents',    icon: 'folder_open',    key: 'mod_documents',    built: true,  phase: '6' },
     ],

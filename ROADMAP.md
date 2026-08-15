@@ -922,7 +922,7 @@ Light, independent, parallelisable.
 - [x] SCR-W13 Alerts — **ملحق الشكل 47** — the inbox and the twelve rules, from one read. `Domain/AlertInbox` decides which alerts are live (a disabled rule withdraws its own), which of the four fixed groups each falls in, and how many need action — open AND due at the data date. `EP-PAL-01` · `EP-PAL-02`
 - [ ] SCR-W14 Reports — `DModReports`
 - [ ] SCR-W15 Audit History — `DModAudit`
-- [ ] SCR-W10 3D Model — **stub per `07 §8`**: keep the tab, massing placeholder + object list, no BIM
+- [x] SCR-W10 3D Model — **ملحق الشكل 44**, stub per `07 §8`: the tab, the tree, the element panel and its links to the BOQ line and the activity are real; the scene is a placeholder that says why. `ModelObject`'s massing columns were dropped — the viewer that would have drawn them is out of Phase 1, so they would have existed unread. `EP-MDL-01`
 
 ---
 

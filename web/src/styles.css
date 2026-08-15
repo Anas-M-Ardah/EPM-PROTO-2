@@ -1031,3 +1031,25 @@ button.d-file > .fm { align-items: flex-start; }
    `.epm-track` rail — CLAUDE.md §7, grep before writing a rule. */
 .epm-next-action { align-items: center; gap: var(--space-8, 8px); margin-block-end: var(--space-12); }
 .epm-next-action small { color: inherit; opacity: .8; margin-inline-start: var(--space-6, 6px); }
+
+
+/* ── SCR-W10 · ملحق الشكل 44 — the model tree's status mark ───────────────
+   الشكل 44 colours its elements by status and its key adds «حرج» as a fourth
+   entry. Criticality is NOT a fourth colour: it rides a ring — the same
+   non-colour channel `.d-gantt-bar.crit` and `.d-pill.critical` already use —
+   so the colour channel stays with status (CLAUDE.md §6). A critical element
+   can be مكتمل, and on this key it is both.
+
+   `desktop.css` ships the whole viewer shell (`.d-model-shell3`, `.d-model-
+   node`, `.d-model-legend`, `.d-model-props`, `.d-linkrow`); only the mark
+   itself is missing, because the reference painted its dots from JS. */
+.epm-model-mark { inline-size: 9px; block-size: 9px; border-radius: 50%; flex: none;
+  display: inline-block; background: var(--outline); }
+.epm-model-mark.completed  { background: var(--status-completed-tx); }
+.epm-model-mark.inprogress { background: var(--status-ongoing-tx); }
+.epm-model-mark.delayed    { background: var(--status-delayed-tx); }
+.epm-model-mark.crit { box-shadow: 0 0 0 2px var(--on-surface); }
+
+/* The legend swatch for حرج: a ring around nothing, so it cannot be mistaken
+   for a colour of its own. */
+.d-model-legend i.ring { background: transparent; box-shadow: inset 0 0 0 2px var(--on-surface); }

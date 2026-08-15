@@ -291,6 +291,12 @@ export const routes: Routes = [
             loadComponent: () => import('./features/documents/documents.page').then(m => m.DocumentsPage),
           },
 
+          // SCR-W10 · features/model · Features/Model · [EP-MDL-01]
+          {
+            path: 'model',
+            loadComponent: () => import('./features/model/model.page').then(m => m.ModelPage),
+          },
+
           // SCR-W13 · features/project-alerts · Features/ProjectAlerts · [EP-PAL-01]
           {
             path: 'alerts',

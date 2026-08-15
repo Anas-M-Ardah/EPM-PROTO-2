@@ -102,6 +102,13 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // The rule the alert came from. Disabling it withdraws the alert.
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
 
+    // ── SCR-W10 3D model · الشكل 44 ──────────────────────────────────────
+    // The tab is kept and the VIEWER is stubbed (07 §8). These two tables back
+    // the tree, the element panel and the version selector — the parts that
+    // carry data. No geometry is stored.
+    public DbSet<ModelElement> ModelElements => Set<ModelElement>();
+    public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
+
     // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
     // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
     // resolves it to names; nothing else reads the table yet, so its columns
