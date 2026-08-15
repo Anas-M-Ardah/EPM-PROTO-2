@@ -131,3 +131,35 @@ data is all there: `ContractAmendments.SourceChangeOrderId` (P-104) and
 
 It is a Phase 4 gap, not a Phase 7 one, and it is the only unbuilt item left in
 the roadmap outside the explicitly deferred ones.
+
+---
+
+## SCR-W6 الإنجاز does not have الشكل 25's shape
+
+Found by the plate fidelity round ([docs/PLATE-FIDELITY-ROUND.md](docs/PLATE-FIDELITY-ROUND.md)).
+
+الشكل 25 names **four** tabs — الملخص · حسب هيكل التجزئة · الأثر والكلفة ·
+مخاطر الجدول — and SCR-W6 has three, of which only «الملخص» matches. It also
+names «مرشح مرجع المقارنة», «زر «كيف تُحتسب»», «زر تحديث نسبة الإنجاز» and
+«تصدير PDF»; none is built.
+
+The screen is not wrong — BR-04's reflection, the earned-value figures and the
+one place progress MOVES are all correct and verified. It was built in Phase
+4.4 from `04 §3` and `DModProgress`, before the appendix plates became the
+binding visual reference for it.
+
+**The data for all four tabs already exists:**
+
+- «حسب هيكل التجزئة» → `ProgressReflection.Rollup` already rolls the WBS tree
+- «الأثر والكلفة» → `EarnedValue.For`, already on screen in three places
+- «مخاطر الجدول» → the at-risk activity list `DModProgress` itself draws
+
+So this is a re-shaping of one screen over data that is already computed, not
+new arithmetic. It is the largest single fidelity gap left in the build.
+
+## الشكل 12's «زر العروض»
+
+The BOQ register has «الأعمدة» (the column picker) and not «العروض». The plate
+names both. «العروض» implies saved column/filter presets — a feature, not a
+label — so it is recorded here rather than faked with a button that reopens the
+column picker.

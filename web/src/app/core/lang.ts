@@ -1915,6 +1915,7 @@ const STR = {
   // ── SCR-W13 · التنبيهات — ملحق الشكل 47 ──────────────────────────────
   pal_need_action:  { ar: 'تحتاج إجراءً الآن',              en: 'need action now' },
   pal_nothing_overdue: { ar: 'لا شيء متأخر',                en: 'nothing overdue' },
+  pal_configure:    { ar: 'ضبط قواعد التنبيه',                en: 'Configure alert rules' },
   pal_v_inbox:      { ar: 'التنبيهات',                      en: 'Alerts' },
   pal_v_rules:      { ar: 'القواعد',                        en: 'Rules' },
   pal_all:          { ar: 'الكل',                           en: 'All' },

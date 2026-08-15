@@ -63,6 +63,15 @@
           }
         }
 
+        <!-- الشكل 47's «زر ضبط قواعد التنبيه». The editor behind it is not
+             built — severity, channels, recurrence and the escalation ceiling
+             are fixture data — so it says so rather than being absent from a
+             plate that names it (P-129). -->
+        <button type="button" class="d-btn sm"
+                (click)="toast.demo('ضبط قواعد التنبيه', 'Configure alert rules')">
+          <epm-icon name="settings" [size]="15" />{{ lang.t('pal_configure') }}
+        </button>
+
         <div class="d-seg">
           <button type="button" [class.on]="view() === 'inbox'" (click)="view.set('inbox')">
             <epm-icon name="notifications" [size]="14" />{{ lang.t('pal_v_inbox') }}
