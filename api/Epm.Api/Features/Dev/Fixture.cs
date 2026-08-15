@@ -497,6 +497,9 @@ public static class Fixture
         // ملحق الشكل 43 — سجل المخاطر.
         Risks(db);
 
+        // ملحق الشكل 45 — محاضر الاجتماعات وسجل الإجراءات.
+        Meetings(db);
+
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
 
@@ -1582,6 +1585,89 @@ public static class Fixture
 
             R("RSK-07", "مخاطر السلامة في أعمال الارتفاعات", "Safety risk in work at height",
                 "safety", Low, Med, "القسم الهندسي", "VAC", "open", 19)
+        );
+
+        db.SaveChanges();
+    }
+
+    /// <summary>
+    /// ملحق الشكل 45 — محاضر الاجتماعات وسجل الإجراءات, the plate's three
+    /// minutes and its three actions.
+    ///
+    /// ACT-01 is deliberately past its due date: «متأخر» on the plate is a DATE
+    /// that has passed, not a state, and the register derives it against the
+    /// project's data date (D-06). ACT-03 is closed and its date is older
+    /// still — a closed action is never overdue, which is the pair that proves
+    /// the derivation rather than asserting it.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void Meetings(EpmDb db)
+    {
+        var minutes = new List<Meeting>
+        {
+            new()
+            {
+                ProjectId = "PRJ-0279",
+                TitleAr = "الكشف على نسب الإنجاز", TitleEn = "Progress inspection",
+                HeldOn = new DateOnly(2026, 4, 11),
+                DecisionAr = "تكليف المقاول بتسريع أعمال الكهرباء خلال أسبوعين",
+                DecisionEn = "The contractor is directed to accelerate the electrical works within two weeks",
+                FileName = "MoM-2026-04-11.pdf",
+            },
+            new()
+            {
+                ProjectId = "PRJ-0279",
+                TitleAr = "تدقيق السلف التشغيلية", TitleEn = "Operating advances audit",
+                HeldOn = new DateOnly(2026, 2, 27),
+                DecisionAr = "اعتماد تسوية السلفة رقم 3",
+                DecisionEn = "Settlement of advance no. 3 approved",
+                FileName = "MoM-2026-02-27.pdf",
+            },
+            // The plate's third minute has NO attachment — and the timeline
+            // simply shows no card, rather than an empty one.
+            new()
+            {
+                ProjectId = "PRJ-0279",
+                TitleAr = "دراسة طلب التمديد", TitleEn = "Extension request review",
+                HeldOn = new DateOnly(2026, 1, 9),
+                DecisionAr = "الموافقة المبدئية على تمديد 30 يوماً",
+                DecisionEn = "Provisional approval of a 30-day extension",
+                FileName = null,
+            },
+        };
+
+        db.Meetings.AddRange(minutes);
+        db.SaveChanges();
+
+        var byTitle = minutes.ToDictionary(m => m.TitleAr, m => m.Id);
+
+        db.MeetingActions.AddRange(
+            // «متأخر» is a STORED value on this register, not a derivation —
+            // ACT-02 below is past due and still reads «قيد التنفيذ» on the
+            // plate, which is what settles it (P-116).
+            new MeetingAction
+            {
+                MeetingId = byTitle["الكشف على نسب الإنجاز"], Code = "ACT-01",
+                TitleAr = "تسريع أعمال الكهرباء", TitleEn = "Accelerate the electrical works",
+                Owner = "المقاول", DueDate = new DateOnly(2026, 4, 25),
+                Priority = "high", Status = "overdue",
+            },
+            new MeetingAction
+            {
+                MeetingId = byTitle["تدقيق السلف التشغيلية"], Code = "ACT-02",
+                TitleAr = "تسوية السلفة رقم 3", TitleEn = "Settle advance no. 3",
+                Owner = "القسم المالي", DueDate = new DateOnly(2026, 5, 10),
+                Priority = "medium", Status = "inprogress",
+            },
+            // CLOSED, and its date is the oldest of the three.
+            new MeetingAction
+            {
+                MeetingId = byTitle["دراسة طلب التمديد"], Code = "ACT-03",
+                TitleAr = "دراسة طلب التمديد", TitleEn = "Review the extension request",
+                Owner = "لجنة التمدد", DueDate = new DateOnly(2026, 2, 1),
+                Priority = "high", Status = "closed",
+            }
         );
 
         db.SaveChanges();

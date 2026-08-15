@@ -71,6 +71,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // beside its own title, so it is derived by Domain/RiskSeverity (01 §3).
     public DbSet<Risk> Risks => Set<Risk>();
 
+    // ── SCR-W11 محاضر الاجتماعات وسجل الإجراءات (ملحق الشكل 45) ──────────
+    // «متأخر» is NOT a column: it is a due date measured against the project's
+    // data date at projection time (D-06).
+    public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<MeetingAction> MeetingActions => Set<MeetingAction>();
+
     // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
     public DbSet<Lookup> Lookups => Set<Lookup>();
 

@@ -286,6 +286,21 @@ public static class LookupCatalog
         yield return L("risk-indicator", "EAC", "EAC", "EAC");
         yield return L("risk-indicator", "VAC", "VAC", "VAC");
 
+
+        // ── ملحق الشكل 45 — سجل الإجراءات ─────────────────────────────────
+        sort = 0;
+        yield return L("action-priority", "high",   "عالية",  "High");
+        yield return L("action-priority", "medium", "متوسطة", "Medium");
+        yield return L("action-priority", "low",    "منخفضة", "Low");
+
+        // «متأخر» is one of these values and not a derivation — الشكل 45 shows
+        // a past-due action still reading «قيد التنفيذ» (P-116).
+        sort = 0;
+        yield return L("action-status", "open",       "مفتوح",       "Open");
+        yield return L("action-status", "inprogress", "قيد التنفيذ", "In progress");
+        yield return L("action-status", "overdue",    "متأخر",       "Overdue");
+        yield return L("action-status", "closed",     "مغلق",        "Closed");
+
         // ── 06 §8 — amendment state (02 §9) ───────────────────────────────
         sort = 0;
         yield return L("amendment-state", "original",   "العقد الأصلي",              "Original contract");

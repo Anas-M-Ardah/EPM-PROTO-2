@@ -1761,6 +1761,28 @@ const STR = {
   rsk_readonly_b:  { ar: 'تسجيل خطر جديد وتحديث المعالجة ليسا ضمن ما يرسمه الشكل 43، ولا يكتب أي مسار في هذا السجل بعد.',
                      en: 'Raising a risk and updating its mitigation are not on الشكل 43, and no flow writes to this register yet.' },
 
+  // ── SCR-W11 · محاضر الاجتماعات وسجل الإجراءات — ملحق الشكل 45 ────────
+  mtg_tab_minutes: { ar: 'محاضر الاجتماعات',                en: 'Meeting minutes' },
+  mtg_tab_actions: { ar: 'سجل الإجراءات',                   en: 'Actions register' },
+  mtg_minutes_sub: { ar: 'المحاضر والقرارات',               en: 'Minutes and decisions' },
+  mtg_new:         { ar: 'محضر اجتماع جديد',                en: 'New meeting minute' },
+  mtg_file_kind:   { ar: 'محضر اجتماع',                     en: 'Meeting minute' },
+  mtg_open:        { ar: 'فتح',                             en: 'Open' },
+  mtg_col_code:    { ar: 'الرقم',                           en: 'No.' },
+  mtg_col_action:  { ar: 'الإجراء',                         en: 'Action' },
+  mtg_col_owner:   { ar: 'المسؤول',                         en: 'Owner' },
+  mtg_col_due:     { ar: 'الاستحقاق',                       en: 'Due' },
+  mtg_col_priority: { ar: 'الأولوية',                       en: 'Priority' },
+  mtg_overdue:     { ar: 'متأخر',                           en: 'Overdue' },
+  mtg_overdue_note: { ar: 'إجراءات مؤشَّرة متأخرة في السجل — الحالة هنا يحدّدها كاتب المحضر، لا التقويم:',
+                      en: 'Actions flagged late in the register — the status here is the minute-keeper’s, not the calendar’s:' },
+  mtg_empty_t:     { ar: 'لا محاضر مسجّلة على هذا المشروع',  en: 'No minutes recorded on this project' },
+  mtg_empty_b:     { ar: 'يُسجَّل المحضر بقراره وملفه، فتصبح الإجراءات الناتجة عنه قابلة للمتابعة.',
+                     en: 'A minute is recorded with its decision and its file, which is what makes the actions it produced followable.' },
+  mtg_noact_t:     { ar: 'لا إجراءات مسجّلة',               en: 'No actions recorded' },
+  mtg_noact_b:     { ar: 'ينشأ الإجراء عن قرار في محضر، ويحمل مسؤوله واستحقاقه.',
+                     en: 'An action comes out of a decision in a minute, and carries its owner and its due date.' },
+
   fin_alloc_t:     { ar: 'التخصيص السنوي غير متوفر',         en: 'The annual allocation is unavailable' },
   fin_sla_t:       { ar: 'مهل التدقيق غير متوفرة',           en: 'The audit SLA is unavailable' },
 } as const;
