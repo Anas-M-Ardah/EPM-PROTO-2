@@ -69,6 +69,7 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-CNT-01` | `GET /api/contracts` | `Features/Contracts/ContractsEndpoints.cs` | `contracts.api.ts` `list()` | BR-09 | Contracts · ContractAmendments · Projects |
 | `EP-ENT-01` | `GET /api/entities` | `Features/Entities/EntitiesEndpoints.cs` | `entities.api.ts` `list()` | BR-00 · BR-09 | Workspaces · Projects · Contracts · ContractAmendments |
 | `EP-WSP-01` | `GET /api/workspaces/{code}/overview` | `Features/Workspaces/WorkspacesEndpoints.cs` | `workspaces.api.ts` `overview()` | BR-00 · BR-09 · BR-15 | Workspaces · Projects · Contracts · ContractAmendments · Alerts || `EP-PRT-01` | `GET /api/portfolio` | `Features/Portfolio/PortfolioEndpoints.cs` | `portfolio.api.ts` `get()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Workspaces |
+| `EP-WSP-02` | `POST /api/workspaces` | `Features/Workspaces/WorkspacesEndpoints.cs` | `workspaces/workspaces.api.ts create() → entities.page.ts` | BR-15 | Workspaces *(WRITTEN)* |
 | `EP-DOCS-01` | `GET /api/docs/rules` | `Features/Docs/DocsEndpoints.cs` | `features/docs/docs.page.ts` | BR-01…BR-15 | — (pure) |
 | `EP-ALR-01` | `GET /api/alerts` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `list()` | — | Alerts · Projects |
 | `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
@@ -135,6 +136,12 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | D-07 | Largest-remainder rounding | 02 §1 | `Domain/Rounding.cs` | `RoundingTests` | ✅ |
 | P-101 | **The record's four columns** — الشكل 31's per-party split, BR-01 re-run per column, الشكل 32's finish dates and الشكل 30's decision difference | 03 §9 · ملحق 30–32 *(arrangement of BR-01 · BR-05 · BR-06)* | `Domain/ChangeOrderRecord.cs` | `ChangeOrderRecordTests` | ✅ **added** (Phase 5.2) — 14 cases, the worked figures read off الشكل 31 itself |
 | P-53 | **Planned progress** — the input BR-11 needs and `02` never defines | — *(assumption)* | `Domain/PlannedProgress.cs` | `PlannedProgressTests` | ✅ **added** (Phase 4.4) — linear across each activity's own baseline; also owns the remaining-duration formula |
+| P-70 | **Project definition** — required fields, suggested fields, what a save accepts | ملحق الشكل 5 · المسار 1 | `Domain/ProjectDefinition.cs` | `ProjectDefinitionTests` | ✅ — SCR-W2's stars and «مقترح» badges read off the same lists the save enforces, so the card cannot mark a field the save would accept empty |
+| — | **Contract definition** — the same, for a contract | ملحق الشكل 8 · المسار 2 | `Domain/ContractDefinition.cs` | `ContractDefinitionTests` | ✅ |
+| BR-00 | **Project value** — Σ effective contract values, never a stored column | 01 §3 | `Domain/ProjectValue.cs` | `ProjectValueTests` | ✅ — the projection sits BESIDE it, never in it (§5.2) |
+| — | **Contract rollup** — effective value, effective finish, what the amendment chain adds up to | 02 §9 | `Domain/ContractRollup.cs` | `ContractRollupTests` | ✅ |
+| — | **Module readiness** — which project tabs have data behind them | 04 §9 | `Domain/ModuleReadiness.cs` | `ModuleReadinessTests` | ✅ — SCR-W1's rail says which module is empty rather than opening onto nothing |
+| — | **The rule catalogue** — all fifteen rules, their spec text, their worked example and the function that answers it | 02 all · 03 §2,§7 | `Domain/RuleCatalog.cs` | *(executed live by `EP-DOCS-01`)* | ✅ **Phase 7** — `/docs` runs every example on every request, so this table cannot drift from the code without it showing (P-124) |
 
 ## Tables registered in `EpmDb`
 
@@ -169,3 +176,10 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `ChangeOrderAuditEntries` | Phase 5.2 | **written** by `EP-WIZ-03` (create · submit) · `EP-CHG-02` — one row per CHANGED FIELD, previous → new |
 | `ContractActivityEvents` | المسار 2 | `EP-CON-02` · `EP-CON-05` — **written** by `EP-CON-03` / `EP-CON-04`, one row per CHANGED FIELD since الشكل 11 (P-82). Seeded by `Fixture.ContractActivity` so the tab has a history before anyone edits anything |
 | `Activities` | Phase 4.2 | **written** by `EP-PRG-02` (progress + remaining duration) · `EP-BOQ-02` · `EP-BOQ-07` · `EP-SCD-01` · `EP-SCD-02` · `EP-SCT-01` — registered in 4.2 because BR-03 and BR-04 both read it; **4.3 restored the columns 4.2 pruned** (baseline / actual / forecast dates, durations, float, `IsCritical`, calendar, predecessors) |
+| `PaymentAttachments` | Phase 4.1 | `EP-FIN-01` — الشكل 9's المرفقات panel |
+| `Risks` | Phase 6 | `EP-RSK-01` |
+| `Meetings` | Phase 6 | `EP-MTG-01` |
+| `MeetingActions` | Phase 6 | `EP-MTG-01` |
+| `AlertRules` | Phase 6 | `EP-PAL-01` · `EP-PAL-02` *(the second table a screen writes)* |
+| `ModelElements` | Phase 6 | `EP-MDL-01` |
+| `ModelVersions` | Phase 6 | `EP-MDL-01` |

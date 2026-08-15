@@ -102,3 +102,32 @@ are eagerly loaded and grow with every screen:
 
 Raising a budget is not a fix. It is recorded here so the next person reads
 this rather than the diff.
+
+---
+
+## Phase 4.5 «Amendment disclosure» was never built
+
+Found during Phase 7's TRACE audit, not during Phase 4.
+
+`ROADMAP.md`'s section 4.5 — the shared amendment badge and drawer for the BOQ
+and the schedule — has four unticked items and **none of them exists**:
+
+- `DAmdMark` badge — count plus three states: all applied · all pending · mixed
+- `DAmdPanel` drawer, identical for BOQ items and activities (`04 §6`)
+- the cell delta — effective figure plus a compact signed delta, coloured
+  settled vs pending, **no strikethrough**
+- `docs/uml/amendment-disclosure.md`
+
+`.d-amd-mark` **is** in `web/src/styles/desktop.css:2058` — it came across with
+the rest of the reference stylesheet — but nothing in `web/src/app` uses it.
+Phases 4.6 onward were built on top and nobody came back.
+
+**What it would show.** SCR-W4 and SCR-W5 currently print effective figures with
+no sign that an amendment moved them. `04 §6` wants the row to say so, and to
+tell an APPLIED move from a PENDING one — which is `02 §9` and CLAUDE.md §5.2's
+«معتمد ≠ مطبَّق» rendered at the cell rather than only in the contract tab. The
+data is all there: `ContractAmendments.SourceChangeOrderId` (P-104) and
+`BoqRateBands.SourceChangeOrderId` already say which order moved which line.
+
+It is a Phase 4 gap, not a Phase 7 one, and it is the only unbuilt item left in
+the roadmap outside the explicitly deferred ones.

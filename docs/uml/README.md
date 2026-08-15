@@ -30,6 +30,14 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
 | Shell | — (frames every screen) | — (reads `EP-ENT-01` · `EP-DEV-03`) | [_shell.md](_shell.md) |
 
+### Whole-system views
+
+| View | Answers | Doc |
+|---|---|---|
+| Global ER | *what tables are there, and how do they join?* | [_global-er.md](_global-er.md) |
+| Feature map | *screen → endpoint → rule → table, for all of it* | [_feature-map.md](_feature-map.md) |
+| Change-order lifecycle | *the one flow the system exists for* | [_changeorder-lifecycle.md](_changeorder-lifecycle.md) |
+
 ## What every feature doc must contain
 
 Four diagrams, in this order. They answer four different questions.
