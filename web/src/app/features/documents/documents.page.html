@@ -1,0 +1,346 @@
+<!--
+  SCR-W12 — الوثائق والمخططات · ملحق الشكل 46.
+
+  The plate, taken literally:
+    Z6: «14 وثيقة · 21 مراجعة» · the «آخر مراجعة فقط» toggle · «رفع وثيقة»
+    التصنيف — folders with counts, in the DISCIPLINE order, «كل الوثائق» first
+    سجل الوثائق — search, the four status chips (مرفوض present at zero), and
+      the register: رقم الوثيقة والتخصص · العنوان وجهة الإصدار · المراجعة ·
+      حالة الإصدار
+    تفاصيل — the identity card, the «المراجعات لا تُحذف» notice, and the
+      revision history with «الحالية» above «ملغاة»
+    the footer strip: الوثائق 14 / 14 · المراجعات 21 · قيد المراجعة 6
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_documents') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="4" [rows]="8" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_documents') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_documents') }}
+        <em>
+          <bdi>{{ d.documentCount }}</bdi> {{ lang.t('doc_n') }} ·
+          <bdi>{{ d.revisionCount }}</bdi> {{ lang.t('doc_rev_n') }}
+        </em>
+      </span>
+
+      <span class="sp"></span>
+
+      <!-- «آخر مراجعة فقط» — a VIEW over the same payload, not a second
+           request and not a filter that hides data from the client. -->
+      <button type="button" class="d-fchip" [class.on]="latestOnly()"
+              [attr.aria-pressed]="latestOnly()" (click)="latestOnly.set(!latestOnly())">
+        <epm-icon name="filter_alt" [size]="13" />{{ lang.t('doc_latest_only') }}
+      </button>
+
+      <button type="button" class="d-btn sm primary"
+              (click)="toast.demo('رفع وثيقة', 'Upload a document')">
+        <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload') }}
+      </button>
+    </div>
+
+    <!-- The detail panel is Z8, and the body is `no-aside` until a row is
+         opened — the same shape SCR-W4's بطاقة البند uses. -->
+    <div class="d-pbody" [class.no-aside]="!opened()">
+      <div class="d-pz7">
+
+        <!-- ══ التصنيف ═══════════════════════════════════════════════════ -->
+        <epm-section [title]="lang.t('doc_folders')" [n]="d.documentCount"
+                     icon="folder" [collapsible]="true" [defaultOpen]="true">
+          <div class="d-toolbar">
+            @for (f of folders(); track f.code) {
+              <button type="button" class="d-fchip" [class.on]="folder() === f.code"
+                      (click)="folder.set(f.code)">
+                <epm-icon name="folder" [size]="13" />{{ folderLabel(f.code) }}
+                <span class="n"><bdi>{{ f.count }}</bdi></span>
+              </button>
+            }
+          </div>
+        </epm-section>
+
+        <!-- ══ سجل الوثائق ═══════════════════════════════════════════════ -->
+        <epm-section [title]="lang.t('doc_register')"
+                     [sub]="shown().length + ' ' + lang.t('rsk_of') + ' ' + d.documentCount
+                            + (latestOnly() ? ' · ' + lang.t('doc_latest_only') : '')"
+                     icon="description" [collapsible]="true" [defaultOpen]="true">
+
+          <div class="d-toolbar">
+            <label class="d-field">
+              <epm-icon name="search" [size]="16" />
+              <input type="search" [value]="q()" (input)="q.set($any($event.target).value)"
+                     [attr.aria-label]="lang.t('doc_search')"
+                     [attr.placeholder]="lang.t('doc_search')" />
+            </label>
+
+            <!-- The four chips, «مرفوض 0» included: a chip that disappears at
+                 zero makes the set of states look like it changed. -->
+            @for (s of statuses(); track s.code) {
+              <button type="button" class="d-fchip" [class.on]="status() === s.code"
+                      [disabled]="s.count === 0 && s.code !== 'all'"
+                      (click)="status.set(s.code)">
+                {{ statusChipLabel(s.code) }}
+                <span class="n"><bdi>{{ s.count }}</bdi></span>
+              </button>
+            }
+
+            <span class="sp"></span>
+            @if (filtered()) {
+              <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+              </button>
+            }
+          </div>
+
+          @if (d.rows.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="folder_open" [size]="30" /></span>
+              <b>{{ lang.t('doc_empty_t') }}</b>
+              <span>{{ lang.t('doc_empty_b') }}</span>
+            </div>
+
+          } @else if (shown().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="filter_alt" [size]="30" /></span>
+              <b>{{ lang.t('doc_nomatch_t') }}</b>
+              <span>{{ lang.t('doc_nomatch_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="clearFilters()">
+                {{ lang.t('clear_filters') }}
+              </button>
+            </div>
+
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 900px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('doc_col_code') }}</th>
+                  <th>{{ lang.t('doc_col_title') }}</th>
+                  <th>{{ lang.t('doc_col_revision') }}</th>
+                  <th>{{ lang.t('doc_col_status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (latestOnly()) {
+                  <!-- ONE ROW PER DOCUMENT, carrying its current revision. -->
+                  @for (r of shown(); track r.code) {
+                    <tr class="epm-ws-tr" tabindex="0" role="button"
+                        [class.on]="open() === r.code"
+                        [attr.aria-label]="lang.t('doc_open') + ': ' + r.code"
+                        (click)="toggleOpen(r.code)" (keydown)="onRowKey($event, r.code)">
+                      <td class="mono d-cell-sub">
+                        <bdi>{{ r.code }}</bdi>
+                        <div class="d-cell-sub">{{ disciplineLabel(r.discipline) }}</div>
+                      </td>
+                      <td>
+                        <div class="d-cell-strong">{{ title(r) }}</div>
+                        <div class="d-cell-sub">{{ r.issuer }}</div>
+                      </td>
+                      <td class="mono">
+                        @if (r.currentRevisionNo !== null) {
+                          <bdi>R{{ r.currentRevisionNo }}</bdi>
+                          <div class="d-cell-sub">
+                            <bdi>{{ fmt.date(r.currentIssuedOn) }}</bdi> ·
+                            <bdi>{{ r.currentTransmittalNo }}</bdi>
+                          </div>
+                        } @else { — }
+                      </td>
+                      <td><span class="d-pill {{ statusClass(r.status) }}">{{ statusLabel(r.status) }}</span></td>
+                    </tr>
+                  }
+
+                } @else {
+                  <!-- ONE ROW PER ISSUE — superseded revisions included and
+                       marked, which is «المراجعات لا تُحذف» made visible in the
+                       table rather than only in the panel. -->
+                  @for (i of issues(); track i.doc.code + '-R' + i.rev.no) {
+                    <tr class="epm-ws-tr" tabindex="0" role="button"
+                        [class.on]="open() === i.doc.code"
+                        [attr.aria-label]="lang.t('doc_open') + ': ' + i.doc.code"
+                        (click)="toggleOpen(i.doc.code)" (keydown)="onRowKey($event, i.doc.code)">
+                      <td class="mono d-cell-sub">
+                        <bdi>{{ i.doc.code }}</bdi>
+                        <div class="d-cell-sub">{{ disciplineLabel(i.doc.discipline) }}</div>
+                      </td>
+                      <td>
+                        <div class="d-cell-strong">{{ title(i.doc) }}</div>
+                        <div class="d-cell-sub">{{ i.rev.issuer }}</div>
+                      </td>
+                      <td class="mono">
+                        <bdi>R{{ i.rev.no }}</bdi>
+                        <div class="d-cell-sub">
+                          <bdi>{{ fmt.date(i.rev.issuedOn) }}</bdi> ·
+                          <bdi>{{ i.rev.transmittalNo }}</bdi>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="d-pill {{ statusClass(i.rev.status) }}">
+                          {{ statusLabel(i.rev.status) }}
+                        </span>
+                        @if (i.rev.superseded) {
+                          <span class="d-pill">{{ lang.t('doc_superseded') }}</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table></div>
+
+            <div class="d-pager">
+              <span>
+                {{ lang.t('doc_f_docs') }}
+                <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.documentCount }}</bdi></b>
+              </span>
+              <span class="sp"></span>
+              <span class="d-cell-sub">
+                {{ lang.t('doc_f_revs') }} <bdi>{{ d.revisionCount }}</bdi> ·
+                {{ lang.t('doc_under_review') }} <bdi>{{ d.underReview }}</bdi> ·
+                <!-- الشكل 46's footer ends «ومحدد 0» — the count of open rows,
+                     which is 0 or 1 here because the panel opens ONE row. -->
+                {{ lang.t('doc_selected') }} <bdi>{{ opened() ? 1 : 0 }}</bdi>
+              </span>
+            </div>
+          }
+        </epm-section>
+      </div>
+
+      <!-- ══ Z8 — تفاصيل الوثيقة ═══════════════════════════════════════ -->
+      @if (opened(); as doc) {
+        <div class="d-pz8">
+          <div class="d-rpane">
+            <div class="rp-h">
+              <div class="tx">
+                <div class="r1">
+                  <span class="code"><bdi>{{ doc.code }}</bdi></span>
+                  <span class="d-pill {{ statusClass(doc.status) }}">{{ statusLabel(doc.status) }}</span>
+                </div>
+                <b>{{ title(doc) }}</b>
+                <span class="sub">{{ disciplineLabel(doc.discipline) }} · {{ doc.issuer }}</span>
+              </div>
+              <div class="acts">
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('scd_rec_close')" (click)="open.set(null)">
+                  <epm-icon name="close" [size]="18" />
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-tabs" role="tablist">
+              <button type="button" role="tab" [class.on]="panelTab() === 'revisions'"
+                      [attr.aria-selected]="panelTab() === 'revisions'"
+                      (click)="panelTab.set('revisions')">
+                {{ lang.t('doc_tab_revisions') }}
+                <span class="n"><bdi>{{ doc.revisionCount }}</bdi></span>
+              </button>
+              <button type="button" role="tab" [class.on]="panelTab() === 'details'"
+                      [attr.aria-selected]="panelTab() === 'details'"
+                      (click)="panelTab.set('details')">
+                {{ lang.t('doc_tab_details') }}
+              </button>
+            </div>
+
+            <div class="rp-b">
+              @if (panelTab() === 'revisions') {
+                <!-- The plate states the rule as a notice inside this panel, and
+                     it is also the data model: a revision is inserted, never
+                     replaced. -->
+                <div class="d-msgbar info">
+                  <epm-icon name="history" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('doc_norm_t') }}</b>
+                    <span>{{ lang.t('doc_norm_b') }}</span>
+                  </div>
+                </div>
+
+                <epm-section [title]="lang.t('doc_rev_history')">
+                  @for (r of doc.revisions; track r.no) {
+                    <div class="d-vo-ext">
+                      <div class="row">
+                        <div class="tx">
+                          <b>
+                            <bdi>R{{ r.no }}</bdi>
+                            @if (r.superseded) {
+                              <span class="d-pill">{{ lang.t('doc_superseded') }}</span>
+                            } @else {
+                              <span class="d-pill ongoing">{{ lang.t('doc_current') }}</span>
+                            }
+                          </b>
+                          <span>{{ r.issuer }} · {{ description(r) }}</span>
+                          <span class="mono">
+                            <bdi>{{ r.transmittalNo }}</bdi> · <bdi>{{ r.fileName }}</bdi>
+                          </span>
+                        </div>
+                        <span class="mono"><bdi>{{ fmt.date(r.issuedOn) }}</bdi></span>
+                        <button type="button" class="d-icon-btn"
+                                [attr.aria-label]="lang.t('chg_download_file')"
+                                (click)="toast.demo('تنزيل المراجعة', 'Download the revision')">
+                          <epm-icon name="download" [size]="15" />
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </epm-section>
+
+                <button type="button" class="d-btn primary" style="width: 100%"
+                        (click)="toast.demo('رفع مراجعة', 'Upload a revision')">
+                  <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload_rev') }}
+                </button>
+              }
+
+              @if (panelTab() === 'details') {
+                <div class="d-form-grid">
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_col_code') }}</span>
+                    <span class="v mono"><bdi>{{ doc.code }}</bdi></span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_discipline') }}</span>
+                    <span class="v">{{ disciplineLabel(doc.discipline) }}</span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_issuer') }}</span>
+                    <span class="v">{{ doc.issuer }}</span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_col_revision') }}</span>
+                    <span class="v mono">
+                      @if (doc.currentRevisionNo !== null) { <bdi>R{{ doc.currentRevisionNo }}</bdi> }
+                      @else { — }
+                    </span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_col_status') }}</span>
+                    <span class="v">{{ statusLabel(doc.status) }}</span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('doc_rev_n') }}</span>
+                    <span class="v num"><bdi>{{ doc.revisionCount }}</bdi></span></div>
+                </div>
+
+                <!-- المعاينة and التأشيرات are on the plate and have nothing
+                     behind them: no file bytes are stored and no stamp is
+                     recorded. Saying so beats two empty tabs (04 §9). -->
+                <div class="d-msgbar info">
+                  <epm-icon name="info" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('doc_notab_t') }}</b>
+                    <span>{{ lang.t('doc_notab_b') }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+   }
+  }
+</div>

@@ -17,6 +17,7 @@ using Epm.Api.Features.Projects;
 using Epm.Api.Features.Reports;
 using Epm.Api.Features.Schedule;
 using Epm.Api.Features.ScheduleControl;
+using Epm.Api.Features.Documents;
 using Epm.Api.Features.Meetings;
 using Epm.Api.Features.Risks;
 using Epm.Api.Features.Workspaces;
@@ -93,6 +94,7 @@ app.MapChangeOrderWizardEndpoints();
 app.MapChangeOrderWorkflowEndpoints();
 app.MapRisksEndpoints();
 app.MapMeetingsEndpoints();
+app.MapDocumentsEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

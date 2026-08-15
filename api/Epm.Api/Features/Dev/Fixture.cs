@@ -500,6 +500,9 @@ public static class Fixture
         // ملحق الشكل 45 — محاضر الاجتماعات وسجل الإجراءات.
         Meetings(db);
 
+        // ملحق الشكل 46 — الوثائق والمخططات.
+        Documents(db);
+
         // الشكل 9 — the letter and the measurement sheet behind each payment.
         PaymentFiles(db);
 
@@ -1668,6 +1671,140 @@ public static class Fixture
                 Owner = "لجنة التمدد", DueDate = new DateOnly(2026, 2, 1),
                 Priority = "high", Status = "closed",
             }
+        );
+
+        db.SaveChanges();
+    }
+
+    /// <summary>
+    /// ملحق الشكل 46 — الوثائق والمخططات: the plate's **14 documents and 21
+    /// revisions**, with its own folder counts (معماري 3 · إنشائي 2 · كهربائي 3 ·
+    /// ميكانيكي 2 · مدني وبنى تحتية 2 · تقارير ومراسلات 2) and its own status
+    /// split (معتمد 8 · مسوّدة 6 · مرفوض 0 · قيد المراجعة 6).
+    ///
+    /// ── THE ROW THE PLATE OPENS IS SEEDED IN FULL ────────────────────────
+    /// ST-DR-002 «تفاصيل الأعمدة والجسور» carries R1 (2026-02-19 · TR-2417 ·
+    /// «الإصدار الأولي») and R2 (2026-05-31 · TR-2416 · «مطابقة للمنفَّذ»),
+    /// which is what the detail panel prints — R2 «الحالية» above R1 «ملغاة»,
+    /// both keeping their file.
+    ///
+    /// EL-DR-001 and RP-001 are draft-then-approved, and RP-002 is
+    /// approved-then-draft: three documents that make «قيد المراجعة» a count of
+    /// CURRENT revisions rather than of draft ones.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void Documents(EpmDb db)
+    {
+        const string Univ = "قسم التصميم — الجامعة";
+        const string House = "دار الهندسة";
+        const string Consult = "المكتب الاستشاري الهندسي";
+        const string Contractor = "المقاول المنفّذ";
+
+        Document D(string code, string ar, string en, string discipline, string issuer) => new()
+        {
+            ProjectId = "PRJ-0279", Code = code, TitleAr = ar, TitleEn = en,
+            Discipline = discipline, Issuer = issuer,
+        };
+
+        var docs = new List<Document>
+        {
+            D("AR-DR-001", "مخطط الطوابق العامة", "General floor plans", "architectural", Univ),
+            D("AR-DR-002", "الواجهات والمقاطع", "Elevations and sections", "architectural", House),
+            D("AR-DR-003", "تفاصيل التشطيبات", "Finishing details", "architectural", Consult),
+            D("ST-DR-001", "مخطط الأساسات", "Foundation plan", "structural", Univ),
+            D("ST-DR-002", "تفاصيل الأعمدة والجسور", "Column and beam details", "structural", Univ),
+            D("EL-DR-001", "مخطط التغذية الرئيسية", "Main power distribution", "electrical", Contractor),
+            D("EL-DR-002", "مخطط الإنارة", "Lighting layout", "electrical", Consult),
+            D("EL-DR-003", "أنظمة الإنذار والاتصالات", "Alarm and communication systems", "electrical", Consult),
+            D("ME-DR-001", "مخطط التكييف والتهوية", "HVAC layout", "mechanical", Contractor),
+            D("ME-DR-002", "مخطط التمديدات الصحية", "Plumbing layout", "mechanical", Contractor),
+            D("CV-DR-001", "مخطط الطرق والساحات", "Roads and yards layout", "civil", Univ),
+            D("CV-DR-002", "شبكة تصريف المياه", "Storm drainage network", "civil", Contractor),
+            D("RP-001", "تقرير الفحوصات المختبرية", "Laboratory testing report", "reports", Consult),
+            D("RP-002", "مراسلات التنسيق مع الجهة المستفيدة", "Coordination correspondence", "reports", Univ),
+        };
+
+        db.Documents.AddRange(docs);
+        db.SaveChanges();
+
+        var byCode = docs.ToDictionary(d => d.Code, d => d.Id);
+
+        // THE TRANSMITTAL NUMBERS ARE THE PLATE'S OWN. It runs TR-2400 · 2404 ·
+        // 2408 · … one base per document in code order, and gives the CURRENT
+        // revision that base — so ST-DR-002's R2 is TR-2416 and its R1 is
+        // TR-2417, which is exactly what the panel prints. An older revision
+        // carrying a HIGHER transmittal reads oddly and is copied anyway: it is
+        // the client's data, and inventing a tidier scheme would be inventing
+        // ministry numbering.
+        var baseNo = docs.Select((d, i) => (d.Code, No: 2400 + i * 4))
+            .ToDictionary(x => x.Code, x => x.No);
+
+        // How many revisions each document ends up with, so the CURRENT one can
+        // take the base number before any of them is created.
+        var revisionsOf = new Dictionary<string, int>
+        {
+            ["AR-DR-001"] = 1, ["AR-DR-002"] = 1, ["AR-DR-003"] = 1,
+            ["ST-DR-001"] = 1, ["ST-DR-002"] = 2,
+            ["EL-DR-001"] = 2, ["EL-DR-002"] = 1, ["EL-DR-003"] = 1,
+            ["ME-DR-001"] = 3, ["ME-DR-002"] = 1,
+            ["CV-DR-001"] = 2, ["CV-DR-002"] = 1,
+            ["RP-001"] = 2, ["RP-002"] = 2,
+        };
+
+        DocumentRevision R(string code, int no, string issuedOn, string issuer,
+            string ar, string en, string status) => new()
+        {
+            DocumentId = byCode[code], No = no,
+            IssuedOn = DateOnly.Parse(issuedOn), Issuer = issuer,
+            DescriptionAr = ar, DescriptionEn = en,
+            TransmittalNo = $"TR-{baseNo[code] + revisionsOf[code] - no}",
+            FileName = $"{code}-R{no}.pdf",
+            Status = status,
+        };
+
+        const string First = "الإصدار الأولي";
+        const string FirstEn = "Initial issue";
+        const string AsBuilt = "مطابقة للمنفَّذ";
+        const string AsBuiltEn = "As-built";
+        const string Comments = "معالجة ملاحظات التدقيق";
+        const string CommentsEn = "Review comments addressed";
+
+        db.DocumentRevisions.AddRange(
+            R("AR-DR-001", 1, "2026-05-29", Univ, First, FirstEn, "approved"),
+            R("AR-DR-002", 1, "2026-05-15", House, First, FirstEn, "draft"),
+            R("AR-DR-003", 1, "2026-06-06", Consult, First, FirstEn, "approved"),
+            R("ST-DR-001", 1, "2026-05-16", Univ, First, FirstEn, "draft"),
+
+            // The plate's own open row: R1 superseded by R2, and BOTH stay.
+            R("ST-DR-002", 1, "2026-02-19", Univ, First, FirstEn, "approved"),
+            R("ST-DR-002", 2, "2026-05-31", Univ, AsBuilt, AsBuiltEn, "draft"),
+
+            R("EL-DR-001", 1, "2026-03-14", Contractor, First, FirstEn, "draft"),
+            R("EL-DR-001", 2, "2026-06-06", Contractor, Comments, CommentsEn, "approved"),
+
+            R("EL-DR-002", 1, "2026-05-11", Consult, First, FirstEn, "approved"),
+            R("EL-DR-003", 1, "2026-05-11", Consult, First, FirstEn, "approved"),
+
+            R("ME-DR-001", 1, "2026-01-20", Contractor, First, FirstEn, "draft"),
+            R("ME-DR-001", 2, "2026-03-28", Contractor, Comments, CommentsEn, "draft"),
+            R("ME-DR-001", 3, "2026-05-31", Contractor, AsBuilt, AsBuiltEn, "draft"),
+
+            R("ME-DR-002", 1, "2026-04-18", Contractor, First, FirstEn, "draft"),
+
+            R("CV-DR-001", 1, "2026-02-08", Univ, First, FirstEn, "draft"),
+            R("CV-DR-001", 2, "2026-04-30", Univ, Comments, CommentsEn, "approved"),
+
+            R("CV-DR-002", 1, "2026-03-02", Contractor, First, FirstEn, "approved"),
+
+            R("RP-001", 1, "2026-02-15", Consult, First, FirstEn, "draft"),
+            R("RP-001", 2, "2026-05-20", Consult, Comments, CommentsEn, "approved"),
+
+            // Approved first, then re-issued as a draft — «قيد المراجعة» counts
+            // this one and not EL-DR-001, which is the difference between
+            // counting current revisions and counting drafts.
+            R("RP-002", 1, "2026-01-28", Univ, First, FirstEn, "approved"),
+            R("RP-002", 2, "2026-06-11", Univ, "إضافة مراسلات الشهر", "Monthly correspondence added", "draft")
         );
 
         db.SaveChanges();

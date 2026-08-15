@@ -916,9 +916,9 @@ and the penalty baseline.
 
 Light, independent, parallelisable.
 
-- [ ] SCR-W9 Risk — `DModRisk` — register + 5×5 severity grid + issues
-- [ ] SCR-W11 Meetings — `DModMeetings`
-- [ ] SCR-W12 Documents — `DModDrawings` — versioned register with approval status
+- [x] SCR-W9 Risk — **ملحق الشكل 43** — severity chips + the nine-column register + المؤشر المتأثر. The plate scores on **three levels, not five** (P-117); `Domain/RiskSeverity` scores الخطورة = الاحتمالية × التأثير and returns all three bands even at zero. `EP-RSK-01`
+- [x] SCR-W11 Meetings — **ملحق الشكل 45** — محاضر الاجتماعات with one قرار each, plus إجراءات المتابعة. «متأخر» is a **stored** status, not a comparison against the data date — the plate itself refutes the derivation (P-116). `EP-MTG-01`
+- [x] SCR-W12 Documents — **ملحق الشكل 46** — `Documents` (identity) and `DocumentRevisions` (history) are separate tables; `Domain/DocumentRevisions` names the current one and everything earlier stays ملغاة with its own date, transmittal and file. «آخر مراجعة فقط» is a view over one payload. `EP-DOC-01`
 - [ ] SCR-W13 Alerts — `DModAlerts`
 - [ ] SCR-W14 Reports — `DModReports`
 - [ ] SCR-W15 Audit History — `DModAudit`

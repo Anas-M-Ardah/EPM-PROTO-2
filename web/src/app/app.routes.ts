@@ -285,6 +285,12 @@ export const routes: Routes = [
             loadComponent: () => import('./features/meetings/meetings.page').then(m => m.MeetingsPage),
           },
 
+          // SCR-W12 · features/documents · Features/Documents · [EP-DOC-01]
+          {
+            path: 'documents',
+            loadComponent: () => import('./features/documents/documents.page').then(m => m.DocumentsPage),
+          },
+
           // An unknown module segment is a typed URL, not a state — send it to
           // the one module every project has.
           { path: '**', redirectTo: 'overview' },

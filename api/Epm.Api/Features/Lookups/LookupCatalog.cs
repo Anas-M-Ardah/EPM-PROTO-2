@@ -301,6 +301,23 @@ public static class LookupCatalog
         yield return L("action-status", "overdue",    "متأخر",       "Overdue");
         yield return L("action-status", "closed",     "مغلق",        "Closed");
 
+
+        // ── ملحق الشكل 46 — الوثائق والمخططات ─────────────────────────────
+        sort = 0;
+        yield return L("doc-discipline", "architectural", "معماري",           "Architectural");
+        yield return L("doc-discipline", "structural",    "إنشائي",           "Structural");
+        yield return L("doc-discipline", "electrical",    "كهربائي",          "Electrical");
+        yield return L("doc-discipline", "mechanical",    "ميكانيكي",         "Mechanical");
+        yield return L("doc-discipline", "civil",         "مدني وبنى تحتية",  "Civil & infrastructure");
+        yield return L("doc-discipline", "reports",       "تقارير ومراسلات",  "Reports & correspondence");
+
+        // «حالة الإصدار» belongs to the REVISION, not the document.
+        sort = 0;
+        yield return L("doc-status", "approved", "معتمد",  "Approved");
+        yield return L("doc-status", "draft",    "مسوّدة", "Draft");
+        yield return L("doc-status", "rejected", "مرفوض",  "Rejected");
+        yield return L("doc-status", "none",     "لا مراجعات", "No revisions");
+
         // ── 06 §8 — amendment state (02 §9) ───────────────────────────────
         sort = 0;
         yield return L("amendment-state", "original",   "العقد الأصلي",              "Original contract");

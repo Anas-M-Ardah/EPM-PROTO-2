@@ -77,6 +77,13 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAction> MeetingActions => Set<MeetingAction>();
 
+    // ── SCR-W12 الوثائق والمخططات (ملحق الشكل 46) ────────────────────────
+    // TWO tables, because «المراجعات لا تُحذف»: the document is the identity
+    // and the revision is the file, so a new issue is an INSERT and the
+    // superseded one keeps its date, its transmittal and its file.
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentRevision> DocumentRevisions => Set<DocumentRevision>();
+
     // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
     public DbSet<Lookup> Lookups => Set<Lookup>();
 
