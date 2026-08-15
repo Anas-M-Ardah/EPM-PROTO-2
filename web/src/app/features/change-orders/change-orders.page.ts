@@ -14,6 +14,7 @@ import { PersonaService } from '../../core/persona';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
 import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-orders.types';
+import { ChangeOrderWizard } from './change-order.wizard';
 
 /**
  * SCR-W8 — the change-order register (`03 §10`).
@@ -43,7 +44,10 @@ import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-or
 @Component({
   selector: 'epm-change-orders-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent],
+  imports: [
+    IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+    ChangeOrderWizard,
+  ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-orders.page.html',
 })
@@ -61,6 +65,9 @@ export class ChangeOrdersPage {
 
   loading = signal(true);
   error = signal<string | null>(null);
+
+  /** المسار 9's wizard, over this register (الشكل 37). */
+  wizardOpen = signal(false);
 
   /** Lifecycle tab — `all` plus one per group. */
   life = signal('all');
@@ -126,6 +133,17 @@ export class ChangeOrdersPage {
   /** `03 §9`'s record. The number is the segment — a record has to be linkable. */
   open(no: string) {
     this.router.navigate(['/projects', this.projectId(), 'changeorders', no]);
+  }
+
+  /**
+   * A submitted order goes straight to its record: it is the document the
+   * person who just wrote it wants to read, and it is where the decision they
+   * are waiting for will be taken.
+   */
+  afterCreate(no: string) {
+    this.wizardOpen.set(false);
+    this.load();
+    this.open(no);
   }
 
   onRowKey(e: KeyboardEvent, no: string) {

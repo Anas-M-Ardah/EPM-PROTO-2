@@ -55,6 +55,14 @@
             </button>
           }
         </div>
+
+        <span class="sp"></span>
+
+        <!-- الشكل 29's «أمر تغييري جديد» — it opens المسار 9's wizard over
+             this register, which is where الشكل 37 draws it. -->
+        <button type="button" class="d-btn sm primary" (click)="wizardOpen.set(true)">
+          <epm-icon name="add" [size]="15" />{{ lang.t('chg_w_new') }}
+        </button>
       </div>
 
       <div class="d-pbody no-aside">
@@ -261,3 +269,13 @@
     }
   }
 </div>
+
+<!-- المسار 9 — the creation wizard, over the register (الشكل 37).
+     It reloads the register on success so the new order is in the list a
+     reader is looking at, and opens its record: an order somebody just wrote
+     is the one they want to read. -->
+@if (wizardOpen()) {
+  <epm-change-order-wizard [projectId]="projectId()"
+                          (closed)="wizardOpen.set(false)"
+                          (created)="afterCreate($event)" />
+}

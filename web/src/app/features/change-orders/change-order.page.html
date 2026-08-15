@@ -135,6 +135,21 @@
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-vo-ext">
               <div class="lbl">{{ lang.t('chg_preinputs_note') }}</div>
+
+              <!-- An order entered through المسار 9's wizard has no preceding
+                   letters recorded yet: step 1 captures the order's OWN incoming
+                   letter, not the two that arrived before it. Saying so is the
+                   honest empty state; a bare heading would read as though the
+                   letters never existed. -->
+              @if (d.preInputs.length === 0) {
+                <div class="row">
+                  <div class="tx">
+                    <b>{{ lang.t('chg_preinputs_none_t') }}</b>
+                    <span>{{ lang.t('chg_preinputs_none_b') }}</span>
+                  </div>
+                </div>
+              }
+
               @for (x of d.preInputs; track x.letterNo) {
                 <div class="row">
                   <div class="tx">

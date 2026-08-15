@@ -87,6 +87,7 @@ app.MapScheduleEndpoints();
 app.MapProgressEndpoints();
 app.MapFinancialsEndpoints();
 app.MapChangeOrdersEndpoints();
+app.MapChangeOrderWizardEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

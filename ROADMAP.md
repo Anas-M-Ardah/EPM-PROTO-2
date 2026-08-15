@@ -806,21 +806,59 @@ The most heavily specified part of the system. Read `03-CHANGE-ORDER-PROCESS.md`
 **Exit:** the same order shows a different relation to different personas, and every
 figure on the record traces to a rule file rather than to the projection that printed it.
 
-### 5.3 Creation wizard — `DVOCreateWizard` `vo-wizard.jsx:6`
-- [ ] **Contract selected FIRST** and scopes everything; read-only context header
-- [ ] Step 1 — two type cards only; الأسباب الموجبة free textarea; responsible party + letter no/date
-- [ ] Step 2 — BOQ tab + Activities tab in one step, each showing its selected count; existing register tables reused
-- [ ] **Both proposals side by side** per line (contractor · RE dept) — `02 §6`
-- [ ] **The 20% split sub-row** stating it explicitly and naming لجنة تثبيت الأسعار as final authority (`02 §5`)
-- [ ] "Add new BOQ item" **does not exist here** — new items come from BOQ Management (`06 §7`)
-- [ ] Step 3 — impact summary, one section, no large cards
-- [ ] Step 4 — attachments with the six categories
-- [ ] Step 5 — review, **expected approval path rendered from actual conditions**, two buttons only
-- [ ] Submission blocked by the BR-07 gates with the offending lines listed
-- [ ] `EP-WIZ-01..n` · UML · TRACE rows
+### 5.3 Creation wizard — `DVOCreateWizard` `vo-wizard.jsx:6` · **ملحق الأشكال 37–42** ✅ COMPLETE
+- [x] **Contract selected FIRST** and scopes everything; read-only context header on
+      every step, and changing the contract CLEARS the selection rather than
+      carrying lines across (non-negotiable #1)
+- [x] **Step 1 is الشكل 37** — two type cards only; الأسباب الموجبة a free textarea
+      with no preset list; the official letter (الجهة · رقم الوارد · تاريخه) fixed
+      here because BR-12 measures every SLA from it
+- [x] **Step 2 is الشكل 38 + الشكل 39** — BOQ and Activities tabs in ONE step, each
+      showing its selected count, with a multi-select picker over THIS contract's
+      lines. Change type is chosen before the figures, and only the fields that
+      type needs are shown
+- [x] **Both proposals side by side per line**, each with its own «مقدار التغيير»
+      and «سعر الكمية الزائدة عن 20%», the split printed as the equation الشكل 39
+      prints — «42.4 نقطة × 18,834 = +798,562» — and the RE department's card
+      marked «المعتمد للمضي» (`02 §6`)
+- [x] The 20% sub-row states the rule and names **لجنة تثبيت الأسعار** as the final
+      authority; no approved value or binding rate is enterable anywhere (`02 §5`)
+- [x] **"Add new BOQ item" does not exist here** — the picker offers only lines the
+      contract already has (`06 §7`)
+- [x] **Step 3 is الشكل 40** — one section, no cards: the eight figures, the
+      «تقديرية» label on the revised contract value, and الشكل 40's own sentence
+      that the weights are re-approved AFTER the final approval
+- [x] **Step 4 is الشكل 41** — files with the six categories; name, category and
+      size are recorded and the bytes are not kept, and the screen says so
+- [x] **Step 5 is الشكل 42** — the review, the **expected approval path rendered
+      from the actual conditions** (rate fixing only when a line trips 20%,
+      المصادقة والتخصيص only when there is money or a long extension, and a skipped
+      stage listed with its reason), and **two buttons only**
+- [x] Submission blocked by the BR-07 gates, **server-side**, with the offending
+      lines listed and the wizard sent back to step 2 (`02 §7`)
+- [x] `EP-WIZ-01` · `EP-WIZ-02` · `EP-WIZ-03` · Angular trio · TRACE rows ·
+      `docs/uml/change-order-wizard.md` · P-106…P-110 in DECISIONS
 
-**Exit:** original qty 100, add 30 → 20 at the original rate, 10 beyond 20%, rate-fixing stage appears
-in the path. A decrease beyond the remaining quantity cannot be submitted.
+> **The wizard computes nothing (P-106).** The reference splits the 20% in the
+> browser; here every figure comes from `EP-WIZ-02` on a 300 ms debounce, through
+> the SAME `Domain/ChangeOrderRecord` the record page reads. What a user saw when
+> they submitted is what the record shows — by construction, not by care.
+
+> **Verified live** at 1440, AR: composing BQ-009 (+3,000 at an excess rate of
+> 4,000 · +2,800 at 3,800 on a 12,800 م² line) reproduces الشكل 39's shape exactly
+> — «ضمن 20%: 2,560 م² × 3,000 = +7,680,000» on both cards and «أكثر من 20%: 440 ×
+> 4,000» against «240 × 3,800» — with the net footer reading 250,000,000 →
+> 259,440,000 / 258,592,000 and «بانتظار لجنة تثبيت الأسعار». Step 3 prints the
+> weight sentence with a real cumulative 2.90%, step 5 the six-stage path with
+> تثبيت الأسعار present because a line tripped 20%. Submitting lands on the new
+> order's RECORD carrying the same two figures, at stage 1 with the RE department
+> awaiting. A decrease past the remaining quantity and an unbalanced
+> redistribution both come back 422 with the line named. `dotnet test` 267/267,
+> `ng build` clean.
+
+**Exit:** original qty 100, add 30 → 20 at the original rate, 10 beyond 20%, and the
+rate-fixing stage appears in the expected path. A decrease beyond the remaining
+quantity cannot be submitted.
 
 ### 5.4 Workflow + apply
 - [ ] Register `ChangeOrderStage`, `ChangeOrderExternalParty`, `ChangeOrderApplyStep`, `ChangeOrderAuditEntry`
