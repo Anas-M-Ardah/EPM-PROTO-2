@@ -1082,3 +1082,12 @@ button.d-file > .fm { align-items: flex-start; }
   border-block-start: 1px solid var(--outline-variant);
   font-size: 11px; line-height: 1.6; color: var(--on-surface-variant);
 }
+
+
+/* ── SCR-W1 · ملحق الشكل 4's «مخططان» ─────────────────────────────────────
+   Two charts side by side above 1100px and stacked below it, so neither is
+   squeezed to a width where its axis labels collide. `.d-chart-card` and
+   `.d-chart-legend` are the design system's own (desktop.css:779) — only the
+   pairing needed a rule. */
+.epm-ovw-charts { display: grid; gap: var(--space-16, 16px); }
+@media (min-width: 1100px) { .epm-ovw-charts { grid-template-columns: 1fr 1fr; } }

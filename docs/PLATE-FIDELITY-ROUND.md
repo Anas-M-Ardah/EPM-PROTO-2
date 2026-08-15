@@ -39,6 +39,18 @@ All sixty plates' «الوظائف والخصائص الظاهرة», «الإج
 | الشكل 30 | SCR-W8 record | **«منتقي الأمر»** | not built (P-128) |
 | الشكل 47 | SCR-W13 alerts | **«زر ضبط قواعد التنبيه»** | not built — now present and says the editor behind it is fixture data (P-129) |
 
+### Also rebuilt — SCR-W1 نظرة عامة
+
+**الشكل 4 was not the source this screen was built from.** It came from the v1.1
+reference `DModOverview`, and the two had diverged on nearly every line: five
+missing identity fields, four figures the plate pairs and the screen showed
+alone, both charts absent, no «فتح التنبيهات», an alerts panel of counts where
+the plate asks for cards you act from — and two panels the plate never names.
+
+Rebuilt to the plate (P-130 · P-131 · P-132). It is the second screen this
+round found built from the reference rather than from its plate, and the first
+one that has been redone.
+
 ### The one structural gap — SCR-W6 الإنجاز
 
 **الشكل 25 names four tabs and the screen has three, and they are not the same

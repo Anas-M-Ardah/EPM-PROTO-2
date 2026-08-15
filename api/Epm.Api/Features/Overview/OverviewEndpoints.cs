@@ -36,6 +36,29 @@ namespace Epm.Api.Features.Overview;
 /// </summary>
 public static class OverviewEndpoints
 {
+    /// <summary>
+    /// الشكل 4's «الحد المقبول 0.95» — the line CPI and SPI are read against.
+    /// A threshold somebody set: `02` defines no acceptable band for either
+    /// index, so it is a named constant here rather than an arithmetic result
+    /// dressed up as one.
+    /// </summary>
+    private const decimal AcceptableIndex = 0.95m;
+
+    /// <summary>
+    /// Which project module an alert is about, so الشكل 4's card can open it.
+    /// Null when the alert names nothing this screen can navigate to — better
+    /// a card with no destination than a card that goes somewhere wrong.
+    /// </summary>
+    private static string? ModuleFor(string kind) => kind switch
+    {
+        "schedule-slip" => "schedule",
+        "budget" => "financial",
+        "sla-overdue" => "changeorders",
+        "apply-failed" => "changeorders",
+        "distribution-blocked" => "boq",
+        _ => null,
+    };
+
     public static void MapOverviewEndpoints(this WebApplication app)
     {
         // [EP-OVW-01] GET /api/projects/{projectId}/overview
@@ -125,18 +148,25 @@ public static class OverviewEndpoints
             decimal executed = 0m, billed = 0m;
             decimal plannedWeighted = 0m, plannedBasis = 0m;
 
+            // Held, not discarded: الشكل 4's first chart reads the planned
+            // percentage at several DATES, and re-querying per point would be
+            // one round trip per recorded progress update.
+            var allActivities = contractIds.Count == 0
+                ? []
+                : await db.Activities.AsNoTracking()
+                    .Where(a => contractIds.Contains(a.ContractId) && !a.IsMilestone)
+                    .ToListAsync();
+
             foreach (var c in contracts)
             {
                 var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
                 executed += derived.Sum(x => x.Progress.AchievedAmount);
                 billed += derived.Sum(x => x.Line.Amount);
-
-                var acts = await db.Activities.AsNoTracking()
-                    .Where(a => a.ContractId == c.Id && !a.IsMilestone).ToListAsync();
-                plannedBasis += acts.Sum(a => a.BudgetedCost);
-                plannedWeighted += acts.Sum(a => a.BudgetedCost
-                    * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
             }
+
+            plannedBasis = allActivities.Sum(a => a.BudgetedCost);
+            plannedWeighted = allActivities.Sum(a => a.BudgetedCost
+                * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
 
             var paid = await db.Payments.AsNoTracking()
                 .Where(x => contractIds.Contains(x.ContractId) && x.Status == "paid")
@@ -147,11 +177,17 @@ public static class OverviewEndpoints
             decimal? physical = billed > 0m ? ProgressReflection.Rollup(billed, executed) : null;
             decimal? financial = effectiveTotal > 0m ? ProgressReflection.Rollup(effectiveTotal, paid) : null;
 
+            // الشكل 4 prints the planned figure BESIDE the actual one — «31%
+            // مقابل مخطط 39%» — so it is a value this endpoint returns and not
+            // an intermediate it throws away after computing the indices.
+            decimal? planned = plannedBasis > 0m
+                ? ProgressReflection.Rollup(plannedBasis, plannedWeighted)
+                : null;
+
             decimal? spi = null, cpi = null;
-            if (physical is not null && plannedBasis > 0m)
+            if (physical is not null && planned is not null)
             {
-                var planned = ProgressReflection.Rollup(plannedBasis, plannedWeighted);
-                var evm = EarnedValue.For(effectiveTotal, planned / 100m, physical.Value / 100m, paid);
+                var evm = EarnedValue.For(effectiveTotal, planned.Value / 100m, physical.Value / 100m, paid);
                 spi = evm.Spi;
                 cpi = evm.Cpi;
             }
@@ -166,9 +202,14 @@ public static class OverviewEndpoints
                 worst?.DelayDays,
                 worst?.DelayDays > 0 ? worst.Id : null,
                 physical is null ? null : Math.Round(physical.Value, 4, MidpointRounding.AwayFromZero),
+                planned is null ? null : Math.Round(planned.Value, 4, MidpointRounding.AwayFromZero),
                 financial is null ? null : Math.Round(financial.Value, 4, MidpointRounding.AwayFromZero),
                 spi is null ? null : Math.Round(spi.Value, 2, MidpointRounding.AwayFromZero),
-                cpi is null ? null : Math.Round(cpi.Value, 2, MidpointRounding.AwayFromZero));
+                cpi is null ? null : Math.Round(cpi.Value, 2, MidpointRounding.AwayFromZero),
+                // الشكل 4's «الحد المقبول 0.95». A threshold somebody set, not
+                // a derivation — `02` defines no acceptable band for CPI or SPI,
+                // so it is a named constant and the screen labels it as one.
+                AcceptableIndex);
 
             // BeneficiaryCodes is a CSV of codes (01 §2.1). Split it here and
             // resolve; the client never parses a stored string.
@@ -195,6 +236,7 @@ public static class OverviewEndpoints
 
             var open = await db.Alerts.AsNoTracking()
                 .Where(a => a.ProjectId == p.Id && !a.Acknowledged)
+                .OrderByDescending(a => a.RaisedAt)
                 .ToListAsync();
 
             var alerts = new OverviewAlerts(
@@ -202,6 +244,104 @@ public static class OverviewEndpoints
                 open.Count(a => a.Severity == "critical"),
                 open.Count(a => a.Severity == "warning"),
                 open.Count(a => a.Severity == "info"));
+
+            // الشكل 4's «التنبيهات النشطة» is a panel of CARDS you act from —
+            // «اتخاذ قرار الاعتماد أو مراجعة التنبيه أو تحديث الإنجاز من بطاقات
+            // التنبيهات» — not a count per severity. Critical first, then by
+            // recency: an inbox orders by urgency to the reader, not by a data
+            // column (the same rule SCR-W13's groups follow).
+            var alertCards = open
+                .OrderBy(a => a.Severity switch { "critical" => 0, "warning" => 1, _ => 2 })
+                .ThenByDescending(a => a.RaisedAt)
+                .Take(5)
+                .Select(a => new OverviewAlertCard(
+                    a.Id, a.Severity, a.Kind, a.TitleAr, a.TitleEn,
+                    a.RaisedAt.ToString("yyyy-MM-dd"), a.TargetRef, ModuleFor(a.Kind)))
+                .ToList();
+
+            // ── الشكل 4's identity line ───────────────────────────────────
+            // المقاول, المباشرة and الإنجاز التعاقدي belong to a CONTRACT. The
+            // plate's project has one; this fixture's has two, so the largest
+            // by effective value speaks for the project and the count travels
+            // with it so the screen can say so.
+            var lead = contracts
+                .OrderByDescending(c => rows.FirstOrDefault(r => r.Id == c.Id)?.EffectiveValue ?? 0m)
+                .FirstOrDefault();
+
+            var identity = new OverviewIdentity(
+                beneficiaries.FirstOrDefault()?.NameAr,
+                beneficiaries.FirstOrDefault()?.NameEn,
+                lead?.Contractor,
+                lead?.Consultant,
+                p.Type, p.FundingType, p.Region,
+                lead?.Start.ToString("yyyy-MM-dd"),
+                lead?.OriginalFinish.ToString("yyyy-MM-dd"),
+                contracts.Count);
+
+            // ── الشكل 4's cost line and spend ratio ───────────────────────
+            // «المقررة … والمعدلة … (▲ الفرق) والمتبقي» and «نسبة الصرف 34%
+            // (510 م من 1,500 م)». المتبقي is المعدلة − المصروف, which is the
+            // plate's own arithmetic; it is not an uncommitted balance.
+            var cost = new OverviewCost(
+                originalTotal,
+                effectiveTotal,
+                effectiveTotal - originalTotal,
+                paid,
+                effectiveTotal - paid,
+                effectiveTotal > 0m
+                    ? Math.Round(paid / effectiveTotal * 100m, 2, MidpointRounding.AwayFromZero)
+                    : null);
+
+            // ── الشكل 4's first chart ─────────────────────────────────────
+            // Domain/ProgressSeries. The actual line is the progress updates
+            // somebody RECORDED (الشكل 11's log), rolled up by contract value;
+            // the planned line is PlannedProgress read at those same dates. The
+            // last point is handed the screen's own physical figure so the
+            // chart cannot end on a different number from the tile above it.
+            var progressUpdates = await db.ContractActivityEvents.AsNoTracking()
+                .Where(e => contractIds.Contains(e.ContractId) && e.Action == "progress" && e.After != null)
+                .OrderBy(e => e.At)
+                .Select(e => new { e.ContractId, e.At, e.Before, e.After })
+                .ToListAsync();
+
+            var seriesUpdates = progressUpdates
+                .Where(e => decimal.TryParse(e.After, out _))
+                .Select(e => new ProgressSeries.Update(e.ContractId, e.At, decimal.Parse(e.After!)))
+                .ToList();
+
+            var seriesContracts = contracts.Select(c =>
+            {
+                // Where the contract STOOD before anybody logged a move — the
+                // earliest `Before` on its own log. Absent that, its current
+                // percentage: never 0, which would read as "no work had been
+                // done" rather than "nothing was recorded".
+                var first = progressUpdates
+                    .Where(e => e.ContractId == c.Id && decimal.TryParse(e.Before, out _))
+                    .Select(e => (decimal?)decimal.Parse(e.Before!))
+                    .FirstOrDefault();
+
+                return new ProgressSeries.Contract(
+                    c.Id,
+                    rows.FirstOrDefault(r => r.Id == c.Id)?.EffectiveValue ?? 0m,
+                    first ?? 0m);
+            }).ToList();
+
+            var plannedAtCache = new Dictionary<DateOnly, decimal?>();
+            decimal? PlannedAt(DateOnly at)
+            {
+                if (plannedAtCache.TryGetValue(at, out var cached)) return cached;
+                if (plannedBasis <= 0m) return plannedAtCache[at] = null;
+
+                var w = allActivities.Sum(a => a.BudgetedCost
+                    * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, at) / 100m);
+                return plannedAtCache[at] = ProgressReflection.Rollup(plannedBasis, w);
+            }
+
+            var progressSeries = ProgressSeries
+                .Build(seriesUpdates, seriesContracts, asOf, PlannedAt, physical)
+                .Select(pt => new OverviewProgressPoint(
+                    pt.At.ToString("yyyy-MM-dd"), pt.Planned, pt.Actual))
+                .ToList();
 
             var unavailable = new List<OverviewUnavailable>
             {
@@ -237,6 +377,32 @@ public static class OverviewEndpoints
             var paymentCount = contractIds.Count == 0 ? 0 : await db.Payments.AsNoTracking()
                 .CountAsync(x => contractIds.Contains(x.ContractId));
 
+            var riskCount = await db.Risks.AsNoTracking().CountAsync(r => r.ProjectId == p.Id);
+            var openRiskCount = await db.Risks.AsNoTracking()
+                .CountAsync(r => r.ProjectId == p.Id && r.Status != "closed");
+
+            var modelCount = await db.ModelElements.AsNoTracking().CountAsync(e => e.ProjectId == p.Id);
+
+            var meetingIds = await db.Meetings.AsNoTracking()
+                .Where(m => m.ProjectId == p.Id).Select(m => m.Id).ToListAsync();
+            var meetingCount = meetingIds.Count;
+            var openActionCount = await db.MeetingActions.AsNoTracking()
+                .CountAsync(a => meetingIds.Contains(a.MeetingId) && a.Status != "closed");
+
+            var documentCount = await db.Documents.AsNoTracking().CountAsync(d => d.ProjectId == p.Id);
+            var docIds = await db.Documents.AsNoTracking()
+                .Where(d => d.ProjectId == p.Id).Select(d => d.Id).ToListAsync();
+            // «قيد المراجعة» — a document whose CURRENT revision is a draft.
+            var draftDocCount = (await db.DocumentRevisions.AsNoTracking()
+                .Where(r => docIds.Contains(r.DocumentId)).ToListAsync())
+                .GroupBy(r => r.DocumentId)
+                .Count(g => g.OrderByDescending(r => r.No).First().Status == "draft");
+
+            var alertCount = await db.Alerts.AsNoTracking().CountAsync(a => a.ProjectId == p.Id);
+
+            var auditCount = await db.ProjectActivityEvents.AsNoTracking().CountAsync(e => e.ProjectId == p.Id)
+                + await db.ContractActivityEvents.AsNoTracking().CountAsync(e => contractIds.Contains(e.ContractId));
+
             var orders = contractIds.Count == 0
                 ? []
                 : await db.ChangeOrders.AsNoTracking()
@@ -258,18 +424,22 @@ public static class OverviewEndpoints
                 new("progress",     true,  activityCount, 0),
                 new("changeorders", true,  orders.Count,
                     orders.Count(l => l is not ("closed" or "rejected" or "cancelled"))),
-                new("risk",         false, 0, 0),
+                // Phase 6 built these seven and this list still said they did
+                // not exist, so seven of the fifteen units on «خط سير المراحل»
+                // were reporting zero rows on a project that has them (P-131).
+                new("risk",         true,  riskCount,     openRiskCount),
                 // السجلات والوثائق
-                new("model",        false, 0, 0),
-                new("meetings",     false, 0, 0),
-                new("documents",    false, 0, 0),
+                new("model",        true,  modelCount,    0),
+                new("meetings",     true,  meetingCount,  openActionCount),
+                new("documents",    true,  documentCount, draftDocCount),
                 // الرقابة
-                new("alerts",       false, 0, 0),
-                new("reports",      false, 0, 0),
-                new("audit",        false, 0, 0),
+                new("alerts",       true,  alertCount,    alerts.Open),
+                new("reports",      true,  0,             0),
+                new("audit",        true,  auditCount,    0),
             ]);
 
             var (started, available) = ModuleReadiness.Progress(moduleStates);
+
             var next = ModuleReadiness.NextAction(moduleStates);
 
             return Results.Ok(new OverviewResponse(
@@ -279,7 +449,7 @@ public static class OverviewEndpoints
                     p.WorkspaceCode, ws?.NameAr ?? p.WorkspaceCode, ws?.NameEn ?? p.WorkspaceCode,
                     p.DataDate?.ToString("yyyy-MM-dd"),
                     p.UpdatedAt?.ToString("yyyy-MM-dd")),
-                totals, rows, beneficiaries, alerts, unavailable,
+                identity, totals, cost, progressSeries, alerts, alertCards, unavailable,
                 moduleStates
                     .Select(m => new OverviewModule(m.Id, m.State, m.Rows, m.Waiting))
                     .ToList(),
