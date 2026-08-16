@@ -1091,3 +1091,8 @@ button.d-file > .fm { align-items: flex-start; }
    pairing needed a rule. */
 .epm-ovw-charts { display: grid; gap: var(--space-16, 16px); }
 @media (min-width: 1100px) { .epm-ovw-charts { grid-template-columns: 1fr 1fr; } }
+
+/* "Unavailable" where it appears OUTSIDE a stat tile — a watchlist cell, a
+   legend row. Same reasoning as .epm-stat-na .epm-na: a figure that has no
+   input is not an adverse state, so it is quiet, never --error (05 §7.9). */
+.epm-na { color: var(--on-surface-variant); }

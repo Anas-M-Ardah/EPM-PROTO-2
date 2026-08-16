@@ -25,6 +25,62 @@ export interface Unavailable {
   needsEn: string;
 }
 
+/** One period of the two S-curves. Same shape `<epm-scurve>` consumes. */
+export interface PortfolioCurvePeriod {
+  at: string;
+  planCum: number;
+  /** Null before the first recorded measurement — a gap, not a zero. */
+  actCum: number | null;
+  planPeriod: number;
+  actPeriod: number;
+}
+
+/** One project on «قائمة المتابعة — مشاريع خارج المسار». */
+export interface WatchlistRow {
+  projectId: string;
+  nameAr: string;
+  nameEn: string;
+  workspaceCode: string;
+  workspaceNameAr: string;
+  workspaceNameEn: string;
+  status: string;
+  /** red · amber · green — `Domain/ExecutiveSignal`. */
+  signal: string;
+  physical: number | null;
+  /** Physical minus planned, in points. Null when either side is missing. */
+  variance: number | null;
+  value: number;
+  forecastFinish: string | null;
+}
+
+export interface SignalBand {
+  signal: string;
+  count: number;
+  /** Whole percent of the portfolio. */
+  share: number;
+}
+
+export interface PortfolioCost {
+  approved: number;
+  revised: number;
+  spent: number;
+}
+
+export interface SpendYear {
+  year: number;
+  value: number;
+}
+
+export interface UpcomingMilestone {
+  projectId: string;
+  nameAr: string;
+  nameEn: string;
+  workspaceNameAr: string;
+  workspaceNameEn: string;
+  physical: number | null;
+  plannedFinish: string;
+}
+
 export interface PortfolioResponse {
   projectCount: number;
   activeCount: number;
@@ -37,6 +93,28 @@ export interface PortfolioResponse {
   pendingValue: number;
   pendingAmendmentCount: number;
   appliedAmendmentCount: number;
+
+  /** D-06 — the data date every figure below is stated as of. */
+  asOf: string;
+  /** `workspace-kind` codes present in scope, for the toolbar's select. */
+  entityKinds: string[];
+
+  physical: number | null;
+  planned: number | null;
+  financial: number | null;
+  spi: number | null;
+  cpi: number | null;
+  acceptableIndex: number;
+  earnedValue: number;
+  actualCost: number;
+
+  progressCurve: PortfolioCurvePeriod[];
+  costCurve: PortfolioCurvePeriod[];
+  signals: SignalBand[];
+  watchlist: WatchlistRow[];
+  cost: PortfolioCost;
+  annualSpend: SpendYear[];
+  milestones: UpcomingMilestone[];
 
   statusDistribution: StatusSlice[];
   valueByEntity: EntityValue[];

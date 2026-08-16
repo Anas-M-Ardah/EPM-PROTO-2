@@ -190,3 +190,23 @@ was built from, and it is not what the prototype draws today (P-133).
 2. **الفقرات التجهيزية has a design after all.** الأشكال 50–58 were recorded as
    unbuildable for want of a table; the prototype has six components for it.
    That is a phase of work, not a fix.
+
+
+---
+
+## Fixture drift, seen on SCR-E1 and SCR-W1
+
+Both screens now derive planned progress from `Activities` baselines at the
+data date (2026-08-02), and the portfolio reads **«المخطط 100%»** — every
+activity baseline in the fixture finishes before that date. The SPI that falls
+out of it (0.49) is therefore arithmetically right and narratively wrong: it
+says the portfolio is half as fast as planned, when what it actually says is
+that the fixture's schedules all ended two months ago.
+
+The same drift makes «معالم قادمة» empty — no planned finish falls after the
+data date — and it is why SCR-W1's progress curve jumps from 32% to 49% at its
+last point.
+
+**This is a fixture problem, not a rule problem.** `Fixture.cs` needs baselines
+that straddle the data date the way a live portfolio's would. Nothing in
+`Domain/` changes.

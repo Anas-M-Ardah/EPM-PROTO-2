@@ -319,7 +319,7 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 > projects; **beneficiaries receive quantity** (`01 §2.1`) and are a different list.
 > Beneficiaries move to Phase 4.2, where BOQ distribution first needs them. See P-24.
 
-### 2.3 Executive Portfolio — SCR-E1 · `DDashboard` `desktop-views.jsx:45` (v1.1) ✅ COMPLETE
+### 2.3 Executive Portfolio — SCR-E1 · `DDashboard` `desktop-views.jsx:45` ✅ COMPLETE — rebuilt to the live prototype
 - [x] KPI band as **one hairline-divided band** on an auto-fit grid, not floating cards
 - [x] Contract-status donut — the single place status colours carry data (`05 §1`),
       paired with a legend so nothing is colour-only (`05 §7.6`)
@@ -328,12 +328,28 @@ Independent of each other. Can run in parallel once Phase 1 lands.
 - [x] Count-up seeds the settled value and respects `prefers-reduced-motion` (`05 §6`)
 - [x] `EP-PRT-01` · Angular trio · TRACE row
 
-> **Physical %, financial %, SPI, CPI and the S-curve are NOT rendered as figures.**
-> Each needs an input that does not exist yet — weight-rolled BOQ progress (BR-04),
-> payments, or both (BR-11). They render as **"unavailable + reason"** tiles, which is
-> what the v1.1 design language requires: *"never render 0/100% for a missing input"*.
-> The reasons come from the server so they stay beside the rules that own them.
-> `DBarCompare` · `DLineTrend` · `DSCurve` · `DTlMini` arrive with those inputs in Phase 4.
+#### Rebuilt to the LIVE prototype — P-136 … P-140
+
+> The paragraph that stood here said physical %, financial %, SPI and CPI were
+> not rendered because their inputs did not exist. **That stopped being true in
+> Phase 4.4 and the screen kept saying it for three phases** (P-136). All four
+> are now derived from the same rules the project screens read, and
+> "unavailable + reason" is computed per figure and rendered inside its own
+> tile — so it appears when a figure genuinely has no input, and only then.
+
+- [x] Two `.d-dash` rows — progress curve + physical/SPI/financial tiles; cost
+      curve + CPI tile + «المؤشر التنفيذي» (`epm-scurve`, ported picture, derived data)
+- [x] `Domain/ExecutiveSignal` — the prototype's own red/amber/green rule,
+      thresholds named as constants; a missing delay or index cannot colour a
+      project (P-138) · 10 tests
+- [x] «قائمة المتابعة — مشاريع خارج المسار» — every non-green project, worst value first
+- [x] Four breakdown panels — status donut + legend, cost comparison,
+      annual disbursement from real payment years, value by workspace
+- [x] «معالم قادمة» — the nearest planned finishes STILL AHEAD of the data date
+- [x] Status and entity-type filters as QUERY PARAMS: the server re-derives the
+      whole band over what survives them (P-139)
+- [x] An empty curve rather than a flat line on the axis when nothing is
+      recorded (P-140)
 
 ### 2.4 Alerts Center — SCR-E6 · `DAlertsCenter` `enterprise-areas.jsx:106` (v1.1) ✅ COMPLETE
 - [x] Register `Alert` DbSet — columns pruned to what the register shows; `Body*`

@@ -10,7 +10,7 @@ One row per endpoint. Add yours when you build a page; never reorder existing ro
 | Screen | Spec | Reference component | Angular page | Endpoints | Status |
 |---|---|---|---|---|---|
 | SCR-E2 Projects | 04 §2 | `DProjectsAll` enterprise-areas.jsx:112 | `features/projects/projects.page.ts` | `EP-PRJ-01` | ✅ built |
-| SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 *(v1.1)* | `features/portfolio/portfolio.page.ts` | `EP-PRT-01` | ✅ built — progress/EVM tiles render "unavailable + reason" until BR-04 and payments exist |
+| SCR-E1 Portfolio | 04 §2 | `DDashboard` desktop-views.jsx:45 *(live prototype)* | `features/portfolio/portfolio.page.ts` | `EP-PRT-01` | ✅ rebuilt to the prototype — two S-curves, four EVM tiles, «المؤشر التنفيذي», watchlist, four breakdown panels, «معالم قادمة» (P-136 … P-140) |
 | SCR-E3 Contracts | 04 §2 | `DContractsAll` enterprise-areas.jsx:299 *(v1.1)* | `features/contracts/contracts.page.ts` | `EP-CNT-01` | ✅ built |
 | SCR-E4 Workspaces register | 04 §2 · ملحق الشكل 1 | `DSpaces` desktop-views.jsx:375 *(v1.1)* | `features/entities/entities.page.ts` | `EP-ENT-01` | ✅ built — the row ENTERS the workspace (الشكل 1 → الشكل 2); rows are the personaʼs assignments only (BR-15) |
 | SCR-E8 Workspace overview | ملحق الشكل 2 | `DWorkspaceOverview` desktop-workspace.jsx:284 *(v1.1)* | `features/workspaces/workspaces.page.ts` | `EP-WSP-01` | ✅ built — where entering a workspace lands; watchlist · status · recently updated, each row opening a project |
@@ -68,7 +68,7 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-LKP-01` | `GET /api/lookups` | `Features/Lookups/LookupsEndpoints.cs` | `core/lookups.ts` `ensureLoaded()` | — | Lookups |
 | `EP-CNT-01` | `GET /api/contracts` | `Features/Contracts/ContractsEndpoints.cs` | `contracts.api.ts` `list()` | BR-09 | Contracts · ContractAmendments · Projects |
 | `EP-ENT-01` | `GET /api/entities` | `Features/Entities/EntitiesEndpoints.cs` | `entities.api.ts` `list()` | BR-00 · BR-09 | Workspaces · Projects · Contracts · ContractAmendments |
-| `EP-WSP-01` | `GET /api/workspaces/{code}/overview` | `Features/Workspaces/WorkspacesEndpoints.cs` | `workspaces.api.ts` `overview()` | BR-00 · BR-09 · BR-15 | Workspaces · Projects · Contracts · ContractAmendments · Alerts || `EP-PRT-01` | `GET /api/portfolio` | `Features/Portfolio/PortfolioEndpoints.cs` | `portfolio.api.ts` `get()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Workspaces |
+| `EP-WSP-01` | `GET /api/workspaces/{code}/overview` | `Features/Workspaces/WorkspacesEndpoints.cs` | `workspaces.api.ts` `overview()` | BR-00 · BR-09 · BR-15 | Workspaces · Projects · Contracts · ContractAmendments · Alerts || `EP-PRT-01` | `GET /api/portfolio?status=&kind=` | `Features/Portfolio/PortfolioEndpoints.cs` | `portfolio.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · BR-15 | Projects · Contracts · ContractAmendments · Workspaces · BoqItems · Activities · Payments · ContractActivityEvents |
 | `EP-WSP-02` | `POST /api/workspaces` | `Features/Workspaces/WorkspacesEndpoints.cs` | `workspaces/workspaces.api.ts create() → entities.page.ts` | BR-15 | Workspaces *(WRITTEN)* |
 | `EP-DOCS-01` | `GET /api/docs/rules` | `Features/Docs/DocsEndpoints.cs` | `features/docs/docs.page.ts` | BR-01…BR-15 | — (pure) |
 | `EP-ALR-01` | `GET /api/alerts` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `list()` | — | Alerts · Projects |
