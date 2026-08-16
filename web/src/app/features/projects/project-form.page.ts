@@ -5,6 +5,7 @@ import { IconComponent } from '../../core/icon.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { SectionComponent } from '../../shared/section.component';
 import { SelectComponent, SelectOption } from '../../shared/select.component';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { LangService } from '../../core/lang';
 import { LookupsService, LookupItem } from '../../core/lookups';
 import { WorkspacesService } from '../../core/workspaces';
@@ -52,7 +53,8 @@ import {
 @Component({
   selector: 'epm-project-form-page',
   standalone: true,
-  imports: [IconComponent, PageHeadComponent, SectionComponent, SelectComponent],
+  imports: [IconComponent, PageHeadComponent, SectionComponent, SelectComponent,
+    PersonaSwitcherComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './project-form.page.html',
 })
@@ -73,6 +75,31 @@ export class ProjectFormPage {
 
   /** Scope. On create it comes from `?ws=`; on edit the server states it. */
   workspace = signal('');
+
+  /**
+   * True when the workspace arrived WITH the route. Then it is context, not a
+   * choice, and the form shows it in the breadcrumb rather than asking again.
+   * False on `/projects/new` with no `?ws=` — reached from the ministry-wide
+   * register — and there the form has to ask (P-147).
+   */
+  scopedWorkspace = signal(false);
+
+  /**
+   * The workspaces this capacity may open (BR-15). Offering one the server
+   * would refuse turns a 403 into the user's problem.
+   */
+  /**
+   * «يُحفظ المشروع ضمن مساحة العمل الحالية» is only true when there IS a
+   * current one. Reached from the ministry-wide register there is not, and the
+   * form asks instead — so the identity line must not claim otherwise.
+   */
+  subLine = computed(() => {
+    if (!this.isNew()) return "";
+    return this.scopedWorkspace() ? this.lang.t("prj_new_sub") : this.lang.t("prj_new_sub_pick");
+  });
+
+  workspaceOptions = computed<SelectOption[]>(() =>
+    this.workspaces.list().map(w => ({ code: w.code, label: this.lang.pick(w.nameAr, w.nameEn) })));
 
   loading = signal(true);
   saving = signal(false);
@@ -185,7 +212,9 @@ export class ProjectFormPage {
     // one subscription resolves the mode.
     const id = this.route.snapshot.paramMap.get('id');
     this.id.set(id);
-    this.workspace.set(this.route.snapshot.queryParamMap.get('ws') ?? '');
+    const fromRoute = this.route.snapshot.queryParamMap.get('ws') ?? '';
+    this.workspace.set(fromRoute);
+    this.scopedWorkspace.set(fromRoute !== '');
     this.load();
   }
 
@@ -208,6 +237,7 @@ export class ProjectFormPage {
           this.suggestions.set(def.suggestions);
           this.events.set(def.events);
           this.workspace.set(def.workspaceCode);
+        this.scopedWorkspace.set(true);      // editing: the server stated it
         }
         this.loading.set(false);
       },

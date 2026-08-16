@@ -492,6 +492,7 @@ const STR = {
   prj_new_title:   { ar: 'تعريف مشروع جديد',               en: 'Define a new project' },
   prj_edit_title:  { ar: 'تعديل تعريف المشروع',            en: 'Edit project definition' },
   prj_new_sub:     { ar: 'يُحفظ المشروع ضمن مساحة العمل الحالية.', en: 'The project is saved in the current workspace.' },
+  prj_new_sub_pick:{ ar: 'اختر مساحة العمل التي يُسجَّل فيها المشروع.', en: 'Choose the workspace the project is registered in.' },
   prj_save:        { ar: 'حفظ المشروع',                    en: 'Save project' },
   prj_save_changes:{ ar: 'حفظ التعديلات',                  en: 'Save changes' },
   prj_saved:       { ar: 'حُفظ المشروع',                   en: 'Project saved' },
@@ -502,6 +503,11 @@ const STR = {
   prj_suggested_hint:{ ar: 'قيمة اقترحها النظام — يمكن تعديلها.', en: 'Suggested by the system — you may change it.' },
   prj_fix_errors:  { ar: 'تعذّر الحفظ. راجع الحقول أدناه.', en: 'Could not save. Review the fields below.' },
   prj_no_workspace:{ ar: 'اختر مساحة عمل قبل تعريف مشروع.', en: 'Choose a workspace before defining a project.' },
+  inf_workspace:   { ar: 'مساحة العمل',                     en: 'Workspace' },
+  prj_pick_workspace:{ ar: 'اختر مساحة العمل',              en: 'Choose a workspace' },
+  /** Why the field is here at all — and why the list may be shorter than the ministry's. */
+  prj_workspace_hint:{ ar: 'المشروع يُسجَّل داخل مساحة عمل، والقائمة تعرض المساحات المسندة إليك فقط.',
+                     en: 'A project is registered inside a workspace; the list shows only the ones assigned to you.' },
   prj_edit:        { ar: 'تعديل',                          en: 'Edit' },
   /** سجل النشاط — الشكل 5's second tab. */
   prj_activity:    { ar: 'سجل النشاط',                     en: 'Activity log' },

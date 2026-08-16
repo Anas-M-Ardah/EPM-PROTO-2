@@ -33,10 +33,16 @@
     <div class="d-pz7">
 
       @if (!canDefine()) {
-        <div class="d-empty">
+<div class="d-empty">
           <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
           <b>{{ lang.t('con_no_permission_t') }}</b>
           <span>{{ lang.t('con_no_permission_b') }}</span>
+          <!--
+            The message above says «بدّل «العرض بصفة» للمتابعة», so the control
+            it names is HERE — a screen that refuses and then points at a
+            button somewhere else is a dead end (P-152).
+          -->
+          <epm-persona-switcher />
           <button type="button" class="d-btn" (click)="cancel()">{{ lang.t('cancel') }}</button>
         </div>
       } @else if (loading()) {

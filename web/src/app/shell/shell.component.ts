@@ -14,7 +14,6 @@ import { ToastService } from '../shared/toast.service';
 import { ToastComponent } from '../shared/toast.component';
 import { PopoverComponent } from '../shared/popover.component';
 import { CommandPaletteComponent, CommandAction } from '../shared/command-palette.component';
-import { RoleSwitchComponent } from '../shared/role-switch.component';
 import { AppFooterComponent } from './app-footer.component';
 
 interface NavItem {
@@ -86,7 +85,6 @@ function readProject(url: string): string {
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive, IconComponent, StatusPillComponent,
     ToastComponent, PopoverComponent, CommandPaletteComponent, AppFooterComponent,
-    RoleSwitchComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './shell.component.html',

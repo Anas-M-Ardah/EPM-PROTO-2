@@ -165,9 +165,8 @@ export class WorkspacesPage {
 
   /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
   private labelled(rows: WorkspaceCurvePeriod[]): CurvePeriod[] {
-    const pre = this.lang.isAr() ? 'ش' : 'M';
     return rows.map((r, i) => ({
-      label: pre + (i + 1),
+      label: fmt.month(r.at, i === 0 ? null : rows[i - 1].at),
       planCum: r.planCum, actCum: r.actCum,
       planPeriod: r.planPeriod, actPeriod: r.actPeriod,
     }));

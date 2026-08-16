@@ -10,6 +10,7 @@ import { PersonaService, canDefineProjects } from '../../core/persona';
 import { ToastService } from '../../shared/toast.service';
 import { ContractTabApi } from './contract.api';
 import { ContractDefinitionInput, ContractEvent, ContractViolation } from './contract.types';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 
 /**
  * المسار 2 — إنشاء العقود وربطها بالمشروع.
@@ -36,7 +37,7 @@ import { ContractDefinitionInput, ContractEvent, ContractViolation } from './con
 @Component({
   selector: 'epm-contract-form-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent],
+  imports: [IconComponent, SectionComponent, PersonaSwitcherComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contract-form.page.html',
 })

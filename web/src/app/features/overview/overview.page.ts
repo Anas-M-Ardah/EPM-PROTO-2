@@ -239,10 +239,18 @@ export class OverviewPage {
   // supplies these from what was recorded, so a month nobody measured is flat
   // rather than rising.
 
-  /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
-  private labelled(rows: { planCum: number; actCum: number | null; planPeriod: number; actPeriod: number }[]): CurvePeriod[] {
-    const pre = this.lang.isAr() ? 'ش' : 'M';
-    return rows.map((r, i) => ({ label: pre + (i + 1), ...r }));
+  /**
+   * «03-2025», then «04», «05» … — the period's own month, with the year said
+   * only where it turns. It used to be «ش1 … ش24», which numbered the boxes
+   * and named none of them (P-151). The server has always sent the date; the
+   * client was discarding it.
+   */
+  private labelled(rows: { at: string; planCum: number; actCum: number | null; planPeriod: number; actPeriod: number }[]): CurvePeriod[] {
+    return rows.map((r, i) => ({
+      label: fmt.month(r.at, i === 0 ? null : rows[i - 1].at),
+      planCum: r.planCum, actCum: r.actCum,
+      planPeriod: r.planPeriod, actPeriod: r.actPeriod,
+    }));
   }
 
   progressCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.progressCurve ?? []));
