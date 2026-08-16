@@ -1104,6 +1104,11 @@ button.d-file > .fm { align-items: flex-start; }
 /* SCR-W1's verdict row, same case: the chart is hidden, so the verdicts beside
    it become the row. */
 .d-verdict.solo { grid-template-columns: 1fr; }
+/* …and its index row stops being a pinned three: with one or two cells left,
+   a repeat(3, 1fr) grid leaves the survivor sitting in a third of a full-width
+   row with nothing beside it. Auto-fit is the rule 05 §8 makes binding for
+   every summary band in the app, and it applies here for the same reason. */
+.d-verdict.solo .vdrow { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .d-dash.solo > .d-dash-side {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

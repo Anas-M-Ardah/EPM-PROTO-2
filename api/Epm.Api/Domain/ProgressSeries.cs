@@ -114,6 +114,27 @@ public static class ProgressSeries
     /// Before the first update there is no actual figure at all, so
     /// <see cref="Period.ActCum"/> is null and the line simply has not started.
     /// </summary>
+    /// <summary>
+    /// Is there enough here to draw? Two conditions, and both come from what a
+    /// reader takes a curve to MEAN:
+    ///
+    ///   1. **Two points at least.** A curve is a trend, and one point is not
+    ///      a trend — it is a dot on an axis with four empty gridlines above
+    ///      it. That happens whenever a project's baseline starts in the same
+    ///      month as the data date: `Monthly` correctly returns one month end,
+    ///      and there is nothing to trace between.
+    ///   2. **Something on it.** All-zero planned with no recorded actual is a
+    ///      chart of nothing: it draws a flat line along the axis, which reads
+    ///      as "no progress was made" when the truth is "nothing was recorded"
+    ///      (P-140), and the client's answer to that is to hide it (P-144).
+    ///
+    /// The caller drops the series when this is false, so the panel is not
+    /// rendered at all rather than rendered empty.
+    /// </summary>
+    public static bool Drawable(IReadOnlyList<Period> rows)
+        => rows.Count >= 2
+           && (rows.Any(r => r.PlanCum > 0m) || rows.Any(r => r.ActCum is not null));
+
     public static IReadOnlyList<Period> Monthly(
         IReadOnlyList<Update> updates,
         IReadOnlyList<Contract> contracts,

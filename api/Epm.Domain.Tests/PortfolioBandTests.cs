@@ -205,6 +205,50 @@ public class PortfolioBandTests
     }
 
     [Fact]
+    public void A_ONE_POINT_curve_is_not_a_curve()
+    {
+        // A baseline that starts in the same month as the data date gives
+        // `Monthly` exactly one month end. There is nothing to trace between
+        // one point and itself: on screen it is a dot on an axis under four
+        // empty gridlines, which is a chart with no data (P-144).
+        var one = new List<ProgressSeries.Period>
+        {
+            new("", new DateOnly(2026, 7, 31), 12m, 8m, 12m, 8m),
+        };
+
+        Assert.False(ProgressSeries.Drawable(one));
+    }
+
+    [Fact]
+    public void A_curve_of_zeros_with_no_recorded_actual_is_not_a_curve()
+    {
+        var flat = new List<ProgressSeries.Period>
+        {
+            new("", new DateOnly(2026, 6, 30), 0m, null, 0m, 0m),
+            new("", new DateOnly(2026, 7, 31), 0m, null, 0m, 0m),
+        };
+
+        Assert.False(ProgressSeries.Drawable(flat));
+    }
+
+    [Fact]
+    public void Two_points_with_something_on_them_ARE_a_curve()
+    {
+        // Planned alone is enough — the plan is a real claim even before any
+        // progress is recorded against it.
+        Assert.True(ProgressSeries.Drawable([
+            new("", new DateOnly(2026, 6, 30), 0m, null, 0m, 0m),
+            new("", new DateOnly(2026, 7, 31), 14m, null, 14m, 0m),
+        ]));
+
+        // And so is a recorded actual with no plan behind it.
+        Assert.True(ProgressSeries.Drawable([
+            new("", new DateOnly(2026, 6, 30), 0m, null, 0m, 0m),
+            new("", new DateOnly(2026, 7, 31), 0m, 9m, 0m, 9m),
+        ]));
+    }
+
+    [Fact]
     public void Variance_is_null_when_either_side_is_missing()
     {
         Assert.Null(PortfolioBand.Variance(null, 39m));

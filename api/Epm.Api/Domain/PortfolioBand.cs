@@ -189,12 +189,16 @@ public static class PortfolioBand
             contracts.Select(c => new ProgressSeries.Contract(c.Id, c.Effective, c.StartingPct)).ToList(),
             from, asOf, PlannedAt, physicalPct, _ => string.Empty);
 
-        // A curve needs SOMETHING recorded to be a curve. With no baseline and
-        // no updates, `Monthly` still returns a row per month — all zeros — and
-        // a flat line along the axis reads as "nothing has happened" when the
-        // truth is "nothing has been recorded" (P-140).
-        var progressCurve = hasBaseline || updates.Count > 0
-            ? months.Select(m => new Period(m.At, m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod)).ToList()
+        // A curve needs SOMETHING recorded to be a curve — and enough of it to
+        // trace. `ProgressSeries.Drawable` owns both halves of that test; an
+        // undrawable series comes back empty and the panel is not rendered at
+        // all (P-140, P-144).
+        var progressRows = months
+            .Select(m => new ProgressSeries.Period(string.Empty, m.At, m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod))
+            .ToList();
+
+        var progressCurve = ProgressSeries.Drawable(progressRows)
+            ? progressRows.Select(m => new Period(m.At, m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod)).ToList()
             : [];
 
         var firstPaid = payments.Where(p => p.PaidDate is not null)
@@ -202,8 +206,7 @@ public static class PortfolioBand
             .DefaultIfEmpty(null)
             .Min();
 
-        var costCurve = new List<Period>(months.Count);
-        if (hasBaseline || firstPaid is not null)
+        var costRows = new List<ProgressSeries.Period>(months.Count);
         {
             decimal prevPlan = 0m, prevAct = 0m;
             foreach (var m in months)
@@ -219,8 +222,8 @@ public static class PortfolioBand
                     act = Round2(upto / effectiveTotal * 100m);
                 }
 
-                costCurve.Add(new Period(
-                    m.At, m.PlanCum, act,
+                costRows.Add(new ProgressSeries.Period(
+                    string.Empty, m.At, m.PlanCum, act,
                     Round2(m.PlanCum - prevPlan),
                     act is null ? 0m : Round2(Math.Max(0m, act.Value - prevAct))));
 
@@ -228,6 +231,10 @@ public static class PortfolioBand
                 if (act is not null) prevAct = act.Value;
             }
         }
+
+        var costCurve = ProgressSeries.Drawable(costRows)
+            ? costRows.Select(m => new Period(m.At, m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod)).ToList()
+            : [];
 
         var signals = ExecutiveSignal.Counts(rows.Select(r => r.Signal))
             .Select(c => new Signal(c.Signal, c.Count,
