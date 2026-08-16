@@ -14,10 +14,29 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Workspace shell | SCR-W1 Overview · SCR-W2 Information | `EP-OVW-01` · `EP-INF-01` | [workspace-shell.md](workspace-shell.md) |
 | Contract tab | SCR-W3 Contract | `EP-CON-01` · `EP-CON-02` | [contract-tab.md](contract-tab.md) |
 | BOQ tab | SCR-W4 BOQ | `EP-BOQ-01` … `EP-BOQ-08` | [boq-tab.md](boq-tab.md) |
+| Change orders | SCR-W8 register | `EP-CHG-01` | [change-orders.md](change-orders.md) |
+| Change order record | SCR-W8 record · الأشكال 30–34 | `EP-CHG-02` | [change-order-record.md](change-order-record.md) |
+| Change order wizard | SCR-W8 wizard · الأشكال 37–42 | `EP-WIZ-01` · `EP-WIZ-02` · `EP-WIZ-03` | [change-order-wizard.md](change-order-wizard.md) |
+| Change order workflow | SCR-W8 المسار · الشكل 33 | `EP-WFL-01` · `EP-WFL-02` · `EP-WFL-03` | [change-order-workflow.md](change-order-workflow.md) |
+| Risks | SCR-W9 سجل المخاطر · الشكل 43 | `EP-RSK-01` | [risks.md](risks.md) |
+| Meetings | SCR-W11 محاضر وإجراءات · الشكل 45 | `EP-MTG-01` | [meetings.md](meetings.md) |
+| Documents | SCR-W12 الوثائق والمخططات · الشكل 46 | `EP-DOC-01` | [documents.md](documents.md) |
+| Project alerts | SCR-W13 التنبيهات · الشكل 47 | `EP-PAL-01` · `EP-PAL-02` | [project-alerts.md](project-alerts.md) |
+| 3D model | SCR-W10 النموذج ثلاثي الأبعاد · الشكل 44 | `EP-MDL-01` | [model.md](model.md) |
+| Project reports | SCR-W14 التقارير (تبويب المشروع) | `EP-PRP-01` | [project-reports.md](project-reports.md) |
+| Audit | SCR-W15 سجل التدقيق | `EP-AUD-01` | [audit.md](audit.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
 | Shell | — (frames every screen) | — (reads `EP-ENT-01` · `EP-DEV-03`) | [_shell.md](_shell.md) |
+
+### Whole-system views
+
+| View | Answers | Doc |
+|---|---|---|
+| Global ER | *what tables are there, and how do they join?* | [_global-er.md](_global-er.md) |
+| Feature map | *screen → endpoint → rule → table, for all of it* | [_feature-map.md](_feature-map.md) |
+| Change-order lifecycle | *the one flow the system exists for* | [_changeorder-lifecycle.md](_changeorder-lifecycle.md) |
 
 ## What every feature doc must contain
 

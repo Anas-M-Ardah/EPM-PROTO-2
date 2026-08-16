@@ -72,12 +72,16 @@ export interface OverviewTotals {
   delayDrivenBy: string | null;
   /** REAL since Phase 4.4 (BR-04). Null until a contract has a bill to roll up. */
   physical: number | null;
+  /** الشكل 4 prints the actual figure «مقابل مخطط» — they travel together. */
+  planned: number | null;
   /** Disbursed ÷ effective value. PAID only, never merely certified (P-26). */
   financial: number | null;
   /** BR-11, against the planned figure P-53 derives. Null without a schedule. */
   spi: number | null;
   /** BR-11. Null before any money has actually been paid. */
   cpi: number | null;
+  /** الشكل 4's «الحد المقبول 0.95» — a threshold somebody set, not a derivation. */
+  acceptableIndex: number;
 }
 
 export interface OverviewAlerts {
@@ -123,12 +127,75 @@ export interface OverviewNextAction {
   waiting: number;
 }
 
+/** الشكل 4's identity line. Three of these belong to the lead CONTRACT. */
+export interface OverviewIdentity {
+  beneficiaryAr: string | null;
+  beneficiaryEn: string | null;
+  contractor: string | null;
+  consultant: string | null;
+  type: string;
+  fundingType: string;
+  region: string;
+  start: string | null;
+  contractualFinish: string | null;
+  /** More than one, and the dates above are the largest contract's. */
+  contractCount: number;
+}
+
+/** الشكل 4's cost line and spend ratio. */
+export interface OverviewCost {
+  approved: number;
+  revised: number;
+  delta: number;
+  spent: number;
+  remaining: number;
+  spendPct: number | null;
+}
+
+/** One point of الشكل 4's first chart. */
+export interface OverviewProgressPoint {
+  at: string;
+  /** Derived from the baselines. Null when no baseline exists. */
+  planned: number | null;
+  /** Recorded, or the screen's own physical figure at the data date. */
+  actual: number;
+}
+
+/** One card of الشكل 4's «التنبيهات النشطة». */
+export interface OverviewAlertCard {
+  id: number;
+  severity: string;
+  kind: string;
+  titleAr: string;
+  titleEn: string;
+  raisedAt: string;
+  targetRef: string | null;
+  /** Where the card opens. Null when it points at nothing this screen reaches. */
+  moduleId: string | null;
+}
+
+/** One period of an S-curve. The CLIENT labels it — «ش1» is a language call. */
+export interface OverviewCurvePeriod {
+  at: string;
+  planCum: number;
+  /** Null before the first measurement: the line starts where the record does. */
+  actCum: number | null;
+  planPeriod: number;
+  actPeriod: number;
+}
+
 export interface OverviewResponse {
   project: OverviewProject;
+  identity: OverviewIdentity;
   totals: OverviewTotals;
-  contracts: OverviewContract[];
-  beneficiaries: OverviewBeneficiary[];
+  cost: OverviewCost;
+  progressSeries: OverviewProgressPoint[];
+  /** «التقدم التراكمي · مخطط مقابل فعلي». */
+  progressCurve: OverviewCurvePeriod[];
+  /** «المنحنى المالي · الصرف المخطط مقابل الفعلي». */
+  costCurve: OverviewCurvePeriod[];
   alerts: OverviewAlerts;
+  alertCards: OverviewAlertCard[];
   unavailable: OverviewUnavailable[];
   modules: OverviewModule[];
   progress: OverviewProgress;

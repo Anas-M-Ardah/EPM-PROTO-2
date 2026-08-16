@@ -1,0 +1,171 @@
+<!--
+  SCR-W11 — محاضر الاجتماعات وسجل الإجراءات · ملحق الشكل 45.
+
+  The plate, taken literally:
+    «محضر اجتماع جديد» in Z6, and two tabs beside the title
+    the minutes as a TIMELINE, newest first: date in the gutter, title, ONE
+    decision line, and an attachment card carrying «محضر اجتماع · PDF»
+    سجل الإجراءات as six columns, with «متأخر» where the status would be
+
+  Every date, number and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_meetings') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="6" [rows]="5" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_meetings') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <div class="d-pz6">
+      <span class="z6-t">{{ lang.t('mod_meetings') }}</span>
+
+      <div class="grp">
+        <button type="button" class="d-fchip" [class.on]="tab() === 'minutes'"
+                (click)="tab.set('minutes')">
+          {{ lang.t('mtg_tab_minutes') }}
+          <span class="n"><bdi>{{ d.meetingCount }}</bdi></span>
+        </button>
+        <button type="button" class="d-fchip" [class.on]="tab() === 'actions'"
+                (click)="tab.set('actions')">
+          {{ lang.t('mtg_tab_actions') }}
+          <span class="n"><bdi>{{ d.actionCount }}</bdi></span>
+        </button>
+      </div>
+
+      <span class="sp"></span>
+
+      <button type="button" class="d-btn sm primary"
+              (click)="toast.demo('محضر اجتماع جديد', 'New meeting minute')">
+        <epm-icon name="person_add" [size]="15" />{{ lang.t('mtg_new') }}
+      </button>
+    </div>
+
+    <div class="d-pbody no-aside">
+      <div class="d-pz7">
+
+        <!-- ══ محاضر الاجتماعات — the timeline ═══════════════════════════ -->
+        @if (tab() === 'minutes') {
+          <epm-section [title]="lang.t('mtg_tab_minutes')"
+                       [sub]="lang.t('mtg_minutes_sub')" [n]="d.meetingCount"
+                       icon="group" [collapsible]="true" [defaultOpen]="true">
+
+            @if (meetings().length === 0) {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="group" [size]="30" /></span>
+                <b>{{ lang.t('mtg_empty_t') }}</b>
+                <span>{{ lang.t('mtg_empty_b') }}</span>
+              </div>
+
+            } @else {
+              <!-- Newest first, and the date sits in its own gutter so the
+                   titles align down the page (الشكل 45). -->
+              <ol class="d-votrail">
+                @for (m of meetings(); track m.id) {
+                  <li class="ok">
+                    <span class="ic"><epm-icon name="calendar_month" [size]="14" /></span>
+                    <div class="bd">
+                      <div class="hd">
+                        <b>{{ title(m) }}</b>
+                        <span class="sp"></span>
+                        <span class="d-cell-sub mono"><bdi>{{ fmt.date(m.heldOn) }}</bdi></span>
+                      </div>
+                      <div class="who">{{ decision(m) }}</div>
+
+                      <!-- The attachment card. A minute with no file shows NO
+                           card rather than an empty one — the plate's third
+                           row is exactly that case. -->
+                      @if (m.fileName) {
+                        <div class="d-vo-ext">
+                          <div class="row">
+                            <div class="tx">
+                              <b><bdi>{{ m.fileName }}</bdi></b>
+                              <span>{{ lang.t('mtg_file_kind') }} · <bdi>{{ m.fileKind }}</bdi></span>
+                            </div>
+                            <button type="button" class="d-btn sm"
+                                    (click)="toast.demo('فتح المحضر', 'Open the minute')">
+                              <epm-icon name="visibility" [size]="14" />{{ lang.t('mtg_open') }}
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            }
+          </epm-section>
+        }
+
+        <!-- ══ سجل الإجراءات — always under the minutes, as الشكل 45 draws
+             it, and on its own when the second tab is chosen. ═══════════ -->
+        <epm-section [title]="lang.t('mtg_tab_actions')" [n]="d.actionCount"
+                     icon="task_alt" [collapsible]="true" [defaultOpen]="true" [flush]="true">
+
+          @if (actions().length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="done" [size]="30" /></span>
+              <b>{{ lang.t('mtg_noact_t') }}</b>
+              <span>{{ lang.t('mtg_noact_b') }}</span>
+            </div>
+
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 900px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('mtg_col_code') }}</th>
+                  <th>{{ lang.t('mtg_col_action') }}</th>
+                  <th>{{ lang.t('mtg_col_owner') }}</th>
+                  <th>{{ lang.t('mtg_col_due') }}</th>
+                  <th>{{ lang.t('mtg_col_priority') }}</th>
+                  <th>{{ lang.t('col_status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of actions(); track a.code) {
+                  <tr>
+                    <td class="mono d-cell-sub"><bdi>{{ a.code }}</bdi></td>
+                    <td class="d-cell-strong">{{ title(a) }}</td>
+                    <td>{{ a.owner }}</td>
+                    <td class="mono"><bdi>{{ fmt.date(a.dueDate) }}</bdi></td>
+                    <td>{{ priorityLabel(a.priority) }}</td>
+                    <!-- «متأخر» IS one of this register's four status values —
+                         الشكل 45 shows a past-due action still reading «قيد
+                         التنفيذ», so nothing here derives lateness (P-116). -->
+                    <td><span class="d-pill {{ statusClass(a) }}">{{ statusText(a) }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+
+            @if (overdueCount() > 0) {
+              <div class="d-pager calcnote">
+                <epm-icon name="schedule" [size]="14" />
+                <span>
+                  {{ lang.t('mtg_overdue_note') }}
+                  <bdi>{{ overdueCount() }}</bdi> ·
+                  {{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi>
+                </span>
+              </div>
+            }
+          }
+        </epm-section>
+      </div>
+    </div>
+   }
+  }
+</div>

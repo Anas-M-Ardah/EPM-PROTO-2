@@ -1,18 +1,34 @@
 <!--
-  SCR-W1 Overview — v1.1 module skeleton.
-  Ported from DModOverview, ../epm@design/system-revamp
-  app/project-modules.jsx:2512.
+  SCR-W1 — نظرة عامة على المشروع · **ملحق الشكل 4**.
 
-  Renders its own module frame: Z6 title bar → Z7 scrolling body. The workspace
-  shell supplies Z2 above it and never lays this out.
+  Structure and classes follow the LIVE prototype's `DModOverview`
+  (infinite-azaiton.github.io/epm · app/project-modules.jsx), which is the
+  design authority for this screen:
 
-  Order follows the reference: the project's attributes (.d-meta), then the
-  headline figures, then the registers. Every number, date and ID is
-  <bdi>-isolated (05 §5.2).
+    .d-meta         the identity line — nine fields
+    .d-verdict ×2   an S-curve paired with a verdict panel: progress, then cost
+    .d-stagebar     «خط سير المراحل» with «الإجراء التالي المطلوب» IN its head
+    .d-alertfocus   «التنبيهات النشطة» — severity shares, then cards with a
+                    per-module action VERB
+
+  Every class here is already in `web/src/styles/desktop.css`; an earlier pass
+  reached for generic components and had to be redone (P-133).
+
+  The DATA is not the prototype's. Its curves are `f*f*(3-2*f)` over twelve
+  invented months and its indices divide one made-up figure by another; these
+  come from `Domain/ProgressSeries` and `Domain/EarnedValue` over what was
+  recorded. Same picture, real numbers.
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
 -->
 <div class="d-pframe">
   <div class="d-pz6">
-    <span class="z6-t">{{ lang.t('mod_overview') }}</span>
+    <span class="z6-t">
+      {{ lang.t('mod_overview') }}
+      @if (project(); as p) {
+        <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(p.dataDate) }}</bdi></em>
+      }
+    </span>
     <span class="sp"></span>
   </div>
 
@@ -26,11 +42,12 @@
           <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
           <b>{{ lang.t('error_t') }}</b>
           <span><bdi>{{ error() }}</bdi></span>
-          <button class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
+          <button type="button" class="d-btn primary" (click)="reload()">{{ lang.t('retry') }}</button>
         </div>
-      } @else if (project()) {
+      } @else {
+       @if (data(); as d) {
 
-        <!-- The project's attributes. Never repeats what Z2 already shows. -->
+        <!-- ══ the identity line ═══════════════════════════════════════════ -->
         <dl class="d-meta">
           @for (m of meta(); track m.k) {
             <div class="d-meta-i">
@@ -40,32 +57,169 @@
           }
         </dl>
 
-        <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
+        @if (multiContract()) {
+          <!-- The plate's project has one contract; this one has more, and
+               three fields above belong to a CONTRACT. Saying which beats
+               presenting one contract's dates as the project's. -->
+          <p class="muted epm-form-note">
+            <epm-icon name="info" [size]="14" />
+            {{ lang.t('ovw_lead_contract') }}
+            <bdi>{{ d.identity.contractCount }}</bdi>
+          </p>
+        }
 
-        <!--
-          الشكل 4 — «خط سير المراحل» + «الإجراء التالي المطلوب».
+        <!-- ══ 1. VERDICT — is this project on track? ══════════════════════ -->
+        <div class="d-verdict">
+          <div class="chart">
+            <div class="ch-head">
+              <b>{{ lang.t('ovw_curve_progress') }}</b>
+              <span class="d-cell-sub">{{ lang.t('ovw_curve_progress_sub') }}</span>
+            </div>
+            @if (progressCurve().length > 0) {
+              <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
+                          [caption]="lang.t('ovw_curve_progress')" />
+            } @else {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="trending_up" [size]="30" /></span>
+                <b>{{ lang.t('ovw_curve_empty_t') }}</b>
+                <span>{{ lang.t('ovw_curve_empty_b') }}</span>
+              </div>
+            }
+          </div>
 
-          The counter reads STARTED / AVAILABLE, not «معتمد»: the document's
-          «4/8 معتمد» counts approvals, and this system has no per-module
-          approval state to count. Saying «بدأت» is the true version of the
-          same sentence. See Domain/ModuleReadiness.cs.
+          <div class="verdicts">
+            @if (totals(); as t) {
+              <div class="vd big">
+                <span class="k">{{ lang.t('ovw_physical') }}</span>
+                @if (t.physical === null) {
+                  <span class="v">—</span>
+                  <span class="d">{{ need('physical') }}</span>
+                } @else {
+                  <span class="v"><bdi>{{ fmt.pct(t.physical, 0) }}</bdi></span>
+                  @if (physVariance(); as pv) {
+                    <!-- «▼ 8 نقطة عن المخطط (39%)» — the gap carries its own
+                         sign; no threshold colours the magnitude (05 §7.9). -->
+                    <span class="d">
+                      {{ pv < 0 ? '▼' : '▲' }} <bdi>{{ fmt.pct(abs(pv), 0) }}</bdi>
+                      {{ lang.t('ovw_pts_vs_plan') }}
+                      (<bdi>{{ fmt.pct(t.planned, 0) }}</bdi>)
+                    </span>
+                  }
+                  <!-- The track carries the actual; the marker is the plan. -->
+                  <span class="track" aria-hidden="true">
+                    <i [style.width.%]="t.physical"></i>
+                    @if (t.planned !== null) { <u [style.inset-inline-start.%]="t.planned"></u> }
+                  </span>
+                }
+              </div>
 
-          Chips are the rail's own labels and routes, so the strip can never
-          name or link a module differently from the sidebar beside it.
-        -->
-        <!--
-          `.d-stagebar` IS the design system's «خط سير المراحل» — head bar with
-          a progress track, then a row of steps each carrying a dot, a name and
-          a state word (desktop.css:1297-1319). An earlier pass invented chips
-          instead and collided with the existing `.epm-track` rail; the
-          component already existed and CLAUDE.md §7 says to grep first.
+              <div class="vdrow">
+                <div class="vd {{ indexClass(t.spi) }}">
+                  <span class="k">SPI</span>
+                  <span class="v"><bdi>{{ t.spi === null ? '—' : fmt.index(t.spi) }}</bdi></span>
+                  <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
+                </div>
+                <div class="vd {{ indexClass(t.cpi) }}">
+                  <span class="k">CPI</span>
+                  <span class="v"><bdi>{{ t.cpi === null ? '—' : fmt.index(t.cpi) }}</bdi></span>
+                  <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
+                </div>
+                <div class="vd {{ t.delayDays && t.delayDays > 0 ? 'bad' : 'good' }}">
+                  <span class="k">{{ lang.t('ovw_delay') }}</span>
+                  <span class="v">
+                    <bdi>{{ t.delayDays === null ? '—' : (t.delayDays > 0 ? '+' + t.delayDays : '0') }}</bdi>
+                  </span>
+                  <span class="d">{{ t.delayDrivenBy ?? lang.t('ovw_on_baseline') }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
 
-          The readiness classes and icons are the reference's own
-          (../epm/app/data.jsx:464). Only three of its seven states are
-          reachable: «معتمد», «جاهز للمراجعة» and «مُعاد بملاحظات» are approval
-          verdicts this system cannot make, and the reference only reaches them
-          by generating readiness from a seeded RNG.
-        -->
+        <!-- ══ 1b. COST — is the money tracking the work? ══════════════════ -->
+        <div class="d-verdict">
+          <div class="chart">
+            <div class="ch-head">
+              <b>{{ lang.t('ovw_curve_cost') }}</b>
+              <span class="d-cell-sub">{{ lang.t('ovw_curve_cost_sub') }}</span>
+            </div>
+            @if (costCurve().length > 0) {
+              <epm-scurve [data]="costCurve()" color="var(--success)"
+                          [caption]="lang.t('ovw_curve_cost')" />
+            }
+          </div>
+
+          <div class="verdicts">
+            @if (cost(); as c) {
+              <button type="button" class="vd big click" (click)="goToModule('financial')">
+                <span class="k">{{ lang.t('ovw_spend_ratio') }}</span>
+                <span class="v"><bdi>{{ c.spendPct === null ? '—' : fmt.pct(c.spendPct, 0) }}</bdi></span>
+                <span class="d">
+                  <bdi>{{ fmt.money(c.spent) }}</bdi> {{ lang.t('ovw_of') }}
+                  <bdi>{{ fmt.money(c.revised) }}</bdi>
+                  @if (totals()?.physical !== null) {
+                    · {{ lang.t('ovw_physical') }} <bdi>{{ fmt.pct(totals()!.physical, 0) }}</bdi>
+                  }
+                </span>
+                <!-- The track is the spend; the marker is the physical figure,
+                     so over- and under-spend against the work is readable
+                     without either being coloured a verdict. -->
+                <span class="track" aria-hidden="true">
+                  <i [style.width.%]="c.spendPct ?? 0"></i>
+                  @if (totals()?.physical !== null) {
+                    <u [style.inset-inline-start.%]="totals()!.physical"></u>
+                  }
+                </span>
+              </button>
+
+              <div class="vdrow">
+                <div class="vd">
+                  <span class="k">{{ lang.t('ovw_c_approved') }}</span>
+                  <span class="v num"><bdi>{{ fmt.money(c.approved) }}</bdi></span>
+                  <span class="d">{{ lang.t('cur_iqd') }}</span>
+                </div>
+                <div class="vd">
+                  <span class="k">{{ lang.t('ovw_c_revised') }}</span>
+                  <span class="v num"><bdi>{{ fmt.money(c.revised) }}</bdi></span>
+                  <span class="d">
+                    @if (costDelta(); as delta) { <bdi>{{ delta }}</bdi> }
+                    @else { {{ lang.t('ovw_c_unchanged') }} }
+                  </span>
+                </div>
+                <div class="vd">
+                  <span class="k">{{ lang.t('ovw_c_remaining') }}</span>
+                  <span class="v num"><bdi>{{ fmt.money(c.remaining) }}</bdi></span>
+                  <span class="d">{{ lang.t('ovw_c_to_spend') }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- THE PROJECTION IS ITS OWN LINE, NEVER PART OF A FIGURE ABOVE.
+             Approving a change order changes nothing; only applying it moves
+             the contract (02 §9, non-negotiable #2). -->
+        @if (hasProjection()) {
+          @if (totals(); as t) {
+            <div class="d-scopebar">
+              <epm-icon name="info" [size]="15" />
+              <span>
+                {{ lang.t('ovw_projection') }}
+                <b><bdi>{{ fmt.money(t.projectionValue) }}</bdi></b>
+                — {{ lang.t('ovw_projection_note') }}
+                (<bdi>{{ t.pendingAmendments }}</bdi>)
+              </span>
+            </div>
+          }
+        }
+
+        <!-- ══ 2. PROCESS — where is it in the lifecycle? ══════════════════
+             §79: «خط سير المراحل يقرأ حالة كل وحدة من الوحدة نفسها». The eight
+             units are الشكل 4's own, and the prototype's `STAGE_IDS` is the
+             same eight.
+
+             The counter says «بدأت», not «معتمد»: the document counts
+             approvals and this system has no per-module approval state. -->
         <div class="d-stagebar">
           <div class="sb-head">
             <b>{{ lang.t('ovw_track') }}</b>
@@ -73,186 +227,114 @@
               <span class="track" aria-hidden="true">
                 <i [style.width.%]="progressPct()"></i>
               </span>
-              <bdi>{{ progress().started }}/{{ progress().available }}</bdi>
+              <bdi>{{ stripProgress().started }}/{{ stripProgress().available }}</bdi>
               {{ lang.t('ovw_track_started') }}
             </span>
+
+            @if (next(); as n) {
+              <button type="button" class="d-btn sm primary" (click)="goToModule(n.mod.id)">
+                {{ lang.t('ovw_next_action') }}: {{ moduleLabel(n.mod.key) }}
+                <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="14" />
+              </button>
+            }
           </div>
 
-          <ul class="steps">
+          <ol class="steps">
             @for (m of strip(); track m.id) {
               <li class="step" [class]="'step ' + stateClass(m.state)"
                   [class.now]="next() && next()!.moduleId === m.id">
                 <button type="button" (click)="goToModule(m.id)"
                         [attr.aria-label]="moduleLabel(m.mod!.key) + ': ' + stateLabel(m.state)">
                   <span class="dot" aria-hidden="true">
-                    <epm-icon [name]="stateIcon(m.state)" [size]="15" />
+                    <epm-icon [name]="stateIcon(m.state)" [size]="14" />
                   </span>
                   <span class="nm">{{ moduleLabel(m.mod!.key) }}</span>
-                  <!-- 05 §7.6 — status is never colour-only; the dot always has a word. -->
+                  <!-- 05 §7.6 — status is never colour-only. -->
                   <span class="st">{{ stateLabel(m.state) }}</span>
                 </button>
               </li>
             }
-          </ul>
+          </ol>
         </div>
 
-        @if (next(); as n) {
-          <button type="button" class="d-btn primary epm-next-action"
-                  (click)="goToModule(n.mod.id)">
-            <epm-icon name="priority_high" [size]="15" />
-            <span>
-              {{ lang.t('ovw_next_action') }}:
-              {{ moduleLabel(n.mod.key) }}
-              @if (n.waiting > 0) {
-                <small><bdi>{{ n.waiting }}</bdi> {{ lang.t('ovw_waiting') }}</small>
-              }
+        <!-- ══ 3. ATTENTION — what needs a decision now ════════════════════
+             الشكل 4: «اتخاذ قرار الاعتماد أو مراجعة التنبيه أو تحديث الإنجاز
+             من بطاقات التنبيهات». Each card's button carries the VERB for the
+             module it points at, not a generic "open". -->
+        <section class="d-alertfocus" [class.crit]="alerts().critical > 0">
+          <header class="af-h">
+            <span class="ic">
+              <epm-icon [name]="alerts().critical > 0 ? 'error' : 'notifications'" [size]="20" />
             </span>
-          </button>
-        } @else {
-          <p class="muted epm-form-note">
-            <epm-icon name="check_circle" [size]="14" />{{ lang.t('ovw_no_next_action') }}
-          </p>
-        }
-
-        <!--
-          THE PROJECTION IS ITS OWN LINE, NEVER PART OF THE VALUE ABOVE.
-          Approving a change order changes nothing; only applying it moves the
-          contract (02 §9, non-negotiable #2). Folding an approved-but-unapplied
-          amendment into the project value is the single most consequential
-          mistake this screen could make, so the two figures never share a tile.
-        -->
-        @if (hasProjection()) {
-          @if (totals(); as t) {
-          <div class="d-scopebar">
-            <epm-icon name="info" [size]="15" />
-            <span>
-              {{ lang.t('ovw_projection') }}
-              <b><bdi>{{ fmt.money(t.projectionValue) }}</bdi></b>
-              — {{ lang.t('ovw_projection_note') }}
-              (<bdi>{{ t.pendingAmendments }}</bdi>)
-            </span>
-          </div>
-          }
-        }
-
-        <epm-section [title]="lang.t('ovw_contracts')"
-                     [sub]="lang.t('ovw_contracts_sub')"
-                     [n]="contracts().length">
-          @if (contracts().length === 0) {
-            <!-- Empty because this project has no contract — which is a real
-                 state, not a loading gap: a project is registered before it is
-                 awarded, and until then it has no contractual value at all. -->
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
-              <b>{{ lang.t('ovw_no_contracts_t') }}</b>
-              <span>{{ lang.t('ovw_no_contracts_b') }}</span>
-            </div>
-          } @else {
-            <table class="d-table">
-              <thead>
-                <tr>
-                  <th>{{ lang.t('col_contract') }}</th>
-                  <th style="width:120px">{{ lang.t('col_status') }}</th>
-                  <th style="width:150px">{{ lang.t('col_effective_value') }}</th>
-                  <th style="width:120px">{{ lang.t('col_start') }}</th>
-                  <th style="width:140px">{{ lang.t('col_baseline_finish') }}</th>
-                  <th style="width:120px">{{ lang.t('col_forecast_finish') }}</th>
-                  <th style="width:96px">{{ lang.t('col_delay') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (c of contracts(); track c.id) {
-                  <tr>
-                    <td class="d-cell-strong">
-                      {{ lang.pick(c.nameAr, c.nameEn) }}
-                      <div class="d-cell-sub mono"><bdi>{{ c.id }}</bdi></div>
-                      <div class="d-cell-sub">{{ c.contractor }}</div>
-                    </td>
-                    <td><epm-status-pill kind="contract-status" [code]="c.status" /></td>
-                    <td class="num">
-                      <bdi>{{ fmt.money(c.effectiveValue) }}</bdi>
-                      <!-- The original is shown BESIDE the effective value, never
-                           struck through (04 §6): it is still the awarded figure
-                           and it never stops being true. -->
-                      @if (valueMoved(c)) {
-                        <div class="d-cell-sub">
-                          {{ lang.t('ovw_awarded') }} <bdi>{{ fmt.money(c.originalValue) }}</bdi>
-                        </div>
-                      }
-                      @if (c.pendingAmendments > 0) {
-                        <div class="d-cell-sub">
-                          {{ lang.t('ovw_pending') }} <bdi>{{ c.pendingAmendments }}</bdi>
-                        </div>
-                      }
-                    </td>
-                    <td class="num d-cell-sub"><bdi>{{ fmt.date(c.start) }}</bdi></td>
-                    <td class="num">
-                      <bdi>{{ fmt.date(c.effectiveFinish) }}</bdi>
-                      @if (finishMoved(c)) {
-                        <div class="d-cell-sub">
-                          {{ lang.t('ovw_was') }} <bdi>{{ fmt.date(c.originalFinish) }}</bdi>
-                        </div>
-                      }
-                    </td>
-                    <td class="num d-cell-sub"><bdi>{{ fmt.date(c.forecastFinish) }}</bdi></td>
-                    <!-- A magnitude, not a state: no threshold colouring here
-                         (05 §7.9). The sign and the label carry it. -->
-                    <td class="num"><bdi>{{ delayLabel(c) }}</bdi></td>
-                  </tr>
+            <span class="tx">
+              <b>{{ lang.t('ovw_alerts') }}</b>
+              <span>
+                @if (alerts().critical > 0) {
+                  <bdi>{{ alerts().critical }}</bdi> {{ lang.t('ovw_alerts_crit_note') }}
+                } @else {
+                  {{ lang.t('ovw_alerts_no_crit') }}
                 }
-              </tbody>
-            </table>
-          }
-        </epm-section>
+              </span>
+            </span>
+            <span class="tot">
+              <b class="num"><bdi>{{ alerts().open }}</bdi></b><i>{{ lang.t('ovw_alerts_open') }}</i>
+            </span>
+            <button type="button" class="d-btn sm primary" (click)="goToModule('alerts')">
+              {{ lang.t('ovw_open_alerts') }}
+              <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="14" />
+            </button>
+          </header>
 
-        <epm-section [title]="lang.t('ovw_beneficiaries')"
-                     [sub]="lang.t('ovw_beneficiaries_sub')"
-                     [n]="beneficiaries().length">
-          @if (beneficiaries().length === 0) {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="apartment" [size]="30" /></span>
-              <b>{{ lang.t('ovw_no_beneficiaries_t') }}</b>
-              <span>{{ lang.t('ovw_no_beneficiaries_b') }}</span>
-            </div>
-          } @else {
-            <ul class="epm-ben-list">
-              @for (b of beneficiaries(); track b.code) {
-                <li>
-                  <span class="n">{{ beneficiaryLine(b) }}</span>
-                  <span class="d-cell-sub mono"><bdi>{{ b.code }}</bdi></span>
-                  <span class="d-cell-sub">{{ lookups.label('beneficiary-type', b.type) }}</span>
-                  <!-- 01 §2.1 — an inactive beneficiary may not receive new
-                       quantity. A project still assigned to one is a finding,
-                       so it is stated rather than left to the BOQ screen. -->
-                  @if (!b.active) {
-                    <span class="d-pill suspended">{{ lang.t('ovw_inactive') }}</span>
-                  }
-                </li>
-              }
-            </ul>
-          }
-        </epm-section>
+          <div class="af-sev">
+            @for (s of severityBands(); track s.code) {
+              <button type="button" class="sv {{ s.cls }}" [class.zero]="s.count === 0"
+                      (click)="goToModule('alerts')">
+                <span class="r1">
+                  <epm-icon [name]="severityIcon(s.code)" [size]="16" />
+                  <em>{{ severityLabel(s.code) }}</em>
+                </span>
+                <span class="r2">
+                  <b class="num"><bdi>{{ s.count }}</bdi></b>
+                  <i class="num"><bdi>{{ s.share }}%</bdi></i>
+                </span>
+                <span class="bar" aria-hidden="true"><u [style.width.%]="s.share"></u></span>
+              </button>
+            }
+          </div>
 
-        <epm-section [title]="lang.t('ovw_alerts')" [sub]="lang.t('ovw_alerts_sub')">
-          @if (alerts().open === 0) {
-            <p class="d-cell-sub">{{ lang.t('ovw_no_alerts') }}</p>
-          } @else {
-            <ul class="epm-ben-list">
-              <li>
-                <span class="n">{{ lang.t('sev_critical') }}</span>
-                <span class="num"><bdi>{{ alerts().critical }}</bdi></span>
+          <ul class="af-list">
+            @for (a of alertCards(); track a.id) {
+              <li class="al {{ severityKey(a.severity) }}">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="tx">
+                  <b>{{ alertTitle(a) }}</b>
+                  <span class="meta">
+                    <span class="mono"><bdi>AL-{{ a.id }}</bdi></span>
+                    <span class="sep">·</span>{{ kindLabel(a.kind) }}
+                    <span class="sep">·</span><span class="mono"><bdi>{{ fmt.date(a.raisedAt) }}</bdi></span>
+                    @if (a.targetRef) {
+                      <span class="sep">·</span><span class="mono"><bdi>{{ a.targetRef }}</bdi></span>
+                    }
+                  </span>
+                </span>
+                <button type="button" class="act" (click)="openAlert(a)">
+                  {{ alertAction(a) }}
+                  <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="14" />
+                </button>
               </li>
-              <li>
-                <span class="n">{{ lang.t('sev_warning') }}</span>
-                <span class="num"><bdi>{{ alerts().warning }}</bdi></span>
+            }
+            @if (alertCards().length === 0) {
+              <li class="al empty">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="tx">
+                  <b>{{ lang.t('ovw_no_alerts') }}</b>
+                  <span class="meta">{{ lang.t('ovw_no_alerts_b') }}</span>
+                </span>
               </li>
-              <li>
-                <span class="n">{{ lang.t('sev_info') }}</span>
-                <span class="num"><bdi>{{ alerts().info }}</bdi></span>
-              </li>
-            </ul>
-          }
-        </epm-section>
+            }
+          </ul>
+        </section>
+       }
       }
     </div>
   </div>

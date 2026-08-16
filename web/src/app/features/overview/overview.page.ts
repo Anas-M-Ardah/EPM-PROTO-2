@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
+import { CurvePeriod, SCurveComponent } from '../../shared/scurve.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
@@ -12,11 +13,7 @@ import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
 import { moduleById } from '../workspace/project-modules';
 import { OverviewApi } from './overview.api';
-import {
-  OverviewAlerts, OverviewBeneficiary, OverviewContract,
-  OverviewModule, OverviewNextAction, OverviewProgress,
-  OverviewProject, OverviewTotals, OverviewUnavailable,
-} from './overview.types';
+import { OverviewResponse } from './overview.types';
 
 /**
  * SCR-W1 — the project workspace Overview module (`04 §3`).
@@ -44,6 +41,7 @@ import {
   imports: [
     IconComponent, StatusPillComponent, SectionComponent,
     SummaryStripComponent, TableSkeletonComponent,
+    SCurveComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './overview.page.html',
@@ -56,17 +54,36 @@ export class OverviewPage {
   lookups = inject(LookupsService);
   fmt = fmt;
 
-  project = signal<OverviewProject | null>(null);
-  totals = signal<OverviewTotals | null>(null);
-  contracts = signal<OverviewContract[]>([]);
-  beneficiaries = signal<OverviewBeneficiary[]>([]);
-  alerts = signal<OverviewAlerts>({ open: 0, critical: 0, warning: 0, info: 0 });
-  unavailable = signal<OverviewUnavailable[]>([]);
+  /**
+   * ONE payload, and every part below derived from it. The screen used to hold
+   * nine separate signals set one by one in `load()`, which is nine chances
+   * for a half-applied response to paint.
+   */
+  data = signal<OverviewResponse | null>(null);
+
+  project = computed(() => this.data()?.project ?? null);
+  totals = computed(() => this.data()?.totals ?? null);
+  cost = computed(() => this.data()?.cost ?? null);
+  alerts = computed(() => this.data()?.alerts ?? { open: 0, critical: 0, warning: 0, info: 0 });
+  alertCards = computed(() => this.data()?.alertCards ?? []);
+  unavailable = computed(() => this.data()?.unavailable ?? []);
 
   // ── الشكل 4 — «خط سير المراحل» و«الإجراء التالي المطلوب» ────────────────
-  modules = signal<OverviewModule[]>([]);
-  progress = signal<OverviewProgress>({ started: 0, available: 0 });
-  nextAction = signal<OverviewNextAction | null>(null);
+  modules = computed(() => this.data()?.modules ?? []);
+  progress = computed(() => this.data()?.progress ?? { started: 0, available: 0 });
+  nextAction = computed(() => this.data()?.nextAction ?? null);
+
+  /**
+   * الشكل 4's «خط سير المراحل» lists EIGHT units — معلومات المشروع · العقود ·
+   * جدول الكميات · الموقف المالي · الجدول الزمني · الإنجاز · الأوامر التغييرية ·
+   * إدارة المخاطر — and the live prototype's `STAGE_IDS` is the same eight.
+   * The other seven modules exist and are counted; they are just not what this
+   * strip reports on.
+   */
+  private readonly stageIds = [
+    'information', 'contract', 'boq', 'financial',
+    'schedule', 'progress', 'changeorders', 'risk',
+  ];
 
   /**
    * The strip, in rail order, carrying each module's LABEL and ROUTE.
@@ -77,8 +94,9 @@ export class OverviewPage {
    * Unbuilt modules are dropped: الشكل 4's strip reports on the project, and a
    * phase-6 module is not this project's business.
    */
-  strip = computed(() => this.modules()
-    .filter(m => m.state !== 'not-available')
+  strip = computed(() => this.stageIds
+    .map(id => this.modules().find(m => m.id === id))
+    .filter((m): m is NonNullable<typeof m> => !!m)
     .map(m => ({ ...m, mod: moduleById(m.id) }))
     .filter(x => !!x.mod));
 
@@ -134,8 +152,22 @@ export class OverviewPage {
   }
 
   /** The head bar's completion fill, as a percentage of available modules. */
+  /**
+   * الشكل 4's «4/8 معتمد» counts the EIGHT units its strip lists, so the
+   * counter is read over the strip and not over all fifteen modules. It still
+   * says «بدأت» rather than «معتمد»: this system has no per-module approval
+   * state to count, and saying so is the true version of the same sentence.
+   */
+  stripProgress = computed(() => {
+    const rows = this.strip();
+    return {
+      started: rows.filter(m => m.state !== 'not-started').length,
+      available: rows.length,
+    };
+  });
+
   progressPct = computed(() => {
-    const p = this.progress();
+    const p = this.stripProgress();
     return p.available === 0 ? 0 : Math.round((p.started / p.available) * 100);
   });
 
@@ -152,7 +184,7 @@ export class OverviewPage {
 
   readonly colCount = 7;
 
-  private need(key: string): string {
+  need(key: string): string {
     const u = this.unavailable().find(x => x.key === key);
     return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
   }
@@ -162,34 +194,69 @@ export class OverviewPage {
    * excludes what Z2 already shows — number, name and status — so the same
    * fact is never printed twice on one screen.
    */
+  /**
+   * **ملحق الشكل 4**'s identity line, in the plate's own order: «الجهة
+   * المستفيدة · المقاول · المكتب الاستشاري · نوع المشروع · التمويل · المنطقة ·
+   * المباشرة · الإنجاز التعاقدي».
+   *
+   * The old list was the reference's — workspace, execution stage, branch,
+   * executor, data date — and shared only three fields with the plate. The
+   * data date moved to the Z6 header, where every other screen puts it.
+   */
   meta = computed(() => {
-    const p = this.project();
-    if (!p) return [];
+    const d = this.data();
+    if (!d) return [];
+    const id = d.identity;
     const ar = this.lang.isAr();
+    const t = (k: string) => this.lang.t(k as never);
+
     return [
-      { k: ar ? 'مساحة العمل' : 'Workspace', v: this.lang.pick(p.workspaceNameAr, p.workspaceNameEn), num: false },
-      { k: ar ? 'نوع المشروع' : 'Project type', v: this.lookups.label('project-type', p.type), num: false },
-      { k: ar ? 'مرحلة التنفيذ' : 'Execution stage', v: this.lookups.label('execution-stage', p.executionStage), num: false },
-      { k: ar ? 'نوع التمويل' : 'Funding', v: this.lookups.label('funding-type', p.fundingType), num: false },
-      { k: ar ? 'الفرع' : 'Branch', v: p.branch, num: false },
-      // A lookup since الشكل 5 made it one — label it, never print the code.
-      { k: ar ? 'المنطقة الجغرافية' : 'Region', v: this.lookups.label('region', p.region), num: false },
-      { k: ar ? 'الجهة المنفّذة' : 'Executor', v: p.executor, num: false },
-      // The data date is the project's "now" (D-06). Every date on this screen
-      // is measured against it, so the screen states what it is.
-      { k: ar ? 'تاريخ البيانات' : 'Data date', v: fmt.date(p.dataDate), num: true },
-    ].filter(x => x.v && x.v !== '—' || x.num);
+      { k: t('ovw_f_beneficiary'), v: this.lang.pick(id.beneficiaryAr ?? '', id.beneficiaryEn ?? ''), num: false },
+      { k: t('ovw_f_contractor'), v: id.contractor ?? '', num: false },
+      { k: t('ovw_f_consultant'), v: id.consultant ?? '', num: false },
+      { k: t('ovw_f_type'), v: this.lookups.label('project-type', id.type), num: false },
+      { k: t('ovw_f_funding'), v: this.lookups.label('funding-type', id.fundingType), num: false },
+      { k: t('ovw_f_region'), v: this.lookups.label('region', id.region), num: false },
+      { k: t('ovw_f_start'), v: fmt.date(id.start), num: true },
+      { k: t('ovw_f_finish'), v: fmt.date(id.contractualFinish), num: true },
+    ].filter(x => x.v && x.v !== '—');
   });
+
+  /**
+   * More than one contract, so المقاول, المباشرة and الإنجاز التعاقدي above are
+   * the LARGEST one's. Said on screen rather than left to be assumed — the
+   * plate's project has a single contract and this one does not.
+   */
+  multiContract = computed(() => (this.data()?.identity.contractCount ?? 0) > 1);
+
 
   /**
    * The headline band. Two figures the system can defend and four it cannot,
    * rendered as "unavailable + reason" rather than dropped — the same contract
    * SCR-E1 and SCR-E5 honour (P-09).
    */
+  /**
+   * **ملحق الشكل 4**'s figure band, in the plate's own pairs:
+   *
+   *   «الإنجاز المادي 31% **مقابل مخطط 39%**»   — never the actual alone
+   *   «التأخر 0»
+   *   «CPI 0.91 و SPI 0.79 **والحد المقبول 0.95**»
+   *   «نسبة الصرف 34% **(510 م من 1,500 م)**»   — the ratio and its two terms
+   *
+   * A percentage without what it is measured against is a number somebody has
+   * to go and look up. The plate pairs every one of them and so does this.
+   *
+   * Each tile still falls back to "unavailable + reason" when its own input is
+   * genuinely missing, which is the point of P-09: the tile says which of the
+   * two it is instead of printing a 0 that means both.
+   */
   stats = computed<Stat[]>(() => {
     const t = this.totals();
+    const c = this.cost();
     const ar = this.lang.isAr();
     if (!t) return [];
+
+    const pct = (v: number | null) => v === null ? '—' : fmt.pct(v, 0);
 
     return [
       {
@@ -198,20 +265,27 @@ export class OverviewPage {
         suffix: ar ? ' د.ع' : ' IQD',
         // Σ of no contracts is arithmetically 0, and rendering that would say
         // the project is worth nothing. It has no contractual value AT ALL
-        // until it is awarded — a different statement, and the one P-09 asks
-        // for: never a zero standing in for an absent figure.
+        // until it is awarded — a different statement (P-09).
         unavailable: t.contractCount === 0
           ? (ar
             ? 'لا يوجد عقد لهذا المشروع بعد — قيمة المشروع هي مجموع القيم النافذة لعقوده.'
             : 'This project has no contract yet — project value is the sum of its contracts\' effective values.')
           : undefined,
-        // BR-00 over BR-09 — stated, because the difference between this and
-        // the awarded total is the whole point of the amendment apparatus.
         foot: t.effectiveValue === t.originalValue
           ? (ar ? 'مطابقة للقيمة المحالة' : 'same as awarded')
           : (ar
-            ? `المحالة ${fmt.money(t.originalValue)} · ${t.appliedAmendments} ملحق مطبَّق`
-            : `awarded ${fmt.money(t.originalValue)} · ${t.appliedAmendments} applied`),
+            ? `المقررة ${fmt.money(t.originalValue)} · ${t.appliedAmendments} ملحق مطبَّق`
+            : `approved ${fmt.money(t.originalValue)} · ${t.appliedAmendments} applied`),
+      },
+      {
+        // الشكل 4: «الإنجاز المادي 31% مقابل مخطط 39%».
+        label: ar ? 'الإنجاز المادي' : 'Physical progress',
+        value: t.physical ?? 0,
+        suffix: '%',
+        unavailable: t.physical === null ? this.need('physical') : undefined,
+        foot: t.planned === null
+          ? (ar ? 'مرجّح بأوزان بنود الكميات' : 'weighted by BOQ item weights')
+          : (ar ? `مقابل مخطط ${pct(t.planned)}` : `against ${pct(t.planned)} planned`),
       },
       {
         label: ar ? 'التأخر' : 'Delay',
@@ -224,34 +298,27 @@ export class OverviewPage {
           ? (ar ? `أسوأ عقد: ${t.delayDrivenBy}` : `worst contract: ${t.delayDrivenBy}`)
           : (ar ? 'ضمن الخط الأساس' : 'on baseline'),
       },
-      // ── REAL SINCE PHASE 4.4 ────────────────────────────────────────────
-      // The four the reference fabricated and this build refused to. Each
-      // still falls back to "unavailable + reason" when its own input is
-      // genuinely missing, which is the whole point of P-09: the tile says
-      // which of the two it is instead of printing a 0 that means both.
       {
-        label: ar ? 'الإنجاز المادي' : 'Physical progress',
-        value: t.physical ?? 0,
+        // الشكل 4: «نسبة الصرف 34% (510 م من 1,500 م)».
+        label: ar ? 'نسبة الصرف' : 'Spend ratio',
+        value: c?.spendPct ?? 0,
         suffix: '%',
-        unavailable: t.physical === null ? this.need('physical') : undefined,
-        foot: ar ? 'مرجّح بأوزان بنود الكميات' : 'weighted by BOQ item weights',
+        unavailable: c === null || c.spendPct === null ? this.need('financial') : undefined,
+        foot: c === null ? undefined
+          : (ar
+            ? `${fmt.money(c.spent)} من ${fmt.money(c.revised)}`
+            : `${fmt.money(c.spent)} of ${fmt.money(c.revised)}`),
       },
-      {
-        label: ar ? 'الإنجاز المالي' : 'Financial progress',
-        value: t.financial ?? 0,
-        suffix: '%',
-        unavailable: t.financial === null ? this.need('financial') : undefined,
-        foot: ar ? 'المصروف فعلاً، لا المصادق عليه' : 'what was paid, not what was certified',
-      },
-      // The indices are DIAGNOSTICS (05 §7.9) — `delta`/`deltaDir` would
-      // colour them, so they carry a plain foot line instead.
+      // The indices are DIAGNOSTICS (05 §7.9), so no threshold colours them —
+      // but الشكل 4 prints «الحد المقبول 0.95» beside them, and a bare index
+      // with nothing to read it against is the number people misread.
       {
         label: 'SPI',
         value: t.spi ?? 0,
         dp: 2,
         unavailable: t.spi === null ? this.need('spi') : undefined,
         foot: t.spi === null ? undefined
-          : t.spi < 1 ? (ar ? 'دون الخطة' : 'behind plan') : (ar ? 'على الخطة' : 'on plan'),
+          : (ar ? `الحد المقبول ${t.acceptableIndex.toFixed(2)}` : `acceptable ${t.acceptableIndex.toFixed(2)}`),
       },
       {
         label: 'CPI',
@@ -259,7 +326,7 @@ export class OverviewPage {
         dp: 2,
         unavailable: t.cpi === null ? this.need('cpi') : undefined,
         foot: t.cpi === null ? undefined
-          : t.cpi < 1 ? (ar ? 'تجاوز في الكلفة' : 'over cost') : (ar ? 'الكلفة ضمن الحدود' : 'cost within limits'),
+          : (ar ? `الحد المقبول ${t.acceptableIndex.toFixed(2)}` : `acceptable ${t.acceptableIndex.toFixed(2)}`),
       },
     ];
   });
@@ -270,6 +337,106 @@ export class OverviewPage {
    * — approving changes nothing (02 §9, non-negotiable #2).
    */
   hasProjection = computed(() => (this.totals()?.pendingAmendments ?? 0) > 0);
+
+  // ══ الشكل 4's «مخططان بمفاتيح سلاسل» ═════════════════════════════════
+  //
+  // Both are the live prototype's own `DSCurve`: period bars under cumulative
+  // planned and actual lines. The prototype generates its data with a
+  // smoothstep over twelve invented months; `Domain/ProgressSeries.Monthly`
+  // supplies these from what was recorded, so a month nobody measured is flat
+  // rather than rising.
+
+  /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
+  private labelled(rows: { planCum: number; actCum: number | null; planPeriod: number; actPeriod: number }[]): CurvePeriod[] {
+    const pre = this.lang.isAr() ? 'ش' : 'M';
+    return rows.map((r, i) => ({ label: pre + (i + 1), ...r }));
+  }
+
+  progressCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.progressCurve ?? []));
+  costCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.costCurve ?? []));
+
+  /** «▼ 8 نقطة عن المخطط (39%)» — the gap, with its own sign. */
+  physVariance = computed(() => {
+    const t = this.totals();
+    if (!t || t.physical === null || t.planned === null) return null;
+    return Math.round((t.physical - t.planned) * 10) / 10;
+  });
+
+  /** الشكل 4 reads an index against «الحد المقبول», so the class follows THAT. */
+  indexClass(v: number | null): string {
+    const t = this.totals();
+    if (v === null || !t) return '';
+    return v < t.acceptableIndex ? 'bad' : 'good';
+  }
+
+  /** «▲126 م» — the sign is the whole message, so it is not dropped. */
+  costDelta = computed(() => {
+    const c = this.cost();
+    if (!c || c.delta === 0) return null;
+    return (c.delta > 0 ? '▲ ' : '▼ ') + fmt.money(Math.abs(c.delta));
+  });
+
+  // ══ الشكل 4's «التنبيهات النشطة» ══════════════════════════════════════
+
+  /** Templates cannot call Math. */
+  abs(v: number): number { return Math.abs(v); }
+
+  /**
+   * الشكل 4's «التنبيهات النشطة» severity band, with each one's SHARE of the
+   * open set. The prototype computes the share over the open alerts only —
+   * acknowledged ones were inflating it and the percentages stopped adding to
+   * 100 — and every band stays visible at zero.
+   */
+  severityBands = computed(() => {
+    const a = this.alerts();
+    const share = (n: number) => (a.open === 0 ? 0 : Math.round((n / a.open) * 100));
+    return [
+      { code: 'critical', cls: 'red', count: a.critical, share: share(a.critical) },
+      { code: 'warning', cls: 'amber', count: a.warning, share: share(a.warning) },
+      { code: 'info', cls: 'green', count: a.info, share: share(a.info) },
+    ];
+  });
+
+  /** The prototype's own row classes: red · amber · green. */
+  severityKey(code: string): string {
+    return code === 'critical' ? 'red' : code === 'warning' ? 'amber' : 'green';
+  }
+
+  /**
+   * «اتخاذ قرار الاعتماد» · «مراجعة المسار الحرج» · «تحديث نسبة الإنجاز» — the
+   * prototype states the required action as a VERB for the module the alert is
+   * about, and a generic "open" would throw away the one thing the card is for.
+   * An alert pointing nowhere gets «مراجعة التنبيه», which is still a verb.
+   */
+  alertAction(a: { moduleId: string | null }): string {
+    const key = a.moduleId ? 'ovw_act_' + a.moduleId : 'ovw_act_default';
+    const label = this.lang.t(key as never);
+    return label === key ? this.lang.t('ovw_act_default') : label;
+  }
+
+  alertTitle(a: { titleAr: string; titleEn: string }): string {
+    return this.lang.pick(a.titleAr, a.titleEn);
+  }
+
+  severityClass(code: string): string {
+    return code === 'critical' ? 'stalled' : code === 'warning' ? 'suspended' : 'completed';
+  }
+
+  severityIcon(code: string): string {
+    return code === 'critical' ? 'warning' : code === 'warning' ? 'error' : 'info';
+  }
+
+  severityLabel(code: string): string { return this.lookups.label('alert-severity', code); }
+  kindLabel(code: string): string { return this.lookups.label('alert-kind', code); }
+
+  /**
+   * «مراجعة التنبيه» — the card opens the module the alert is about, or the
+   * project's own alerts tab when it names nothing this screen can reach. The
+   * card never offers a destination it cannot go to.
+   */
+  openAlert(card: { moduleId: string | null }) {
+    this.goToModule(card.moduleId ?? 'alerts');
+  }
 
   constructor() {
     // The module is a child route, so its :id lives on the PARENT — and the
@@ -291,15 +458,7 @@ export class OverviewPage {
       res: this.api.get(id),
     }).subscribe({
       next: ({ res }) => {
-        this.project.set(res.project);
-        this.totals.set(res.totals);
-        this.contracts.set(res.contracts);
-        this.beneficiaries.set(res.beneficiaries);
-        this.alerts.set(res.alerts);
-        this.unavailable.set(res.unavailable);
-        this.modules.set(res.modules ?? []);
-        this.progress.set(res.progress ?? { started: 0, available: 0 });
-        this.nextAction.set(res.nextAction ?? null);
+        this.data.set(res);
         this.loading.set(false);
       },
       error: e => {
@@ -313,26 +472,7 @@ export class OverviewPage {
     this.load(this.route.parent?.snapshot.paramMap.get('id') ?? '');
   }
 
-  /** True when an applied amendment moved this contract's finish (BR-09). */
-  finishMoved(c: OverviewContract): boolean {
-    return c.effectiveFinish !== c.originalFinish;
-  }
-
-  /** True when an applied amendment moved this contract's value (BR-09). */
-  valueMoved(c: OverviewContract): boolean {
-    return c.effectiveValue !== c.originalValue;
-  }
-
-  delayLabel(c: OverviewContract): string {
-    if (c.delayDays === null) return '—';
-    if (c.delayDays === 0) return this.lang.isAr() ? 'لا' : '0';
-    return `+${c.delayDays}${this.lang.isAr() ? ' ي' : 'd'}`;
-  }
-
-  /** "كلية الهندسة — جامعة بغداد", or just the name at the root of the tree. */
-  beneficiaryLine(b: OverviewBeneficiary): string {
-    const name = this.lang.pick(b.nameAr, b.nameEn);
-    const parent = b.parentNameAr ? this.lang.pick(b.parentNameAr, b.parentNameEn ?? '') : null;
-    return parent ? `${name} — ${parent}` : name;
-  }
+  // `finishMoved`, `valueMoved`, `delayLabel` and `beneficiaryLine` went with
+  // the two panels الشكل 4 does not name (P-130). The amendment comparison they
+  // rendered is الشكل 10's subject and lives on the contract tab.
 }

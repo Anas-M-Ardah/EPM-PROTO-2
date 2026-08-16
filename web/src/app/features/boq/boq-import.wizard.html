@@ -1,0 +1,323 @@
+<!--
+  الشكل 13 — استيراد جدول الكميات (Excel).
+
+  The plate draws step 5, and the four before it are named on its own stepper:
+  رفع الملف · تحليل Excel · التحقق · المقارنة. `.d-modal` and `.d-stepper` are
+  the reference's own primitives, in the stylesheet since the port and unused
+  until now — no new CSS.
+
+  Every number here arrives from EP-BOQ-09. The wizard reads a file and maps its
+  columns; it judges nothing.
+-->
+<div class="d-modal-scrim" (click)="closed.emit()">
+  <div class="d-modal" role="dialog" aria-modal="true"
+       [attr.aria-label]="lang.t('boq_imp_title')" (click)="$event.stopPropagation()">
+
+    <div class="d-modal-head">
+      <b>{{ lang.t('boq_imp_title') }}</b>
+      <button type="button" class="d-icon-btn sm"
+              [attr.aria-label]="lang.t('scd_rec_close')" (click)="closed.emit()">
+        <epm-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    <!-- «خمس خطوات مؤشَّرة بعلامات إنجاز» — a done step carries its tick, the
+         active one its number. -->
+    <div class="d-stepper">
+      @for (s of steps; track s.n) {
+        <div class="d-step {{ stepState(s.n) }}">
+          <span class="n">
+            @if (stepState(s.n) === 'done') {
+              <epm-icon name="check" [size]="12" />
+            } @else {
+              <bdi>{{ s.n }}</bdi>
+            }
+          </span>
+          <span class="l">{{ label(s.label) }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="d-modal-body">
+      @if (error()) {
+        <div class="d-inline-err">
+          <epm-icon name="error" [size]="15" /><span>{{ error() }}</span>
+        </div>
+      }
+
+      @switch (step()) {
+
+        <!-- ── 1 · رفع الملف ──────────────────────────────────────────── -->
+        @case (1) {
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('boq_imp_file') }}</span>
+            <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" (change)="pick($event)" />
+          </div>
+
+          @if (fileName()) {
+            <p class="d-cell-sub">
+              <bdi>{{ fileName() }}</bdi> · <bdi>{{ fileSizeKb() }}</bdi>
+              @if (dataRows().length) {
+                · <bdi>{{ dataRows().length }}</bdi> {{ lang.t('boq_imp_rows') }}
+              }
+            </p>
+          }
+
+          @if (fileError()) {
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div><span>{{ fileError() }}</span></div>
+            </div>
+          }
+
+          <div class="d-msgbar info">
+            <epm-icon name="info" [size]="16" />
+            <div>
+              <b>{{ lang.t('boq_imp_cols_t') }}</b>
+              <span>{{ lang.t('boq_imp_cols_b') }}</span>
+            </div>
+          </div>
+        }
+
+        <!-- ── 2 · تحليل: «مطابقة الأعمدة» ────────────────────────────── -->
+        @case (2) {
+          <p class="d-cell-sub">{{ lang.t('boq_imp_map_b') }}</p>
+
+          <div class="d-form-grid">
+            @for (f of fields; track f.k) {
+              <div class="d-form-i">
+                <span class="k">
+                  {{ label(f.label) }}@if (f.required) {<span class="req">*</span>}
+                </span>
+                <select class="d-form-input" [attr.aria-label]="label(f.label)"
+                        (change)="setMap(f.k, $any($event.target).value)">
+                  <option value="-1" [selected]="map()[f.k] === -1 || map()[f.k] === undefined">
+                    {{ lang.t('boq_imp_unmapped') }}
+                  </option>
+                  @for (h of headers(); track $index) {
+                    <option [value]="$index" [selected]="map()[f.k] === $index">{{ h }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+
+          <!-- The first rows AS MAPPED, so a wrong column is caught here rather
+               than three steps later in a violation list. -->
+          @if (rows().length) {
+            <div class="d-tablewrap">
+              <table class="d-table">
+                <thead>
+                  <tr>
+                    <th style="width:60px">{{ lang.t('boq_imp_row') }}</th>
+                    <th style="width:110px">{{ lang.t('boq_col_code') }}</th>
+                    <th>{{ lang.t('boq_col_desc') }}</th>
+                    <th style="width:70px">{{ lang.t('boq_col_unit') }}</th>
+                    <th style="width:100px">{{ lang.t('boq_col_qty') }}</th>
+                    <th style="width:110px">{{ lang.t('boq_col_rate') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of rows().slice(0, 5); track r.row) {
+                    <tr>
+                      <td class="num d-cell-sub"><bdi>{{ r.row }}</bdi></td>
+                      <td class="mono d-cell-sub"><bdi>{{ r.code }}</bdi></td>
+                      <td class="d-cell-strong">{{ r.description }}</td>
+                      <td class="d-cell-sub"><bdi>{{ r.unit }}</bdi></td>
+                      <td class="num"><bdi>{{ fmt.qty(r.qty) }}</bdi></td>
+                      <td class="num"><bdi>{{ fmt.money(r.rate) }}</bdi></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (rows().length > 5) {
+              <p class="d-cell-sub">
+                {{ lang.t('boq_imp_more') }} <bdi>{{ rows().length - 5 }}</bdi>
+              </p>
+            }
+          }
+        }
+
+        <!-- ── 3 · التحقق ─────────────────────────────────────────────── -->
+        @case (3) {
+          @if (violations().length === 0) {
+            <div class="d-msgbar info">
+              <epm-icon name="check_circle" [size]="16" />
+              <div>
+                <b>{{ lang.t('boq_imp_ok_t') }}</b>
+                <span>{{ lang.t('boq_imp_ok_b') }}
+                  <bdi>{{ preview()!.weightSum.toFixed(2) }}%</bdi></span>
+              </div>
+            </div>
+          } @else {
+            <!-- Every failing cell, not the first: an import is fixed in the
+                 spreadsheet, and one error per attempt is a dozen round trips. -->
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ lang.t('boq_imp_bad_t') }}</b>
+                <span><bdi>{{ violations().length }}</bdi> {{ lang.t('boq_imp_bad_b') }}</span>
+              </div>
+            </div>
+
+            <div class="d-tablewrap">
+              <table class="d-table">
+                <thead>
+                  <tr>
+                    <th style="width:70px">{{ lang.t('boq_imp_row') }}</th>
+                    <th style="width:120px">{{ lang.t('boq_imp_field') }}</th>
+                    <th>{{ lang.t('boq_imp_finding') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (v of violations(); track $index) {
+                    <tr>
+                      <td class="num d-cell-sub">
+                        <bdi>{{ v.row === 0 ? '—' : v.row }}</bdi>
+                      </td>
+                      <td class="d-cell-sub">
+                        {{ v.field ? label('boq_f_' + v.field) : lang.t('boq_imp_file_level') }}
+                      </td>
+                      <td>{{ lang.pick(v.messageAr, v.messageEn) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+        <!-- ── 4 · المقارنة ───────────────────────────────────────────── -->
+        @case (4) {
+          @if (comparison(); as c) {
+            <div class="d-fig-row">
+              @for (x of changeCounts(); track x.k) {
+                <div class="d-fig">
+                  <span class="k">{{ lang.t($any(x.k)) }}</span>
+                  <span class="v num"><bdi>{{ x.n }}</bdi></span>
+                </div>
+              }
+            </div>
+
+            <!-- The value the bill would move to, and by how much. Signed: an
+                 import can shrink a contract's bill as easily as grow it. -->
+            <section class="d-recon">
+              <div class="tm">
+                <span class="k">{{ lang.t('boq_imp_before') }}</span>
+                <b class="num"><bdi>{{ fmt.money(c.beforeTotal) }}</bdi></b>
+              </div>
+              <span class="op" aria-hidden="true">{{ c.delta < 0 ? '−' : '+' }}</span>
+              <div class="tm">
+                <span class="k">{{ lang.t('boq_imp_delta') }}</span>
+                <b class="num"><bdi>{{ fmt.money(c.delta < 0 ? -c.delta : c.delta) }}</bdi></b>
+              </div>
+              <span class="op" aria-hidden="true">=</span>
+              <div class="tm strong">
+                <span class="k">{{ lang.t('boq_imp_after') }}</span>
+                <b class="num"><bdi>{{ fmt.money(c.afterTotal) }}</bdi></b>
+              </div>
+            </section>
+
+            <!-- REMOVED lines first. They are why this step exists: an import
+                 that drops a priced item takes its links and its earned value
+                 with it, and this is the only place that shows before the fact. -->
+            <div class="d-tablewrap">
+              <table class="d-table">
+                <thead>
+                  <tr>
+                    <th style="width:110px">{{ lang.t('boq_col_code') }}</th>
+                    <th>{{ lang.t('boq_col_desc') }}</th>
+                    <th style="width:130px">{{ lang.t('boq_imp_change') }}</th>
+                    <th style="width:130px">{{ lang.t('boq_imp_before') }}</th>
+                    <th style="width:130px">{{ lang.t('boq_imp_after') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (l of c.lines; track l.code) {
+                    @if (l.change !== 'unchanged') {
+                      <tr>
+                        <td class="mono d-cell-sub"><bdi>{{ l.code }}</bdi></td>
+                        <td class="d-cell-strong">{{ l.description }}</td>
+                        <td>
+                          <span class="d-pill {{ changeClass(l.change) }}">
+                            {{ label('boq_imp_' + l.change) }}
+                          </span>
+                        </td>
+                        <td class="num d-cell-sub"><bdi>{{ fmt.money(l.beforeAmount) }}</bdi></td>
+                        <td class="num"><bdi>{{ fmt.money(l.afterAmount) }}</bdi></td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (c.added + c.removed + c.changed === 0) {
+              <p class="d-cell-sub">{{ lang.t('boq_imp_nochange') }}</p>
+            }
+          }
+        }
+
+        <!-- ── 5 · تأكيد وربط — THE PLATE'S OWN STEP ──────────────────── -->
+        @case (5) {
+          @if (done(); as v) {
+            <div class="d-msgbar info">
+              <epm-icon name="check_circle" [size]="16" />
+              <div>
+                <b>{{ lang.t('boq_imp_done_t') }}</b>
+                <span>{{ lang.t('boq_imp_done_b') }}
+                  <bdi>{{ v.no }}</bdi> · <bdi>{{ v.itemCount }}</bdi>
+                  {{ lang.t('boq_imp_rows') }} · <bdi>{{ fmt.money(v.totalAmount) }}</bdi></span>
+              </div>
+            </div>
+          } @else {
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('boq_imp_type') }}</span>
+              <select class="d-form-input" [attr.aria-label]="lang.t('boq_imp_type')"
+                      (change)="sheetType.set($any($event.target).value)">
+                @for (t of sheetTypes; track t.k) {
+                  <option [value]="t.k" [selected]="sheetType() === t.k">{{ label(t.label) }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- الشكل 13 prints this sentence inside the dialog, and it is the
+                 governance rule the endpoint enforces: a submission writes a
+                 version and touches no part of the bill in force. -->
+            <div class="d-msgbar info">
+              <epm-icon name="info" [size]="16" />
+              <div><span>{{ lang.t('boq_imp_note') }}</span></div>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    <div class="d-modal-foot">
+      @if (step() > 1 && !done()) {
+        <button type="button" class="d-btn sm" (click)="back()">{{ lang.t('boq_imp_back') }}</button>
+      }
+      <span class="sp"></span>
+
+      @if (done()) {
+        <button type="button" class="d-btn sm primary" (click)="closed.emit()">
+          {{ lang.t('scd_rec_close') }}
+        </button>
+      } @else if (step() < 5) {
+        <button type="button" class="d-btn sm primary"
+                [disabled]="!canNext() || checking()" (click)="next()">
+          {{ checking() ? lang.t('boq_imp_checking') : lang.t('boq_imp_next') }}
+        </button>
+      } @else {
+        <!-- Disabled by the SERVER's answer, not the wizard's: `canSubmit` is
+             EP-BOQ-09's, and the submit endpoint re-checks it anyway. -->
+        <button type="button" class="d-btn sm primary"
+                [disabled]="saving() || !preview()?.canSubmit" (click)="submit()">
+          <epm-icon name="check" [size]="14" />
+          {{ saving() ? lang.t('saving') : lang.t('boq_imp_submit') }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

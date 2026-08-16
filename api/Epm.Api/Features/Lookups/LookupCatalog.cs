@@ -252,6 +252,72 @@ public static class LookupCatalog
         yield return L("attachment-category", "photos",   "صور موقع",               "Site photos");
         yield return L("attachment-category", "support",  "مستند داعم",             "Supporting document");
 
+
+        // ── ملحق الشكل 43 — سجل المخاطر ───────────────────────────────────
+        // The plate's own seven categories. No written section defines a risk
+        // taxonomy, so the screen is the specification (see Domain/RiskSeverity).
+        sort = 0;
+        yield return L("risk-category", "schedule",  "زمني",     "Schedule");
+        yield return L("risk-category", "financial", "مالي",     "Financial");
+        yield return L("risk-category", "operational", "تشغيلي", "Operational");
+        yield return L("risk-category", "legal",     "قانوني",   "Legal");
+        yield return L("risk-category", "technical", "فني",      "Technical");
+        yield return L("risk-category", "quality",   "جودة",     "Quality");
+        yield return L("risk-category", "safety",    "سلامة",    "Safety");
+
+        // Three levels on BOTH axes, and the SAME three on the product — which
+        // is what «الخطورة = الاحتمالية × التأثير» means on a screen that shows
+        // منخفض · متوسط · عالي in all three columns.
+        sort = 0;
+        yield return L("risk-level", "low",    "منخفض", "Low");
+        yield return L("risk-level", "medium", "متوسط", "Medium");
+        yield return L("risk-level", "high",   "عالي",  "High");
+
+        sort = 0;
+        yield return L("risk-status", "open",       "مفتوح",        "Open");
+        yield return L("risk-status", "mitigating", "تحت المعالجة", "Being mitigated");
+        yield return L("risk-status", "suspended",  "معلق",         "On hold");
+
+        // BR-11's four, as the register's «المؤشر» column names them. They are
+        // the tie between a risk and a number somebody can check.
+        sort = 0;
+        yield return L("risk-indicator", "SPI", "SPI", "SPI");
+        yield return L("risk-indicator", "CPI", "CPI", "CPI");
+        yield return L("risk-indicator", "EAC", "EAC", "EAC");
+        yield return L("risk-indicator", "VAC", "VAC", "VAC");
+
+
+        // ── ملحق الشكل 45 — سجل الإجراءات ─────────────────────────────────
+        sort = 0;
+        yield return L("action-priority", "high",   "عالية",  "High");
+        yield return L("action-priority", "medium", "متوسطة", "Medium");
+        yield return L("action-priority", "low",    "منخفضة", "Low");
+
+        // «متأخر» is one of these values and not a derivation — الشكل 45 shows
+        // a past-due action still reading «قيد التنفيذ» (P-116).
+        sort = 0;
+        yield return L("action-status", "open",       "مفتوح",       "Open");
+        yield return L("action-status", "inprogress", "قيد التنفيذ", "In progress");
+        yield return L("action-status", "overdue",    "متأخر",       "Overdue");
+        yield return L("action-status", "closed",     "مغلق",        "Closed");
+
+
+        // ── ملحق الشكل 46 — الوثائق والمخططات ─────────────────────────────
+        sort = 0;
+        yield return L("doc-discipline", "architectural", "معماري",           "Architectural");
+        yield return L("doc-discipline", "structural",    "إنشائي",           "Structural");
+        yield return L("doc-discipline", "electrical",    "كهربائي",          "Electrical");
+        yield return L("doc-discipline", "mechanical",    "ميكانيكي",         "Mechanical");
+        yield return L("doc-discipline", "civil",         "مدني وبنى تحتية",  "Civil & infrastructure");
+        yield return L("doc-discipline", "reports",       "تقارير ومراسلات",  "Reports & correspondence");
+
+        // «حالة الإصدار» belongs to the REVISION, not the document.
+        sort = 0;
+        yield return L("doc-status", "approved", "معتمد",  "Approved");
+        yield return L("doc-status", "draft",    "مسوّدة", "Draft");
+        yield return L("doc-status", "rejected", "مرفوض",  "Rejected");
+        yield return L("doc-status", "none",     "لا مراجعات", "No revisions");
+
         // ── 06 §8 — amendment state (02 §9) ───────────────────────────────
         sort = 0;
         yield return L("amendment-state", "original",   "العقد الأصلي",              "Original contract");
@@ -326,6 +392,24 @@ public static class LookupCatalog
         yield return L("alert-status", "open",         "مفتوح", "Open");
         yield return L("alert-status", "acknowledged", "مُقَر",  "Acknowledged");
 
+        // ── ملحق الشكل 47 — alert rule recurrence (SCR-W13) ────────────────
+        // «التكرار» on the rules table: how often a firing rule re-notifies.
+        // Labels verbatim from the plate.
+        sort = 0;
+        yield return L("alert-recurrence", "daily",        "يومي",              "Daily");
+        yield return L("alert-recurrence", "weekly",       "أسبوعي",            "Weekly");
+        yield return L("alert-recurrence", "once",         "مرة واحدة",         "Once");
+        yield return L("alert-recurrence", "stage-change", "عند تغيّر المرحلة", "On stage change");
+
+        // The inbox groups, in their fixed order (Domain/AlertInbox). They are
+        // labelled here so the group heading resolves the same way every other
+        // enum does — not so the order can be edited: the order is the rule.
+        sort = 0;
+        yield return L("alert-bucket", "overdue", "متأخرة",           "Overdue");
+        yield return L("alert-bucket", "today",   "مستحقة اليوم",     "Due today");
+        yield return L("alert-bucket", "week",    "خلال هذا الأسبوع", "Due this week");
+        yield return L("alert-bucket", "later",   "لاحقاً",            "Later");
+
         // ── ADDENDUM §A4 — schedule import status (SCR-E5) ────────────────
         // Whether a Primavera P6 baseline has been imported and published for a
         // project. Labels verbatim from DScheduleControl. DERIVED, not stored:
@@ -352,6 +436,12 @@ public static class LookupCatalog
         yield return L("payment-kind", "retention-release", "إطلاق الضمان",       "Retention release");
 
         sort = 0;
+        // الشكل 17 — the desks a certificate passes on its way to payment.
+        yield return L("audit-stage", "resident-engineer", "تدقيق المهندس المقيم", "Resident engineer review");
+        yield return L("audit-stage", "finance", "تدقيق الدائرة المالية", "Finance department review");
+        yield return L("audit-stage", "audit", "التدقيق الداخلي", "Internal audit");
+        yield return L("audit-stage", "disbursement", "الصرف", "Disbursement");
+
         yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
         yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
         yield return L("payment-status", "paid",      "مصروف",       "Paid");

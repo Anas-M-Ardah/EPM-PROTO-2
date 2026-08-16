@@ -260,7 +260,7 @@ public static class ContractEndpoints
             PenaltyImpact penalty;
             if (c.ForecastFinish is null)
             {
-                penalty = new PenaltyImpact(0, 0, 0, 0, 0, 0, 0,
+                penalty = new PenaltyImpact(0, 0, 0, 0, 0, 0, 0, 0, 0,
                     Penalty.PerDayPct, Penalty.CapPct, true);
             }
             else
@@ -274,17 +274,38 @@ public static class ContractEndpoints
                     impact.Before.Days, impact.Before.Amount, impact.Before.Cap,
                     impact.After.Days, impact.After.Amount, impact.After.Cap,
                     impact.Waived,
+                    // الشكل 10 prints الغرامة اليومية as a headline and as a
+                    // قبل/بعد row. BR-10 already computes it; it simply had
+                    // nowhere to go before this screen asked for it.
+                    impact.Before.PerDay, impact.After.PerDay,
                     Penalty.PerDayPct, Penalty.CapPct, false);
             }
 
             var disbursed = payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount);
 
+            // الشكل 7's own two percentages. PHYSICAL is BR-04 over this
+            // contract's bill — the SAME Derive EP-CON-01 calls, so the card and
+            // the register report one number for one contract (P-54). FINANCIAL
+            // is spend over كلفة العقد الكلية, which is the denominator الشكل 7
+            // states on the card itself.
+            var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+            var billed = derived.Sum(x => x.Line.Amount);
+            var physicalPct = billed > 0m
+                ? ProgressReflection.Rollup(billed, derived.Sum(x => x.Progress.AchievedAmount))
+                : (decimal?)null;
+
+            var totalCost = ContractRollup.TotalCost(
+                c.AwardAmount, c.ReserveAmount, c.SupervisionAmount);
+
             var money = new ContractMoney(
                 disbursed,
-                payments.Where(x => x.Status is "paid" or "certified").Sum(x => x.NetAmount),
-                payments.Sum(x => x.RetentionAmount),
-                payments.Sum(x => x.AdvanceRecovery),
-                effective.Value - disbursed,
+                totalCost,
+                // Against كلفة العقد الكلية, as الشكل 7 prints it: 520,200,000 −
+                // 112,841,143 = 407,358,857. The effective value answers a
+                // different question and has its own line on الشكل 10.
+                totalCost - disbursed,
+                Q(ContractRollup.SpentPct(totalCost, disbursed)),
+                Q(physicalPct),
                 [
                     // الشكل 7's «تفصيل كلفة العقد» and الشكل 8's «المصروف»
                     // section. Spend per item is Σ of the matching portion over
@@ -326,12 +347,24 @@ public static class ContractEndpoints
             {
                 // `cost-line-spend` is GONE: the three expense items carry real
                 // spend now, summed from the payment portions الشكل 9 records.
+                // `financial-pct` is GONE too: `02 §4` never fixed the
+                // denominator for الإنجاز المالي, and الشكل 7 does — «22 % من
+                // كلفة العقد الكلية», the same 22% it labels الإنجاز المالي. The
+                // figure is derived now, so the screen no longer prints a reason
+                // for its absence.
                 new("amendment-source",
                     "لم يُبنَ سجل الأوامر التغييرية بعد (المرحلة 5.1)، فلا يمكن ربط الملحق بالأمر الذي أنشأه.",
                     "The change-order register does not exist yet (Phase 5.1), so an amendment cannot yet be linked to the order that created it."),
-                new("financial-pct",
-                    "لم يحدّد 02 §4 مقام النسبة المالية (القيمة النافذة أم الكلفة الكلية) — تُعرض المبالغ دون نسبة.",
-                    "02 §4 does not fix the denominator for financial % (effective value or total contract cost) — the amounts are shown without a percentage."),
+                // الشكل 10 sections 4 and 5. The tables exist and are keyed to a
+                // CHANGE ORDER, and no amendment carries the order that created
+                // it yet — so «الكميات النافذة» and «الأنشطة النافذة» have no join
+                // to make. Named rather than drawn empty (04 §9).
+                new("amendment-quantities",
+                    "تُقرأ الكميات النافذة من بنود الأمر التغييري (المرحلة 5.2)، ولم يُربط الملحق بأمره بعد.",
+                    "Effective quantities are read from the change order lines (Phase 5.2), and an amendment is not yet linked to its order."),
+                new("amendment-activities",
+                    "تُقرأ الأنشطة النافذة من أنشطة الأمر التغييري (المرحلة 5.2)، ولم يُربط الملحق بأمره بعد.",
+                    "Effective activities are read from the change order activities (Phase 5.2), and an amendment is not yet linked to its order."),
             };
 
             // المرفقات — one flat read for every payment on this contract, then
@@ -368,7 +401,9 @@ public static class ContractEndpoints
                 .Where(e => e.ContractId == contractId)
                 .OrderByDescending(e => e.Id)
                 .Select(e => new ContractEvent(
-                    e.Id, e.Action, e.ActorName, e.ActorRole, e.ActorParty,
+                    e.Id, e.Action, e.Source, e.Field, e.Before, e.After,
+                    e.RefId, e.Note,
+                    e.ActorName, e.ActorRole, e.ActorParty,
                     e.At.ToString("yyyy-MM-dd")))
                 .ToListAsync();
 
@@ -444,6 +479,10 @@ public static class ContractEndpoints
                 x => x.Id == contractId && x.ProjectId == projectId);
             if (c is null) return Results.NotFound(new { message = $"العقد «{contractId}» غير موجود." });
 
+            // What the record said before this save — the other half of every
+            // الشكل 11 diff row. Read now: Apply() overwrites in place.
+            var before = Read(c);
+
             // THE AWARDED FIGURES ARE NOT EDITABLE HERE. `OriginalValue`,
             // `OriginalFinish` and `OriginalDurationDays` are never overwritten
             // (non-negotiable #6) — an amendment moves them, and it does so by
@@ -456,7 +495,16 @@ public static class ContractEndpoints
             var violations = ContractDefinition.Validate(Candidate(c), codes);
             if (violations.Count > 0) return Unprocessable(violations, create: false);
 
-            db.ContractActivityEvents.Add(Event(c.Id, "updated", gate.User, gate.Today));
+            // الشكل 11 — «عرض التغيير بصيغة القيمة السابقة مشطوبة ← القيمة
+            // الجديدة». The diff is taken against `before`, captured above
+            // BEFORE Apply() touched the entity, and one row is written per
+            // field that actually moved. A save that changes nothing writes
+            // nothing: a log line saying an edit happened with no edit in it
+            // is noise in the one place that has to be auditable.
+            foreach (var ch in Diff(before, Read(c)))
+                db.ContractActivityEvents.Add(
+                    Event(c.Id, "updated", gate.User, gate.Today, ch));
+
             await db.SaveChangesAsync();
 
             return Results.Ok(new { c.Id });
@@ -479,7 +527,9 @@ public static class ContractEndpoints
                 .Where(e => e.ContractId == contractId)
                 .OrderByDescending(e => e.Id)
                 .Select(e => new ContractEvent(
-                    e.Id, e.Action, e.ActorName, e.ActorRole, e.ActorParty,
+                    e.Id, e.Action, e.Source, e.Field, e.Before, e.After,
+                    e.RefId, e.Note,
+                    e.ActorName, e.ActorRole, e.ActorParty,
                     e.At.ToString("yyyy-MM-dd")))
                 .ToListAsync();
 
@@ -593,7 +643,18 @@ public static class ContractEndpoints
         if (!existing)
         {
             if (D(d.Finish) is { } finish) c.OriginalFinish = finish;
-            c.OriginalValue = d.AwardAmount ?? 0m;
+            // THE CONTRACT VALUE IS THE SUM OF ITS THREE EXPENSE ITEMS.
+            // It used to be the award alone, which made award + reserve +
+            // supervision exceed the contract by the two allowances and cost
+            // the cost sheet its tree (P-57). Three plates say otherwise in
+            // figures: الشكل 7 prints 479,400,000 + 25,500,000 + 15,300,000 =
+            // 520,200,000 as «القيمة الأصلية», الشكل 8 the same three, and
+            // الشكل 14 draws them as children that add to their parent.
+            // `01 §2.3`'s "the awarded value" is the value AWARDED by the
+            // contract, not the award LINE inside it. See P-89.
+            c.OriginalValue = (d.AwardAmount ?? 0m)
+                + (d.ReserveAmount ?? 0m)
+                + (d.SupervisionAmount ?? 0m);
         }
     }
 
@@ -616,11 +677,20 @@ public static class ContractEndpoints
         c.Contractor, c.ExecutingParty, c.Consultant, c.ContactInfo,
         c.IncomingNo, c.IncomingDate?.ToString("yyyy-MM-dd"));
 
+    /// <summary>
+    /// One log row. `change` is null on a create and on any action that is not
+    /// a field edit; when present it carries the الشكل 11 diff.
+    /// </summary>
     private static Data.Entities.ContractActivityEvent Event(
-        string contractId, string action, Persona user, DateOnly at) => new()
+        string contractId, string action, Persona user, DateOnly at,
+        FieldChange? change = null) => new()
     {
         ContractId = contractId,
         Action = action,
+        Source = "user",
+        Field = change?.Field,
+        Before = change?.Before,
+        After = change?.After,
         ActorId = user.Id,
         ActorName = user.NameAr,
         ActorRole = user.RoleAr,
@@ -636,6 +706,52 @@ public static class ContractEndpoints
     private static decimal? Q(decimal? v) =>
         v is null ? null : Math.Round(v.Value, 4, MidpointRounding.AwayFromZero);
 
+    /// <summary>One line of الشكل 11: a field, what it said, what it says now.</summary>
+    private record FieldChange(string Field, string? Before, string? After);
+
+    /// <summary>
+    /// «عرض التغيير بصيغة القيمة السابقة مشطوبة ← القيمة الجديدة» — what moved
+    /// between two readings of the same contract, one entry per member.
+    ///
+    /// Not in Domain: this is neither a rule nor arithmetic, and Domain may not
+    /// see a Features DTO. Not a reflection loop either — the list is written
+    /// out so that adding an editable field to المسار 2 and forgetting to log it
+    /// is a visible omission in this file rather than silent behaviour.
+    ///
+    /// `Id` and `Finish` are absent because <see cref="Apply"/> does not touch
+    /// them on an existing contract (non-negotiable #6): only an amendment moves
+    /// the awarded finish, and the code is the key.
+    /// </summary>
+    private static IEnumerable<FieldChange> Diff(
+        ContractDefinitionInput before, ContractDefinitionInput after)
+    {
+        static string? S(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+        static string? M(decimal? v) => v?.ToString("0.####");
+
+        var pairs = new (string Field, string? Before, string? After)[]
+        {
+            ("nameAr", S(before.NameAr), S(after.NameAr)),
+            ("nameEn", S(before.NameEn), S(after.NameEn)),
+            ("component", S(before.Component), S(after.Component)),
+            ("status", S(before.Status), S(after.Status)),
+            ("awardAmount", M(before.AwardAmount), M(after.AwardAmount)),
+            ("reserveAmount", M(before.ReserveAmount), M(after.ReserveAmount)),
+            ("supervisionAmount", M(before.SupervisionAmount), M(after.SupervisionAmount)),
+            ("monitoringAmount", M(before.MonitoringAmount), M(after.MonitoringAmount)),
+            ("start", S(before.Start), S(after.Start)),
+            ("contractor", S(before.Contractor), S(after.Contractor)),
+            ("executingParty", S(before.ExecutingParty), S(after.ExecutingParty)),
+            ("consultant", S(before.Consultant), S(after.Consultant)),
+            ("contactInfo", S(before.ContactInfo), S(after.ContactInfo)),
+            ("incomingNo", S(before.IncomingNo), S(after.IncomingNo)),
+            ("incomingDate", S(before.IncomingDate), S(after.IncomingDate)),
+        };
+
+        return pairs
+            .Where(p => p.Before != p.After)
+            .Select(p => new FieldChange(p.Field, p.Before, p.After))
+            .ToList();
+    }
     /// <summary>The BR-09 input: one delta per amendment, applied or not.</summary>
     private static List<Amendments.Delta> Deltas(
         IEnumerable<Data.Entities.ContractAmendment> all, string contractId) =>

@@ -1,0 +1,1259 @@
+<!--
+  SCR-W8 — بطاقة الأمر التغييري. `03 §9` and ملحق الأشكال 30–34.
+  Ported from the v1.1 record: docs/spec/reference/app/vo-record.jsx.
+
+  Z6 carries the back link, the order, and the six tabs. Z8 is بطاقة الأمر and
+  is present on EVERY tab — الشكل 30 through الشكل 34 all draw it, because an
+  approver must never have to leave the decision to look a figure up.
+
+  Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="6" [rows]="8" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+        <button type="button" class="d-btn" (click)="back()">{{ lang.t('chg_back') }}</button>
+      </div>
+    </div></div>
+
+  } @else {
+   @if (data(); as d) {
+
+    <!-- ══ Z6 ═══════════════════════════════════════════════════════════════
+         الشكل 30's header row: back to the register · the order · print and
+         export. The «العرض بصفة» switcher is the shell's own and is not
+         repeated here — one persona control per screen. -->
+    <div class="d-pz6">
+      <button type="button" class="d-btn sm ghost" (click)="back()"
+              [attr.aria-label]="lang.t('chg_back')">
+        <epm-icon [name]="lang.isAr() ? 'chevron_right' : 'chevron_left'" [size]="16" />
+        {{ lang.t('chg_back') }}
+      </button>
+
+      <span class="z6-t">
+        <bdi>{{ d.no }}</bdi>
+        <em>{{ title() }}</em>
+      </span>
+
+      <div class="d-pillrow">
+        <epm-status-pill kind="co-lifecycle" [code]="d.lifecycle" />
+        @for (c of d.exceptions; track c.code) {
+          <span class="d-pill stalled">{{ lang.pick(c.labelAr, c.labelEn) }}</span>
+        }
+        @if (d.relation.key !== 'none') {
+          <span class="d-pill" [class.ongoing]="d.relation.canAct">{{ relLabel(d.relation.key) }}</span>
+        }
+      </div>
+
+      <span class="sp"></span>
+
+<!-- الشكل 30 names «مبدّل «العرض بصفة»» on the record itself, and
+           this is the screen it matters most on: the same order shows a
+           different set of actions to a different صفة (BR-14 · P-126). -->
+      <epm-persona-switcher />
+
+      <!-- الشكل 30's «منتقي الأمر» — move between the project's orders
+           without going back to the register. It NAVIGATES: the record is a
+           route, so the back button then walks the orders a reader actually
+           opened, which a signal swap would not. -->
+      @if (siblings().length > 1) {
+        <label class="d-field">
+          <span class="epm-sr-only">{{ lang.t('chg_picker') }}</span>
+          <!-- `[selected]` on the OPTION, not `[value]` on the select:
+               the select is bound before its options exist, so the value lands
+               on nothing and the picker opens on the first order rather than
+               the one being read. `isCurrent` comes from the server. -->
+          <select class="epm-bare-input"
+                  [attr.aria-label]="lang.t('chg_picker')"
+                  (change)="openSibling($any($event.target).value)">
+            @for (sib of siblings(); track sib.no) {
+              <option [value]="sib.no" [selected]="sib.isCurrent">{{ sib.no }} — {{ lang.pick(sib.titleAr, sib.titleEn) }}</option>
+            }
+          </select>
+        </label>
+      }
+
+            <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
+        <epm-icon name="download" [size]="15" />{{ lang.t('chg_print') }}
+      </button>
+      <button type="button" class="d-btn sm" (click)="toast.demo('تصدير البطاقة', 'Export record')">
+        <epm-icon name="download" [size]="15" />{{ lang.t('chg_export') }}
+      </button>
+    </div>
+
+    <!-- ══ THE SIX TABS (03 §9) ═══════════════════════════════════════════ -->
+    <div class="d-tabs" role="tablist">
+      @for (t of tabs; track t.k) {
+        <button type="button" role="tab" [class.on]="tab() === t.k"
+                [attr.aria-selected]="tab() === t.k" (click)="tab.set(t.k)">
+          <epm-icon [name]="t.icon" [size]="14" />
+          {{ lang.t($any(t.label)) }}
+          @if (t.k === 'cost' && lineCount()) { <span class="n"><bdi>{{ lineCount() }}</bdi></span> }
+          @if (t.k === 'time' && activityCount()) { <span class="n"><bdi>{{ activityCount() }}</bdi></span> }
+          @if (t.k === 'files' && fileCount()) { <span class="n"><bdi>{{ fileCount() }}</bdi></span> }
+          @if (t.k === 'log' && logCount()) { <span class="n"><bdi>{{ logCount() }}</bdi></span> }
+        </button>
+      }
+    </div>
+
+    <div class="d-pbody">
+      <div class="d-pz7">
+
+        <!-- WHOSE DECISION THIS IS (03 §7). The record says it in words on the
+             two tabs where somebody might expect a button, and it says it for
+             the `none` relation too — «للاطلاع» is a status, not silence. -->
+        @if (tab() === 'summary' || tab() === 'flow') {
+          <div class="d-msgbar" [class.warning]="d.relation.canAct" [class.info]="!d.relation.canAct">
+            <epm-icon [name]="d.relation.canAct ? 'pending_actions' : 'visibility'" [size]="16" />
+            <div>
+              <!-- `none` IS «للاطلاع» — saying it twice reads as a stutter. -->
+              <b>{{ relLabel(d.relation.key) }}
+                @if (!d.relation.canAct && d.relation.key !== 'none') {
+                  — {{ lang.t('chg_view_only') }}
+                }</b>
+              <span>
+                {{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi>
+                @if (d.relation.stageNameAr) {
+                  · {{ lang.t('chg_col_status') }}:
+                  {{ lang.pick(d.relation.stageNameAr, d.relation.stageNameEn || '') }}
+                }
+              </span>
+            </div>
+          </div>
+        }
+
+        <!-- ══ TAB 1 — الملخص · الشكل 30 ═════════════════════════════════ -->
+        @if (tab() === 'summary') {
+
+          <epm-section [title]="lang.t('chg_sec_info')" icon="info" [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_type') }}</span>
+                <span class="v">{{ typeLabel(d.type) }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_justification') }}</span>
+                <span class="v">{{ d.justification }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_party') }}</span>
+                <span class="v">{{ d.responsibleParty }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_contract') }}</span>
+                <span class="v"><bdi class="mono">{{ d.contractId }}</bdi> · {{ contractName() }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_in_no') }}</span>
+                <span class="v mono"><bdi>{{ d.incomingNo }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_in_date') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.incomingDate) }}</bdi></span></div>
+            </div>
+          </epm-section>
+
+          <!-- 03 §1 — the contractor and the consultant act BEFORE the order
+               exists. The section says so in its own subtitle, because a reader
+               who takes them for stages will look for their SLA. -->
+          <epm-section [title]="lang.t('chg_sec_preinputs')" icon="mail"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-vo-ext">
+              <div class="lbl">{{ lang.t('chg_preinputs_note') }}</div>
+
+              <!-- An order entered through المسار 9's wizard has no preceding
+                   letters recorded yet: step 1 captures the order's OWN incoming
+                   letter, not the two that arrived before it. Saying so is the
+                   honest empty state; a bare heading would read as though the
+                   letters never existed. -->
+              @if (d.preInputs.length === 0) {
+                <div class="row">
+                  <div class="tx">
+                    <b>{{ lang.t('chg_preinputs_none_t') }}</b>
+                    <span>{{ lang.t('chg_preinputs_none_b') }}</span>
+                  </div>
+                </div>
+              }
+
+              @for (x of d.preInputs; track x.letterNo) {
+                <div class="row">
+                  <div class="tx">
+                    <b>{{ lang.pick(x.partyAr, x.partyEn) }}</b>
+                    <span>{{ lang.pick(x.actAr, x.actEn) }}</span>
+                  </div>
+                  <span class="mono">
+                    <bdi>{{ x.letterNo }}</bdi> · <bdi>{{ fmt.date(x.letterDate) }}</bdi>
+                  </span>
+                  <span class="d-pill completed">{{ extLabel(x.state) }}</span>
+                </div>
+              }
+            </div>
+          </epm-section>
+
+          <epm-section [title]="lang.t('chg_sec_impact')" icon="functions"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
+                <span class="v num"><bdi>{{ fmt.delta(d.impact.contractorValue) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_redept') }}</span>
+                <span class="v num"><bdi>{{ fmt.delta(d.impact.reDeptValue) }}</bdi></span></div>
+              <!-- 02 §6 — the approved value comes only from the pricing
+                   committee. Until it exists the cell says where it comes from
+                   rather than showing a proposal in its place. -->
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_approved_val') }}</span>
+                <span class="v num">
+                  @if (d.impact.approvedValue !== null) {
+                    <bdi>{{ fmt.delta(d.impact.approvedValue) }}</bdi>
+                  } @else { {{ lang.t('chg_awaiting_pricing') }} }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_over_tier') }}</span>
+                <span class="v num"><bdi>{{ d.impact.linesOverTier }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_excess_rate') }}</span>
+                <span class="v">{{ lang.t($any('chg_excess_' + d.impact.excessRateState)) }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_req') }}</span>
+                <span class="v num"><bdi>{{ dayText(d.impact.requestedDays) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_app') }}</span>
+                <span class="v num">
+                  @if (d.impact.approvedDays !== null) { <bdi>{{ dayText(d.impact.approvedDays) }}</bdi> }
+                  @else { — }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_lines') }}</span>
+                <span class="v num"><bdi>{{ d.impact.affectedLines }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_activities') }}</span>
+                <span class="v num"><bdi>{{ d.impact.affectedActivities }}</bdi></span></div>
+            </div>
+          </epm-section>
+
+          <epm-section [title]="lang.t('chg_sec_contract')" icon="description"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_value_before') }}</span>
+                <span class="v num"><bdi>{{ fmt.money(d.contract.valueBefore) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_order_value') }}</span>
+                <span class="v num">
+                  @if (d.contract.orderValue !== null) { <bdi>{{ fmt.delta(d.contract.orderValue) }}</bdi> }
+                  @else { — }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_value_after') }}</span>
+                <span class="v num">
+                  @if (d.contract.valueAfter !== null) {
+                    <bdi>{{ fmt.money(d.contract.valueAfter) }}</bdi> {{ lang.t('cur_iqd') }}
+                  } @else { — }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_amendment') }}</span>
+                <span class="v">
+                  {{ lang.t($any('chg_amend_' + d.contract.amendmentState)) }}
+                  @if (d.contract.amendmentNo !== null) { · <bdi class="mono">{{ d.contract.amendmentNo }}</bdi> }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_finish_after') }}</span>
+                <span class="v num">
+                  @if (d.contract.finishAfter) { <bdi>{{ fmt.date(d.contract.finishAfter) }}</bdi> }
+                  @else { {{ lang.t('chg_unchanged') }} }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_penalty') }}</span>
+                <span class="v">{{ lang.t($any('chg_penalty_' + d.contract.penaltyState)) }}</span></div>
+            </div>
+
+            <!-- 02 §9, non-negotiable #2. The one sentence this whole screen
+                 exists to keep true. -->
+            @if (d.contract.amendmentState === 'pending') {
+              <div class="d-msgbar warning">
+                <epm-icon name="pending" [size]="16" />
+                <div>
+                  <b>{{ lang.t('chg_approval_note_t') }}</b>
+                  <span>{{ lang.t('chg_approval_note_b') }}</span>
+                </div>
+              </div>
+            }
+          </epm-section>
+
+          <epm-section [title]="lang.t('chg_sec_decision')" icon="gavel"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
+                <span class="v num">
+                  <bdi>{{ fmt.delta(d.decision.contractorValue) }}</bdi> ·
+                  <bdi>{{ dayText(d.decision.contractorDays) }}</bdi>
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_redept') }}</span>
+                <span class="v num">
+                  <bdi>{{ fmt.delta(d.decision.reDeptValue) }}</bdi> ·
+                  <bdi>{{ dayText(d.decision.reDeptDays) }}</bdi>
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_approved') }}</span>
+                <span class="v num">
+                  @if (d.decision.approvedValue !== null) {
+                    <bdi>{{ fmt.delta(d.decision.approvedValue) }}</bdi> ·
+                    <bdi>{{ dayText(d.decision.approvedDays) }}</bdi>
+                  } @else { — }
+                </span></div>
+              <!-- Measured against the RE department's proposal, and the label
+                   names it: `02 §6` makes that the figure an approval departs
+                   from. -->
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_difference') }}</span>
+                <span class="v num">
+                  @if (d.decision.differenceValue !== null) {
+                    <bdi>{{ fmt.delta(d.decision.differenceValue) }}</bdi> ·
+                    <bdi>{{ deltaDays(d.decision.differenceDays) }}</bdi>
+                  } @else { — }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_diff_reason') }}</span>
+                <span class="v">{{ d.decision.reason || '—' }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_decision_date') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.decision.decisionDate) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_authority') }}</span>
+                <span class="v">{{ d.decision.authority || '—' }}</span></div>
+              @if (d.decision.excessRateAuthority) {
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_rate_authority') }}</span>
+                  <span class="v">{{ d.decision.excessRateAuthority }}</span></div>
+              }
+            </div>
+          </epm-section>
+
+          <!-- الشكل 30's nine steps. `03 §6` numbers seven of them; the two the
+               plate adds carry no spec number and do not pretend to. -->
+          <epm-section [title]="lang.t('chg_sec_apply')" icon="task_alt"
+                       [collapsible]="true" [defaultOpen]="true" [flush]="true">
+            <table class="d-line-table"><tbody>
+              @for (s of d.applySteps; track s.no) {
+                <tr>
+                  <td style="width: 48px" class="mono"><bdi>{{ s.no }}</bdi></td>
+                  <td>{{ lang.pick(s.nameAr, s.nameEn) }}</td>
+                  <td style="width: 140px">
+                    <span class="d-pill {{ applyClass(s.status) }}">{{ applyLabel(s.status) }}</span>
+                  </td>
+                  <td style="width: 120px" class="mono d-cell-sub"><bdi>{{ fmt.date(s.completedAt) }}</bdi></td>
+                  <td class="d-cell-sub wrap">{{ s.message || '' }}</td>
+                </tr>
+              }
+            </tbody></table>
+          </epm-section>
+        }
+
+        <!-- ══ TAB 2 — الكميات والكلفة · الشكل 31 ═══════════════════════ -->
+        @if (tab() === 'cost') {
+
+          @if (d.lines.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="calendar_month" [size]="30" /></span>
+              <b>{{ lang.t('chg_timeonly_t') }}</b>
+              <span>{{ lang.t('chg_timeonly_b') }}</span>
+            </div>
+
+          } @else {
+            <epm-section [title]="lang.t('chg_sec_lines')" icon="list_alt"
+                         [n]="d.lines.length" [collapsible]="true" [defaultOpen]="true" [flush]="true">
+              <div class="d-vow-tw">
+                <table class="d-line-table d-vo-cmp" style="min-width: 1180px">
+                  <thead>
+                    <tr>
+                      <th style="width: 150px">{{ lang.t('chg_col_item_party') }}</th>
+                      <th style="min-width: 200px">{{ lang.t('chg_col_desc_detail') }}</th>
+                      <th style="width: 118px">{{ lang.t('chg_col_qty') }}</th>
+                      <!-- «سعر الزائد» — the rate for the quantity BEYOND 20%,
+                           and the header says so, because the original rate is
+                           on the item row and the two must never be read as one
+                           column (02 §5). -->
+                      <th style="width: 118px" class="r" [title]="lang.t('chg_col_excess_rate_t')">
+                        {{ rateHeader() }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                      </th>
+                      <th style="width: 148px" class="r">
+                        {{ lang.t('chg_col_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                      </th>
+                      <th style="width: 140px" class="r">
+                        {{ lang.t('chg_col_impact') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                      </th>
+                      <th style="width: 88px" class="r">{{ lang.t('chg_col_weight') }}</th>
+                      <th style="width: 120px">{{ lang.t('chg_col_applied') }}</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    @for (l of d.lines; track l.code) {
+                      <!-- THE ITEM ROW — what the line IS before anybody
+                           proposes anything, and the control that opens its
+                           full detail (الشكل 31). -->
+                      <tr class="d-vo-h"
+                          tabindex="0" role="button"
+                          [attr.aria-label]="lang.t('chg_line_open') + ': ' + l.code"
+                          (click)="openLine.set(l.code)"
+                          (keydown)="onLineKey($event, l.code)">
+                        <td class="mono"><b><bdi>{{ l.code }}</bdi></b></td>
+                        <td>
+                          <b>{{ desc(l) }}</b>
+                          <div class="d-cell-sub">
+                            {{ changeLabel(l.changeType) }} · {{ lang.t('chg_unit') }}
+                            <bdi>{{ l.unit }}</bdi>
+                            @if (l.contractor.tripsThreshold || l.reDept.tripsThreshold) {
+                              · <span class="d-vo-warn">{{ lang.t('chg_tier_limit') }}
+                                <bdi>{{ fmt.qty(l.threshold) }}</bdi>&nbsp;<bdi>{{ l.unit }}</bdi></span>
+                            }
+                          </div>
+                        </td>
+                        <td class="r mono"><bdi>{{ fmt.qty(l.beforeQty) }}</bdi>
+                          <div class="d-cell-sub">{{ lang.t('chg_original') }}</div></td>
+                        <td class="r mono"><bdi>{{ fmt.money(l.beforeRate) }}</bdi>
+                          <div class="d-cell-sub">{{ lang.t('chg_original_rate') }}</div></td>
+                        <td class="r mono"><bdi>{{ fmt.money(l.beforeAmount) }}</bdi>
+                          <div class="d-cell-sub">{{ lang.t('chg_before_change') }}</div></td>
+                        <td class="r d-cell-sub">—</td>
+                        <td class="r mono"><bdi>{{ fmt.pct(l.beforeWeight) }}</bdi>
+                          <div class="d-cell-sub">{{ lang.t('chg_before') }}</div></td>
+                        <td><span class="d-pill {{ applyClass(l.applyStatus) }}">
+                          {{ applyLabel(l.applyStatus) }}</span></td>
+                      </tr>
+
+                      <!-- THE THREE PARTY ROWS. Same function, three inputs —
+                           and the approved row is highlighted because it is the
+                           one that governs once it exists (02 §6). -->
+                      @for (p of parties(); track p.key) {
+                        <tr class="d-vo-p" [class.gov]="p.key === 'approved'">
+                          <td><span class="d-vo-party">{{ p.label }}</span></td>
+                          <td class="d-cell-sub wrap">{{ tierText(l, col(l, p.key)) }}</td>
+                          <td class="r mono">
+                            @if (col(l, p.key).qtyAfter !== null) {
+                              <bdi>{{ fmt.qty(col(l, p.key).qtyAfter) }}</bdi>
+                            } @else { — }
+                          </td>
+                          <td class="r mono">
+                            @if (col(l, p.key).rateShown !== null) {
+                              <bdi>{{ fmt.money(col(l, p.key).rateShown) }}</bdi>
+                            } @else if (awaitingRate(l, p.key)) {
+                              <span class="d-cell-sub">{{ lang.t('chg_rate_committee') }}</span>
+                            } @else { — }
+                          </td>
+                          <td class="r mono">
+                            @if (col(l, p.key).amountAfter !== null) {
+                              <bdi>{{ fmt.money(col(l, p.key).amountAfter) }}</bdi>
+                            } @else { — }
+                          </td>
+                          <td class="r mono">
+                            @if (col(l, p.key).impact !== null) {
+                              <bdi>{{ fmt.delta(col(l, p.key).impact) }}</bdi>
+                            } @else { — }
+                          </td>
+                          <td class="r mono">
+                            @if (col(l, p.key).weight !== null) {
+                              <bdi>{{ fmt.pct(col(l, p.key).weight) }}</bdi>
+                            } @else { — }
+                          </td>
+                          <td></td>
+                        </tr>
+                      }
+                    }
+                  </tbody>
+
+                  <tfoot>
+                    <tr>
+                      <td colspan="5">{{ lang.t('chg_net_contractor') }}</td>
+                      <td class="r mono"><bdi>{{ fmt.delta(d.netContractor) }}</bdi></td>
+                      <td colspan="2"></td>
+                    </tr>
+                    <tr>
+                      <td colspan="5">{{ lang.t('chg_net_redept') }}</td>
+                      <td class="r mono"><bdi>{{ fmt.delta(d.netReDept) }}</bdi></td>
+                      <td colspan="2"></td>
+                    </tr>
+                    <tr class="gov">
+                      <td colspan="5">{{ lang.t('chg_net_approved') }}</td>
+                      <td class="r mono">
+                        @if (d.netApproved !== null) { <bdi>{{ fmt.delta(d.netApproved) }}</bdi> }
+                        @else { — }
+                      </td>
+                      <td colspan="2"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- الشكل 31 prints this hint under the table, and it is the only
+                   thing that tells a reader the rows are openable. -->
+              <div class="d-pager calcnote">
+                <epm-icon name="touch_app" [size]="14" />
+                <span>{{ lang.t('chg_line_hint') }}</span>
+              </div>
+            </epm-section>
+
+            <!-- الشكل 31's «أثر الأوزان»: BR-01 re-run on the after-state, and
+                 the 100% check is the recomputation's own answer — not an
+                 assertion printed beside it. -->
+            <epm-section [title]="lang.t('chg_sec_weights')" icon="donut_small"
+                         [collapsible]="true" [defaultOpen]="true">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_w_before') }}</span>
+                  <span class="v num"><bdi>{{ fmt.pct(d.weights.sumBefore) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_w_after') }}</span>
+                  <span class="v num"><bdi>{{ fmt.pct(d.weights.sumAfter) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_w_check') }}</span>
+                  <span class="v">{{ d.weights.valid ? lang.t('chg_w_valid') : lang.t('chg_w_invalid') }}</span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_w_last') }}</span>
+                  <span class="v mono"><bdi>{{ fmt.date(d.weights.lastRecalculated) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_w_state') }}</span>
+                  <span class="v">{{ weightStateLabel(d.weights.state) }}</span></div>
+              </div>
+
+              <table class="d-line-table" style="margin-top: 12px">
+                <thead>
+                  <tr>
+                    <th style="width: 110px">{{ lang.t('chg_col_code') }}</th>
+                    <th style="min-width: 190px">{{ lang.t('chg_col_desc') }}</th>
+                    <th style="width: 100px" class="r">{{ lang.t('chg_before') }}</th>
+                    <th style="width: 110px" class="r">{{ lang.t('chg_proposed') }}</th>
+                    <th style="width: 110px" class="r">{{ lang.t('chg_party_approved') }}</th>
+                    <th style="width: 110px" class="r">{{ lang.t('chg_applied') }}</th>
+                    <th style="width: 100px" class="r">{{ lang.t('chg_col_delta') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (w of d.weights.rows; track w.code) {
+                    <tr>
+                      <td class="mono"><bdi>{{ w.code }}</bdi></td>
+                      <td>{{ desc(w) }}</td>
+                      <td class="r mono"><bdi>{{ fmt.pct(w.before) }}</bdi></td>
+                      <td class="r mono">
+                        @if (w.proposed !== null) { <bdi>{{ fmt.pct(w.proposed) }}</bdi> } @else { — }
+                      </td>
+                      <td class="r mono">
+                        @if (w.approvedWeight !== null) { <bdi>{{ fmt.pct(w.approvedWeight) }}</bdi> } @else { — }
+                      </td>
+                      <td class="r mono">
+                        @if (w.applied !== null) { <bdi>{{ fmt.pct(w.applied) }}</bdi> } @else { — }
+                      </td>
+                      <td class="r mono"><bdi>{{ fmt.delta(w.delta) }}</bdi></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </epm-section>
+
+            @if (d.redistribution.length) {
+              <epm-section [title]="lang.t('chg_sec_redist')" icon="swap_horiz"
+                           [collapsible]="true" [defaultOpen]="true" [flush]="true">
+                <table class="d-line-table">
+                  <thead>
+                    <tr>
+                      <th style="min-width: 180px">{{ lang.t('chg_col_source') }}</th>
+                      <th style="min-width: 180px">{{ lang.t('chg_col_target') }}</th>
+                      <th style="width: 110px" class="r">{{ lang.t('chg_col_drawn') }}</th>
+                      <th style="width: 110px" class="r">{{ lang.t('chg_col_added') }}</th>
+                      <th style="width: 100px" class="r">{{ lang.t('chg_col_delta') }}</th>
+                      <th style="width: 150px" class="r">
+                        {{ lang.t('chg_col_impact') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                      </th>
+                      <th style="width: 120px">{{ lang.t('chg_col_applied') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of d.redistribution; track r.sourceCode) {
+                      <tr>
+                        <td><bdi class="mono">{{ r.sourceCode }}</bdi>
+                          <div class="d-cell-sub">{{ lang.pick(r.sourceDescriptionAr, r.sourceDescriptionEn) }}</div></td>
+                        <td><bdi class="mono">{{ r.targetCode || '—' }}</bdi>
+                          <div class="d-cell-sub">
+                            {{ lang.pick(r.targetDescriptionAr || '—', r.targetDescriptionEn || '—') }}</div></td>
+                        <td class="r mono"><bdi>{{ fmt.qty(r.drawn) }}</bdi></td>
+                        <td class="r mono"><bdi>{{ fmt.qty(r.distributed) }}</bdi></td>
+                        <td class="r mono"><bdi>{{ fmt.qty(r.difference) }}</bdi></td>
+                        <td class="r mono"><bdi>{{ fmt.money(r.money) }}</bdi></td>
+                        <td><span class="d-pill {{ applyClass(r.applyStatus) }}">
+                          {{ applyLabel(r.applyStatus) }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <div class="d-pager calcnote">
+                  <epm-icon name="functions" [size]="14" />
+                  <span>{{ lang.t('chg_redist_zero') }}</span>
+                </div>
+              </epm-section>
+            }
+          }
+        }
+
+        <!-- ══ TAB 3 — الأثر الزمني · الشكل 32 ═══════════════════════════ -->
+        @if (tab() === 'time') {
+          <epm-section [title]="lang.t('chg_sec_time')" icon="calendar_month"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_activities') }}</span>
+                <span class="v num"><bdi>{{ d.time.affectedActivities }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_req') }}</span>
+                <span class="v num"><bdi>{{ dayText(d.time.requestedDays) }}</bdi></span></div>
+              <!-- THE MIDDLE FIGURE. What the schedule analysis concluded is
+                   neither what was asked nor what was granted (03 §9 tab 3). -->
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_analysis') }}</span>
+                <span class="v num">
+                  @if (d.time.analysisDays !== null) { <bdi>{{ dayText(d.time.analysisDays) }}</bdi> }
+                  @else { {{ lang.t('chg_no_analysis') }} }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_app') }}</span>
+                <span class="v num">
+                  @if (d.time.approvedDays !== null) { <bdi>{{ dayText(d.time.approvedDays) }}</bdi> }
+                  @else { — }
+                </span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_finish_before') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.time.finishBefore) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_finish_forecast') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.time.finishForecast) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_finish_approved') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.time.finishApproved) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_critical') }}</span>
+                <span class="v">{{ d.time.affectsCriticalPath ? lang.t('yes') : lang.t('no') }}</span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_affects_finish') }}</span>
+                <span class="v">{{ d.time.affectsFinish ? lang.t('yes') : lang.t('no') }}</span></div>
+            </div>
+          </epm-section>
+
+          @if (d.time.activities.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="schedule" [size]="30" /></span>
+              <b>{{ lang.t('chg_noacts_t') }}</b>
+              <span>{{ lang.t('chg_noacts_b') }}</span>
+            </div>
+
+          } @else {
+            <epm-section [title]="lang.t('chg_sec_acts')" icon="account_tree"
+                         [n]="d.time.activities.length" [collapsible]="true" [defaultOpen]="true" [flush]="true">
+              <div class="d-vow-tw">
+                <table class="d-line-table" style="min-width: 1120px">
+                  <thead>
+                    <tr class="d-grp">
+                      <th colspan="4"></th>
+                      <th colspan="3">{{ lang.t('chg_grp_remaining') }}</th>
+                      <th colspan="2">{{ lang.t('chg_grp_finish') }}</th>
+                      <th></th>
+                    </tr>
+                    <tr>
+                      <th style="width: 90px">{{ lang.t('chg_col_actid') }}</th>
+                      <th style="min-width: 190px">{{ lang.t('chg_col_actname') }}</th>
+                      <th style="width: 120px">{{ lang.t('chg_col_change') }}</th>
+                      <th style="width: 84px" class="r">{{ lang.t('chg_col_progress') }}</th>
+                      <th style="width: 86px" class="r">{{ lang.t('chg_before') }}</th>
+                      <th style="width: 100px" class="r">{{ lang.t('chg_col_requested') }}</th>
+                      <th style="width: 100px" class="r">{{ lang.t('chg_party_approved') }}</th>
+                      <th style="width: 110px" class="r">{{ lang.t('chg_before') }}</th>
+                      <th style="width: 110px" class="r">{{ lang.t('chg_party_approved') }}</th>
+                      <th style="width: 120px">{{ lang.t('chg_col_applied') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (a of d.time.activities; track a.activityId) {
+                      <tr>
+                        <td class="mono"><bdi>{{ a.activityId }}</bdi></td>
+                        <td>{{ lang.pick(a.nameAr, a.nameEn) }}</td>
+                        <td>{{ actChangeLabel(a.changeType) }}</td>
+                        <td class="r mono"><bdi>{{ fmt.pct(a.progressPct, 0) }}</bdi></td>
+                        <td class="r mono"><bdi>{{ a.remainingBefore }}</bdi></td>
+                        <td class="r mono">
+                          @if (a.requestedDeltaDays !== null) { <bdi>{{ fmt.delta(a.requestedDeltaDays) }}</bdi> }
+                          @else { — }
+                        </td>
+                        <td class="r mono">
+                          @if (a.remainingApproved !== null) { <bdi>{{ a.remainingApproved }}</bdi> } @else { — }
+                        </td>
+                        <td class="r mono"><bdi>{{ fmt.date(a.finishBefore) }}</bdi></td>
+                        <td class="r mono">
+                          @if (a.finishApproved) { <bdi>{{ fmt.date(a.finishApproved) }}</bdi> } @else { — }
+                        </td>
+                        <td><span class="d-pill {{ applyClass(a.applyStatus) }}">
+                          {{ applyLabel(a.applyStatus) }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- الشكل 32's governing note, and the reason the activity days
+                   and the order's days are allowed to differ. -->
+              <div class="d-msgbar info">
+                <epm-icon name="account_tree" [size]="16" />
+                <div>
+                  <b>{{ lang.t('chg_actdur_t') }}</b>
+                  <span>{{ lang.t('chg_actdur_b') }}</span>
+                </div>
+              </div>
+            </epm-section>
+          }
+        }
+
+        <!-- ══ TAB 4 — المسار · الشكل 33 ═════════════════════════════════ -->
+        @if (tab() === 'flow') {
+          <epm-section [title]="lang.t('chg_sec_path')" icon="alt_route"
+                       [sub]="stageCount().done + ' / ' + stageCount().total + ' ' + lang.t('chg_stages')"
+                       [collapsible]="true" [defaultOpen]="true">
+            <ol class="d-votrail">
+              @for (s of d.stages; track s.stageNo) {
+                <li [class]="stageClass(s)">
+                  <span class="ic"><epm-icon [name]="stageIcon(s)" [size]="14" /></span>
+                  <div class="bd">
+                    <button type="button" class="hd" [attr.aria-expanded]="openStage() === s.stageNo"
+                            [disabled]="!s.applicable"
+                            (click)="openStage.set(openStage() === s.stageNo ? null : s.stageNo)">
+                      <b>{{ lang.pick(s.nameAr, s.nameEn) }}</b>
+                      <span class="d-pill" [class.completed]="s.status === 'done'"
+                            [class.ongoing]="s.status === 'active' && !s.breached"
+                            [class.stalled]="s.breached || s.status === 'returned'">
+                        {{ stageStatusLabel(s) }}
+                      </span>
+                      @if (s.applicable && s.externalRequired > 0) {
+                        <span class="d-pill">
+                          {{ lang.t('chg_external') }}
+                          <bdi>{{ s.externalReceived }}/{{ s.externalRequired }}</bdi>
+                        </span>
+                      }
+                      <span class="sp"></span>
+                      <span class="d-cell-sub mono"><bdi>{{ fmt.date(s.sentAt) }}</bdi></span>
+                      @if (s.applicable) {
+                        <epm-icon [name]="openStage() === s.stageNo ? 'expand_less' : 'expand_more'" [size]="16" />
+                      }
+                    </button>
+
+                    <div class="who">
+                      {{ lang.pick(s.ownerParty, s.ownerPartyEn) }}
+                      @if (s.decision) { · {{ decisionLabel(s.decision) }} }
+                    </div>
+
+                    <!-- 03 §2 — a skipped stage is LISTED WITH ITS REASON. It
+                         is the difference between a path that does not apply
+                         and a path somebody forgot. -->
+                    @if (!s.applicable) {
+                      <div class="why">{{ s.skipReason }}</div>
+                    } @else if (s.sentAt) {
+                      <div class="sla">
+                        <div class="bar"><i [class]="slaClass(s)" [style.width.%]="slaPct(s)"></i></div>
+                        <span class="lg mono">
+                          <bdi>{{ s.elapsedDays }} / {{ s.slaDays }}</bdi> {{ lang.t('scd_days') }}
+                        </span>
+                      </div>
+                    }
+
+                    @if (s.decisionNote) {
+                      <div class="cmt"><span class="by">{{ lang.pick(s.ownerParty, s.ownerPartyEn) }}</span>{{ s.decisionNote }}</div>
+                    }
+
+                    @if (openStage() === s.stageNo && s.applicable) {
+                      <div class="stgb">
+                        <div class="d-cell-sub">{{ lang.pick(s.noteAr, s.noteEn) }}</div>
+
+                        <!-- 03 §3–§4 — external parties are STATUSES INSIDE the
+                             stage. The decision is the party's; the delegate is
+                             named as the recorder, never as the decider. -->
+                        @if (s.external.length) {
+                          <div class="d-vo-ext">
+                            <div class="lbl">{{ lang.t('chg_ext_note') }}</div>
+                            @for (x of s.external; track x.partyAr) {
+                              <div class="row">
+                                <div class="tx">
+                                  <b>{{ lang.pick(x.partyAr, x.partyEn) }}</b>
+                                  @if (x.note) { <span>{{ x.note }}</span> }
+                                  @if (x.recordedBy) {
+                                    <span>{{ lang.t('chg_recorded_by') }} {{ x.recordedBy }}</span>
+                                  }
+                                </div>
+                                <span class="mono">
+                                  @if (x.letterNo) {
+                                    <bdi>{{ x.letterNo }}</bdi> · <bdi>{{ fmt.date(x.letterDate) }}</bdi>
+                                  } @else { {{ lang.t('chg_no_letter') }} }
+                                </span>
+                                <span class="d-pill {{ extClass(x.state) }}">{{ extLabel(x.state) }}</span>
+
+                                <!-- `03 §4` — only the DELEGATE records, and only
+                                     on the stage that is actually open. The
+                                     decision stays the party's; this button is
+                                     how it reaches the record. -->
+                                @if (x.state === 'wait' && d.viewerIsDelegate
+                                     && (s.status === 'active' || s.breached)) {
+                                  <button type="button" class="d-btn sm" (click)="openRecording(s, x)">
+                                    <epm-icon name="edit_note" [size]="14" />{{ lang.t('chg_d_record') }}
+                                  </button>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+
+                        <div class="d-form-grid">
+                          <div class="d-form-i"><span class="k">{{ lang.t('chg_f_sent') }}</span>
+                            <span class="v mono"><bdi>{{ fmt.date(s.sentAt) }}</bdi></span></div>
+                          <div class="d-form-i"><span class="k">{{ lang.t('chg_f_actioned') }}</span>
+                            <span class="v mono"><bdi>{{ fmt.date(s.actionedAt) }}</bdi></span></div>
+                          <div class="d-form-i"><span class="k">{{ lang.t('chg_f_elapsed') }}</span>
+                            <span class="v num"><bdi>{{ dayText(s.elapsedDays) }}</bdi></span></div>
+                          <div class="d-form-i"><span class="k">{{ lang.t('chg_f_ceiling') }}</span>
+                            <span class="v num"><bdi>{{ dayText(s.slaDays) }}</bdi></span></div>
+                          <div class="d-form-i"><span class="k">{{ lang.t('chg_f_decision') }}</span>
+                            <span class="v">{{ decisionLabel(s.decision) }}</span></div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+          </epm-section>
+
+          <!-- الشكل 33's «القرار» panel. 5.4 puts the four decisions here; until
+               then the panel states WHOSE decision it is rather than showing a
+               disabled control (`03 §7` — never a bare disabled button). -->
+          <epm-section [title]="lang.t('chg_sec_decision_panel')" icon="gavel"
+                       [sub]="d.relation.canAct ? lang.t('chg_yours') : lang.t('chg_view_only')"
+                       [collapsible]="true" [defaultOpen]="true">
+            <!-- `03 §7` — the actions render ONLY for `awaiting` or `recorder`.
+                 Anything else gets the explicit locked note naming whose
+                 decision it is, never a bare disabled button. -->
+            @if (decisions().length === 0) {
+              <div class="d-msgbar info">
+                <epm-icon name="lock" [size]="16" />
+                <div>
+                  <b>{{ lang.t('chg_locked_t') }}</b>
+                  @if (d.transaction.stalledAtAr) {
+                    <span>{{ lang.t('chg_locked_b') }}
+                      <bdi>{{ lang.pick(d.transaction.stalledAtAr, d.transaction.stalledAtEn || '') }}</bdi></span>
+                  } @else {
+                    <span>{{ lang.t('chg_locked_done') }}</span>
+                  }
+                </div>
+              </div>
+
+            } @else {
+              <div class="d-form-field f-full">
+                <label for="vo-dec">{{ lang.t('chg_d_action') }}<span class="req" aria-hidden="true">*</span></label>
+                <select id="vo-dec" class="d-form-input" required
+                        (change)="chooseDecision($any($event.target).value)">
+                  <option value="">{{ lang.t('chg_d_pick') }}</option>
+                  @for (o of decisions(); track o.key) {
+                    <option [value]="o.key" [selected]="o.key === decision()">{{ decisionLabelOf(o.key) }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="d-form-field f-full">
+                <label for="vo-dec-note">{{ lang.t('chg_d_comment') }}
+                  @if (chosen()?.needsNote) { <span class="req" aria-hidden="true">*</span> }</label>
+                <textarea id="vo-dec-note" rows="4" class="d-form-input"
+                          [class.bad]="decisionTouched() && noteMissing()"
+                          [disabled]="!chosen()"
+                          [attr.aria-invalid]="decisionTouched() && noteMissing() ? 'true' : null"
+                          [attr.placeholder]="chosen()?.needsNote ? lang.t('chg_d_note_req_ph') : lang.t('chg_d_note_ph')"
+                          [value]="decisionNote()"
+                          (input)="decisionNote.set($any($event.target).value)"></textarea>
+                @if (decisionTouched() && noteMissing()) {
+                  <span class="d-form-err">{{ lang.t('chg_d_note_err') }}</span>
+                }
+              </div>
+
+              <!-- «ماذا سيحدث بعد ذلك» — the consequences BEFORE the act. It is
+                   the part of a decision a reader cannot infer from its name. -->
+              <div class="d-msgbar" [class.warning]="chosen()?.danger" [class.info]="!chosen()?.danger">
+                <epm-icon name="account_tree" [size]="16" />
+                <div>
+                  <b>{{ lang.t('chg_d_next_t') }}</b>
+                  @if (chosen(); as c) {
+                    <ul class="d-conseq">
+                      @for (w of consequences(c.key); track w) { <li>{{ w }}</li> }
+                    </ul>
+                  } @else {
+                    <span>{{ lang.t('chg_d_next_b') }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="d-l14-decfoot">
+                <button type="button" class="d-btn sm"
+                        [disabled]="!decision() && !decisionNote()"
+                        (click)="chooseDecision(''); decisionNote.set('')">
+                  {{ lang.t('chg_d_reset') }}
+                </button>
+                <span class="sp"></span>
+                <button type="button" class="d-btn sm primary" [class.danger]="chosen()?.danger"
+                        [disabled]="!chosen() || deciding()" (click)="submitDecision()">
+                  <epm-icon [name]="chosen()?.key === 'apply' ? 'done_all' : 'gavel'" [size]="15" />
+                  {{ chosen() ? decisionLabelOf(chosen()!.key) : lang.t('chg_d_submit') }}
+                </button>
+              </div>
+            }
+          </epm-section>
+
+          <epm-section [title]="lang.t('chg_sec_transaction')" icon="schedule"
+                       [collapsible]="true" [defaultOpen]="true">
+            <div class="d-form-grid">
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_referred') }}</span>
+                <span class="v mono"><bdi>{{ fmt.date(d.transaction.referredOn) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_age') }}</span>
+                <span class="v num"><bdi>{{ dayText(d.transaction.daysElapsed) }}</bdi></span></div>
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_breached') }}</span>
+                <span class="v">{{ d.transaction.breached ? lang.t('yes') : lang.t('no') }}</span></div>
+              <!-- The age and the lead time are different numbers on purpose:
+                   an order can be 180 days old and have spent 37 at desks. -->
+              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_leadtime') }}</span>
+                <span class="v num">
+                  <bdi>{{ dayText(d.transaction.leadTimeDays) }}</bdi>
+                  ·
+                  @if (d.transaction.stalledAtAr) {
+                    {{ lang.t('chg_stalled_at') }}
+                    <bdi>{{ lang.pick(d.transaction.stalledAtAr, d.transaction.stalledAtEn || '') }}</bdi>
+                  } @else { {{ lang.t('chg_complete') }} }
+                </span></div>
+            </div>
+          </epm-section>
+        }
+
+        <!-- ══ TAB 5 — المرفقات · الشكل 34 ═══════════════════════════════ -->
+        @if (tab() === 'files') {
+          @if (d.attachments.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="attach_file" [size]="30" /></span>
+              <b>{{ lang.t('chg_nofiles_t') }}</b>
+              <span>{{ lang.t('chg_nofiles_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-tablewrap"><table class="d-table" style="min-width: 980px">
+              <thead>
+                <tr>
+                  <th>{{ lang.t('chg_col_file') }}</th>
+                  <th>{{ lang.t('chg_col_category') }}</th>
+                  <th class="r">{{ lang.t('chg_col_version') }}</th>
+                  <th>{{ lang.t('chg_col_uploaded') }}</th>
+                  <th>{{ lang.t('chg_col_user') }}</th>
+                  <th>{{ lang.t('chg_col_stage') }}</th>
+                  <th class="r"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of d.attachments; track a.fileName + a.version) {
+                  <tr>
+                    <td class="mono"><bdi>{{ a.fileName }}</bdi></td>
+                    <td>{{ categoryLabel(a.category) }}</td>
+                    <td class="r mono"><bdi>v{{ a.version }}</bdi></td>
+                    <td class="mono"><bdi>{{ fmt.date(a.uploadedAt) }}</bdi></td>
+                    <td class="d-cell-sub">{{ lang.pick(a.uploadedByAr, a.uploadedByEn) }}</td>
+                    <td class="d-cell-sub">
+                      {{ lang.pick(a.stageNameAr || '—', a.stageNameEn || '—') }}
+                    </td>
+                    <td class="r">
+                      <button type="button" class="d-icon-btn sm"
+                              [attr.aria-label]="lang.t('chg_view_file')"
+                              (click)="toast.demo('عرض الملف', 'View file')">
+                        <epm-icon name="visibility" [size]="15" />
+                      </button>
+                      <button type="button" class="d-icon-btn sm"
+                              [attr.aria-label]="lang.t('chg_download_file')"
+                              (click)="toast.demo('تنزيل الملف', 'Download file')">
+                        <epm-icon name="download" [size]="15" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+
+            <!-- 03 §9 — versions accumulate and files are never replaced. The
+                 note is on screen because the table shows the same document
+                 twice and that looks like a duplicate until it is explained. -->
+            <div class="d-pager calcnote">
+              <epm-icon name="history" [size]="14" />
+              <span>{{ lang.t('chg_versions_note') }}</span>
+            </div>
+          }
+        }
+
+        <!-- ══ TAB 6 — السجل · `03 §9` tab 6 ════════════════════════════ -->
+        @if (tab() === 'log') {
+          @if (d.audit.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="history" [size]="30" /></span>
+              <b>{{ lang.t('chg_nolog_t') }}</b>
+              <span>{{ lang.t('chg_nolog_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-vow-tw"><table class="d-line-table" style="min-width: 1180px">
+              <thead>
+                <tr>
+                  <th style="width: 140px">{{ lang.t('chg_col_at') }}</th>
+                  <th style="width: 160px">{{ lang.t('chg_col_user') }}</th>
+                  <th style="min-width: 170px">{{ lang.t('chg_col_action') }}</th>
+                  <th style="width: 150px">{{ lang.t('chg_col_stage') }}</th>
+                  <th style="width: 140px">{{ lang.t('chg_col_prev') }}</th>
+                  <th style="width: 140px">{{ lang.t('chg_col_new') }}</th>
+                  <th style="min-width: 170px">{{ lang.t('chg_col_note') }}</th>
+                  <th style="width: 70px" class="r">{{ lang.t('chg_col_version') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of d.audit; track a.at + a.action + a.field) {
+                  <tr>
+                    <td class="mono"><bdi>{{ a.at }}</bdi></td>
+                    <td class="d-cell-sub">{{ lang.pick(a.actorAr, a.actorEn) }}</td>
+                    <td>
+                      {{ auditActionLabel(a.action) }}
+                      @if (a.field) { <div class="d-cell-sub mono"><bdi>{{ a.field }}</bdi></div> }
+                    </td>
+                    <td class="d-cell-sub">{{ lang.pick(a.stageNameAr || '—', a.stageNameEn || '—') }}</td>
+                    <!-- «القيمة السابقة مشطوبة ← الجديدة» — the same shape
+                         الشكل 11 uses for the contract log. -->
+                    <td class="mono"><bdi class="was">{{ a.previousValue || '—' }}</bdi></td>
+                    <td class="mono"><bdi>{{ a.newValue || '—' }}</bdi></td>
+                    <td class="d-cell-sub wrap">{{ a.note || '—' }}</td>
+                    <td class="r mono"><bdi>v{{ a.version }}</bdi></td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+          }
+        }
+      </div>
+
+      <!-- ══ Z8 — بطاقة الأمر ═══════════════════════════════════════════
+           الشكل 30's rail, and it is on every tab: value · time · linked
+           records · parties. The approver never leaves the decision to look
+           one of these up. -->
+      <div class="d-pz8">
+        <div class="d-rpane">
+          <div class="rp-h">
+            <div class="tx">
+              <div class="r1">
+                <span class="code"><bdi>{{ d.no }}</bdi></span>
+                <epm-status-pill kind="co-lifecycle" [code]="d.card.lifecycle" />
+              </div>
+              <b>{{ lang.t('chg_card') }}</b>
+              <span class="sub">{{ stageLabel() }} · <bdi>{{ dayText(d.card.ageDays) }}</bdi></span>
+            </div>
+          </div>
+
+          <div class="rp-b">
+            <epm-section [title]="lang.t('chg_card_value')">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_card_requested') }}</span>
+                  <span class="v num"><bdi>{{ fmt.money(d.card.requestedValue) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_card_approved') }}</span>
+                  <span class="v num">
+                    @if (d.card.approvedValue !== null) { <bdi>{{ fmt.money(d.card.approvedValue) }}</bdi> }
+                    @else { — }
+                  </span></div>
+                @if (d.card.differenceValue !== null) {
+                  <div class="d-form-i"><span class="k">{{ lang.t('chg_f_difference') }}</span>
+                    <span class="v num"><bdi>{{ fmt.delta(d.card.differenceValue) }}</bdi></span></div>
+                }
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_card_contract_after') }}</span>
+                  <span class="v num">
+                    @if (d.card.contractValueAfter !== null) {
+                      <bdi>{{ fmt.money(d.card.contractValueAfter) }}</bdi>
+                    } @else { — }
+                  </span></div>
+              </div>
+            </epm-section>
+
+            <epm-section [title]="lang.t('chg_card_time')">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_req') }}</span>
+                  <span class="v num"><bdi>{{ d.card.requestedDays }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_app') }}</span>
+                  <span class="v num">
+                    @if (d.card.approvedDays !== null) { <bdi>{{ d.card.approvedDays }}</bdi> } @else { — }
+                  </span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_card_finish') }}</span>
+                  <span class="v mono"><bdi>{{ fmt.date(d.card.contractualFinish) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_critical') }}</span>
+                  <span class="v">
+                    {{ d.time.affectsCriticalPath ? lang.t('chg_affected') : lang.t('chg_unaffected') }}
+                  </span></div>
+              </div>
+            </epm-section>
+
+            <epm-section [title]="lang.t('chg_card_linked')">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_in_no') }}</span>
+                  <span class="v mono"><bdi>{{ d.incomingNo }}</bdi> ·
+                    <bdi>{{ fmt.date(d.incomingDate) }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_lines') }}</span>
+                  <span class="v num"><bdi>{{ lineCount() }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_activities') }}</span>
+                  <span class="v num"><bdi>{{ activityCount() }}</bdi></span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_col_files') }}</span>
+                  <span class="v num"><bdi>{{ fileCount() }}</bdi></span></div>
+              </div>
+            </epm-section>
+
+            <epm-section [title]="lang.t('chg_card_parties')">
+              <div class="d-form-grid">
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_party') }}</span>
+                  <span class="v">{{ d.responsibleParty }}</span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_card_owner') }}</span>
+                  <span class="v">{{ stageLabel() }}</span></div>
+                <div class="d-form-i"><span class="k">{{ lang.t('chg_f_authority') }}</span>
+                  <span class="v">{{ d.decision.authority || '—' }}</span></div>
+              </div>
+            </epm-section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ الشكل 31 — تفاصيل البند ═══════════════════════════════════════
+         Everything the comparison table had to leave out: the identity, the
+         20% split per party in full, and what each party's figure would do to
+         the line's weight. `03 §9`'s «excluded from the main tables» list is
+         what this drawer exists for. -->
+    @if (line(); as l) {
+      <epm-drawer [title]="desc(l)" [sub]="l.code" [wide]="true"
+                  [closeLabel]="lang.t('scd_rec_close')" (closed)="openLine.set(null)">
+        <div class="d-form-grid">
+          <div class="d-form-i"><span class="k">{{ lang.t('chg_col_code') }}</span>
+            <span class="v mono"><bdi>{{ l.code }}</bdi></span></div>
+          <div class="d-form-i"><span class="k">{{ lang.t('chg_col_change') }}</span>
+            <span class="v">{{ changeLabel(l.changeType) }}</span></div>
+          <div class="d-form-i"><span class="k">{{ lang.t('chg_col_unit') }}</span>
+            <span class="v"><bdi>{{ l.unit }}</bdi></span></div>
+          <div class="d-form-i"><span class="k">{{ lang.t('chg_col_applied') }}</span>
+            <span class="v"><span class="d-pill {{ applyClass(l.applyStatus) }}">
+              {{ applyLabel(l.applyStatus) }}</span></span></div>
+        </div>
+
+        <!-- D-01 — the threshold is measured against the ORIGINAL contracted
+             quantity, which is NOT necessarily the quantity in force. Both are
+             printed, because that is the distinction the rule turns on. -->
+        <epm-section [title]="lang.t('chg_line_basis')">
+          <div class="d-form-grid">
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_line_contracted') }}</span>
+              <span class="v num"><bdi>{{ fmt.qty(l.contractedQty) }}</bdi>&nbsp;<bdi>{{ l.unit }}</bdi></span></div>
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_line_before') }}</span>
+              <span class="v num"><bdi>{{ fmt.qty(l.beforeQty) }}</bdi>&nbsp;<bdi>{{ l.unit }}</bdi></span></div>
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_original_rate') }}</span>
+              <span class="v num"><bdi>{{ fmt.money(l.beforeRate) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_before_change') }}</span>
+              <span class="v num"><bdi>{{ fmt.money(l.beforeAmount) }}</bdi> {{ lang.t('cur_iqd') }}</span></div>
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_tier_threshold') }}</span>
+              <span class="v num"><bdi>{{ fmt.qty(l.threshold) }}</bdi>&nbsp;<bdi>{{ l.unit }}</bdi></span></div>
+            <div class="d-form-i"><span class="k">{{ lang.t('chg_col_weight') }}</span>
+              <span class="v num"><bdi>{{ fmt.pct(l.beforeWeight) }}</bdi></span></div>
+          </div>
+        </epm-section>
+
+        <epm-section [title]="lang.t('chg_line_proposals')" [flush]="true">
+          <table class="d-line-table">
+            <thead>
+              <tr>
+                <th>{{ lang.t('chg_col_item_party') }}</th>
+                <th class="r">{{ lang.t('chg_col_qty') }}</th>
+                <th class="r">{{ lang.t('chg_line_at_rate') }}</th>
+                <th class="r">{{ lang.t('chg_line_excess') }}</th>
+                <th class="r">{{ rateHeader() }}</th>
+                <th class="r">{{ lang.t('chg_col_impact') }}</th>
+                <th class="r">{{ lang.t('chg_col_weight') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of parties(); track p.key) {
+                <tr [class.gov]="p.key === 'approved'">
+                  <td>{{ p.label }}</td>
+                  <td class="r mono">
+                    @if (col(l, p.key).qtyAfter !== null) {
+                      <bdi>{{ fmt.qty(col(l, p.key).qtyAfter) }}</bdi>
+                    } @else { — }
+                  </td>
+                  <td class="r mono"><bdi>{{ fmt.qty(col(l, p.key).atRateQty) }}</bdi></td>
+                  <td class="r mono"><bdi>{{ fmt.qty(col(l, p.key).excessQty) }}</bdi></td>
+                  <td class="r mono">
+                    @if (col(l, p.key).rateShown !== null) {
+                      <bdi>{{ fmt.money(col(l, p.key).rateShown) }}</bdi>
+                    } @else if (awaitingRate(l, p.key)) {
+                      <span class="d-cell-sub">{{ lang.t('chg_rate_committee') }}</span>
+                    } @else { — }
+                  </td>
+                  <td class="r mono">
+                    @if (col(l, p.key).impact !== null) {
+                      <bdi>{{ fmt.delta(col(l, p.key).impact) }}</bdi>
+                    } @else { — }
+                  </td>
+                  <td class="r mono">
+                    @if (col(l, p.key).weight !== null) {
+                      <bdi>{{ fmt.pct(col(l, p.key).weight) }}</bdi>
+                    } @else { — }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </epm-section>
+
+        <!-- 02 §5, in the one place where the whole rule is visible at once. -->
+        @if (l.contractor.tripsThreshold || l.reDept.tripsThreshold) {
+          <div class="d-msgbar info">
+            <epm-icon name="difference" [size]="16" />
+            <div>
+              <b>{{ lang.t('chg_tier_t') }}</b>
+              <span>{{ lang.t('chg_tier_b') }}</span>
+            </div>
+          </div>
+        }
+      </epm-drawer>
+    }
+
+    <!-- ══ `03 §4` — تسجيل قرار جهة خارجية ═══════════════════════════════
+         The decision is attributed to the PARTY; the delegate is the recorder,
+         and the official letter number and date are what make it a record
+         rather than an assertion. -->
+    @if (recording(); as x) {
+      <epm-drawer [title]="lang.t('chg_d_record_t')" [sub]="lang.pick(x.partyAr, x.partyEn)"
+                  [closeLabel]="lang.t('scd_rec_close')" [hasFooter]="true"
+                  (closed)="recording.set(null)">
+        <div class="d-msgbar info">
+          <epm-icon name="edit_note" [size]="16" />
+          <div>
+            <b>{{ lang.t('chg_d_attribution_t') }}</b>
+            <span>{{ lang.t('chg_d_attribution_b') }}
+              <bdi>{{ lang.pick(x.partyAr, x.partyEn) }}</bdi> ·
+              {{ lang.t('chg_recorded_by') }} <bdi>{{ d.viewerParty }}</bdi></span>
+          </div>
+        </div>
+
+        <div class="d-form-field f-full">
+          <label for="ext-state">{{ lang.t('chg_d_outcome') }}<span class="req" aria-hidden="true">*</span></label>
+          <select id="ext-state" class="d-form-input" (change)="recordState.set($any($event.target).value)">
+            <option value="in" [selected]="recordState() === 'in'">{{ extLabel('in') }}</option>
+            <option value="back" [selected]="recordState() === 'back'">{{ extLabel('back') }}</option>
+            <option value="na" [selected]="recordState() === 'na'">{{ extLabel('na') }}</option>
+          </select>
+          @if (recordState() === 'back' && x.canCancel) {
+            <span class="d-cell-sub">{{ lang.t('chg_d_cancels') }}</span>
+          }
+        </div>
+
+        <div class="d-form-grid">
+          <div class="d-form-field">
+            <label for="ext-no">{{ lang.t('chg_d_letter_no') }}<span class="req" aria-hidden="true">*</span></label>
+            <input id="ext-no" class="d-form-input mono" [value]="letterNo()"
+                   [class.bad]="decisionTouched() && !letterNo().trim()"
+                   (input)="letterNo.set($any($event.target).value)" placeholder="OUT-0000" />
+          </div>
+          <div class="d-form-field">
+            <label for="ext-date">{{ lang.t('chg_d_letter_date') }}<span class="req" aria-hidden="true">*</span></label>
+            <input id="ext-date" class="d-form-input mono" type="date" [value]="letterDate()"
+                   [class.bad]="decisionTouched() && !letterDate().trim()"
+                   (input)="letterDate.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="d-form-field f-full">
+          <label for="ext-note">{{ lang.t('chg_d_comment') }}</label>
+          <textarea id="ext-note" rows="3" class="d-form-input" [value]="recordNote()"
+                    (input)="recordNote.set($any($event.target).value)"></textarea>
+        </div>
+
+        @if (decisionTouched() && letterMissing()) {
+          <span class="d-form-err">{{ lang.t('chg_d_letter_err') }}</span>
+        }
+
+        <ng-container footer>
+          <button type="button" class="d-btn" (click)="recording.set(null)">{{ lang.t('cancel') }}</button>
+          <span style="flex: 1"></span>
+          <button type="button" class="d-btn primary" [disabled]="deciding()" (click)="submitRecording()">
+            <epm-icon name="check" [size]="15" />{{ lang.t('chg_d_record_save') }}
+          </button>
+        </ng-container>
+      </epm-drawer>
+    }
+   }
+  }
+</div>

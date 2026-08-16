@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 /** Mirrors Features/Dev/Personas.cs — member names match exactly. */
 export interface Persona {
@@ -47,8 +48,18 @@ export class PersonaService {
   current = () => this.all().find(p => p.id === this.currentId()) ?? null;
 
   // [EP-DEV-03] GET /api/dev/personas → api/Features/Dev/DevEndpoints.cs
+  //
+  // It cannot go through `Api`: that service injects THIS one for the
+  // X-Epm-User header, and the two would be a cycle. So it builds the same
+  // absolute URL from the same environment config.
+  //
+  // It used to call a bare relative '/api/dev/personas', which the dev server's
+  // proxy sends to the DEPLOYED api rather than to localhost:5080. The list came
+  // back 500 and the capacity silently read as empty everywhere — the account
+  // menu rendered a blank name and «العرض بصفة» had nothing to offer (P-127).
   load() {
-    this.http.get<Persona[]>('/api/dev/personas').subscribe(list => this.all.set(list));
+    this.http.get<Persona[]>(environment.apiUrl + '/api/dev/personas')
+      .subscribe(list => this.all.set(list));
   }
 
   select(id: string) {

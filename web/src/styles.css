@@ -572,7 +572,10 @@ epm-change-orders-page { display: contents; }
   display: inline-grid; place-items: center; min-inline-size: 32px;
   padding: 2px var(--space-6, 6px); border-radius: var(--r-sm);
   background: rgba(255, 255, 255, .12); color: var(--topbar-fg);
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: var(--fw-bold);
+  /* 11px is the floor (05 §2 · CLAUDE.md §6) and this badge is ours, not
+     the reference's — the REVERTED table covers the reference's breaches,
+     not one this build introduced. */
+  font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-bold);
 }
 
 /* ── THE WAY OUT OF A WORKSPACE ───────────────────────────────────────────
@@ -752,7 +755,11 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
   display: flex; align-items: center; gap: var(--space-8);
   text-align: start; cursor: pointer;
 }
-.epm-select:disabled { cursor: not-allowed; opacity: .6; }
+/* Disabled is EXPLICIT COLOUR, never opacity (05 §7): opacity fades the text
+   and its background together and lands wherever it lands, which is how a
+   disabled control ends up below contrast without anybody choosing it. */
+.epm-select:disabled { cursor: not-allowed;
+  background: var(--surface-container); color: var(--on-surface-variant); }
 /* The value truncates; the chevron never does. */
 .epm-select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-v.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
@@ -794,6 +801,56 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-select-tick { flex: none; margin-inline-start: auto; color: var(--primary); }
 .epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
+
+/* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
+   The stage card is  — the same two-row card الشكل 6 uses
+   — and needs only its two rows laid out. The dot is , the
+   severity marker the alerts screens already use, so a desk holding a file too
+   long reads the same as any other overdue thing; it is never the only carrier,
+   since the card prints its cap and its elapsed days beside it (05 §7.6). */
+.epm-slastage > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
+.epm-slastage > .hd > .t { min-inline-size: 0; }
+.epm-slastage > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.epm-slastage > .hd > .t > .d-cell-sub { display: block; }
+.epm-slastage > .ft { display: flex; align-items: baseline; gap: var(--space-8); }
+.epm-slastage > .ft > .sp { flex: 1; }
+
+/* ══ الشكل 11 — «تمييز أحداث النظام الآلية عن أحداث المستخدمين» ═══════════
+   The automatic half of the log reads as a different KIND of row, not as a
+   more important one: the dot inverts to the tertiary plane while a user
+   event keeps the neutral outline `.d-tstep > .tdot` already gives it. The
+   distinction is never colour-only — every row states «حدث آلي · نظام إدارة
+   المشاريع» in words beside it (05 §7.6), and the icon differs too.
+
+   `.d-trail`, `.d-tstep` and `.chg` themselves are NOT new: they were copied
+   verbatim from the reference (desktop.css:2238-2270) and had no caller until
+   this screen — including `.chg .from`'s line-through, which is the plate's
+   «القيمة السابقة مشطوبة». */
+.d-tstep > .tdot.sys {
+  background: var(--surface-container-high);
+  border-color: var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+/* A change order's id inside a log line — mono, like every other id. */
+.d-tstep > .tb .mono { font-family: var(--font-mono); font-weight: var(--fw-medium); }
+/* ══ الشكل 9 — the two places a BUTTON has to look like what it replaces ═══
+   Both are `05 §7` compliance, not decoration: a row that opens a panel and a
+   card that opens a file each need a :focus-visible target, and a <tr> or a
+   <div> is not one. `.d-table .lnk` and `.d-file` already carry the LOOK
+   (desktop.css:233 · :972) — these two rules only strip the user-agent button
+   chrome that would otherwise sit on top of it, the same reset
+   `.d-crumbs button.lnk` already makes for the breadcrumb. */
+.d-line-table button.lnk,
+.d-table button.lnk {
+  background: none; border: 0; padding: 0; font: inherit; text-align: start;
+}
+button.d-file { font: inherit; text-align: start; cursor: pointer; }
+
+/* الشكل 12 — «الأوزان من قيمة العقد؛ نسبة التنفيذ من الأنشطة المرتبطة»: the
+   register's own caveat, under the table it qualifies. */
+.boq-basis-note { display: flex; align-items: center; gap: var(--space-6); margin: var(--space-8) 0 0; }
+button.d-file > .fm { align-items: flex-start; }
 
 /* ══ الشكل 7 — «تفصيل كلفة العقد» ═════════════════════════════════════════
    A tile per expense item: name, amount, its own spend bar, and what has been
@@ -981,3 +1038,61 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    `.epm-track` rail — CLAUDE.md §7, grep before writing a rule. */
 .epm-next-action { align-items: center; gap: var(--space-8, 8px); margin-block-end: var(--space-12); }
 .epm-next-action small { color: inherit; opacity: .8; margin-inline-start: var(--space-6, 6px); }
+
+
+/* ── SCR-W10 · ملحق الشكل 44 — the model tree's status mark ───────────────
+   الشكل 44 colours its elements by status and its key adds «حرج» as a fourth
+   entry. Criticality is NOT a fourth colour: it rides a ring — the same
+   non-colour channel `.d-gantt-bar.crit` and `.d-pill.critical` already use —
+   so the colour channel stays with status (CLAUDE.md §6). A critical element
+   can be مكتمل, and on this key it is both.
+
+   `desktop.css` ships the whole viewer shell (`.d-model-shell3`, `.d-model-
+   node`, `.d-model-legend`, `.d-model-props`, `.d-linkrow`); only the mark
+   itself is missing, because the reference painted its dots from JS. */
+.epm-model-mark { inline-size: 9px; block-size: 9px; border-radius: 50%; flex: none;
+  display: inline-block; background: var(--outline); }
+.epm-model-mark.completed  { background: var(--status-completed-tx); }
+.epm-model-mark.inprogress { background: var(--status-ongoing-tx); }
+.epm-model-mark.delayed    { background: var(--status-delayed-tx); }
+.epm-model-mark.crit { box-shadow: 0 0 0 2px var(--on-surface); }
+
+/* The legend swatch for حرج: a ring around nothing, so it cannot be mistaken
+   for a colour of its own. */
+.d-model-legend i.ring { background: transparent; box-shadow: inset 0 0 0 2px var(--on-surface); }
+
+
+/* ── «العرض بصفة» on the two screens الشكل 29 · 30 draw it on ─────────────
+   A filter chip that opens a list, sized like every other chip in the bar so
+   the plate's toolbar reads as one row. `.d-pop` and `.d-pop-row` are the
+   design system's own popover (desktop.css:1082) — the account menu and the
+   workspace switcher already use them, so an option here looks like every
+   other chooseable row in the app (CLAUDE.md §3.7: grep before writing). */
+.epm-persona-switch { position: relative; display: inline-flex; }
+.epm-persona-switch > .d-fchip { gap: var(--space-6, 6px); }
+.epm-persona-switch > .d-fchip .lbl { color: var(--on-surface-variant); font-weight: var(--fw-regular); }
+.epm-persona-switch > .d-fchip b { font-weight: var(--fw-bold); }
+
+.epm-persona-pop {
+  position: absolute; inset-block-start: calc(100% + var(--space-6, 6px));
+  inset-inline-start: 0; z-index: 40; min-inline-size: 264px; max-inline-size: 340px;
+}
+.epm-persona-note {
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-block-start: 1px solid var(--outline-variant);
+  font-size: 11px; line-height: 1.6; color: var(--on-surface-variant);
+}
+
+
+/* ── SCR-W1 · ملحق الشكل 4's «مخططان» ─────────────────────────────────────
+   Two charts side by side above 1100px and stacked below it, so neither is
+   squeezed to a width where its axis labels collide. `.d-chart-card` and
+   `.d-chart-legend` are the design system's own (desktop.css:779) — only the
+   pairing needed a rule. */
+.epm-ovw-charts { display: grid; gap: var(--space-16, 16px); }
+@media (min-width: 1100px) { .epm-ovw-charts { grid-template-columns: 1fr 1fr; } }
+
+/* "Unavailable" where it appears OUTSIDE a stat tile — a watchlist cell, a
+   legend row. Same reasoning as .epm-stat-na .epm-na: a figure that has no
+   input is not an adverse state, so it is quiet, never --error (05 §7.9). */
+.epm-na { color: var(--on-surface-variant); }

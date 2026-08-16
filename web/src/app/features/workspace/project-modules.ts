@@ -69,23 +69,23 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { id: 'schedule',     icon: 'calendar_month', key: 'mod_schedule',     built: true,  phase: '4.3' },
       { id: 'progress',     icon: 'trending_up',    key: 'mod_progress',     built: true,  phase: '4.4' },
       { id: 'changeorders', icon: 'sync_alt',       key: 'mod_changeorders', built: true,  phase: '5.1' },
-      { id: 'risk',         icon: 'warning',        key: 'mod_risk',         built: false, phase: '6' },
+      { id: 'risk',         icon: 'warning',        key: 'mod_risk',         built: true,  phase: '6' },
     ],
   },
   {
     key: 'mod_group_records',
     modules: [
-      { id: 'model',        icon: 'deployed_code',  key: 'mod_model',        built: false, phase: '6' },
-      { id: 'meetings',     icon: 'groups',         key: 'mod_meetings',     built: false, phase: '6' },
-      { id: 'documents',    icon: 'folder_open',    key: 'mod_documents',    built: false, phase: '6' },
+      { id: 'model',        icon: 'deployed_code',  key: 'mod_model',        built: true,  phase: '6' },
+      { id: 'meetings',     icon: 'groups',         key: 'mod_meetings',     built: true,  phase: '6' },
+      { id: 'documents',    icon: 'folder_open',    key: 'mod_documents',    built: true,  phase: '6' },
     ],
   },
   {
     key: 'mod_group_oversight',
     modules: [
-      { id: 'alerts',       icon: 'notifications',  key: 'mod_alerts',       built: false, phase: '6' },
-      { id: 'reports',      icon: 'assessment',     key: 'mod_reports',      built: false, phase: '6' },
-      { id: 'audit',        icon: 'history',        key: 'mod_audit',        built: false, phase: '6' },
+      { id: 'alerts',       icon: 'notifications',  key: 'mod_alerts',       built: true,  phase: '6' },
+      { id: 'reports',      icon: 'assessment',     key: 'mod_reports',      built: true,  phase: '6' },
+      { id: 'audit',        icon: 'history',        key: 'mod_audit',        built: true,  phase: '6' },
     ],
   },
 ];

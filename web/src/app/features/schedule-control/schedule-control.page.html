@@ -46,7 +46,7 @@
     <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
     <b>{{ lang.t('error_t') }}</b>
     <span><bdi>{{ error() }}</bdi></span>
-    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+    <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (total() === 0) {
   <!-- empty BECAUSE THE DATABASE IS EMPTY. Distinct from the filtered-empty
@@ -90,19 +90,19 @@
       </div>
 
       <div class="grp">
-        <button class="d-fchip" [class.on]="state() === ''" (click)="setState('')">
+        <button type="button" class="d-fchip" [class.on]="state() === ''" (click)="setState('')">
           {{ lang.t('all') }}<span class="n"><bdi>{{ total() }}</bdi></span>
         </button>
-        <button class="d-fchip" [class.on]="state() === 'delayed'" (click)="setState('delayed')">
+        <button type="button" class="d-fchip" [class.on]="state() === 'delayed'" (click)="setState('delayed')">
           {{ lang.t('sc_delayed') }}<span class="n"><bdi>{{ delayed() }}</bdi></span>
         </button>
-        <button class="d-fchip" [class.on]="state() === 'on-track'" (click)="setState('on-track')">
+        <button type="button" class="d-fchip" [class.on]="state() === 'on-track'" (click)="setState('on-track')">
           {{ lang.t('sc_ontrack') }}<span class="n"><bdi>{{ onTrack() }}</bdi></span>
         </button>
         <!-- The reference's third chip is "critical activities", which cannot
              be derived until Phase 4.3. This one can, and answers a question
              the reference never asks: which projects have no schedule at all. -->
-        <button class="d-fchip" [class.on]="state() === 'no-schedule'" (click)="setState('no-schedule')">
+        <button type="button" class="d-fchip" [class.on]="state() === 'no-schedule'" (click)="setState('no-schedule')">
           {{ lang.t('sc_no_schedule') }}<span class="n"><bdi>{{ noSchedule() }}</bdi></span>
         </button>
       </div>
@@ -110,7 +110,7 @@
       <span class="sp"></span>
 
       @if (!isUnfiltered()) {
-        <button class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button type="button" class="d-btn sm" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       }
       <span class="muted"><bdi>{{ resultLabel() }}</bdi></span>
     </div>
@@ -120,7 +120,7 @@
         <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
         <b>{{ lang.t('empty_filter_t') }}</b>
         <span>{{ lang.t('empty_filter_b') }}</span>
-        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button type="button" class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
       <table class="d-table">

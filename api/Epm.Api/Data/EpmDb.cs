@@ -47,6 +47,43 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // سجل النشاط, الشكل 7's fifth contract tab.
     public DbSet<ContractActivityEvent> ContractActivityEvents => Set<ContractActivityEvent>();
 
+    // ── المسار 3 · الشكل 13 — استيراد جدول الكميات ───────────────────────
+    // A SUBMITTED version, never the live bill. «يُقدَّم للاعتماد ولا يُستبدل
+    // الجدول السابق — يُحفَظ كإصدار»: no screen that reads the register reads
+    // these two tables, which is what keeps an unapproved import out of every
+    // weight, link and earned-value figure derived from BoqItems.
+    public DbSet<BoqImportVersion> BoqImportVersions => Set<BoqImportVersion>();
+    public DbSet<BoqImportVersionItem> BoqImportVersionItems => Set<BoqImportVersionItem>();
+
+    // ── الشكل 17 — مهل التدقيق ────────────────────────────────────────────
+    // One row per DESK a certificate sits at. The route is data, not columns:
+    // a ministry that adds a stage adds rows (P-97).
+    public DbSet<PaymentAuditStage> PaymentAuditStages => Set<PaymentAuditStage>();
+
+    // ── الشكل 15 — التخصيص السنوي ─────────────────────────────────────────
+    // What the ministry released for a fiscal year. NOT the approved cost and
+    // NOT the contracted commitment — the third figure, and the one that can
+    // stop a payment in October (P-92).
+    public DbSet<ProjectAllocation> ProjectAllocations => Set<ProjectAllocation>();
+
+    // ── SCR-W9 سجل المخاطر (ملحق الشكل 43) ───────────────────────────────
+    // Severity is NOT here: the screen prints «الخطورة = الاحتمالية × التأثير»
+    // beside its own title, so it is derived by Domain/RiskSeverity (01 §3).
+    public DbSet<Risk> Risks => Set<Risk>();
+
+    // ── SCR-W11 محاضر الاجتماعات وسجل الإجراءات (ملحق الشكل 45) ──────────
+    // «متأخر» is NOT a column: it is a due date measured against the project's
+    // data date at projection time (D-06).
+    public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<MeetingAction> MeetingActions => Set<MeetingAction>();
+
+    // ── SCR-W12 الوثائق والمخططات (ملحق الشكل 46) ────────────────────────
+    // TWO tables, because «المراجعات لا تُحذف»: the document is the identity
+    // and the revision is the file, so a new issue is an INSERT and the
+    // superseded one keeps its date, its transmittal and its file.
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentRevision> DocumentRevisions => Set<DocumentRevision>();
+
     // ── PHASE 1.1 Lookups — every enum label in the app (06 §1–§11) ──────
     public DbSet<Lookup> Lookups => Set<Lookup>();
 
@@ -60,6 +97,17 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // The one table in the system a screen WRITES to so far: acknowledging an
     // alert is a real state change (EP-ALR-02), not a client-side toggle.
     public DbSet<Alert> Alerts => Set<Alert>();
+
+    // ── SCR-W13 project alerts · الشكل 47 ────────────────────────────────
+    // The rule the alert came from. Disabling it withdraws the alert.
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+
+    // ── SCR-W10 3D model · الشكل 44 ──────────────────────────────────────
+    // The tab is kept and the VIEWER is stubbed (07 §8). These two tables back
+    // the tree, the element panel and the version selector — the parts that
+    // carry data. No geometry is stored.
+    public DbSet<ModelElement> ModelElements => Set<ModelElement>();
+    public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
 
     // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
     // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
@@ -108,6 +156,21 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<ChangeOrderActivity> ChangeOrderActivities => Set<ChangeOrderActivity>();
     public DbSet<ChangeOrderStage> ChangeOrderStages => Set<ChangeOrderStage>();
     public DbSet<ChangeOrderAttachment> ChangeOrderAttachments => Set<ChangeOrderAttachment>();
+
+    // ── SCR-W8 the change-order RECORD (Phase 5.2 · ملحق الأشكال 30–34) ───
+    // The three tables 5.4 was to own, registered here for the reason 5.1
+    // registered the stages: the plates read them.
+    //   ApplySteps      — الشكل 30's «حالة تطبيق الأمر التغييري», nine rows.
+    //   ExternalParties — الشكل 33's «أطراف خارجية 1/1» inside stage 4 and 5.
+    //                     They are STATUSES IN A STAGE, never stages (03 §3),
+    //                     which is exactly why they are their own table hanging
+    //                     off ChangeOrderStageId rather than more stage rows.
+    //   AuditEntries    — tab 6 السجل: one row per CHANGED FIELD, previous
+    //                     value → new value.
+    // 5.4 writes them; 5.2 reads what the fixture puts there.
+    public DbSet<ChangeOrderApplyStep> ChangeOrderApplySteps => Set<ChangeOrderApplyStep>();
+    public DbSet<ChangeOrderExternalParty> ChangeOrderExternalParties => Set<ChangeOrderExternalParty>();
+    public DbSet<ChangeOrderAuditEntry> ChangeOrderAuditEntries => Set<ChangeOrderAuditEntry>();
 
     // ── next pages append their DbSets here ──────────────────────────────
 

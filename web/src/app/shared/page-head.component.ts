@@ -17,7 +17,7 @@ export interface Crumb {
 
 /**
  * <epm-page-head [crumbs]="crumbs" [title]="…" [sub]="…">
- *   <button actions class="d-btn primary">…</button>
+ *   <button type="button" actions class="d-btn primary">…</button>
  * </epm-page-head>
  *
  * Ported from v1.1 DPageHead — docs/spec/reference/app/desktop-shell.jsx.

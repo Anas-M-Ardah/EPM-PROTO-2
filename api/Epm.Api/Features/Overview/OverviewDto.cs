@@ -114,9 +114,21 @@ public record OverviewTotals(
     int? DelayDays,
     string? DelayDrivenBy,
     decimal? Physical,
+    /// <summary>
+    /// الشكل 4 prints «31% **مقابل مخطط 39%**» — an actual figure is not a
+    /// judgement without the planned one beside it, so they travel together.
+    /// </summary>
+    decimal? Planned,
     decimal? Financial,
     decimal? Spi,
-    decimal? Cpi);
+    decimal? Cpi,
+    /// <summary>
+    /// الشكل 4's «الحد المقبول 0.95» — the line CPI and SPI are read against.
+    /// A constant, and named as one: nothing in `02` derives it, so it is a
+    /// threshold somebody set and the screen says so rather than implying the
+    /// system worked it out.
+    /// </summary>
+    decimal AcceptableIndex);
 
 /// <summary>
 /// Open alerts for this project, by severity. Real rows from the Alerts table —
@@ -152,12 +164,108 @@ public record OverviewProgress(int Started, int Available);
 /// <summary>«الإجراء التالي المطلوب», or null when nothing is waiting.</summary>
 public record OverviewNextAction(string ModuleId, string Reason, int Waiting);
 
+/// <summary>
+/// **ملحق الشكل 4**'s identity line: «الجهة المستفيدة جامعة بغداد؛ المقاول شركة
+/// الفرات للمقاولات؛ المكتب الاستشاري الهندسي؛ نوع المشروع تنفيذ أمانة؛ التمويل
+/// البرنامج الحكومي؛ المنطقة ديالى؛ المباشرة 2026-03-12؛ الإنجاز التعاقدي
+/// 2027-08-21».
+///
+/// Three of those are the CONTRACT's and not the project's — المقاول, المباشرة
+/// and الإنجاز التعاقدي — and a project with two contracts has two of each.
+/// They come from the contract carrying the largest effective value, which is
+/// the one the plate's own single-contract project means, and
+/// <see cref="ContractCount"/> travels with them so the screen can say when
+/// there is more than one instead of presenting one contract's dates as the
+/// project's.
+/// </summary>
+public record OverviewIdentity(
+    string? BeneficiaryAr,
+    string? BeneficiaryEn,
+    string? Contractor,
+    string? Consultant,
+    string Type,
+    string FundingType,
+    string Region,
+    string? Start,
+    string? ContractualFinish,
+    int ContractCount);
+
+/// <summary>
+/// الشكل 4's cost line — «المقررة 1,374 م والمعدلة 1,500 م (▲126 م) والمتبقي
+/// 990 م» — and the spend ratio «34% (510 م من 1,500 م)» that reads against it.
+///
+/// <see cref="Remaining"/> is المعدلة − المصروف, which is the plate's own
+/// arithmetic (1,500 − 510 = 990). It is NOT an uncommitted balance: this
+/// system records payments, not commitments.
+/// </summary>
+public record OverviewCost(
+    decimal Approved,
+    decimal Revised,
+    decimal Delta,
+    decimal Spent,
+    decimal Remaining,
+    decimal? SpendPct);
+
+/// <summary>One point of الشكل 4's first chart. See `Domain/ProgressSeries`.</summary>
+public record OverviewProgressPoint(string At, decimal? Planned, decimal Actual);
+
+/// <summary>
+/// One period of an S-curve — the shape the live prototype's `DSCurve` draws:
+/// a planned bar and an actual bar under two cumulative lines.
+///
+/// <see cref="At"/> is the period's own month end and the CLIENT labels it. The
+/// prototype prints «ش1» / «M1», which is a language decision and therefore not
+/// this endpoint's (every other DTO here sends codes or Ar/En pairs).
+///
+/// <see cref="ActCum"/> is null before the first measurement, so the actual line
+/// starts where the record does instead of at a zero nobody wrote.
+/// </summary>
+public record OverviewCurvePeriod(
+    string At,
+    decimal PlanCum,
+    decimal? ActCum,
+    decimal PlanPeriod,
+    decimal ActPeriod);
+
+/// <summary>
+/// One card of الشكل 4's «التنبيهات النشطة» panel. The plate's own actions are
+/// «اتخاذ قرار الاعتماد أو مراجعة التنبيه أو تحديث الإنجاز **من بطاقات
+/// التنبيهات**», so each card carries where it points.
+/// </summary>
+/// <param name="ModuleId">
+/// The project module this alert is about, so the card can open it. Null when
+/// the alert names nothing this screen can navigate to — the card then still
+/// reads, it just does not offer a destination it cannot reach.
+/// </param>
+public record OverviewAlertCard(
+    int Id,
+    string Severity,
+    string Kind,
+    string TitleAr,
+    string TitleEn,
+    string RaisedAt,
+    string? TargetRef,
+    string? ModuleId);
+
+/// <summary>
+/// الشكل 4 names exactly two panels — «خط سير المراحل» and «التنبيهات النشطة».
+/// The contracts register and the beneficiaries list that used to sit on this
+/// screen are gone: contracts are الشكل 6's own screen and beneficiaries appear
+/// on الشكل 5 and in the BOQ distribution, so neither is lost and neither is
+/// drawn twice (P-130).
+/// </summary>
 public record OverviewResponse(
     OverviewProject Project,
+    OverviewIdentity Identity,
     OverviewTotals Totals,
-    IReadOnlyList<OverviewContract> Contracts,
-    IReadOnlyList<OverviewBeneficiary> Beneficiaries,
+    OverviewCost Cost,
+    IReadOnlyList<OverviewProgressPoint> ProgressSeries,
+    /// <summary>الشكل 4's first curve — «التقدم التراكمي · مخطط مقابل فعلي».</summary>
+    IReadOnlyList<OverviewCurvePeriod> ProgressCurve,
+    /// <summary>الشكل 4's second — «المنحنى المالي · الصرف المخطط مقابل الفعلي».</summary>
+    IReadOnlyList<OverviewCurvePeriod> CostCurve,
     OverviewAlerts Alerts,
+    IReadOnlyList<OverviewAlertCard> AlertCards,
     IReadOnlyList<OverviewUnavailable> Unavailable,
     IReadOnlyList<OverviewModule> Modules,
     OverviewProgress Progress,

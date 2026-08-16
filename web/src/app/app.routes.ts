@@ -140,6 +140,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports.page').then(m => m.ReportsPage),
       },
 
+      // /docs · features/docs · Features/Docs · [EP-DOCS-01]
+      //
+      // The one page that reads NO table: the rules are code, so it works on
+      // an empty database. It says what the system knows how to compute
+      // rather than what it currently holds.
+      {
+        path: 'docs',
+        loadComponent: () => import('./features/docs/docs.page').then(m => m.DocsPage),
+      },
+
       // ── PHASE 3 · the project workspace ───────────────────────────────
       // `/projects/:id/:module`. It must come AFTER the `projects` route
       // above: a terminal route only matches when it consumes the whole URL,
@@ -261,6 +271,61 @@ export const routes: Routes = [
             path: 'changeorders',
             loadComponent: () =>
               import('./features/change-orders/change-orders.page').then(m => m.ChangeOrdersPage),
+          },
+
+          // SCR-W8 record · features/change-orders · [EP-CHG-02]
+          // The order number is a URL segment for the same reason the contract
+          // is on SCR-W3: a change order is an official record, and a link to
+          // one has to survive being pasted into a letter.
+          {
+            path: 'changeorders/:no',
+            loadComponent: () =>
+              import('./features/change-orders/change-order.page').then(m => m.ChangeOrderPage),
+          },
+
+          // SCR-W9 · features/risks · Features/Risks · [EP-RSK-01]
+          {
+            path: 'risk',
+            loadComponent: () => import('./features/risks/risks.page').then(m => m.RisksPage),
+          },
+
+          // SCR-W11 · features/meetings · Features/Meetings · [EP-MTG-01]
+          {
+            path: 'meetings',
+            loadComponent: () => import('./features/meetings/meetings.page').then(m => m.MeetingsPage),
+          },
+
+          // SCR-W12 · features/documents · Features/Documents · [EP-DOC-01]
+          {
+            path: 'documents',
+            loadComponent: () => import('./features/documents/documents.page').then(m => m.DocumentsPage),
+          },
+
+          // SCR-W10 · features/model · Features/Model · [EP-MDL-01]
+          {
+            path: 'model',
+            loadComponent: () => import('./features/model/model.page').then(m => m.ModelPage),
+          },
+
+          // SCR-W13 · features/project-alerts · Features/ProjectAlerts · [EP-PAL-01]
+          {
+            path: 'alerts',
+            loadComponent: () =>
+              import('./features/project-alerts/project-alerts.page').then(m => m.ProjectAlertsPage),
+          },
+
+          // SCR-W14 · features/project-reports · Features/ProjectReports · [EP-PRP-01]
+          {
+            path: 'reports',
+            loadComponent: () =>
+              import('./features/project-reports/project-reports.page')
+                .then(m => m.ProjectReportsPage),
+          },
+
+          // SCR-W15 · features/audit · Features/Audit · [EP-AUD-01]
+          {
+            path: 'audit',
+            loadComponent: () => import('./features/audit/audit.page').then(m => m.AuditPage),
           },
 
           // An unknown module segment is a typed URL, not a state — send it to

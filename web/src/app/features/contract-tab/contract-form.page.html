@@ -37,7 +37,7 @@
           <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
           <b>{{ lang.t('con_no_permission_t') }}</b>
           <span>{{ lang.t('con_no_permission_b') }}</span>
-          <button class="d-btn" (click)="cancel()">{{ lang.t('cancel') }}</button>
+          <button type="button" class="d-btn" (click)="cancel()">{{ lang.t('cancel') }}</button>
         </div>
       } @else if (loading()) {
         <div class="d-empty">
@@ -49,7 +49,7 @@
           <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
           <b>{{ lang.t('error_t') }}</b>
           <span><bdi>{{ error() }}</bdi></span>
-          <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+          <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
         </div>
       } @else {
 

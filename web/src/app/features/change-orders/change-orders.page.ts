@@ -1,19 +1,21 @@
 import {
   Component, ViewEncapsulation, computed, effect, inject, signal, untracked,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
 import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-orders.types';
+import { ChangeOrderWizard } from './change-order.wizard';
 
 /**
  * SCR-W8 — the change-order register (`03 §10`).
@@ -43,13 +45,17 @@ import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-or
 @Component({
   selector: 'epm-change-orders-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent],
+  imports: [
+    IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+    ChangeOrderWizard, PersonaSwitcherComponent,
+  ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-orders.page.html',
 })
 export class ChangeOrdersPage {
   private api = inject(ChangeOrdersApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
@@ -61,17 +67,49 @@ export class ChangeOrdersPage {
   loading = signal(true);
   error = signal<string | null>(null);
 
+  /** المسار 9's wizard, over this register (الشكل 37). */
+  wizardOpen = signal(false);
+
   /** Lifecycle tab — `all` plus one per group. */
   life = signal('all');
   /** «بانتظار إجرائي» · «تجاوزت السقف» · «متأخرة» — one at a time. */
   attn = signal('');
   /** Free text over the fields someone would actually type. */
   q = signal('');
+  /**
+   * الشكل 29's «المرحلة» filter. The plate lists it beside the three attention
+   * filters and it answers a different question from them: not «is something
+   * wrong with this order» but «where in the six stages is it sitting».
+   */
+  stage = signal('');
+  /** الشكل 29's «مرشح نوع الأمر» — lookup `co-type`. */
+  type = signal('');
 
   readonly colCount = 7;
 
   rows = computed(() => this.data()?.rows ?? []);
   groups = computed(() => (this.data()?.groups ?? []).filter(g => g.key !== 'draft' || g.count > 0));
+
+  /**
+   * The stages actually present on this project's orders, in stage order — not
+   * the six `WorkflowMachine` defines. A stage nothing is sitting in is not a
+   * filter anybody needs, and offering it would be offering an empty result.
+   */
+  stagesPresent = computed(() => {
+    const seen = new Map<number, string>();
+    for (const r of this.rows()) {
+      if (r.currentStageNo != null && !seen.has(r.currentStageNo)) {
+        seen.set(r.currentStageNo, this.lang.pick(r.currentStageNameAr ?? '', r.currentStageNameEn ?? ''));
+      }
+    }
+    return [...seen].sort((a, b) => a[0] - b[0]).map(([no, name]) => ({ no, name }));
+  });
+
+  /** Likewise: the types present, labelled from the `co-type` lookup. */
+  typesPresent = computed(() => {
+    const seen = new Set(this.rows().map(r => r.type));
+    return [...seen].sort().map(code => ({ code, label: this.lookups.label('co-type', code) }));
+  });
 
   /**
    * A row's lifecycle group. `approved` and `applied_partial` share one —
@@ -97,8 +135,13 @@ export class ChangeOrdersPage {
     const attn = this.attn();
     const q = this.q().trim().toLowerCase();
 
+    const stage = this.stage();
+    const type = this.type();
+
     return this.rows().filter(r => {
       if (life !== 'all' && this.groupOf(r) !== life) return false;
+      if (stage && String(r.currentStageNo ?? '') !== stage) return false;
+      if (type && r.type !== type) return false;
 
       if (attn === 'mine' && !r.relation.canAct) return false;
       if (attn === 'sla' && !r.exceptions.some(x => x.code === 'sla-breached')) return false;
@@ -112,15 +155,41 @@ export class ChangeOrdersPage {
     });
   });
 
-  filtered = computed(() => this.life() !== 'all' || !!this.attn() || !!this.q().trim());
+  filtered = computed(() =>
+    this.life() !== 'all' || !!this.attn() || !!this.stage() || !!this.type() || !!this.q().trim());
 
   clearFilters() {
     this.life.set('all');
     this.attn.set('');
+    this.stage.set('');
+    this.type.set('');
     this.q.set('');
   }
 
   toggleAttn(k: string) { this.attn.update(v => (v === k ? '' : k)); }
+
+  /** `03 §9`'s record. The number is the segment — a record has to be linkable. */
+  open(no: string) {
+    this.router.navigate(['/projects', this.projectId(), 'changeorders', no]);
+  }
+
+  /**
+   * A submitted order goes straight to its record: it is the document the
+   * person who just wrote it wants to read, and it is where the decision they
+   * are waiting for will be taken.
+   */
+  afterCreate(no: string) {
+    this.wizardOpen.set(false);
+    this.load();
+    this.open(no);
+  }
+
+  onRowKey(e: KeyboardEvent, no: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.open(no);
+    }
+  }
 
   slaCount = computed(() => this.rows().filter(r => r.exceptions.some(x => x.code === 'sla-breached')).length);
   overdueCount = computed(() => this.rows().filter(r => r.exceptions.some(x => x.code === 'overdue')).length);

@@ -16,8 +16,14 @@ export class FinancialsApi {
   private api = inject(Api);
 
   // [EP-FIN-01] GET /api/projects/{id}/financials → api/Features/Financials/FinancialsEndpoints.cs
-  get(projectId: string) {
+  /**
+   * الشكل 14 — «مرشح السنة». The year filters «مصروف السنة» SERVER-side, because
+   * which certificates fall in a year is a question about paid dates and the
+   * client does not hold them all.
+   */
+  get(projectId: string, year?: number | null) {
     return this.api.get<FinancialsResponse>(
-      `/api/projects/${encodeURIComponent(projectId)}/financials`);
+      `/api/projects/${encodeURIComponent(projectId)}/financials`,
+      year ? { year } : undefined);
   }
 }

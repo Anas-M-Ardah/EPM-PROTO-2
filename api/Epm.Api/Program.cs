@@ -17,7 +17,14 @@ using Epm.Api.Features.Projects;
 using Epm.Api.Features.Reports;
 using Epm.Api.Features.Schedule;
 using Epm.Api.Features.ScheduleControl;
+using Epm.Api.Features.Documents;
+using Epm.Api.Features.Meetings;
+using Epm.Api.Features.Risks;
 using Epm.Api.Features.Workspaces;
+using Epm.Api.Features.ProjectAlerts;
+using Epm.Api.Features.Model;
+using Epm.Api.Features.Audit;
+using Epm.Api.Features.ProjectReports;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +38,13 @@ builder.Services.AddDbContext<EpmDb>(o =>
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(
         "http://localhost:4200",                    // dev Angular server
+        // CLAUDE.md §7 — this project's web actually serves on :4300 (4200 is
+        // taken by another project on the dev machine), and launch.json's own
+        // config on :4301. Without them every dev request failed CORS, because
+        // environment.ts points the client straight at :5080 rather than at the
+        // proxy.
+        "http://localhost:4300",
+        "http://localhost:4301",
         "https://emp-infinite.netlify.app",       // prod Netlify
         "https://emp-infinite.runasp.net")        // prod RunASP
     .AllowAnyHeader()
@@ -75,10 +89,20 @@ app.MapOverviewEndpoints();
 app.MapInformationEndpoints();
 app.MapContractEndpoints();
 app.MapBoqEndpoints();
+app.MapBoqImportEndpoints();
 app.MapScheduleEndpoints();
 app.MapProgressEndpoints();
 app.MapFinancialsEndpoints();
 app.MapChangeOrdersEndpoints();
+app.MapChangeOrderWizardEndpoints();
+app.MapChangeOrderWorkflowEndpoints();
+app.MapRisksEndpoints();
+app.MapMeetingsEndpoints();
+app.MapDocumentsEndpoints();
+app.MapProjectAlertsEndpoints();
+app.MapModelEndpoints();
+app.MapAuditEndpoints();
+app.MapProjectReportsEndpoints();
 app.MapLookupsEndpoints();
 app.MapDocsEndpoints();
 

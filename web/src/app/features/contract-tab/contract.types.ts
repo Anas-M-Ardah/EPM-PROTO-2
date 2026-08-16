@@ -97,6 +97,9 @@ export interface PenaltyImpact {
   capAfter: number;
   /** What the applied amendments bought. */
   waived: number;
+  /** الغرامة اليومية before and after — BR-10 computed it all along (الشكل 10). */
+  perDayBefore: number;
+  perDayAfter: number;
   perDayPct: number;
   capPct: number;
   /** True when no forecast finish is recorded — nothing is known about lateness. */
@@ -168,12 +171,21 @@ export interface ContractDetail {
   monitoringAmount: number;
 }
 
+/**
+ * الشكل 7's middle card. Every figure here shares ONE denominator — كلفة العقد
+ * الكلية — and the card names it on screen: «22 % من كلفة العقد الكلية».
+ */
 export interface ContractMoney {
+  /** Σ net of PAID payments. */
   disbursed: number;
-  certified: number;
-  retention: number;
-  advanceRecovery: number;
+  /** كلفة العقد الكلية — الإحالة + الاحتياط + الإشراف. */
+  totalCost: number;
+  /** كلفة العقد الكلية − المصروف: 520,200,000 − 112,841,143 = 407,358,857. */
   remaining: number;
+  /** المصروف ÷ كلفة العقد الكلية — the headline AND «الإنجاز المالي», one figure. */
+  spentPct: number | null;
+  /** الإنجاز المادي — BR-04 over this contract's bill. Null when there is none. */
+  physicalPct: number | null;
   costLines: CostLine[];
 }
 
@@ -243,10 +255,25 @@ export interface ContractViolation {
   messageEn: string;
 }
 
-/** سجل النشاط — one row of الشكل 7's fifth tab. */
+/**
+ * سجل النشاط — one row of الشكل 11, newest first.
+ *
+ * «عرض التغيير بصيغة القيمة السابقة مشطوبة ← القيمة الجديدة»: an edit row
+ * names the field and carries both values, so the line states what moved.
+ */
 export interface ContractEvent {
   id: number;
+  /** created · updated · change-order · progress. */
   action: string;
+  /** user · system — «تمييز أحداث النظام الآلية عن أحداث المستخدمين». */
+  source: string;
+  /** The definition member that moved. Null on anything but an edit. */
+  field: string | null;
+  before: string | null;
+  after: string | null;
+  /** «VO-03» — the change order an automatic event came from. */
+  refId: string | null;
+  note: string | null;
   actorName: string;
   actorRole: string;
   actorParty: string;

@@ -1,50 +1,65 @@
 import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
-import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { DonutComponent, DonutSegment } from '../../shared/donut.component';
+import { BarCompareComponent, BarItem } from '../../shared/bar-compare.component';
+import { SCurveComponent, CurvePeriod } from '../../shared/scurve.component';
+import { StatusPillComponent } from '../../shared/status-pill.component';
 import { LangService } from '../../core/lang';
 import { WorkspacesService } from '../../core/workspaces';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { PortfolioApi } from './portfolio.api';
-import { PortfolioResponse, EntityValue } from './portfolio.types';
+import {
+  PortfolioResponse, EntityValue, PortfolioCurvePeriod,
+  WatchlistRow, UpcomingMilestone,
+} from './portfolio.types';
 
 /**
  * SCR-E1 — Executive Portfolio (04 §2).
- * PORTED from DDashboard (v1.1), desktop-views.jsx:45.
+ * PORTED from the LIVE prototype's `DDashboard`, desktop-views.jsx:45.
  *
- * ── WHY THE HEADLINE TILES ARE NOT HERE ───────────────────────────────────
- * The reference leads with physical %, financial %, SPI and CPI over an
- * S-curve. Every one needs an input that does not exist yet: physical progress
- * is weight-rolled BOQ progress (BR-04), financial progress needs payments, and
- * the indices need both (BR-11).
+ * ── WHAT CHANGED, AND WHY (P-137) ─────────────────────────────────────────
+ * The first build of this screen led with «مؤشرات غير متوفرة بعد» — four
+ * tiles saying physical %, financial %, SPI and CPI could not be derived. That
+ * was true when it was written and stopped being true in Phase 4.4, and the
+ * screen kept saying it. A dashboard that reports a derivable figure as absent
+ * teaches the person reading it to stop looking, which is a worse failure than
+ * the one P-09 was written to prevent.
  *
- * This screen shows what IS derivable — the contractual position — and renders
- * each missing figure as an explicit "unavailable + reason" tile, which is what
- * the v1.1 design language requires. The reasons come from the server so they
- * stay next to the rules that own them.
+ * The four are now real, and `unavailable` survives for the cases that
+ * genuinely have no input — an empty database, a portfolio with no bill of
+ * quantities anywhere in it. Each tile falls back to its own reason in place,
+ * beside the label it belongs to, rather than into a separate panel at the
+ * bottom that nobody reads.
  *
- * ── NO ARITHMETIC ─────────────────────────────────────────────────────────
- * Every figure arrives computed. This component formats and lays out.
+ * ── NO ARITHMETIC HERE ────────────────────────────────────────────────────
+ * Every figure arrives derived from `Domain/`. The computeds below pick,
+ * label, colour and sign. The one subtraction — physical minus planned — is
+ * the same one the prototype does inline, and it is a display comparison of
+ * two figures the server already stated, not a rule.
  */
 @Component({
   selector: 'epm-portfolio-page',
   standalone: true,
-  imports: [IconComponent, PageHeadComponent, SummaryStripComponent, DonutComponent],
+  imports: [
+    IconComponent, PageHeadComponent, DonutComponent, BarCompareComponent,
+    SCurveComponent, StatusPillComponent, RouterLink,
+  ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './portfolio.page.html',
 })
 export class PortfolioPage {
   private api = inject(PortfolioApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   workspaces = inject(WorkspacesService);
   lookups = inject(LookupsService);
-  /** The page-head actions are demo stubs and say so — ToastService.demo(). */
+  /** The export action is a demo stub and says so — ToastService.demo(). */
   toast = inject(ToastService);
   fmt = fmt;
 
@@ -54,10 +69,23 @@ export class PortfolioPage {
   workspace = signal('');
 
   /**
+   * The toolbar's two filters. They live in the URL, not in the component:
+   * a portfolio narrowed to «متعثّرة · جامعات حكومية» is a view somebody will
+   * want to send to somebody else, and a filter that cannot be linked to is a
+   * filter that has to be re-applied by hand at the other end.
+   */
+  status = signal('');
+  kind = signal('');
+
+  filtered = computed(() => this.status() !== '' || this.kind() !== '');
+
+  /** The chips, in the order 06 §1 lists them — from Lookups, never hardcoded. */
+  statusCodes = computed(() => this.lookups.list('project-status').map(i => i.code));
+
+  /**
    * Z2 breadcrumb. الشكلان 48، 49 breadcrumb this screen «جامعة بغداد › …»
    * when it is scoped, not «الوزارة › …» — a filtered register that still
    * calls itself ministry-wide is the one thing a reader cannot recover from.
-   * The workspace crumb links back to its overview.
    */
   crumbs = computed<Crumb[]>(() => {
     const ws = this.workspace();
@@ -75,11 +103,17 @@ export class PortfolioPage {
   });
 
   /**
-   * The identity line. Scoped, it is the ENTITY — the reference does exactly
-   * this (enterprise-areas.jsx:33, :85, :130, :183), and it is what stops a
-   * filtered register from reading as the whole ministry.
+   * «12 مشروعاً ضمن النطاق · بيانات حتى 2026-08-02» — DDashboard's own
+   * identity line. The DATE is the part that matters: a portfolio percentage
+   * with no as-of date is not a fact anybody can check (D-06).
    */
-  scopeSub = computed(() => this.workspace() ? this.scopeName() : this.lang.t('portfolio_sub'));
+  scopeSub = computed(() => {
+    const d = this.data();
+    const scope = this.workspace() ? this.scopeName() : this.lang.t('portfolio_sub');
+    if (!d) return scope;
+    return `${scope} · ${d.projectCount} ${this.lang.t('prt_projects_in_scope')}`
+      + ` · ${this.lang.t('prt_as_of')} ${fmt.date(d.asOf)}`;
+  });
 
   /** The scoped workspace's name, from the list the switcher already loaded. */
   scopeName = computed(() => {
@@ -87,34 +121,86 @@ export class PortfolioPage {
     return ws ? this.lang.pick(ws.nameAr, ws.nameEn) : this.workspace();
   });
 
-  /**
-   * The contractual position — the figures this system can actually defend.
-   * One hairline-divided band, auto-fit columns (05 §8), never floating cards.
-   */
-  stats = computed<Stat[]>(() => {
-    const d = this.data();
-    if (!d) return [];
+  // ══ الشكل 4's «مخططان بمفاتيح سلاسل» ═══════════════════════════════════
 
-    return [
-      { label: this.lang.t('kpi_projects'), value: d.projectCount,
-        foot: `${d.activeCount} ${this.lang.t('kpi_active_suffix')}` },
-      { label: this.lang.t('kpi_contracts'), value: d.contractCount },
-      { label: this.lang.t('kpi_effective_value'), value: d.effectiveValue,
-        foot: this.lang.t('kpi_effective_foot') },
-      { label: this.lang.t('kpi_delayed'), value: d.delayedCount },
-      { label: this.lang.t('kpi_applied_amd'), value: d.appliedAmendmentCount },
-    ];
+  /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
+  private labelled(rows: PortfolioCurvePeriod[]): CurvePeriod[] {
+    const pre = this.lang.isAr() ? 'ش' : 'M';
+    return rows.map((r, i) => ({
+      label: pre + (i + 1),
+      planCum: r.planCum, actCum: r.actCum,
+      planPeriod: r.planPeriod, actPeriod: r.actPeriod,
+    }));
+  }
+
+  progressCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.progressCurve ?? []));
+  costCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.costCurve ?? []));
+
+  /**
+   * Physical minus planned, in points. Null when either side is missing —
+   * an unknown variance is not a zero one.
+   */
+  physVariance = computed(() => {
+    const d = this.data();
+    if (!d || d.physical === null || d.planned === null) return null;
+    return Math.round((d.physical - d.planned) * 10) / 10;
   });
 
   /**
+   * Financial minus physical: is the money running ahead of the work? A
+   * positive number is the ADVERSE direction here, which is why the tile that
+   * shows it inverts its arrow against the progress tile's.
+   */
+  burnVariance = computed(() => {
+    const d = this.data();
+    if (!d || d.financial === null || d.physical === null) return null;
+    return Math.round((d.financial - d.physical) * 10) / 10;
+  });
+
+  absVariance = computed(() => Math.abs(this.physVariance() ?? 0));
+  absBurn = computed(() => Math.abs(this.burnVariance() ?? 0));
+
+  /** DDashboard's own bands: 5 points behind is the line between the two tones. */
+  variancePill(v: number | null) {
+    if (v === null) return 'withdrawn';
+    return v < -5 ? 'stalled' : v < 0 ? 'suspended' : 'completed';
+  }
+
+  deltaDir(v: number | null) { return v === null ? 'flat' : v < 0 ? 'down' : 'up'; }
+
+  burnPill() {
+    const b = this.burnVariance();
+    if (b === null) return 'withdrawn';
+    return b < -5 ? 'suspended' : b > 5 ? 'stalled' : 'completed';
+  }
+
+  burnLabel() {
+    const b = this.burnVariance();
+    if (b === null || b === 0) return this.lang.t('prt_burn_in_step');
+    return this.lang.t(b > 0 ? 'prt_burn_ahead' : 'prt_burn_behind');
+  }
+
+  // ══ «المؤشر التنفيذي» ═══════════════════════════════════════════════════
+  //
+  // Three bands from `Domain/ExecutiveSignal`, always all three. Each carries
+  // an icon AND a label, so the band is never read from colour alone (05 §7.6).
+
+  signalTone(s: string) { return s === 'red' ? 'over' : s === 'amber' ? 'risk' : 'ok'; }
+  signalIcon(s: string) { return s === 'red' ? 'warning' : s === 'amber' ? 'error' : 'check_circle'; }
+  signalLabel(s: string) {
+    return this.lang.t(s === 'red' ? 'prt_sig_red' : s === 'amber' ? 'prt_sig_amber' : 'prt_sig_green');
+  }
+
+  // ══ the breakdown panels ═══════════════════════════════════════════════
+
+  /**
    * 05 §1 — the ONE place status colour encodes data. Colours are status
-   * tokens, and the legend beside it carries the label and count so the
-   * information is never colour-only (05 §7.6).
+   * tokens; the legend beside it carries label and count so nothing is
+   * colour-only (05 §7.6).
    */
   statusSegments = computed<DonutSegment[]>(() => {
     const d = this.data();
     if (!d) return [];
-
     return d.statusDistribution.map(s => ({
       color: STATUS_VAR[s.code] ?? 'var(--status-cancelled)',
       value: s.count,
@@ -122,32 +208,103 @@ export class PortfolioPage {
     }));
   });
 
-  /** Widest entity bar = 100%. Uses the viz ramp, never status colour. */
+  statusLegend = computed(() => {
+    const d = this.data();
+    if (!d) return [];
+    const total = d.projectCount || 1;
+    return this.statusSegments().map(s => ({
+      ...s, share: Math.round((s.value / total) * 100),
+    }));
+  });
+
+  /**
+   * «المقررة · المعدّلة · المصروف». Each bar's colour identifies the SERIES,
+   * never a verdict on its size (05 §7.9) — which is why the revised bar is
+   * not red when it exceeds the approved one.
+   */
+  costBars = computed<BarItem[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    return [
+      { label: this.lang.t('prt_cost_approved'), value: d.cost.approved,
+        display: fmt.money(d.cost.approved), color: 'var(--viz-1)' },
+      { label: this.lang.t('prt_cost_revised'), value: d.cost.revised,
+        display: fmt.money(d.cost.revised), color: 'var(--viz-2)' },
+      { label: this.lang.t('prt_cost_spent'), value: d.cost.spent,
+        display: fmt.money(d.cost.spent), color: 'var(--viz-3)' },
+    ];
+  });
+
+  /**
+   * The prototype draws this as a cumulative line over five weights it made
+   * up (`[0.14, 0.17, 0.20, 0.23, 0.26]`). These are the years that actually
+   * carry a paid payment, and only those — a year with no disbursement is
+   * absent rather than drawn at zero.
+   */
+  spendBars = computed<BarItem[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    return d.annualSpend.map((y, i) => ({
+      label: String(y.year),
+      value: y.value,
+      display: fmt.money(y.value),
+      color: `var(--viz-${(i % 6) + 1})`,
+    }));
+  });
+
+  /** Widest entity bar = 100%. The viz ramp, never status colour (05 §7.5). */
   entityBars = computed(() => {
     const d = this.data();
     if (!d || d.valueByEntity.length === 0) return [];
-
     const max = Math.max(...d.valueByEntity.map(e => e.value), 1);
-    return d.valueByEntity.map(e => ({ ...e, pct: (e.value / max) * 100 }));
+    return d.valueByEntity.map((e, i) => ({
+      ...e,
+      pct: (e.value / max) * 100,
+      color: `var(--viz-${(i % 6) + 1})`,
+    }));
   });
 
-  /** Approved but not applied — shown only when there is something to show (02 §9). */
-  hasPending = computed(() => (this.data()?.pendingAmendmentCount ?? 0) > 0);
+  // ══ small helpers ══════════════════════════════════════════════════════
 
   entityName(e: EntityValue) { return this.lang.pick(e.nameAr, e.nameEn); }
-  unavailableReason(u: { needsAr: string; needsEn: string }) { return this.lang.pick(u.needsAr, u.needsEn); }
+  name(r: WatchlistRow | UpcomingMilestone) { return this.lang.pick(r.nameAr, r.nameEn); }
+  wsName(r: WatchlistRow | UpcomingMilestone) {
+    return this.lang.pick(r.workspaceNameAr, r.workspaceNameEn);
+  }
 
-  /** Label for an unavailable tile, from its key. */
-  unavailableLabel(key: string) {
-    const map: Record<string, string> = {
-      physical: 'kpi_physical', financial: 'kpi_financial', spi: 'kpi_spi', cpi: 'kpi_cpi',
-    };
-    return this.lang.t((map[key] ?? 'kpi_physical') as never);
+  /** The server's reason for a figure it could not derive (P-09). */
+  reason(key: string) {
+    const u = this.data()?.unavailable.find(x => x.key === key);
+    return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
+  }
+
+  openProject(id: string) { this.router.navigate(['/projects', id]); }
+
+  /** Same keyboard contract the project register's rows carry. */
+  onRowKey(e: KeyboardEvent, id: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.openProject(id);
+    }
+  }
+
+  setStatus(code: string) { this.navigate({ status: code || null }); }
+  setKind(code: string) { this.navigate({ kind: code || null }); }
+  clearFilters() { this.navigate({ status: null, kind: null }); }
+
+  private navigate(params: Record<string, string | null>) {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: 'merge',
+    });
   }
 
   constructor() {
     this.route.queryParamMap.subscribe(p => {
       this.workspace.set(p.get('ws') ?? '');
+      this.status.set(p.get('status') ?? '');
+      this.kind.set(p.get('kind') ?? '');
       this.load();
     });
   }
@@ -157,7 +314,11 @@ export class PortfolioPage {
     this.error.set(null);
     forkJoin({
       lookups: this.lookups.ensureLoaded(),
-      res: this.api.get({ workspace: this.workspace() }),
+      res: this.api.get({
+        workspace: this.workspace(),
+        status: this.status(),
+        kind: this.kind(),
+      }),
     }).subscribe({
       next: ({ res }) => {
         this.data.set(res);

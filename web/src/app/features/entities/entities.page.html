@@ -124,7 +124,7 @@
     <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
     <b>{{ lang.t('error_t') }}</b>
     <span><bdi>{{ error() }}</bdi></span>
-    <button class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+    <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
   </div>
 } @else if (rows().length === 0 && isUnfiltered()) {
   <!--
@@ -160,12 +160,12 @@
       </div>
 
       <div class="grp">
-        <button class="d-fchip" [class.on]="kind() === ''" (click)="setKind('')">
+        <button type="button" class="d-fchip" [class.on]="kind() === ''" (click)="setKind('')">
           {{ lang.t('all') }}<span class="n"><bdi>{{ totalCount() }}</bdi></span>
         </button>
         <!-- 06 §6 entity kinds, labelled from Lookups (EP-LKP-01) -->
         @for (k of kinds(); track k) {
-          <button class="d-fchip" [class.on]="kind() === k" (click)="setKind(k)">
+          <button type="button" class="d-fchip" [class.on]="kind() === k" (click)="setKind(k)">
             {{ kindLabel(k) }}<span class="n"><bdi>{{ count(k) }}</bdi></span>
           </button>
         }
@@ -174,7 +174,7 @@
       <div class="sp"></div>
 
       @if (!isUnfiltered()) {
-        <button class="d-btn sm ghost" (click)="clearFilters()">
+        <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
           <epm-icon name="close" [size]="13" />{{ lang.t('clear') }}
         </button>
       }
@@ -186,7 +186,7 @@
         <span class="d-empty-ico"><epm-icon name="search_off" [size]="28" /></span>
         <b>{{ lang.t('ws_no_results') }}</b>
         <span>{{ lang.t('ws_no_results_b') }}</span>
-        <button class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+        <button type="button" class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
       <!--

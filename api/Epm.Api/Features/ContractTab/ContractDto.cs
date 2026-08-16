@@ -146,6 +146,12 @@ public record AmendmentVersion(
 /// the most consequential thing an amendment did.
 /// </summary>
 /// <param name="Waived">Before − after, floored at zero.</param>
+/// <param name="PerDayBefore">
+/// الغرامة اليومية — <c>Penalty.Result.PerDay</c>, which BR-10 already computes
+/// and nothing used to carry. الشكل 10 prints it as a headline figure, and the
+/// قبل/بعد table gives it a row of its own: an applied order moves it, because
+/// it is a function of the contract value.
+/// </param>
 /// <param name="Unavailable">
 /// True when the contract carries no recorded forecast finish. Then nothing is
 /// known about lateness and the panel says so instead of showing 0 (P-09).
@@ -158,6 +164,8 @@ public record PenaltyImpact(
     decimal AmountAfter,
     decimal CapAfter,
     decimal Waived,
+    decimal PerDayBefore,
+    decimal PerDayAfter,
     decimal PerDayPct,
     decimal CapPct,
     bool Unavailable);
@@ -236,16 +244,41 @@ public record ContractDetail(
     decimal SupervisionAmount,
     decimal MonitoringAmount);
 
+/// <summary>
+/// الشكل 7's middle card, and the only place the contract's own denominator is
+/// stated: **كلفة العقد الكلية**, not the effective value.
+///
+/// The plate fixes all four figures against each other on one screen —
+/// «22 % من كلفة العقد الكلية», كلفة العقد الكلية 520,200,000, مصروف
+/// 112,841,143, متبق 407,358,857 — and 520,200,000 − 112,841,143 is exactly the
+/// remaining it prints. The effective value (587,673,564) would give 474,832,421
+/// and contradict the plate.
+///
+/// Certified · Retention · AdvanceRecovery are GONE. They crossed the wire for
+/// the «الموقف المالي» list الشكل 7 does not have; retention is a per-payment
+/// column of الشكل 9 and is read off the payment row.
+/// </summary>
 /// <param name="Disbursed">Σ net of PAID payments.</param>
-/// <param name="Certified">Σ net of certified-or-paid payments.</param>
-/// <param name="Retention">Σ retention withheld across all payments.</param>
-/// <param name="Remaining">Effective value − disbursed.</param>
+/// <param name="TotalCost">كلفة العقد الكلية — الإحالة + الاحتياط + الإشراف (Domain/ContractRollup).</param>
+/// <param name="Remaining">كلفة العقد الكلية − المصروف.</param>
+/// <param name="SpentPct">
+/// المصروف ÷ كلفة العقد الكلية. الشكل 7 draws this ONE figure twice — as the
+/// card's headline «22 %» and as «الإنجاز المالي» — so it crosses the wire once.
+/// This is what closed the `financial-pct` gap: `02 §4` never fixed the
+/// denominator for الإنجاز المالي, and الشكل 7 does. Null when the contract has
+/// no amounts entered yet (P-09).
+/// </param>
+/// <param name="PhysicalPct">
+/// الإنجاز المادي — BR-04 over this contract's own bill, from the same
+/// `BoqEndpoints.Derive` EP-CON-01 reads, so the card and the register cannot
+/// disagree about one contract. Null when there is no bill to roll up.
+/// </param>
 public record ContractMoney(
     decimal Disbursed,
-    decimal Certified,
-    decimal Retention,
-    decimal AdvanceRecovery,
+    decimal TotalCost,
     decimal Remaining,
+    decimal? SpentPct,
+    decimal? PhysicalPct,
     IReadOnlyList<CostLine> CostLines);
 
 public record ContractUnavailable(string Key, string NeedsAr, string NeedsEn);
@@ -315,10 +348,28 @@ public record ContractDefinitionInput(
 /// <inheritdoc cref="Epm.Api.Features.Projects.ProjectViolation"/>
 public record ContractViolation(string Field, string MessageAr, string MessageEn);
 
-/// <summary>سجل النشاط — one row of الشكل 7's fifth tab.</summary>
+/// <summary>
+/// سجل النشاط — one row of الشكل 11.
+///
+/// «عرض التغيير بصيغة القيمة السابقة مشطوبة ← القيمة الجديدة»: an edit row
+/// carries the FIELD and both values, so the timeline states what moved
+/// rather than that something did. One row per changed field.
+/// </summary>
+/// <param name="Source">
+/// user · system. «تمييز أحداث النظام الآلية عن أحداث المستخدمين» — the plate
+/// attributes automatic events to «النظام» and draws them differently.
+/// </param>
+/// <param name="Field">The definition member that moved. Null on a non-edit.</param>
+/// <param name="RefId">«VO-03» — the change order an automatic event came from.</param>
 public record ContractEvent(
     int Id,
     string Action,
+    string Source,
+    string? Field,
+    string? Before,
+    string? After,
+    string? RefId,
+    string? Note,
     string ActorName,
     string ActorRole,
     string ActorParty,

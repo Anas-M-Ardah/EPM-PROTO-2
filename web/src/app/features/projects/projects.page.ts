@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, effect, untracked, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -265,7 +266,7 @@ export class ProjectsPage {
    */
   loadFixture() {
     this.loading.set(true);
-    this.http.post('/api/dev/load-fixture', {}).subscribe({
+    this.http.post(environment.apiUrl + '/api/dev/load-fixture', {}).subscribe({
       next: () => this.lookups.reload().subscribe(() => this.load()),
       error: () => this.load(),
     });
