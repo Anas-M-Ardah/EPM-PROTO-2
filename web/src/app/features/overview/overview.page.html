@@ -68,34 +68,30 @@
           </p>
         }
 
-        <!-- ══ 1. VERDICT — is this project on track? ══════════════════════ -->
-        <div class="d-verdict">
-          <div class="chart">
-            <div class="ch-head">
-              <b>{{ lang.t('ovw_curve_progress') }}</b>
-              <span class="d-cell-sub">{{ lang.t('ovw_curve_progress_sub') }}</span>
-            </div>
-            @if (progressCurve().length > 0) {
+        <!-- ══ 1. VERDICT — is this project on track? ══════════════════════
+             A chart with no data is HIDDEN, not shown with an empty state
+             (client decision, P-144). When it goes, `.solo` gives the whole
+             row to the verdicts beside it. The same convention holds on SCR-E1
+             and SCR-E8, so a reader walking portfolio → workspace → project
+             does not meet two of them. -->
+        <div class="d-verdict" [class.solo]="progressCurve().length === 0">
+          @if (progressCurve().length > 0) {
+            <div class="chart">
+              <div class="ch-head">
+                <b>{{ lang.t('ovw_curve_progress') }}</b>
+                <span class="d-cell-sub">{{ lang.t('ovw_curve_progress_sub') }}</span>
+              </div>
               <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
                           [caption]="lang.t('ovw_curve_progress')" />
-            } @else {
-              <div class="d-empty">
-                <span class="d-empty-ico"><epm-icon name="trending_up" [size]="30" /></span>
-                <b>{{ lang.t('ovw_curve_empty_t') }}</b>
-                <span>{{ lang.t('ovw_curve_empty_b') }}</span>
-              </div>
-            }
-          </div>
+            </div>
+          }
 
           <div class="verdicts">
             @if (totals(); as t) {
+              @if (t.physical !== null) {
               <div class="vd big">
                 <span class="k">{{ lang.t('ovw_physical') }}</span>
-                @if (t.physical === null) {
-                  <span class="v">—</span>
-                  <span class="d">{{ need('physical') }}</span>
-                } @else {
-                  <span class="v"><bdi>{{ fmt.pct(t.physical, 0) }}</bdi></span>
+                <span class="v"><bdi>{{ fmt.pct(t.physical, 0) }}</bdi></span>
                   @if (physVariance(); as pv) {
                     <!-- «▼ 8 نقطة عن المخطط (39%)» — the gap carries its own
                          sign; no threshold colours the magnitude (05 §7.9). -->
@@ -105,55 +101,66 @@
                       (<bdi>{{ fmt.pct(t.planned, 0) }}</bdi>)
                     </span>
                   }
-                  <!-- The track carries the actual; the marker is the plan. -->
-                  <span class="track" aria-hidden="true">
-                    <i [style.width.%]="t.physical"></i>
-                    @if (t.planned !== null) { <u [style.inset-inline-start.%]="t.planned"></u> }
-                  </span>
+                <!-- The track carries the actual; the marker is the plan. -->
+                <span class="track" aria-hidden="true">
+                  <i [style.width.%]="t.physical"></i>
+                  @if (t.planned !== null) { <u [style.inset-inline-start.%]="t.planned"></u> }
+                </span>
+              </div>
+              }
+
+              <!-- Each index hides on its own: a cell reading «—» is a card
+                   with no data, which is the thing P-144 removes. -->
+              @if (t.spi !== null || t.cpi !== null || t.delayDays !== null) {
+              <div class="vdrow">
+                @if (t.spi !== null) {
+                  <div class="vd {{ indexClass(t.spi) }}">
+                    <span class="k">SPI</span>
+                    <span class="v"><bdi>{{ fmt.index(t.spi) }}</bdi></span>
+                    <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
+                  </div>
+                }
+                @if (t.cpi !== null) {
+                  <div class="vd {{ indexClass(t.cpi) }}">
+                    <span class="k">CPI</span>
+                    <span class="v"><bdi>{{ fmt.index(t.cpi) }}</bdi></span>
+                    <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
+                  </div>
+                }
+                @if (t.delayDays !== null) {
+                  <div class="vd {{ t.delayDays > 0 ? 'bad' : 'good' }}">
+                    <span class="k">{{ lang.t('ovw_delay') }}</span>
+                    <span class="v">
+                      <bdi>{{ t.delayDays > 0 ? '+' + t.delayDays : '0' }}</bdi>
+                    </span>
+                    <span class="d">{{ t.delayDrivenBy ?? lang.t('ovw_on_baseline') }}</span>
+                  </div>
                 }
               </div>
-
-              <div class="vdrow">
-                <div class="vd {{ indexClass(t.spi) }}">
-                  <span class="k">SPI</span>
-                  <span class="v"><bdi>{{ t.spi === null ? '—' : fmt.index(t.spi) }}</bdi></span>
-                  <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
-                </div>
-                <div class="vd {{ indexClass(t.cpi) }}">
-                  <span class="k">CPI</span>
-                  <span class="v"><bdi>{{ t.cpi === null ? '—' : fmt.index(t.cpi) }}</bdi></span>
-                  <span class="d">{{ lang.t('ovw_threshold') }} <bdi>{{ fmt.index(t.acceptableIndex) }}</bdi></span>
-                </div>
-                <div class="vd {{ t.delayDays && t.delayDays > 0 ? 'bad' : 'good' }}">
-                  <span class="k">{{ lang.t('ovw_delay') }}</span>
-                  <span class="v">
-                    <bdi>{{ t.delayDays === null ? '—' : (t.delayDays > 0 ? '+' + t.delayDays : '0') }}</bdi>
-                  </span>
-                  <span class="d">{{ t.delayDrivenBy ?? lang.t('ovw_on_baseline') }}</span>
-                </div>
-              </div>
+              }
             }
           </div>
         </div>
 
         <!-- ══ 1b. COST — is the money tracking the work? ══════════════════ -->
-        <div class="d-verdict">
-          <div class="chart">
-            <div class="ch-head">
-              <b>{{ lang.t('ovw_curve_cost') }}</b>
-              <span class="d-cell-sub">{{ lang.t('ovw_curve_cost_sub') }}</span>
-            </div>
-            @if (costCurve().length > 0) {
+        <div class="d-verdict" [class.solo]="costCurve().length === 0">
+          @if (costCurve().length > 0) {
+            <div class="chart">
+              <div class="ch-head">
+                <b>{{ lang.t('ovw_curve_cost') }}</b>
+                <span class="d-cell-sub">{{ lang.t('ovw_curve_cost_sub') }}</span>
+              </div>
               <epm-scurve [data]="costCurve()" color="var(--success)"
                           [caption]="lang.t('ovw_curve_cost')" />
-            }
-          </div>
+            </div>
+          }
 
           <div class="verdicts">
             @if (cost(); as c) {
+              @if (c.spendPct !== null) {
               <button type="button" class="vd big click" (click)="goToModule('financial')">
                 <span class="k">{{ lang.t('ovw_spend_ratio') }}</span>
-                <span class="v"><bdi>{{ c.spendPct === null ? '—' : fmt.pct(c.spendPct, 0) }}</bdi></span>
+                <span class="v"><bdi>{{ fmt.pct(c.spendPct, 0) }}</bdi></span>
                 <span class="d">
                   <bdi>{{ fmt.money(c.spent) }}</bdi> {{ lang.t('ovw_of') }}
                   <bdi>{{ fmt.money(c.revised) }}</bdi>
@@ -165,12 +172,13 @@
                      so over- and under-spend against the work is readable
                      without either being coloured a verdict. -->
                 <span class="track" aria-hidden="true">
-                  <i [style.width.%]="c.spendPct ?? 0"></i>
+                  <i [style.width.%]="c.spendPct"></i>
                   @if (totals()?.physical !== null) {
                     <u [style.inset-inline-start.%]="totals()!.physical"></u>
                   }
                 </span>
               </button>
+              }
 
               <div class="vdrow">
                 <div class="vd">

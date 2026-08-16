@@ -1096,3 +1096,17 @@ button.d-file > .fm { align-items: flex-start; }
    legend row. Same reasoning as .epm-stat-na .epm-na: a figure that has no
    input is not an adverse state, so it is quiet, never --error (05 §7.9). */
 .epm-na { color: var(--on-surface-variant); }
+
+/* A dashboard row whose CHART has no data: the chart is hidden (P-144), so the
+   side rail becomes the row. Auto-fit rather than a pinned column count, which
+   is the rule 05 §8 makes binding for every summary band in the app. */
+.d-dash.solo { grid-template-columns: 1fr; }
+/* SCR-W1's verdict row, same case: the chart is hidden, so the verdicts beside
+   it become the row. */
+.d-verdict.solo { grid-template-columns: 1fr; }
+.d-dash.solo > .d-dash-side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-16, 16px);
+  align-items: stretch;
+}

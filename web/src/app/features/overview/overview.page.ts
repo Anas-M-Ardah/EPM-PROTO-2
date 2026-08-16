@@ -6,7 +6,6 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
 import { CurvePeriod, SCurveComponent } from '../../shared/scurve.component';
-import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
@@ -40,7 +39,7 @@ import { OverviewResponse } from './overview.types';
   standalone: true,
   imports: [
     IconComponent, StatusPillComponent, SectionComponent,
-    SummaryStripComponent, TableSkeletonComponent,
+    TableSkeletonComponent,
     SCurveComponent,
   ],
   encapsulation: ViewEncapsulation.None,
@@ -184,11 +183,6 @@ export class OverviewPage {
 
   readonly colCount = 7;
 
-  need(key: string): string {
-    const u = this.unavailable().find(x => x.key === key);
-    return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
-  }
-
   /**
    * The project's attributes, as the reference's `.d-meta` list. Deliberately
    * excludes what Z2 already shows — number, name and status — so the same
@@ -229,107 +223,6 @@ export class OverviewPage {
    */
   multiContract = computed(() => (this.data()?.identity.contractCount ?? 0) > 1);
 
-
-  /**
-   * The headline band. Two figures the system can defend and four it cannot,
-   * rendered as "unavailable + reason" rather than dropped — the same contract
-   * SCR-E1 and SCR-E5 honour (P-09).
-   */
-  /**
-   * **ملحق الشكل 4**'s figure band, in the plate's own pairs:
-   *
-   *   «الإنجاز المادي 31% **مقابل مخطط 39%**»   — never the actual alone
-   *   «التأخر 0»
-   *   «CPI 0.91 و SPI 0.79 **والحد المقبول 0.95**»
-   *   «نسبة الصرف 34% **(510 م من 1,500 م)**»   — the ratio and its two terms
-   *
-   * A percentage without what it is measured against is a number somebody has
-   * to go and look up. The plate pairs every one of them and so does this.
-   *
-   * Each tile still falls back to "unavailable + reason" when its own input is
-   * genuinely missing, which is the point of P-09: the tile says which of the
-   * two it is instead of printing a 0 that means both.
-   */
-  stats = computed<Stat[]>(() => {
-    const t = this.totals();
-    const c = this.cost();
-    const ar = this.lang.isAr();
-    if (!t) return [];
-
-    const pct = (v: number | null) => v === null ? '—' : fmt.pct(v, 0);
-
-    return [
-      {
-        label: ar ? 'قيمة المشروع' : 'Project value',
-        value: t.effectiveValue,
-        suffix: ar ? ' د.ع' : ' IQD',
-        // Σ of no contracts is arithmetically 0, and rendering that would say
-        // the project is worth nothing. It has no contractual value AT ALL
-        // until it is awarded — a different statement (P-09).
-        unavailable: t.contractCount === 0
-          ? (ar
-            ? 'لا يوجد عقد لهذا المشروع بعد — قيمة المشروع هي مجموع القيم النافذة لعقوده.'
-            : 'This project has no contract yet — project value is the sum of its contracts\' effective values.')
-          : undefined,
-        foot: t.effectiveValue === t.originalValue
-          ? (ar ? 'مطابقة للقيمة المحالة' : 'same as awarded')
-          : (ar
-            ? `المقررة ${fmt.money(t.originalValue)} · ${t.appliedAmendments} ملحق مطبَّق`
-            : `approved ${fmt.money(t.originalValue)} · ${t.appliedAmendments} applied`),
-      },
-      {
-        // الشكل 4: «الإنجاز المادي 31% مقابل مخطط 39%».
-        label: ar ? 'الإنجاز المادي' : 'Physical progress',
-        value: t.physical ?? 0,
-        suffix: '%',
-        unavailable: t.physical === null ? this.need('physical') : undefined,
-        foot: t.planned === null
-          ? (ar ? 'مرجّح بأوزان بنود الكميات' : 'weighted by BOQ item weights')
-          : (ar ? `مقابل مخطط ${pct(t.planned)}` : `against ${pct(t.planned)} planned`),
-      },
-      {
-        label: ar ? 'التأخر' : 'Delay',
-        value: t.delayDays ?? 0,
-        suffix: ar ? ' يوم' : ' d',
-        unavailable: t.delayDays === null
-          ? (ar ? 'لا يوجد إنجاز متوقع مسجَّل لأي عقد.' : 'No forecast finish is recorded on any contract.')
-          : undefined,
-        foot: t.delayDrivenBy
-          ? (ar ? `أسوأ عقد: ${t.delayDrivenBy}` : `worst contract: ${t.delayDrivenBy}`)
-          : (ar ? 'ضمن الخط الأساس' : 'on baseline'),
-      },
-      {
-        // الشكل 4: «نسبة الصرف 34% (510 م من 1,500 م)».
-        label: ar ? 'نسبة الصرف' : 'Spend ratio',
-        value: c?.spendPct ?? 0,
-        suffix: '%',
-        unavailable: c === null || c.spendPct === null ? this.need('financial') : undefined,
-        foot: c === null ? undefined
-          : (ar
-            ? `${fmt.money(c.spent)} من ${fmt.money(c.revised)}`
-            : `${fmt.money(c.spent)} of ${fmt.money(c.revised)}`),
-      },
-      // The indices are DIAGNOSTICS (05 §7.9), so no threshold colours them —
-      // but الشكل 4 prints «الحد المقبول 0.95» beside them, and a bare index
-      // with nothing to read it against is the number people misread.
-      {
-        label: 'SPI',
-        value: t.spi ?? 0,
-        dp: 2,
-        unavailable: t.spi === null ? this.need('spi') : undefined,
-        foot: t.spi === null ? undefined
-          : (ar ? `الحد المقبول ${t.acceptableIndex.toFixed(2)}` : `acceptable ${t.acceptableIndex.toFixed(2)}`),
-      },
-      {
-        label: 'CPI',
-        value: t.cpi ?? 0,
-        dp: 2,
-        unavailable: t.cpi === null ? this.need('cpi') : undefined,
-        foot: t.cpi === null ? undefined
-          : (ar ? `الحد المقبول ${t.acceptableIndex.toFixed(2)}` : `acceptable ${t.acceptableIndex.toFixed(2)}`),
-      },
-    ];
-  });
 
   /**
    * True when at least one approved amendment has NOT been applied. The

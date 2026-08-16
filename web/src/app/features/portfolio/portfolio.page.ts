@@ -157,6 +157,31 @@ export class PortfolioPage {
     return Math.round((d.financial - d.physical) * 10) / 10;
   });
 
+  // ══ WHAT RENDERS AT ALL ════════════════════════════════════════════════
+  //
+  // CLIENT DECISION (P-144): a chart or a card with no data is HIDDEN, not
+  // shown with an empty state and not shown as "unavailable + reason". The
+  // reasons stay on the response for anyone reading the API; they are simply
+  // no longer on the screen.
+  //
+  // The consequence to keep in mind: two portfolios side by side can now show
+  // different tile sets, and a reader cannot tell "we do not measure this"
+  // from "this is fine". That is the trade the decision makes.
+
+  /** The whole first row goes when neither its chart nor any of its tiles has data. */
+  showProgressRow = computed(() => {
+    const d = this.data();
+    if (!d) return false;
+    return this.progressCurve().length > 0
+      || d.physical !== null || d.spi !== null || d.financial !== null;
+  });
+
+  /** «مقارنة الكلف» with three zero bars is a chart of nothing. */
+  hasCost = computed(() => {
+    const c = this.data()?.cost;
+    return !!c && (c.approved > 0 || c.revised > 0 || c.spent > 0);
+  });
+
   absVariance = computed(() => Math.abs(this.physVariance() ?? 0));
   absBurn = computed(() => Math.abs(this.burnVariance() ?? 0));
 
@@ -270,12 +295,6 @@ export class PortfolioPage {
   name(r: WatchlistRow | UpcomingMilestone) { return this.lang.pick(r.nameAr, r.nameEn); }
   wsName(r: WatchlistRow | UpcomingMilestone) {
     return this.lang.pick(r.workspaceNameAr, r.workspaceNameEn);
-  }
-
-  /** The server's reason for a figure it could not derive (P-09). */
-  reason(key: string) {
-    const u = this.data()?.unavailable.find(x => x.key === key);
-    return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
   }
 
   openProject(id: string) { this.router.navigate(['/projects', id]); }

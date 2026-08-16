@@ -14,6 +14,12 @@
   The figures come from `Domain/PortfolioBand`, the same rule SCR-E1 calls, so
   the ministry total is always the sum of the workspaces underneath it (P-141).
 
+  ── A CHART OR CARD WITH NO DATA IS HIDDEN (client decision, P-144) ──────
+  Not shown with an empty state, not shown as "unavailable + reason". When a
+  chart goes the row collapses to `.solo` and the tiles become the row; when
+  every tile in a row goes too, the row does not render at all. The reasons
+  are still on the response (`unavailable[]`) for anyone reading the API.
+
   Every figure is <bdi>-isolated (05 §5.2); status is never colour-only (05 §7.6).
 -->
 <epm-page-head
@@ -110,7 +116,9 @@
   } @else {
 
     <!-- ══ ROW 1 — the progress curve and what it means ═══════════════════ -->
-    <div class="d-dash">
+    @if (showProgressRow()) {
+    <div class="d-dash" [class.solo]="progressCurve().length === 0">
+      @if (progressCurve().length > 0) {
       <div class="d-dash-main">
         <div class="d-panel">
           <div class="d-panel-head">
@@ -126,22 +134,15 @@
               </span>
             }
           </div>
-          @if (progressCurve().length > 0) {
-            <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
-                        [caption]="lang.t('prt_curve_progress')" />
-          } @else {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="trending_up" [size]="30" /></span>
-              <b>{{ lang.t('prt_no_curve_t') }}</b>
-              <span>{{ lang.t('prt_no_curve_b') }}</span>
-            </div>
-          }
+          <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
+                      [caption]="lang.t('prt_curve_progress')" />
         </div>
       </div>
+      }
       <aside class="d-dash-side">
-        <div class="d-stat" [class.epm-stat-na]="d.completionPct === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_physical') }}</span>
-          @if (d.completionPct !== null) {
+        @if (d.completionPct !== null) {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ lang.t('kpi_physical') }}</span>
             <span class="d-stat-val"><bdi>{{ fmt.pct(d.completionPct, 0) }}</bdi></span>
             <span class="d-stat-bar"><i [style.width.%]="d.completionPct"></i></span>
             @if (physVariance() !== null) {
@@ -152,15 +153,12 @@
             <span class="d-stat-foot">
               {{ lang.t('prt_planned_to_date') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi>
             </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('physical') }}</span>
-          }
-        </div>
+          </div>
+        }
 
-        <div class="d-stat" [class.epm-stat-na]="d.spi === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_spi') }}</span>
-          @if (d.spi !== null) {
+        @if (d.spi !== null) {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ lang.t('kpi_spi') }}</span>
             <span class="d-stat-val"><bdi>{{ fmt.index(d.spi) }}</bdi></span>
             <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.spi < 1 ? 'down' : 'up')">
               {{ d.spi < 1 ? '▼' : '▲' }} {{ lang.t(d.spi < 1 ? 'prt_below_one' : 'prt_at_target') }}
@@ -168,15 +166,12 @@
             <span class="d-stat-foot">
               {{ lang.t('prt_threshold') }} <bdi>{{ fmt.index(d.acceptableIndex) }}</bdi>
             </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('spi') }}</span>
-          }
-        </div>
+          </div>
+        }
 
-        <div class="d-stat" [class.epm-stat-na]="d.financial === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_financial') }}</span>
-          @if (d.financial !== null) {
+        @if (d.financial !== null) {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ lang.t('kpi_financial') }}</span>
             <span class="d-stat-val"><bdi>{{ fmt.pct(d.financial, 0) }}</bdi></span>
             <span class="d-stat-bar"><i [style.width.%]="d.financial"></i></span>
             @if (burnVariance() !== null) {
@@ -189,16 +184,15 @@
             <span class="d-stat-foot">
               <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi> {{ lang.t('prt_spent') }}
             </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('financial') }}</span>
-          }
-        </div>
+          </div>
+        }
       </aside>
     </div>
+    }
 
     <!-- ══ ROW 2 — the money, and the one-glance verdict ══════════════════ -->
-    <div class="d-dash">
+    <div class="d-dash" [class.solo]="costCurve().length === 0">
+      @if (costCurve().length > 0) {
       <div class="d-dash-main">
         <div class="d-panel">
           <div class="d-panel-head">
@@ -217,22 +211,15 @@
               </span>
             }
           </div>
-          @if (costCurve().length > 0) {
-            <epm-scurve [data]="costCurve()" color="var(--success)"
-                        [caption]="lang.t('prt_curve_cost')" />
-          } @else {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
-              <b>{{ lang.t('prt_no_curve_t') }}</b>
-              <span>{{ lang.t('prt_no_cost_curve_b') }}</span>
-            </div>
-          }
+          <epm-scurve [data]="costCurve()" color="var(--success)"
+                      [caption]="lang.t('prt_curve_cost')" />
         </div>
       </div>
+      }
       <aside class="d-dash-side">
-        <div class="d-stat" [class.epm-stat-na]="d.cpi === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_cpi') }}</span>
-          @if (d.cpi !== null) {
+        @if (d.cpi !== null) {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ lang.t('kpi_cpi') }}</span>
             <span class="d-stat-val"><bdi>{{ fmt.index(d.cpi) }}</bdi></span>
             <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.cpi < 1 ? 'down' : 'up')">
               {{ d.cpi < 1 ? '▼' : '▲' }} {{ lang.t(d.cpi < 1 ? 'prt_below_one' : 'prt_above_one') }}
@@ -242,11 +229,8 @@
               EV <bdi class="mono">{{ fmt.money(d.earnedValue) }}</bdi> /
               AC <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
             </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('cpi') }}</span>
-          }
-        </div>
+          </div>
+        }
 
         <!-- «المؤشر التنفيذي» — Domain/ExecutiveSignal. All three bands always
              drawn, even at zero: a band that vanishes when it empties reads as
@@ -272,7 +256,10 @@
       </aside>
     </div>
 
-    <!-- ══ «قائمة المتابعة» — الشكل 2 gives this the screen's centre ══════ -->
+    <!-- ══ «قائمة المتابعة» — الشكل 2 gives this the screen's centre ══════
+         KEPT when empty: «لا مشاريع خارج المسار» is an ANSWER, not an absence.
+         Hiding it would make a clean workspace indistinguishable from one whose
+         watchlist was never built. -->
     <div class="d-tablewrap" style="margin-bottom:16px">
       <div class="d-toolbar">
         <b style="font-size:14px">{{ lang.t('prt_watchlist') }}</b>
@@ -313,7 +300,9 @@
                       <span class="pc"><bdi>{{ fmt.pct(r.physical, 0) }}</bdi></span>
                     </span>
                   } @else {
-                    <span class="epm-na">{{ lang.t('unavailable') }}</span>
+                    <!-- A CELL cannot be hidden without shifting the row, so an
+                         absent figure here is a dash. -->
+                    <span class="epm-na">—</span>
                   }
                 </td>
                 <!-- A magnitude with a direction: it carries a sign, not a
@@ -365,19 +354,21 @@
         </div>
       </div>
 
-      <div class="d-panel">
-        <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
-        <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
-      </div>
+      @if (hasCost()) {
+        <div class="d-panel">
+          <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
+          <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
+        </div>
+      }
     </div>
 
     <!-- ══ «معالم قادمة» — .d-actfeed, as the prototype draws it ══════════ -->
-    <div class="d-panel" style="margin-top:16px">
-      <div class="d-panel-head">
-        <b>{{ lang.t('prt_milestones') }}</b>
-        <span class="d-cell-sub">{{ lang.t('prt_milestones_sub') }}</span>
-      </div>
-      @if (d.milestones.length > 0) {
+    @if (d.milestones.length > 0) {
+      <div class="d-panel" style="margin-top:16px">
+        <div class="d-panel-head">
+          <b>{{ lang.t('prt_milestones') }}</b>
+          <span class="d-cell-sub">{{ lang.t('prt_milestones_sub') }}</span>
+        </div>
         <div class="d-actfeed">
           @for (m of d.milestones; track m.id) {
             <button type="button" class="d-actrow" (click)="openProject(m.id)">
@@ -396,17 +387,13 @@
             </button>
           }
         </div>
-      } @else {
-        <div class="d-empty">
-          <span class="d-empty-ico"><epm-icon name="event" [size]="30" /></span>
-          <b>{{ lang.t('prt_no_milestones') }}</b>
-        </div>
-      }
-    </div>
+      </div>
+    }
 
     <!-- آخر ما جرى تحديثه — the prototype drops this and the plate keeps it.
          It reads as FRESHNESS: a project missing from the top of this list has
          not been touched in a while, which no other panel here can say. -->
+    @if (d.recent.length > 0) {
     <div class="d-panel" style="margin-top:16px">
       <div class="d-panel-head">
         <b>{{ lang.t('ws_recent') }}</b>
@@ -430,6 +417,7 @@
         </button>
       }
     </div>
+    }
   }
   }
 }
