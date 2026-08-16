@@ -47,9 +47,15 @@ missing identity fields, four figures the plate pairs and the screen showed
 alone, both charts absent, no «فتح التنبيهات», an alerts panel of counts where
 the plate asks for cards you act from — and two panels the plate never names.
 
-Rebuilt to the plate (P-130 · P-131 · P-132). It is the second screen this
-round found built from the reference rather than from its plate, and the first
-one that has been redone.
+Rebuilt to the plate (P-130 · P-131 · P-132) — and then **rebuilt again**
+(P-133 · P-134 · P-135) once the client named the LIVE prototype as the design
+authority. The first rebuild had الشكل 4's content in generic components; the
+prototype's `DModOverview` uses `.d-verdict`, `DSCurve` and `.d-alertfocus`,
+all of which were already sitting in our copied stylesheet.
+
+**That is the lesson of this whole round, twice over.** الشكل 4 says WHAT the
+screen carries; the prototype component says WHAT IT LOOKS LIKE. Reading one
+without the other produced a wrong screen both times.
 
 ### The one structural gap — SCR-W6 الإنجاز
 

@@ -210,6 +210,24 @@ public record OverviewCost(
 public record OverviewProgressPoint(string At, decimal? Planned, decimal Actual);
 
 /// <summary>
+/// One period of an S-curve — the shape the live prototype's `DSCurve` draws:
+/// a planned bar and an actual bar under two cumulative lines.
+///
+/// <see cref="At"/> is the period's own month end and the CLIENT labels it. The
+/// prototype prints «ش1» / «M1», which is a language decision and therefore not
+/// this endpoint's (every other DTO here sends codes or Ar/En pairs).
+///
+/// <see cref="ActCum"/> is null before the first measurement, so the actual line
+/// starts where the record does instead of at a zero nobody wrote.
+/// </summary>
+public record OverviewCurvePeriod(
+    string At,
+    decimal PlanCum,
+    decimal? ActCum,
+    decimal PlanPeriod,
+    decimal ActPeriod);
+
+/// <summary>
 /// One card of الشكل 4's «التنبيهات النشطة» panel. The plate's own actions are
 /// «اتخاذ قرار الاعتماد أو مراجعة التنبيه أو تحديث الإنجاز **من بطاقات
 /// التنبيهات**», so each card carries where it points.
@@ -242,6 +260,10 @@ public record OverviewResponse(
     OverviewTotals Totals,
     OverviewCost Cost,
     IReadOnlyList<OverviewProgressPoint> ProgressSeries,
+    /// <summary>الشكل 4's first curve — «التقدم التراكمي · مخطط مقابل فعلي».</summary>
+    IReadOnlyList<OverviewCurvePeriod> ProgressCurve,
+    /// <summary>الشكل 4's second — «المنحنى المالي · الصرف المخطط مقابل الفعلي».</summary>
+    IReadOnlyList<OverviewCurvePeriod> CostCurve,
     OverviewAlerts Alerts,
     IReadOnlyList<OverviewAlertCard> AlertCards,
     IReadOnlyList<OverviewUnavailable> Unavailable,

@@ -163,3 +163,30 @@ The BOQ register has «الأعمدة» (the column picker) and not «العرو
 names both. «العروض» implies saved column/filter presets — a feature, not a
 label — so it is recorded here rather than faked with a button that reopens the
 column picker.
+
+---
+
+## The checked-in reference is older than the live prototype
+
+Found while rebuilding SCR-W1 against `infinite-azaiton.github.io/epm`.
+
+`docs/spec/reference/app/` does **not** contain files the live prototype ships:
+
+- `store.js` · `boq-data.js` · `model.js`
+- **`supply-items.jsx`** — الفقرات التجهيزية, which `P-110` records as "not
+  modelled". The prototype has `DModSupplyItems`, `DModSupplyOrders`,
+  `DModSupplyBOQ`, `DModSupplyProgress`, `DModReceipts` and `DModItemInquiry`.
+- `boq-register.jsx` · `boq-assign.jsx` · `boq-workspace.jsx`
+- `desktop-workspace.jsx`
+
+And `DModOverview` itself had diverged — the checked-in copy is the one SCR-W1
+was built from, and it is not what the prototype draws today (P-133).
+
+**Two consequences worth deciding on:**
+
+1. **Re-sync the reference.** Everything built in Phases 4–6 was checked
+   against the older copy. SCR-W1 needed two rebuilds because of this; other
+   screens may carry the same divergence and nobody would know.
+2. **الفقرات التجهيزية has a design after all.** الأشكال 50–58 were recorded as
+   unbuildable for want of a table; the prototype has six components for it.
+   That is a phase of work, not a fix.

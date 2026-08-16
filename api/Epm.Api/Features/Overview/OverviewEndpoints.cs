@@ -343,6 +343,61 @@ public static class OverviewEndpoints
                     pt.At.ToString("yyyy-MM-dd"), pt.Planned, pt.Actual))
                 .ToList();
 
+            // ── الشكل 4's two S-curves ────────────────────────────────────
+            // The live prototype draws both with `DSCurve`. Its own data is a
+            // smoothstep over twelve invented months; these are month ends from
+            // the earliest baseline to the data date, with the planned line
+            // DERIVED (PlannedProgress) and the actual line RECORDED.
+            var curveFrom = allActivities.Any(a => a.BaselineStart is not null)
+                ? allActivities.Where(a => a.BaselineStart is not null).Min(a => a.BaselineStart!.Value)
+                : contracts.Count > 0 ? contracts.Min(c => c.Start) : asOf;
+
+            var months = ProgressSeries.Monthly(
+                seriesUpdates, seriesContracts, curveFrom, asOf, PlannedAt, physical,
+                _ => string.Empty);          // the CLIENT labels the periods
+
+            var progressCurve = months
+                .Select(r => new OverviewCurvePeriod(
+                    r.At.ToString("yyyy-MM-dd"), r.PlanCum, r.ActCum, r.PlanPeriod, r.ActPeriod))
+                .ToList();
+
+            // The cost curve, over the SAME month ends so the two rows read
+            // against each other. Planned spend is BR-11's PV as a share of the
+            // revised value — which is the planned progress percentage — and
+            // actual spend is the payments recorded on or before each month end.
+            // Neither line is a shape: one is money budgeted, one is money that
+            // moved.
+            var paidRows = await db.Payments.AsNoTracking()
+                .Where(x => contractIds.Contains(x.ContractId) && x.Status == "paid" && x.PaidDate != null)
+                .Select(x => new { Date = x.PaidDate!.Value, x.NetAmount })
+                .ToListAsync();
+
+            var firstPayment = paidRows.Count == 0 ? (DateOnly?)null : paidRows.Min(r => r.Date);
+
+            var costCurve = new List<OverviewCurvePeriod>(months.Count);
+            {
+                decimal prevPlan = 0m, prevAct = 0m;
+                foreach (var m in months)
+                {
+                    var plan = m.PlanCum;
+
+                    decimal? act = null;
+                    if (firstPayment is not null && m.At >= firstPayment && effectiveTotal > 0m)
+                    {
+                        var upto = paidRows.Where(r => r.Date <= m.At).Sum(r => r.NetAmount);
+                        act = Math.Round(upto / effectiveTotal * 100m, 2, MidpointRounding.AwayFromZero);
+                    }
+
+                    costCurve.Add(new OverviewCurvePeriod(
+                        m.At.ToString("yyyy-MM-dd"), plan, act,
+                        Math.Round(plan - prevPlan, 2, MidpointRounding.AwayFromZero),
+                        act is null ? 0m : Math.Round(Math.Max(0m, act.Value - prevAct), 2, MidpointRounding.AwayFromZero)));
+
+                    prevPlan = plan;
+                    if (act is not null) prevAct = act.Value;
+                }
+            }
+
             var unavailable = new List<OverviewUnavailable>
             {
                 new("physical",
@@ -449,7 +504,8 @@ public static class OverviewEndpoints
                     p.WorkspaceCode, ws?.NameAr ?? p.WorkspaceCode, ws?.NameEn ?? p.WorkspaceCode,
                     p.DataDate?.ToString("yyyy-MM-dd"),
                     p.UpdatedAt?.ToString("yyyy-MM-dd")),
-                identity, totals, cost, progressSeries, alerts, alertCards, unavailable,
+                identity, totals, cost, progressSeries, progressCurve, costCurve,
+                alerts, alertCards, unavailable,
                 moduleStates
                     .Select(m => new OverviewModule(m.Id, m.State, m.Rows, m.Waiting))
                     .ToList(),

@@ -133,4 +133,63 @@ public class ProgressSeriesTests
         // Both contracts still contribute where they stood: (250×18 + 100×28)/350
         Assert.Equal(20.86m, series[0].Actual);
     }
+
+    // ── the S-curve the live prototype draws ────────────────────────────
+
+    [Fact]
+    public void The_monthly_curve_ends_at_the_data_date()
+    {
+        var rows = ProgressSeries.Monthly(Updates(), Contracts(),
+            new DateOnly(2026, 3, 1), DataDate, _ => 40m, 33.7m, i => "M" + i);
+
+        Assert.Equal(DataDate, rows[^1].At);
+        Assert.Equal(33.7m, rows[^1].ActCum);
+    }
+
+    [Fact]
+    public void Before_the_first_recorded_update_the_actual_line_has_not_started()
+    {
+        var rows = ProgressSeries.Monthly(Updates(), Contracts(),
+            new DateOnly(2026, 1, 1), DataDate, _ => 40m, null, i => "M" + i);
+
+        // January and February end before 2026-04-14, the first update.
+        Assert.Null(rows[0].ActCum);
+        Assert.Null(rows[1].ActCum);
+        Assert.NotNull(rows.First(r => r.At >= new DateOnly(2026, 4, 30)).ActCum);
+    }
+
+    [Fact]
+    public void A_month_with_no_update_carries_the_log_forward_rather_than_inventing_a_rise()
+    {
+        var rows = ProgressSeries.Monthly(Updates(), Contracts(),
+            new DateOnly(2026, 4, 1), DataDate, _ => 40m, null, i => "M" + i);
+
+        // Nothing was recorded in June or July, so both read May's figure and
+        // the period increment is zero — the line goes flat, which is what the
+        // log says happened.
+        var jun = rows.First(r => r.At.Month == 6);
+        var jul = rows.First(r => r.At.Month == 7);
+        Assert.Equal(jun.ActCum, jul.ActCum);
+        Assert.Equal(0m, jul.ActPeriod);
+    }
+
+    [Fact]
+    public void The_planned_line_is_always_known_because_it_is_derived()
+    {
+        var rows = ProgressSeries.Monthly(Updates(), Contracts(),
+            new DateOnly(2026, 1, 1), DataDate, d => d.Month * 10m, null, i => "M" + i);
+
+        Assert.All(rows, r => Assert.True(r.PlanCum > 0m));
+    }
+
+    [Fact]
+    public void Period_increments_are_the_difference_from_the_month_before()
+    {
+        var rows = ProgressSeries.Monthly([], Contracts(),
+            new DateOnly(2026, 5, 1), DataDate, d => d.Month * 10m, null, i => "M" + i);
+
+        // May 50, June 60, July 70, then the data date in August 80.
+        Assert.Equal(50m, rows[0].PlanCum);
+        Assert.Equal(10m, rows[1].PlanPeriod);
+    }
 }

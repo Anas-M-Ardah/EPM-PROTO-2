@@ -5,8 +5,7 @@ import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
-import { BarCompareComponent, BarItem } from '../../shared/bar-compare.component';
-import { DualLineComponent, LineSeries } from '../../shared/dual-line.component';
+import { CurvePeriod, SCurveComponent } from '../../shared/scurve.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
@@ -42,7 +41,7 @@ import { OverviewResponse } from './overview.types';
   imports: [
     IconComponent, StatusPillComponent, SectionComponent,
     SummaryStripComponent, TableSkeletonComponent,
-    BarCompareComponent, DualLineComponent,
+    SCurveComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './overview.page.html',
@@ -75,6 +74,18 @@ export class OverviewPage {
   nextAction = computed(() => this.data()?.nextAction ?? null);
 
   /**
+   * الشكل 4's «خط سير المراحل» lists EIGHT units — معلومات المشروع · العقود ·
+   * جدول الكميات · الموقف المالي · الجدول الزمني · الإنجاز · الأوامر التغييرية ·
+   * إدارة المخاطر — and the live prototype's `STAGE_IDS` is the same eight.
+   * The other seven modules exist and are counted; they are just not what this
+   * strip reports on.
+   */
+  private readonly stageIds = [
+    'information', 'contract', 'boq', 'financial',
+    'schedule', 'progress', 'changeorders', 'risk',
+  ];
+
+  /**
    * The strip, in rail order, carrying each module's LABEL and ROUTE.
    *
    * The label and the route come from `project-modules.ts` — the same list the
@@ -83,8 +94,9 @@ export class OverviewPage {
    * Unbuilt modules are dropped: الشكل 4's strip reports on the project, and a
    * phase-6 module is not this project's business.
    */
-  strip = computed(() => this.modules()
-    .filter(m => m.state !== 'not-available')
+  strip = computed(() => this.stageIds
+    .map(id => this.modules().find(m => m.id === id))
+    .filter((m): m is NonNullable<typeof m> => !!m)
     .map(m => ({ ...m, mod: moduleById(m.id) }))
     .filter(x => !!x.mod));
 
@@ -140,8 +152,22 @@ export class OverviewPage {
   }
 
   /** The head bar's completion fill, as a percentage of available modules. */
+  /**
+   * الشكل 4's «4/8 معتمد» counts the EIGHT units its strip lists, so the
+   * counter is read over the strip and not over all fifteen modules. It still
+   * says «بدأت» rather than «معتمد»: this system has no per-module approval
+   * state to count, and saying so is the true version of the same sentence.
+   */
+  stripProgress = computed(() => {
+    const rows = this.strip();
+    return {
+      started: rows.filter(m => m.state !== 'not-started').length,
+      available: rows.length,
+    };
+  });
+
   progressPct = computed(() => {
-    const p = this.progress();
+    const p = this.stripProgress();
     return p.available === 0 ? 0 : Math.round((p.started / p.available) * 100);
   });
 
@@ -158,7 +184,7 @@ export class OverviewPage {
 
   readonly colCount = 7;
 
-  private need(key: string): string {
+  need(key: string): string {
     const u = this.unavailable().find(x => x.key === key);
     return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
   }
@@ -313,50 +339,35 @@ export class OverviewPage {
   hasProjection = computed(() => (this.totals()?.pendingAmendments ?? 0) > 0);
 
   // ══ الشكل 4's «مخططان بمفاتيح سلاسل» ═════════════════════════════════
+  //
+  // Both are the live prototype's own `DSCurve`: period bars under cumulative
+  // planned and actual lines. The prototype generates its data with a
+  // smoothstep over twelve invented months; `Domain/ProgressSeries.Monthly`
+  // supplies these from what was recorded, so a month nobody measured is flat
+  // rather than rising.
 
-  /**
-   * Chart 1 — «الإنجاز المادي مقابل مخطط», over the dates progress was actually
-   * recorded on. `Domain/ProgressSeries` decides the points; this only picks
-   * the colours and the words.
-   *
-   * The planned line is DASHED because it is derived from the baselines while
-   * the actual line was observed. Same chart, two kinds of claim.
-   */
-  progressSeries = computed<LineSeries[]>(() => {
-    const pts = this.data()?.progressSeries ?? [];
-    if (pts.length === 0) return [];
-    return [
-      {
-        label: this.lang.t('ovw_series_planned'),
-        color: 'var(--viz-2)',
-        points: pts.map(x => x.planned),
-        dashed: true,
-      },
-      {
-        label: this.lang.t('ovw_series_actual'),
-        color: 'var(--viz-1)',
-        points: pts.map(x => x.actual),
-      },
-    ];
+  /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
+  private labelled(rows: { planCum: number; actCum: number | null; planPeriod: number; actPeriod: number }[]): CurvePeriod[] {
+    const pre = this.lang.isAr() ? 'ش' : 'M';
+    return rows.map((r, i) => ({ label: pre + (i + 1), ...r }));
+  }
+
+  progressCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.progressCurve ?? []));
+  costCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.costCurve ?? []));
+
+  /** «▼ 8 نقطة عن المخطط (39%)» — the gap, with its own sign. */
+  physVariance = computed(() => {
+    const t = this.totals();
+    if (!t || t.physical === null || t.planned === null) return null;
+    return Math.round((t.physical - t.planned) * 10) / 10;
   });
 
-  /** The x axis: the dates, short — the year repeats on every point. */
-  progressLabels = computed(() =>
-    (this.data()?.progressSeries ?? []).map(x => x.at.slice(5)));
-
-  /**
-   * Chart 2 — «المقررة · المعدلة · المصروف». Three bars, and the legend beneath
-   * is what makes each colour mean a series rather than a verdict (05 §7.9).
-   */
-  costBars = computed<BarItem[]>(() => {
-    const c = this.cost();
-    if (!c) return [];
-    return [
-      { label: this.lang.t('ovw_c_approved'), value: c.approved, display: fmt.money(c.approved), color: 'var(--viz-3)' },
-      { label: this.lang.t('ovw_c_revised'), value: c.revised, display: fmt.money(c.revised), color: 'var(--viz-1)' },
-      { label: this.lang.t('ovw_c_spent'), value: c.spent, display: fmt.money(c.spent), color: 'var(--viz-2)' },
-    ];
-  });
+  /** الشكل 4 reads an index against «الحد المقبول», so the class follows THAT. */
+  indexClass(v: number | null): string {
+    const t = this.totals();
+    if (v === null || !t) return '';
+    return v < t.acceptableIndex ? 'bad' : 'good';
+  }
 
   /** «▲126 م» — the sign is the whole message, so it is not dropped. */
   costDelta = computed(() => {
@@ -366,6 +377,42 @@ export class OverviewPage {
   });
 
   // ══ الشكل 4's «التنبيهات النشطة» ══════════════════════════════════════
+
+  /** Templates cannot call Math. */
+  abs(v: number): number { return Math.abs(v); }
+
+  /**
+   * الشكل 4's «التنبيهات النشطة» severity band, with each one's SHARE of the
+   * open set. The prototype computes the share over the open alerts only —
+   * acknowledged ones were inflating it and the percentages stopped adding to
+   * 100 — and every band stays visible at zero.
+   */
+  severityBands = computed(() => {
+    const a = this.alerts();
+    const share = (n: number) => (a.open === 0 ? 0 : Math.round((n / a.open) * 100));
+    return [
+      { code: 'critical', cls: 'red', count: a.critical, share: share(a.critical) },
+      { code: 'warning', cls: 'amber', count: a.warning, share: share(a.warning) },
+      { code: 'info', cls: 'green', count: a.info, share: share(a.info) },
+    ];
+  });
+
+  /** The prototype's own row classes: red · amber · green. */
+  severityKey(code: string): string {
+    return code === 'critical' ? 'red' : code === 'warning' ? 'amber' : 'green';
+  }
+
+  /**
+   * «اتخاذ قرار الاعتماد» · «مراجعة المسار الحرج» · «تحديث نسبة الإنجاز» — the
+   * prototype states the required action as a VERB for the module the alert is
+   * about, and a generic "open" would throw away the one thing the card is for.
+   * An alert pointing nowhere gets «مراجعة التنبيه», which is still a verb.
+   */
+  alertAction(a: { moduleId: string | null }): string {
+    const key = a.moduleId ? 'ovw_act_' + a.moduleId : 'ovw_act_default';
+    const label = this.lang.t(key as never);
+    return label === key ? this.lang.t('ovw_act_default') : label;
+  }
 
   alertTitle(a: { titleAr: string; titleEn: string }): string {
     return this.lang.pick(a.titleAr, a.titleEn);

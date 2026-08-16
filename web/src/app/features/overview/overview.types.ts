@@ -174,12 +174,26 @@ export interface OverviewAlertCard {
   moduleId: string | null;
 }
 
+/** One period of an S-curve. The CLIENT labels it — «ش1» is a language call. */
+export interface OverviewCurvePeriod {
+  at: string;
+  planCum: number;
+  /** Null before the first measurement: the line starts where the record does. */
+  actCum: number | null;
+  planPeriod: number;
+  actPeriod: number;
+}
+
 export interface OverviewResponse {
   project: OverviewProject;
   identity: OverviewIdentity;
   totals: OverviewTotals;
   cost: OverviewCost;
   progressSeries: OverviewProgressPoint[];
+  /** «التقدم التراكمي · مخطط مقابل فعلي». */
+  progressCurve: OverviewCurvePeriod[];
+  /** «المنحنى المالي · الصرف المخطط مقابل الفعلي». */
+  costCurve: OverviewCurvePeriod[];
   alerts: OverviewAlerts;
   alertCards: OverviewAlertCard[];
   unavailable: OverviewUnavailable[];

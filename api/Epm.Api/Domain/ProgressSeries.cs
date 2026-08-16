@@ -84,6 +84,85 @@ public static class ProgressSeries
         return Two(weighted / basis);
     }
 
+    /// <param name="Label">«ش1» · «M1» — the period's own tick.</param>
+    /// <param name="PlanCum">Cumulative planned %, always known: it is derived.</param>
+    /// <param name="ActCum">
+    /// Cumulative actual %. **Null before the first recorded update** — the
+    /// line starts where the log does rather than at a zero nobody wrote.
+    /// </param>
+    /// <param name="PlanPeriod">This period's planned increment.</param>
+    /// <param name="ActPeriod">This period's actual increment, 0 where unknown.</param>
+    public record Period(
+        string Label, DateOnly At,
+        decimal PlanCum, decimal? ActCum,
+        decimal PlanPeriod, decimal ActPeriod);
+
+    /// <summary>
+    /// The S-curve the live prototype draws — period bars under cumulative
+    /// planned and actual lines — over MONTH ENDS rather than over the handful
+    /// of dates an update happened to land on.
+    ///
+    /// ── WHY THE ACTUAL LINE IS A STEP AND NOT A CURVE ────────────────────
+    /// A month with no recorded update carries the previous month's figure
+    /// forward, because that is what the log says the project stood at. The
+    /// line goes flat, and flat is the truth: nobody measured, so nothing
+    /// changed on the record. The prototype's own curve is
+    /// `f => f * f * (3 - 2 * f)` over a made-up twelve months — a shape, not a
+    /// measurement — and this build refuses four other fabricated figures on
+    /// this same screen for the same reason (P-09).
+    ///
+    /// Before the first update there is no actual figure at all, so
+    /// <see cref="Period.ActCum"/> is null and the line simply has not started.
+    /// </summary>
+    public static IReadOnlyList<Period> Monthly(
+        IReadOnlyList<Update> updates,
+        IReadOnlyList<Contract> contracts,
+        DateOnly from,
+        DateOnly dataDate,
+        Func<DateOnly, decimal?> plannedAt,
+        decimal? actualNow,
+        Func<int, string> label)
+    {
+        var months = new List<DateOnly>();
+        var cursor = new DateOnly(from.Year, from.Month, 1)
+            .AddMonths(1).AddDays(-1);               // the first month END
+
+        while (cursor < dataDate && months.Count < 60)
+        {
+            months.Add(cursor);
+            cursor = cursor.AddDays(1).AddMonths(1).AddDays(-1);
+        }
+        months.Add(dataDate);                        // the curve ends at "now"
+
+        var firstUpdate = updates.Count == 0 ? (DateOnly?)null : updates.Min(u => u.At);
+
+        var rows = new List<Period>(months.Count);
+        decimal prevPlan = 0m, prevAct = 0m;
+
+        for (var i = 0; i < months.Count; i++)
+        {
+            var at = months[i];
+            var plan = Two(plannedAt(at) ?? 0m);
+
+            decimal? act = firstUpdate is null || at < firstUpdate
+                ? null
+                : at == dataDate && actualNow is not null
+                    ? Two(actualNow.Value)
+                    : ActualAt(updates, contracts, at);
+
+            rows.Add(new Period(
+                label(i + 1), at,
+                plan, act,
+                Two(plan - prevPlan),
+                act is null ? 0m : Two(Math.Max(0m, act.Value - prevAct))));
+
+            prevPlan = plan;
+            if (act is not null) prevAct = act.Value;
+        }
+
+        return rows;
+    }
+
     /// <summary>
     /// The whole series. <paramref name="plannedAt"/> is the caller's way of
     /// asking `PlannedProgress` — it needs the activity baselines, which are a
