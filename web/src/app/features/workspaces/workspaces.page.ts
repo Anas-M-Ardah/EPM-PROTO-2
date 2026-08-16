@@ -8,20 +8,36 @@ import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { DonutComponent, DonutSegment } from '../../shared/donut.component';
+import { BarCompareComponent, BarItem } from '../../shared/bar-compare.component';
+import { SCurveComponent, CurvePeriod } from '../../shared/scurve.component';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { WorkspacesApi } from './workspaces.api';
-import { WorkspaceOverviewResponse, WorkspaceProjectRow } from './workspaces.types';
+import {
+  WorkspaceOverviewResponse, WorkspaceProjectRow, WorkspaceCurvePeriod,
+  WorkspaceWatchRow, WorkspaceMilestone,
+} from './workspaces.types';
 
 /**
  * SCR-E8 — the workspace overview, «مساحة العمل › نظرة عامة» (ملحق الشكل 2).
  *
- * PORTED from DWorkspaceOverview (v1.1) — ../epm/app/desktop-workspace.jsx:284:
- * a stat band over a two-column row, distribution beside the entity's projects,
- * with «عرض الكل» leading to the register. The reference's four `DStat` cards
- * become the project's own `<epm-summary-strip>` — same figures, same order, and
- * the auto-fit grid `05 §8` makes binding instead of the reference's pinned four
- * columns (P-17).
+ * PORTED from the LIVE prototype's `DWorkspaceOverview`,
+ * app/desktop-workspace.jsx:354.
+ *
+ * ── IT IS THE MINISTRY BOARD, SCOPED ──────────────────────────────────────
+ * An earlier build of this screen was a stat band over a two-column row, on the
+ * reading that a workspace overview is its own kind of screen. The prototype
+ * says otherwise in its own comment — *"same model as the ministry board"* —
+ * and draws SCR-E1 exactly: two `.d-dash` rows, «المؤشر التنفيذي», the
+ * watchlist, «معالم قادمة». What changes is the scope and two controls: the
+ * filter is by BRANCH, and the watchlist carries a code and a branch column.
+ *
+ * The band comes from `Domain/PortfolioBand` — the same rule SCR-E1 calls — so
+ * the ministry total is always the sum of the workspaces underneath it (P-141).
+ *
+ * The summary strip stays above it. Those are counts and totals — what this
+ * workspace HAS — and the board below is about how it is doing. Two questions,
+ * two answers.
  *
  * ── IT IS THE LANDING PLACE, WHICH IS THE WHOLE POINT ─────────────────────
  * الشكل 1 → الشكل 2 is a documented transition. Before this screen existed,
@@ -41,7 +57,7 @@ import { WorkspaceOverviewResponse, WorkspaceProjectRow } from './workspaces.typ
   standalone: true,
   imports: [
     IconComponent, PageHeadComponent, SummaryStripComponent,
-    StatusPillComponent, DonutComponent,
+    StatusPillComponent, DonutComponent, BarCompareComponent, SCurveComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './workspaces.page.html',
@@ -59,6 +75,28 @@ export class WorkspacesPage {
   data = signal<WorkspaceOverviewResponse | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
+
+  /**
+   * The toolbar's two filters. They live in the URL because a workspace
+   * narrowed to «متعثّرة · فرع الكرخ» is a view somebody sends to somebody
+   * else, and a filter that cannot be linked to has to be re-applied by hand
+   * at the other end.
+   */
+  status = signal('');
+  branch = signal('');
+
+  filtered = computed(() => this.status() !== '' || this.branch() !== '');
+
+  /** The chips, in the order 06 §1 lists them — from Lookups, never hardcoded. */
+  statusCodes = computed(() => this.lookups.list('project-status').map(i => i.code));
+
+  /** Counts from BEFORE the filters, so a chip never hides its own subject. */
+  countOf(code: string) {
+    return this.data()?.statusCounts.find(x => x.status === code)?.count ?? 0;
+  }
+
+  totalProjects = computed(() =>
+    (this.data()?.statusCounts ?? []).reduce((a, x) => a + x.count, 0));
 
   name = computed(() => {
     const d = this.data();
@@ -123,6 +161,95 @@ export class WorkspacesPage {
     ];
   });
 
+  // ══ الشكل 4's «مخططان بمفاتيح سلاسل», at workspace scope ═══════════════
+
+  /** «ش1» · «M1» — the period ordinal. A language call, so the client makes it. */
+  private labelled(rows: WorkspaceCurvePeriod[]): CurvePeriod[] {
+    const pre = this.lang.isAr() ? 'ش' : 'M';
+    return rows.map((r, i) => ({
+      label: pre + (i + 1),
+      planCum: r.planCum, actCum: r.actCum,
+      planPeriod: r.planPeriod, actPeriod: r.actPeriod,
+    }));
+  }
+
+  progressCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.progressCurve ?? []));
+  costCurve = computed<CurvePeriod[]>(() => this.labelled(this.data()?.costCurve ?? []));
+
+  /** Physical minus planned, in points. Null when either side is missing. */
+  physVariance = computed(() => {
+    const d = this.data();
+    if (!d || d.completionPct === null || d.planned === null) return null;
+    return Math.round((d.completionPct - d.planned) * 10) / 10;
+  });
+
+  /**
+   * Financial minus physical: is the money running ahead of the work? Positive
+   * is the ADVERSE direction, which is why its tile inverts the arrow.
+   */
+  burnVariance = computed(() => {
+    const d = this.data();
+    if (!d || d.financial === null || d.completionPct === null) return null;
+    return Math.round((d.financial - d.completionPct) * 10) / 10;
+  });
+
+  absVariance = computed(() => Math.abs(this.physVariance() ?? 0));
+  absBurn = computed(() => Math.abs(this.burnVariance() ?? 0));
+
+  /** The prototype's own bands: 5 points behind is the line between two tones. */
+  variancePill(v: number | null) {
+    if (v === null) return 'withdrawn';
+    return v < -5 ? 'stalled' : v < 0 ? 'suspended' : 'completed';
+  }
+
+  deltaDir(v: number | null) { return v === null ? 'flat' : v < 0 ? 'down' : 'up'; }
+
+  burnPill() {
+    const b = this.burnVariance();
+    if (b === null) return 'withdrawn';
+    return b < -5 ? 'suspended' : b > 5 ? 'stalled' : 'completed';
+  }
+
+  burnLabel() {
+    const b = this.burnVariance();
+    if (b === null || b === 0) return this.lang.t('prt_burn_in_step');
+    return this.lang.t(b > 0 ? 'prt_burn_ahead' : 'prt_burn_behind');
+  }
+
+  // ══ «المؤشر التنفيذي» ══════════════════════════════════════════════════
+  // Each band carries an icon AND a label, so it is never read from colour
+  // alone (05 §7.6).
+
+  signalTone(s: string) { return s === 'red' ? 'over' : s === 'amber' ? 'risk' : 'ok'; }
+  signalIcon(s: string) { return s === 'red' ? 'warning' : s === 'amber' ? 'error' : 'check_circle'; }
+  signalLabel(s: string) {
+    return this.lang.t(s === 'red' ? 'prt_sig_red' : s === 'amber' ? 'prt_sig_amber' : 'prt_sig_green');
+  }
+
+  /**
+   * «المقررة · المعدّلة · المصروف». Each bar's colour identifies the SERIES,
+   * never a verdict on its size (05 §7.9) — which is why the revised bar is
+   * not red when it exceeds the approved one.
+   */
+  costBars = computed<BarItem[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    return [
+      { label: this.lang.t('prt_cost_approved'), value: d.cost.approved,
+        display: fmt.money(d.cost.approved), color: 'var(--viz-1)' },
+      { label: this.lang.t('prt_cost_revised'), value: d.cost.revised,
+        display: fmt.money(d.cost.revised), color: 'var(--viz-2)' },
+      { label: this.lang.t('prt_cost_spent'), value: d.cost.spent,
+        display: fmt.money(d.cost.spent), color: 'var(--viz-3)' },
+    ];
+  });
+
+  /** The server's reason for a figure it could not derive (P-09). */
+  reason(key: string) {
+    const u = this.data()?.unavailable.find(x => x.key === key);
+    return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
+  }
+
   statusSegments = computed<DonutSegment[]>(() => {
     const d = this.data();
     if (!d) return [];
@@ -133,8 +260,38 @@ export class WorkspacesPage {
     }));
   });
 
+  statusLegend = computed(() => {
+    const total = this.data()?.projectCount || 1;
+    return this.statusSegments().map(s => ({
+      ...s, share: Math.round((s.value / total) * 100),
+    }));
+  });
+
   /** 02 §9 — approved but not applied. Shown only when there is something. */
   hasPending = computed(() => (this.data()?.pendingAmendmentCount ?? 0) > 0);
+
+  watchName(r: WorkspaceWatchRow) { return this.lang.pick(r.nameAr, r.nameEn); }
+  milestoneName(m: WorkspaceMilestone) { return this.lang.pick(m.nameAr, m.nameEn); }
+
+  /** Same keyboard contract the project register's rows carry. */
+  onRowKey(e: KeyboardEvent, id: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.openProject(id);
+    }
+  }
+
+  setStatus(code: string) { this.navigate({ status: code || null }); }
+  setBranch(code: string) { this.navigate({ branch: code || null }); }
+  clearFilters() { this.navigate({ status: null, branch: null }); }
+
+  private navigate(params: Record<string, string | null>) {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: 'merge',
+    });
+  }
 
   constructor() {
     this.route.queryParamMap.subscribe(p => {
@@ -145,6 +302,8 @@ export class WorkspacesPage {
         return;
       }
       this.code.set(ws);
+      this.status.set(p.get('status') ?? '');
+      this.branch.set(p.get('branch') ?? '');
       this.load();
     });
   }
@@ -154,7 +313,7 @@ export class WorkspacesPage {
     this.error.set(null);
     forkJoin({
       lookups: this.lookups.ensureLoaded(),
-      res: this.api.overview(this.code()),
+      res: this.api.overview(this.code(), { status: this.status(), branch: this.branch() }),
     }).subscribe({
       next: ({ res }) => {
         this.data.set(res);

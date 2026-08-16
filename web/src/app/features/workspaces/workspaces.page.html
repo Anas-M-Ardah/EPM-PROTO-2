@@ -1,11 +1,18 @@
 <!--
   SCR-E8 Workspace overview — «مساحة العمل › نظرة عامة» (ملحق الشكل 2).
-  Ported from DWorkspaceOverview, ../epm/app/desktop-workspace.jsx:284.
+  Ported from the LIVE prototype's DWorkspaceOverview, app/desktop-workspace.jsx:354.
 
-  Layout follows the reference: identity bar → stat band → two-column row
-  (distribution · the entity's projects). The reference's `d-grid stats` cards
-  are the project's own summary strip, so the band matches every other screen
-  and obeys the auto-fit rule (05 §8) the reference itself breaks.
+  ── IT IS THE MINISTRY BOARD, SCOPED ─────────────────────────────────────
+  The prototype says so in its own comment — "same model as the ministry
+  board" — and draws the identical thing: two `.d-dash` rows, «المؤشر
+  التنفيذي», the watchlist, «معالم قادمة». What changes is the SCOPE and two
+  controls: the filter is by BRANCH, and the watchlist carries a code and a
+  branch column, because inside one university "which project" is answered by
+  its branch far more often than by its workspace — which is the same on
+  every row.
+
+  The figures come from `Domain/PortfolioBand`, the same rule SCR-E1 calls, so
+  the ministry total is always the sum of the workspaces underneath it (P-141).
 
   Every figure is <bdi>-isolated (05 §5.2); status is never colour-only (05 §7.6).
 -->
@@ -13,9 +20,6 @@
   [crumbs]="crumbs()"
   [title]="name()"
   [sub]="sub()">
-  <!-- Z4: at most one primary. «عرض المشاريع» is the reference's own action
-       here (desktop-workspace.jsx:292) and it is the documented next step —
-       الشكل 2 → الشكل 3. -->
   <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
     <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
   </button>
@@ -44,6 +48,8 @@
   <!-- `as` binds only on a primary @if, so the alias is taken here. -->
   @if (data(); as d) {
 
+  <!-- The contractual position this workspace owns. It is NOT the board below:
+       these are counts and totals, and the board is about performance. -->
   <epm-summary-strip [stats]="stats()" [unavailableLabel]="lang.t('unavailable')" />
 
   <!-- 02 §9 — approved but NOT applied. A projection, stated as one, kept out
@@ -59,74 +65,349 @@
     </div>
   }
 
+  <!-- Before the empty branch: when a filter has excluded everything, the
+       control that did it has to still be reachable. -->
+  <div class="d-toolbar">
+    <div class="grp">
+      <button type="button" class="d-fchip" [class.on]="status() === ''" (click)="setStatus('')">
+        {{ lang.t('all') }}<span class="n"><bdi>{{ totalProjects() }}</bdi></span>
+      </button>
+      @for (s of statusCodes(); track s) {
+        <button type="button" class="d-fchip" [class.on]="status() === s" (click)="setStatus(s)">
+          {{ lookups.label('project-status', s) }}<span class="n"><bdi>{{ countOf(s) }}</bdi></span>
+        </button>
+      }
+    </div>
+    <div class="sp"></div>
+    @if (d.branches.length > 1) {
+      <select class="d-form-input" style="width:auto"
+              [attr.aria-label]="lang.t('ws_all_branches')"
+              (change)="setBranch($any($event.target).value)">
+        <option value="" [selected]="branch() === ''">{{ lang.t('ws_all_branches') }}</option>
+        @for (b of d.branches; track b) {
+          <option [value]="b" [selected]="branch() === b">{{ b }}</option>
+        }
+      </select>
+    }
+    @if (filtered()) {
+      <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+        <epm-icon name="close" [size]="13" />{{ lang.t('clear') }}
+      </button>
+    }
+  </div>
+
   @if (d.projectCount === 0) {
-    <!-- The workspace EXISTS and is empty. A different state from "the database
-         is empty", with a different message and a different way out (04 §9). -->
+    <!-- Three different emptinesses, three different ways out (04 §9): the
+         filters excluded everything, or the workspace itself is empty. -->
     <div class="d-empty">
       <span class="d-empty-ico"><epm-icon name="projects" [size]="30" /></span>
-      <b>{{ lang.t('ws_no_projects_t') }}</b>
-      <span>{{ lang.t('ws_no_projects_b') }}</span>
+      <b>{{ lang.t(filtered() ? 'ws_filtered_t' : 'ws_no_projects_t') }}</b>
+      <span>{{ lang.t(filtered() ? 'ws_filtered_b' : 'ws_no_projects_b') }}</span>
+      @if (filtered()) {
+        <button type="button" class="d-btn primary" (click)="clearFilters()">{{ lang.t('clear') }}</button>
+      }
     </div>
   } @else {
 
-    <div class="d-grid c2 eqrows">
+    <!-- ══ ROW 1 — the progress curve and what it means ═══════════════════ -->
+    <div class="d-dash">
+      <div class="d-dash-main">
+        <div class="d-panel">
+          <div class="d-panel-head">
+            <b>{{ lang.t('prt_curve_progress') }}</b>
+            <span class="d-cell-sub">
+              {{ lang.t('prt_planned') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi> ·
+              {{ lang.t('prt_actual') }} <bdi>{{ fmt.pct(d.completionPct, 0) }}</bdi>
+            </span>
+            @if (physVariance() !== null) {
+              <span class="d-pill" [class]="'d-pill ' + variancePill(physVariance())">
+                {{ lang.t(physVariance()! < 0 ? 'prt_behind' : 'prt_ahead') }}
+                <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
+              </span>
+            }
+          </div>
+          @if (progressCurve().length > 0) {
+            <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
+                        [caption]="lang.t('prt_curve_progress')" />
+          } @else {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="trending_up" [size]="30" /></span>
+              <b>{{ lang.t('prt_no_curve_t') }}</b>
+              <span>{{ lang.t('prt_no_curve_b') }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <aside class="d-dash-side">
+        <div class="d-stat" [class.epm-stat-na]="d.completionPct === null">
+          <span class="d-stat-lbl">{{ lang.t('kpi_physical') }}</span>
+          @if (d.completionPct !== null) {
+            <span class="d-stat-val"><bdi>{{ fmt.pct(d.completionPct, 0) }}</bdi></span>
+            <span class="d-stat-bar"><i [style.width.%]="d.completionPct"></i></span>
+            @if (physVariance() !== null) {
+              <span class="d-stat-delta" [class]="'d-stat-delta ' + deltaDir(physVariance())">
+                {{ physVariance()! < 0 ? '▼' : '▲' }} <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
+              </span>
+            }
+            <span class="d-stat-foot">
+              {{ lang.t('prt_planned_to_date') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi>
+            </span>
+          } @else {
+            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
+            <span class="d-stat-foot">{{ reason('physical') }}</span>
+          }
+        </div>
 
-      <!-- قائمة المتابعة — the reference gives this the centre of the screen,
-           because the point of an entity dashboard is which project needs you. -->
+        <div class="d-stat" [class.epm-stat-na]="d.spi === null">
+          <span class="d-stat-lbl">{{ lang.t('kpi_spi') }}</span>
+          @if (d.spi !== null) {
+            <span class="d-stat-val"><bdi>{{ fmt.index(d.spi) }}</bdi></span>
+            <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.spi < 1 ? 'down' : 'up')">
+              {{ d.spi < 1 ? '▼' : '▲' }} {{ lang.t(d.spi < 1 ? 'prt_below_one' : 'prt_at_target') }}
+            </span>
+            <span class="d-stat-foot">
+              {{ lang.t('prt_threshold') }} <bdi>{{ fmt.index(d.acceptableIndex) }}</bdi>
+            </span>
+          } @else {
+            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
+            <span class="d-stat-foot">{{ reason('spi') }}</span>
+          }
+        </div>
+
+        <div class="d-stat" [class.epm-stat-na]="d.financial === null">
+          <span class="d-stat-lbl">{{ lang.t('kpi_financial') }}</span>
+          @if (d.financial !== null) {
+            <span class="d-stat-val"><bdi>{{ fmt.pct(d.financial, 0) }}</bdi></span>
+            <span class="d-stat-bar"><i [style.width.%]="d.financial"></i></span>
+            @if (burnVariance() !== null) {
+              <!-- Spend running ahead of work is the ADVERSE direction, so the
+                   arrow and the tone invert against the progress tile above. -->
+              <span class="d-stat-delta" [class]="'d-stat-delta ' + (burnVariance()! > 0 ? 'down' : 'up')">
+                {{ burnVariance()! > 0 ? '▲' : '▼' }} <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_vs_physical') }}
+              </span>
+            }
+            <span class="d-stat-foot">
+              <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi> {{ lang.t('prt_spent') }}
+            </span>
+          } @else {
+            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
+            <span class="d-stat-foot">{{ reason('financial') }}</span>
+          }
+        </div>
+      </aside>
+    </div>
+
+    <!-- ══ ROW 2 — the money, and the one-glance verdict ══════════════════ -->
+    <div class="d-dash">
+      <div class="d-dash-main">
+        <div class="d-panel">
+          <div class="d-panel-head">
+            <b>{{ lang.t('prt_curve_cost') }}</b>
+            <span class="d-cell-sub">
+              <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
+              {{ lang.t('ovw_of') }}
+              <bdi class="mono">{{ fmt.money(d.effectiveValue) }}</bdi>
+            </span>
+            @if (burnVariance() !== null) {
+              <span class="d-pill" [class]="'d-pill ' + burnPill()">
+                {{ burnLabel() }}
+                @if (burnVariance() !== 0) {
+                  <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_points') }}
+                }
+              </span>
+            }
+          </div>
+          @if (costCurve().length > 0) {
+            <epm-scurve [data]="costCurve()" color="var(--success)"
+                        [caption]="lang.t('prt_curve_cost')" />
+          } @else {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
+              <b>{{ lang.t('prt_no_curve_t') }}</b>
+              <span>{{ lang.t('prt_no_cost_curve_b') }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <aside class="d-dash-side">
+        <div class="d-stat" [class.epm-stat-na]="d.cpi === null">
+          <span class="d-stat-lbl">{{ lang.t('kpi_cpi') }}</span>
+          @if (d.cpi !== null) {
+            <span class="d-stat-val"><bdi>{{ fmt.index(d.cpi) }}</bdi></span>
+            <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.cpi < 1 ? 'down' : 'up')">
+              {{ d.cpi < 1 ? '▼' : '▲' }} {{ lang.t(d.cpi < 1 ? 'prt_below_one' : 'prt_above_one') }}
+            </span>
+            <!-- The two terms of the ratio, so the tile can be checked. -->
+            <span class="d-stat-foot">
+              EV <bdi class="mono">{{ fmt.money(d.earnedValue) }}</bdi> /
+              AC <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
+            </span>
+          } @else {
+            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
+            <span class="d-stat-foot">{{ reason('cpi') }}</span>
+          }
+        </div>
+
+        <!-- «المؤشر التنفيذي» — Domain/ExecutiveSignal. All three bands always
+             drawn, even at zero: a band that vanishes when it empties reads as
+             a changed scale rather than as a count of none. -->
+        <div class="d-panel sig">
+          <div class="d-panel-head">
+            <b>{{ lang.t('prt_signal') }}</b>
+            <span class="d-cell-sub"><bdi>{{ d.projectCount }}</bdi> {{ lang.t('prt_projects_word') }}</span>
+          </div>
+          <div class="d-tl-band col">
+            @for (b of d.signals; track b.signal) {
+              <div class="d-tl-cell" [class]="'d-tl-cell ' + signalTone(b.signal)">
+                <span class="d-tl-ico"><epm-icon [name]="signalIcon(b.signal)" [size]="18" /></span>
+                <div class="d-tl-tx">
+                  <div class="d-tl-num"><bdi>{{ b.count }}</bdi></div>
+                  <div class="d-cell-sub">{{ signalLabel(b.signal) }}</div>
+                </div>
+                <span class="d-tl-pc mono"><bdi>{{ b.share }}%</bdi></span>
+              </div>
+            }
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ══ «قائمة المتابعة» — الشكل 2 gives this the screen's centre ══════ -->
+    <div class="d-tablewrap" style="margin-bottom:16px">
+      <div class="d-toolbar">
+        <b style="font-size:14px">{{ lang.t('prt_watchlist') }}</b>
+        <div class="sp"></div>
+        <span class="d-cell-sub">
+          <bdi>{{ d.watchlist.length }}</bdi> {{ lang.t('ovw_of') }} <bdi>{{ d.projectCount }}</bdi>
+        </span>
+        <button type="button" class="d-btn sm ghost" (click)="goProjects()">
+          {{ lang.t('prt_view_projects') }}<epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="14" />
+        </button>
+      </div>
+      @if (d.watchlist.length > 0) {
+        <table class="d-table">
+          <thead><tr>
+            <th style="width:108px">{{ lang.t('ws_col_code') }}</th>
+            <th>{{ lang.t('col_project') }}</th>
+            <th>{{ lang.t('ws_col_branch') }}</th>
+            <th>{{ lang.t('col_status') }}</th>
+            <th>{{ lang.t('chg_col_progress') }}</th>
+            <th class="r">{{ lang.t('prt_col_variance') }}</th>
+            <th class="r">{{ lang.t('col_value') }}</th>
+            <th>{{ lang.t('prt_col_expected') }}</th>
+          </tr></thead>
+          <tbody>
+            @for (r of d.watchlist; track r.id) {
+              <tr class="epm-ws-tr" tabindex="0" role="button"
+                  [attr.aria-label]="lang.t('open_project') + ': ' + watchName(r)"
+                  (click)="openProject(r.id)"
+                  (keydown)="onRowKey($event, r.id)">
+                <td class="mono d-cell-sub"><bdi>{{ r.id }}</bdi></td>
+                <td class="d-cell-strong">{{ watchName(r) }}</td>
+                <td class="d-cell-sub">{{ r.branch || '—' }}</td>
+                <td><epm-status-pill kind="project-status" [code]="r.status" /></td>
+                <td>
+                  @if (r.physical !== null) {
+                    <span class="d-mini-bar">
+                      <span class="t"><span [style.width.%]="r.physical"></span></span>
+                      <span class="pc"><bdi>{{ fmt.pct(r.physical, 0) }}</bdi></span>
+                    </span>
+                  } @else {
+                    <span class="epm-na">{{ lang.t('unavailable') }}</span>
+                  }
+                </td>
+                <!-- A magnitude with a direction: it carries a sign, not a
+                     threshold colour (05 §7.9). -->
+                <td class="num r mono">
+                  @if (r.variance !== null) { <bdi>{{ fmt.delta(r.variance) }}</bdi> }
+                  @else { <span class="epm-na">—</span> }
+                </td>
+                <td class="num r mono"><bdi>{{ fmt.money(r.value) }}</bdi></td>
+                <td class="num d-cell-sub">
+                  @if (r.forecastFinish) { <bdi>{{ fmt.date(r.forecastFinish) }}</bdi> }
+                  @else { <span class="epm-na">—</span> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="check_circle" [size]="30" /></span>
+          <b>{{ lang.t('prt_on_track_t') }}</b>
+          <span>{{ lang.t('ws_on_track_b') }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- ══ BREAKDOWN — the prototype pairs exactly two here ═══════════════ -->
+    <div class="d-grid c2 eqrows">
+      <!-- 05 §1 — the ONE chart where status colour encodes data; the legend
+           beside it is what stops it being colour-only (05 §7.6). -->
       <div class="d-panel">
         <div class="d-panel-head">
-          <b>{{ lang.t('ws_watchlist') }}</b>
-          <button type="button" class="d-link" (click)="goProjects()">
-            {{ lang.t('ws_view_all') }}
-            <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
-          </button>
+          <b>{{ lang.t('ws_by_status') }}</b>
+          <span class="d-cell-sub"><bdi>{{ d.projectCount }}</bdi> {{ lang.t('prt_projects_word') }}</span>
         </div>
-
-        @if (d.watchlist.length === 0) {
-          <div class="epm-ws-ok">
-            <epm-icon name="check_circle" [size]="18" />
-            <span>{{ lang.t('ws_watchlist_ok') }}</span>
+        <div class="d-donut-row">
+          <epm-donut [segments]="statusSegments()" [size]="140" [stroke]="16"
+                     [centerLabel]="lang.t('prt_projects_word')" />
+          <div class="d-donut-legend">
+            @for (s of statusLegend(); track s.label) {
+              <div class="li">
+                <i [style.background]="s.color"></i>
+                <span class="k">{{ s.label }}</span>
+                <b class="mono"><bdi>{{ s.value }}</bdi></b>
+                <span class="pc mono"><bdi>{{ s.share }}%</bdi></span>
+              </div>
+            }
           </div>
-        } @else {
-          @for (p of d.watchlist; track p.id) {
-            <button type="button" class="d-mini epm-ws-row" (click)="openProject(p.id)">
-              <span class="d-mini-main">
-                <b>{{ projectName(p) }}</b>
-                <span>
-                  <bdi class="mono">{{ p.id }}</bdi>
-                  @if (p.branch) { <span class="epm-ws-dot"></span>{{ p.branch }} }
-                </span>
-              </span>
-              <span class="epm-ws-val mono"><bdi>{{ fmt.money(p.value) }}</bdi></span>
-              <epm-status-pill kind="project-status" [code]="p.status" />
-              <epm-icon class="epm-ws-go" [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
-            </button>
-          }
-        }
+        </div>
       </div>
 
-      <!-- Status distribution — the one chart that uses status colour (05 §1),
-           always paired with a labelled legend so it is never colour-only. -->
       <div class="d-panel">
-        <div class="d-panel-head"><b>{{ lang.t('ws_by_status') }}</b></div>
-        <div class="epm-donut-row">
-          <epm-donut [segments]="statusSegments()" [centerLabel]="lang.t('kpi_projects')" />
-          <ul class="epm-legend">
-            @for (s of statusSegments(); track s.label) {
-              <li>
-                <span class="dot" [style.background]="s.color" aria-hidden="true"></span>
-                <span class="l">{{ s.label }}</span>
-                <span class="v mono"><bdi>{{ s.value }}</bdi></span>
-              </li>
-            }
-          </ul>
-        </div>
+        <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
+        <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
       </div>
     </div>
 
-    <!-- آخر ما جرى تحديثه — the reference's `recent` list. It reads as freshness:
-         a project missing from the top of it has not been touched in a while. -->
-    <div class="d-panel">
+    <!-- ══ «معالم قادمة» — .d-actfeed, as the prototype draws it ══════════ -->
+    <div class="d-panel" style="margin-top:16px">
+      <div class="d-panel-head">
+        <b>{{ lang.t('prt_milestones') }}</b>
+        <span class="d-cell-sub">{{ lang.t('prt_milestones_sub') }}</span>
+      </div>
+      @if (d.milestones.length > 0) {
+        <div class="d-actfeed">
+          @for (m of d.milestones; track m.id) {
+            <button type="button" class="d-actrow" (click)="openProject(m.id)">
+              <span class="tx">
+                <span class="l1"><b>{{ milestoneName(m) }}</b></span>
+                <span class="l2">
+                  <bdi class="mono">{{ m.id }}</bdi>
+                  @if (m.branch) { · {{ m.branch }} }
+                  @if (m.physical !== null) {
+                    · {{ lang.t('chg_col_progress') }} <bdi>{{ fmt.pct(m.physical, 0) }}</bdi>
+                  }
+                </span>
+              </span>
+              <epm-status-pill kind="project-status" [code]="m.status" />
+              <span class="tm mono"><bdi>{{ fmt.date(m.plannedFinish) }}</bdi></span>
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="d-empty">
+          <span class="d-empty-ico"><epm-icon name="event" [size]="30" /></span>
+          <b>{{ lang.t('prt_no_milestones') }}</b>
+        </div>
+      }
+    </div>
+
+    <!-- آخر ما جرى تحديثه — the prototype drops this and the plate keeps it.
+         It reads as FRESHNESS: a project missing from the top of this list has
+         not been touched in a while, which no other panel here can say. -->
+    <div class="d-panel" style="margin-top:16px">
       <div class="d-panel-head">
         <b>{{ lang.t('ws_recent') }}</b>
         <button type="button" class="d-link" (click)="goProjects()">

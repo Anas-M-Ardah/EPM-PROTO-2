@@ -105,7 +105,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | 3-pane workspace | `DWorkspace` — `desktop-workspace.jsx:12` |
 | Project detail + tab bar | `DProjectDetail` — `desktop-workspace.jsx:130` |
 | Context pane (3rd pane) | `DProjectContext` — `desktop-workspace.jsx:217` |
-| Workspace overview | `DWorkspaceOverview` — `desktop-workspace.jsx:284` |
+| Workspace overview | `DWorkspaceOverview` — `desktop-workspace.jsx:354` (live prototype) |
 
 ### Project workspace tabs
 

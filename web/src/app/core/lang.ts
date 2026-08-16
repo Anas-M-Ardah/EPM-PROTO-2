@@ -147,6 +147,16 @@ const STR = {
   ws_by_status:    { ar: 'المشاريع حسب الحالة',            en: 'Projects by status' },
   ws_open_alerts:  { ar: 'تنبيهات مفتوحة',                 en: 'Open alerts' },
   ws_critical_short:{ ar: 'حرجة',                          en: 'critical' },
+  // SCR-E8's own controls. The BOARD copy is shared with SCR-E1 (prt_*) —
+  // it is the same board, and a second copy of it is how two screens start
+  // disagreeing about a word.
+  ws_all_branches: { ar: 'كل الفروع',                       en: 'All branches' },
+  ws_col_code:     { ar: 'الرمز',                           en: 'Code' },
+  ws_col_branch:   { ar: 'الفرع',                           en: 'Branch' },
+  ws_on_track_b:   { ar: 'كل مشاريع المساحة ضمن الخطة.',     en: 'Every project in this workspace is on plan.' },
+  ws_filtered_t:   { ar: 'لا مشروع يطابق المرشّحات',        en: 'No project matches the filters' },
+  ws_filtered_b:   { ar: 'مساحة العمل ليست فارغة — المرشّحات هي التي استبعدت كل شيء.',
+                     en: 'The workspace is not empty; the filters excluded everything.' },
   ws_no_projects_t:{ ar: 'لا توجد مشاريع في هذه المساحة',  en: 'No projects in this workspace' },
   ws_no_projects_b:{ ar: 'مساحة العمل معرّفة ولم يُدرَج فيها مشروع بعد.', en: 'The workspace exists; no project has been added to it yet.' },
   /** The 403 the API returns when `?ws=` names a workspace outside the assignment. */
