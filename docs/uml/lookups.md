@@ -128,7 +128,7 @@ that stores it; change `NameAr` instead.
 |---|---|---|
 | `project-status` | 06 §1 | ongoing · completed · delayed · suspended · cancelled |
 | `execution-stage` | 06 §2 | design · tender · award · mobilisation · foundations · structure · envelope · mep-first-fix · finishes · mep-second-fix · testing-commissioning · handover |
-| `project-type` | 06 §3 | new-build · extension · rehabilitation · maintenance · equipment-supply · infrastructure · studies-design · consultancy |
+| `project-type` | 06 §3 | construction · equipment · design-studies — **only three** (D-13) |
 | `contract-status` | 06 §4 | the 5-state set · awarded-not-started · suspended-admin-order · under-settlement · terminated |
 | `funding-type` | 06 §5 | federal-budget · regional-budget · loan · grant · self-funding · investment · reconstruction-fund · emergency-allocation · carry-over-allocation · other |
 | `beneficiary-type` | 06 §6 | university · department · campus · site · facility · other |

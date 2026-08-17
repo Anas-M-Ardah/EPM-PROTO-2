@@ -860,7 +860,6 @@ const STR = {
   your_workspaces: { ar: 'مساحات العمل المتاحة لك',        en: 'Your workspaces' },
   ws_active_short: { ar: 'نشط',                            en: 'active' },
   ws_current:      { ar: 'مساحة العمل الحالية',            en: 'Current workspace' },
-  ws_back_to_ministry:{ ar: 'العودة إلى المركز',           en: 'Back to the ministry' },
   //
   // Workspace KIND labels are NOT here. They are a business-maintained value
   // list (`workspace-kind` in the Lookups table) like every other enum, and
@@ -928,6 +927,44 @@ const STR = {
   boq_save:        { ar: 'حفظ',                            en: 'Save' },
   boq_cancel:      { ar: 'إلغاء',                          en: 'Cancel' },
   boq_saved:       { ar: 'حُفظ البند',                      en: 'Item saved' },
+
+  // ── EP-BOQ-12 — «الإدخال اليدوي» (المسار 3 step 3ب) ──────────────────
+  boq_added:       { ar: 'أُضيف البند',                     en: 'Item added' },
+  boq_add_title:   { ar: 'إضافة بند يدويًا',                en: 'Add an item manually' },
+  boq_add_title_supply:{ ar: 'إضافة فقرة تجهيزية',          en: 'Add a supply item' },
+  boq_add_save:    { ar: 'حفظ البند',                       en: 'Save item' },
+  boq_add_cancel:  { ar: 'إلغاء',                           en: 'Cancel' },
+  boq_add_code_auto:{ ar: 'يُولَّد تلقائياً',                  en: 'Auto-generated' },
+  // The branch's three group labels, in its order (boq-workspace.jsx:280–316).
+  boq_add_grp_class:{ ar: 'التصنيف',                        en: 'Classification' },
+  boq_add_grp_item:{ ar: 'بيانات البند',                    en: 'Item details' },
+  boq_add_grp_calc:{ ar: 'القيم المحتسبة',                  en: 'Computed' },
+  boq_add_qty:     { ar: 'الكمية التعاقدية',                en: 'Contract quantity' },
+  boq_add_desc_ph: { ar: 'وصف البند كما يرد في كشف الكميات', en: 'Description as it reads in the BOQ' },
+  // «الباب», the branch's word for a division — not «القسم».
+  boq_add_division:{ ar: 'الباب',                           en: 'Division' },
+  boq_add_division_none:{ ar: '— بدون باب —',               en: '— unclassified —' },
+  boq_add_division_new:{ ar: '+ باب جديد…',                 en: '+ New division…' },
+  boq_add_division_name:{ ar: 'اسم الباب الجديد',           en: 'New division name' },
+  boq_add_division_ph:{ ar: 'مثال: الأعمال الصحية',         en: 'e.g. Plumbing works' },
+  boq_add_amount:  { ar: 'القيمة',                          en: 'Amount' },
+  // The device half (الأشكال 50–52) — shown only on a supply bill.
+  boq_add_device:  { ar: 'بيانات الجهاز',                   en: 'Device details' },
+  boq_add_mfr:     { ar: 'الشركة الصانعة',                  en: 'Manufacturer' },
+  boq_add_country: { ar: 'بلد المنشأ',                      en: 'Country of origin' },
+  boq_add_model:   { ar: 'الموديل',                         en: 'Model' },
+  boq_add_serial_from:{ ar: 'التسلسل من',                   en: 'Serial from' },
+  boq_add_serial_to:{ ar: 'التسلسل إلى',                    en: 'Serial to' },
+  boq_add_supplied:{ ar: 'الكمية المجهَّزة',                 en: 'Supplied quantity' },
+  boq_add_received:{ ar: 'الكمية المستلمة',                 en: 'Received quantity' },
+  boq_add_warranty:{ ar: 'الكفالة (أشهر)',                  en: 'Warranty (months)' },
+  boq_add_notes:   { ar: 'ملاحظات',                         en: 'Notes' },
+  boq_add_err_received:{ ar: 'الكمية المستلمة لا تتجاوز المجهَّزة.',
+                         en: 'Received cannot exceed supplied.' },
+  boq_add_err_supplied:{ ar: 'الكمية المجهَّزة لا تتجاوز المتعاقد عليها.',
+                         en: 'Supplied cannot exceed the contracted quantity.' },
+  boq_add_studies: { ar: 'مشاريع التصنيف (التصاميم والدراسات الفنية) لا تملك حساب كميات في هذه المرحلة.',
+                     en: 'Design & technical studies projects have no bill of quantities at this stage.' },
   boq_deleted:     { ar: 'حُذف البند وتوزيعه وتخصيصاته',    en: 'Item, distribution and links deleted' },
   boq_delete_q:    { ar: 'حذف هذا البند وتوزيعه وتخصيصاته المرتبطة؟',
                      en: 'Delete this item with its distribution and its links?' },
@@ -1054,7 +1091,6 @@ const STR = {
   boq_imp_row:     { ar: 'الصف',                            en: 'Row' },
   boq_imp_more:    { ar: 'وبقية الصفوف:',                   en: 'and further rows:' },
   /** No .xlsx parser in this build — see P-86. The message says what to do. */
-  boq_imp_xlsx:    { ar: 'قراءة ملفات Excel (.xlsx) غير متاحة في هذه النسخة. احفظ الورقة بصيغة CSV من Excel («حفظ باسم» ← CSV UTF-8) ثم أعد الرفع.', en: 'Reading .xlsx workbooks is not available in this build. Save the sheet as CSV from Excel (Save As → CSV UTF-8) and upload again.' },
   boq_imp_empty:   { ar: 'الملف لا يحتوي على صف عناوين وصف بيانات واحد على الأقل.', en: 'The file needs a header row and at least one data row.' },
   boq_imp_unreadable:{ ar: 'تعذّرت قراءة الملف.',            en: 'The file could not be read.' },
   boq_imp_cols_t:  { ar: 'الأعمدة المطلوبة',                en: 'Columns required' },
@@ -1093,6 +1129,10 @@ const STR = {
   boq_imp_type_initial:{ ar: 'إصدار أول',                   en: 'First issue' },
   boq_imp_type_replace:{ ar: 'تحديث حالي',                  en: 'Update of current' },
   boq_imp_type_revision:{ ar: 'مراجعة تعاقدية',             en: 'Contractual revision' },
+  // المسار 3 step 7 — «اعتماد الإصدار الجديد».
+  boq_imp_approve: { ar: 'اعتماد الإصدار',                  en: 'Approve version' },
+  boq_imp_approved:{ ar: 'اعتُمد الإصدار وأصبح جدول الكميات النافذ', en: 'Version approved — it is now the live bill' },
+  boq_imp_approve_denied:{ ar: 'الاعتماد من صلاحيات إدارة المشاريع — بدّل الصفة للاطلاع على تلك الشاشة.', en: 'Approval is a project-management permission — switch capacity to see that view.' },
   /** Printed inside the dialog by الشكل 13, and enforced by EP-BOQ-10. */
   boq_imp_note:    { ar: 'يُقدَّم للاعتماد ولا يُستبدل الجدول السابق — يُحفَظ كإصدار.', en: 'Submitted for approval; the previous sheet is not replaced — it is kept as a version.' },
 

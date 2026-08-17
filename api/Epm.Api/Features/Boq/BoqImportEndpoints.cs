@@ -10,18 +10,22 @@ namespace Epm.Api.Features.Boq;
 /// المسار 3 · الشكل 13 — «استيراد حساب الكميات من ملف Excel عبر معالج متدرّج
 /// ينتهي بتقديم النسخة للاعتماد بوصفها إصدارًا جديدًا لا استبدالًا للقائم».
 ///
-/// TWO ENDPOINTS AND NO THIRD. The wizard's five steps are one question asked
-/// twice: «is this file acceptable, and what would it do?» (preview) and «record
-/// it» (submit). Reading the file is the client's — a spreadsheet is not
-/// business data until its columns are mapped, and المسار 3 makes «مطابقة
-/// الأعمدة» a user step.
+/// The wizard's five steps are one question asked twice: «is this file
+/// acceptable, and what would it do?» (preview) and «record it» (submit).
+/// Reading the file is the client's — a spreadsheet is not business data until
+/// its columns are mapped, and المسار 3 makes «مطابقة الأعمدة» a user step.
 ///
-/// ── NOTHING HERE TOUCHES THE BILL ────────────────────────────────────────
-/// `BoqItems` is not written, updated or deleted by either endpoint. Step 7
-/// («اعتماد الإصدار الجديد») and step 8 («تحديث أوزان البنود وقيمة العقد
-/// المرجعية») are what would move a version into the register, and neither has a
-/// screen yet. Until then a submission is inert by construction, which is what
-/// «لا يُمحى إصدار سابق» actually requires.
+/// ── SUBMITTING IS INERT; APPROVING IS NOT ────────────────────────────────
+/// EP-BOQ-09 and EP-BOQ-10 do not write `BoqItems`: a submitted version is a
+/// proposal, which is what «يُقدَّم للاعتماد ولا يُستبدل الجدول السابق» requires.
+/// EP-BOQ-13 is المسار 3 steps 7–8 — the approval that makes the sheet the
+/// contract's live bill. Even there, no previous VERSION is deleted; the header
+/// and rows of every submission stay in `BoqImportVersions`/`Items` for good,
+/// and it is the live lines that are replaced.
+///
+/// Step 8's «تحديث أوزان البنود» is not a write. BR-01 derives weights from the
+/// lines at projection time (01 §3), so replacing the lines updates the weights
+/// by construction.
 /// </summary>
 public static class BoqImportEndpoints
 {
@@ -153,6 +157,149 @@ public static class BoqImportEndpoints
             return Results.Ok(Dto(version));
         });
 
+        // [EP-BOQ-13] POST /api/projects/{projectId}/boq/{contractId}/import/versions/{no}/approve
+        // web: not wired yet — API only
+        // spec: المسار 3 steps 7–8 «اعتماد الإصدار الجديد» · «حفظ الإصدار وتحديث
+        //       أوزان البنود وقيمة العقد المرجعية» | rules: BR-01, D-14
+        // tables: BoqImportVersions · BoqItems · SupplyItemDetails (WRITTEN)
+        //
+        // ── THIS IS THE STEP THAT MOVES A VERSION INTO THE BILL ──────────
+        // Submission (EP-BOQ-10) is inert by construction; approval is where the
+        // register changes. The previous version is NOT deleted — its header and
+        // its rows stay in BoqImportVersions/Items, which is what «لا يُمحى
+        // إصدار سابق» means. What IS replaced is the LIVE bill: the approved
+        // sheet becomes the contract's lines.
+        //
+        // Weights are not written anywhere. BR-01 derives them from the lines at
+        // projection time (01 §3), so step 8's «تحديث أوزان البنود» happens by
+        // the lines changing — storing a weight would be the second answer that
+        // later disagrees with the first.
+        app.MapPost("/api/projects/{projectId}/boq/{contractId}/import/versions/{no:int}/approve", async (
+            EpmDb db, HttpContext ctx, string projectId, string contractId, int no) =>
+        {
+            // `mustDefine: false` — this route's capacity is the APPROVER's, not
+            // the submitter's, and it is checked immediately below.
+            var gate = await Gate(db, ctx, projectId, contractId, mustDefine: false);
+            if (gate.Refusal is { } refusal) return refusal;
+
+            // المسار 3 step 7 — separation of duties. The specialist who
+            // submitted the sheet may not approve it.
+            if (!gate.User.CanApproveBoqImport())
+                return Results.Json(new
+                {
+                    messageAr = "اعتماد إصدار جدول الكميات من صلاحيات إدارة المشاريع، لا المستخدم المختص الذي قدّمه.",
+                    messageEn = "Approving a BOQ version is a project-management permission, not the specialist who submitted it.",
+                }, statusCode: StatusCodes.Status403Forbidden);
+
+            var project = await db.Projects.AsNoTracking().FirstAsync(p => p.Id == projectId);
+
+            // D-14 — a bill can only be approved into a shape that exists.
+            if (!BoqKind.Accepts(project.Type))
+            {
+                var (ar, en) = BoqKind.Unsupported(project.Type);
+                return Results.BadRequest(new { messageAr = ar, messageEn = en });
+            }
+
+            var version = await db.BoqImportVersions
+                .FirstOrDefaultAsync(v => v.ContractId == contractId && v.No == no);
+            if (version is null)
+                return Results.NotFound(new
+                {
+                    message = $"الإصدار رقم {no} غير موجود في العقد «{contractId}».",
+                });
+
+            // ONLY A SUBMITTED VERSION CAN BE APPROVED. Approving an approved one
+            // would re-run the replacement against a bill that has since moved,
+            // silently discarding every manual line added after it.
+            if (version.State != "submitted")
+                return Results.Conflict(new
+                {
+                    messageAr = $"الإصدار رقم {no} حالته «{version.State}» ولا يمكن اعتماده.",
+                    messageEn = $"Version {no} is `{version.State}` and cannot be approved.",
+                });
+
+            var rows = await db.BoqImportVersionItems.AsNoTracking()
+                .Where(i => i.VersionId == version.Id).ToListAsync();
+
+            if (rows.Count == 0)
+                return Results.UnprocessableEntity(new
+                {
+                    messageAr = "الإصدار لا يحوي بنودًا.",
+                    messageEn = "The version carries no items.",
+                });
+
+            // ── the replacement ──────────────────────────────────────────
+            // A BANDED LINE BLOCKS THE WHOLE APPROVAL (02 §5). Its quantity and
+            // rate came from a priced decision of لجنة تثبيت الأسعار via an
+            // APPLIED change order; letting a spreadsheet overwrite that would
+            // discard a binding committee rate with no record. Refusing the
+            // sheet is the only honest answer — the change order is the way to
+            // move a banded line.
+            var existing = await db.BoqItems
+                .Where(i => i.ContractId == contractId).ToListAsync();
+            var existingIds = existing.Select(i => i.Id).ToList();
+
+            var bandedCodes = await db.BoqRateBands.AsNoTracking()
+                .Where(b => existingIds.Contains(b.BoqItemId))
+                .Join(db.BoqItems.AsNoTracking(), b => b.BoqItemId, i => i.Id, (_, i) => i.Code)
+                .Distinct().ToListAsync();
+
+            if (bandedCodes.Count > 0)
+                return Results.Conflict(new
+                {
+                    messageAr = "لا يمكن اعتماد الإصدار: بنود مُعاد تسعيرها بأمر تغييري مطبَّق "
+                                + $"({string.Join("، ", bandedCodes)}) لا تُستبدل من ملف.",
+                    messageEn = "Cannot approve: lines re-priced by an applied change order "
+                                + $"({string.Join(", ", bandedCodes)}) may not be replaced from a sheet.",
+                    codes = bandedCodes,
+                });
+
+            // The dependants of every line that is going away. No foreign keys,
+            // so nothing cascades — the rows have to be named (P-01).
+            db.BoqDistributions.RemoveRange(
+                db.BoqDistributions.Where(d => existingIds.Contains(d.BoqItemId)));
+            db.BoqActivityLinks.RemoveRange(
+                db.BoqActivityLinks.Where(l => existingIds.Contains(l.BoqItemId)));
+            db.SupplyItemDetails.RemoveRange(
+                db.SupplyItemDetails.Where(s => existingIds.Contains(s.BoqItemId)));
+            db.BoqItems.RemoveRange(existing);
+
+            db.BoqItems.AddRange(rows.Select(r => new Data.Entities.BoqItem
+            {
+                ContractId = contractId,
+                Code = r.Code,
+                // The sheet carries ONE description column. It lands in the
+                // Arabic field because Arabic is the primary label (06 preamble);
+                // the English one stays empty rather than holding a copy that
+                // would read as a translation nobody made.
+                DescriptionAr = r.Description,
+                DescriptionEn = "",
+                Unit = r.Unit,
+                Division = r.Division,
+                DivisionName = r.Division,
+                Source = "imported",
+                OriginalQty = r.Qty,
+                UnitRate = r.Rate,
+            }));
+
+            version.State = "approved";
+            // Attribution, not decoration: this is the record of who moved the
+            // contract's bill. The submitter's Actor* columns stay untouched.
+            version.ApproverId = gate.User.Id;
+            version.ApproverName = gate.User.NameAr;
+            version.ApproverRole = gate.User.RoleAr;
+            version.ApproverParty = gate.User.Party;
+            version.ApprovedAt = gate.Today;
+            await db.SaveChangesAsync();
+
+            // No SupplyItemDetails are written here even on a supply bill: an
+            // Excel sheet carries the shared columns only, so every imported
+            // supply line starts `pending` with nothing supplied or received,
+            // and the register fills that half in from an empty detail. The
+            // device facts arrive by editing the line or, later, by receipts.
+            return Results.Ok(Dto(version));
+        });
+
         // [EP-BOQ-11] GET /api/projects/{projectId}/boq/{contractId}/import/versions
         // web: boq/boq-import.api.ts versions() → boq.page.ts
         // spec: ملحق الشكل 13 | tables: BoqImportVersions
@@ -232,5 +379,7 @@ public static class BoqImportEndpoints
 
     private static BoqImportVersionDto Dto(Data.Entities.BoqImportVersion v) => new(
         v.No, v.State, v.SheetType, v.FileName, v.ItemCount, v.TotalAmount, v.PreviousAmount,
-        v.ActorName, v.ActorRole, v.ActorParty, v.At.ToString("yyyy-MM-dd"));
+        v.ActorName, v.ActorRole, v.ActorParty, v.At.ToString("yyyy-MM-dd"),
+        v.ApproverName, v.ApproverRole, v.ApproverParty,
+        v.ApprovedAt?.ToString("yyyy-MM-dd"));
 }

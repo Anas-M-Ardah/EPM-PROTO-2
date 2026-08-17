@@ -41,6 +41,14 @@ export class BoqImportApi {
       `${this.base(projectId, contractId)}/submit`, body);
   }
 
+  // [EP-BOQ-13] POST …/import/versions/{no}/approve → same file
+  // المسار 3 steps 7–8. This is the one call that MOVES the bill: the approved
+  // sheet becomes the contract's lines. Every previous version survives.
+  approve(projectId: string, contractId: string, no: number) {
+    return this.api.post<BoqImportVersionDto>(
+      `${this.base(projectId, contractId)}/versions/${no}/approve`, {});
+  }
+
   // [EP-BOQ-11] GET …/import/versions → same file
   versions(projectId: string, contractId: string) {
     return this.api.get<BoqImportVersionDto[]>(`${this.base(projectId, contractId)}/versions`);

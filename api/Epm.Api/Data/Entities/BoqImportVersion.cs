@@ -38,6 +38,16 @@ public class BoqImportVersion
     /// </summary>
     public string SheetType { get; set; } = "replace";
 
+    // ── who APPROVED it (المسار 3 step 7) ────────────────────────────────
+    // Separate from the submitter's Actor* columns above, and never
+    // overwriting them: «من قدّم» and «من اعتمد» are two different facts about
+    // one document, and this bill decides contract value. Null until approved.
+    public string ApproverId { get; set; } = "";
+    public string ApproverName { get; set; } = "";
+    public string ApproverRole { get; set; } = "";
+    public string ApproverParty { get; set; } = "";
+    public DateOnly? ApprovedAt { get; set; }
+
     /// <summary>Metadata only — no file is stored anywhere (CLAUDE.md §4).</summary>
     public string FileName { get; set; } = "";
     public long FileSizeBytes { get; set; }

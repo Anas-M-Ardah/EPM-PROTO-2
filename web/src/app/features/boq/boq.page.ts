@@ -10,6 +10,9 @@ import { BoqImportWizard } from './boq-import.wizard';
 import { BoqImportApi } from './boq-import.api';
 import { BoqImportVersionDto } from './boq-import.types';
 import { SectionComponent } from '../../shared/section.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
+import { PersonaService } from '../../core/persona';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -17,7 +20,7 @@ import * as fmt from '../../core/format';
 import { BoqApi } from './boq.api';
 import {
   BoqAllocation, BoqAllocationRow, BoqAssignmentResponse, BoqContractOption,
-  BoqDistributionResponse, BoqDivision, BoqRegisterResponse, BoqRow,
+  BoqDistributionResponse, BoqDivision, BoqItemCreate, BoqRegisterResponse, BoqRow,
 } from './boq.types';
 
 /** One row of the distribution drawer while it is being edited. */
@@ -76,7 +79,7 @@ interface ShareDraft {
   // edit, delete confirm) and is used from two places in the grid — grouped
   // under a division, and ungrouped. One template, one definition of a row.
   imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
-    SectionComponent, BoqImportWizard],
+    SectionComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './boq.page.html',
 })
@@ -88,6 +91,7 @@ export class BoqPage {
   lang = inject(LangService);
   lookups = inject(LookupsService);
   toast = inject(ToastService);
+  persona = inject(PersonaService);
   fmt = fmt;
 
   projectId = signal('');
@@ -127,6 +131,42 @@ export class BoqPage {
   /** The row whose overflow menu is open. One at a time, by code. */
   rowMenu = signal('');
 
+  // ── EP-BOQ-12 — «الإدخال اليدوي» (المسار 3 step 3ب) ───────────────────
+  /**
+   * A DOCKED Z8 RECORD PANE, not a modal — design/system-revamp
+   * boq-workspace.jsx:237 is explicit about why: "Adding or editing an item is a
+   * record edit, so it opens in the page's docked pane like every other record —
+   * not in a drawer over the grid, which hid the very rows the new item has to
+   * sit among." A first pass here used a modal and had exactly that fault.
+   *
+   * The code is NOT asked for. The branch renders it read-only as
+   * «يُولَّد تلقائياً» (:283) and EP-BOQ-12 generates it.
+   *
+   * «الكمية المنفذة» from the branch's form is NOT here. `BoqItem.ExecutedQty`
+   * is deliberately pruned: BR-04 derives execution from the linked activities,
+   * and «التنفيذ مشتق لا مُدخَل» (proposal §12-1) makes it un-typeable by rule.
+   * The branch is a clickable prototype with no schedule behind it.
+   */
+  addOpen = signal(false);
+  addDescriptionAr = signal('');
+  addDescriptionEn = signal('');
+  addUnit = signal('');
+  addQty = signal('');
+  addRate = signal('');
+  addDivision = signal('');
+  addDivisionName = signal('');
+  /** The sub-type half. Only sent when the bill's kind is `supply` (D-14). */
+  addManufacturer = signal('');
+  addCountry = signal('');
+  addModel = signal('');
+  addSerialFrom = signal('');
+  addSerialTo = signal('');
+  addSuppliedQty = signal('');
+  addReceivedQty = signal('');
+  addWarrantyMonths = signal('');
+  addNotes = signal('');
+  addError = signal('');
+
   // ── الشكل 12 — بطاقة البند ───────────────────────────────────────────
   /**
    * «لوحة تفاصيل البند بتبويبات» — the open item's code, or none. Component
@@ -147,8 +187,46 @@ export class BoqPage {
   pendingImport = computed(() =>
     this.importVersions().find(v => v.state === 'submitted') ?? null);
 
+  /**
+   * EP-BOQ-13 — المسار 3 step 7. Whether THIS capacity may approve.
+   *
+   * Mirrors `Personas.CanApproveBoqImport` so the bar shows the reason instead
+   * of a button that 403s. The server re-checks it and its answer is binding —
+   * a rule enforced only in the UI is not enforced (P-05).
+   *
+   * Separation of duties is the whole point: المستخدم المختص submits (step 6),
+   * إدارة المشاريع approves (step 7). Switch capacity to see the other view.
+   */
+  canApproveImport = computed(() =>
+    this.persona.current()?.party === 'دائرة المهندس المقيم'
+    || this.persona.current()?.party === 'مدير المشروع');
+
+  approving = signal(false);
+
+  approveImport(no: number) {
+    if (this.approving()) return;
+    this.approving.set(true);
+    this.importApi.approve(this.projectId(), this.effectiveContractId(), no).subscribe({
+      next: () => {
+        this.approving.set(false);
+        // The bill just changed — reload the register, the versions bar and the
+        // assignment view, which all read what this replaced.
+        this.loadImportVersions();
+        this.asn.set(null);
+        this.load();
+        this.toast.show(this.lang.t('boq_imp_approved'));
+      },
+      error: e => { this.approving.set(false); this.toast.show(this.message(e)); },
+    });
+  }
+
   loadImportVersions() {
-    const p = this.projectId(); const c = this.contractId();
+    // `effectiveContractId()`, NOT the route's `contractId()`. A project with
+    // one contract is never asked to choose (P-46), so the URL carries no
+    // contract and the route signal is empty — this returned early and the
+    // pending-version bar never appeared on exactly the projects most likely
+    // to have one. Every other call on this page already resolves it this way.
+    const p = this.projectId(); const c = this.effectiveContractId();
     if (!p || !c) return;
     this.importApi.versions(p, c).subscribe({
       next: v => this.importVersions.set(v),
@@ -597,6 +675,172 @@ export class BoqPage {
         this.toast.show(this.lang.t('boq_saved'));
       },
       error: e => { this.saving.set(false); this.toast.show(this.message(e)); },
+    });
+  }
+
+  // ── EP-BOQ-12 — «الإدخال اليدوي» ──────────────────────────────────────
+
+  /** The bill's shape (D-14). `works` until the register arrives. */
+  kind = computed(() => this.reg()?.kind ?? 'works');
+  isSupplyBill = computed(() => this.kind() === 'supply');
+
+  /**
+   * «الوحدة» as a select — design/system-revamp boq-workspace.jsx:227.
+   * The units ALREADY IN USE in this bill first, then the standard list, so the
+   * common case is one click and an unusual unit is still reachable. A select
+   * that cannot represent a value the bill already holds reads as empty, which
+   * is the fault the branch's own comment calls out.
+   */
+  units = computed(() => {
+    const std = this.lang.isAr()
+      ? ['م³', 'م²', 'م.ط', 'عدد', 'كغم', 'طن', 'نقطة', 'مقطوعية']
+      : ['m³', 'm²', 'l.m', 'no.', 'kg', 'ton', 'pt', 'L.S.'];
+    const out: string[] = [];
+    for (const r of this.reg()?.rows ?? []) {
+      if (r.unit && r.unit !== '—' && !out.includes(r.unit)) out.push(r.unit);
+    }
+    for (const u of std) if (!out.includes(u)) out.push(u);
+    return out;
+  });
+
+  /** The unit list as <epm-select> takes it: options in, code out. */
+  unitSelectOptions = computed<SelectOption[]>(() =>
+    this.units().map(u => ({ code: u, label: u })));
+
+  /** «الباب» as a select over the bill's own divisions, plus «+ باب جديد…». */
+  divisionOptions = computed(() => this.reg()?.divisions ?? []);
+
+  /**
+   * «+ باب جديد…» is the last OPTION rather than a separate button: it is the
+   * same question — which division does this line belong to — and the branch
+   * puts it in the list for that reason (boq-workspace.jsx:288).
+   * The empty choice is <epm-select>'s own placeholder, so it is not repeated.
+   */
+  divisionSelectOptions = computed<SelectOption[]>(() => [
+    ...this.divisionOptions().map(d => ({ code: d.key, label: d.name })),
+    { code: '__new', label: this.lang.t('boq_add_division_new') },
+  ]);
+  /** True while «+ باب جديد…» is picked, which reveals the name field. */
+  addNewDivision = computed(() => this.addDivision() === '__new');
+
+  openAdd() {
+    this.editing.set('');
+    this.deleting.set('');
+    this.addError.set('');
+    this.addDescriptionAr.set('');
+    this.addDescriptionEn.set('');
+    this.addUnit.set('');
+    this.addQty.set('');
+    this.addRate.set('');
+    this.addDivision.set('');
+    this.addDivisionName.set('');
+    this.addManufacturer.set('');
+    this.addCountry.set('');
+    this.addModel.set('');
+    this.addSerialFrom.set('');
+    this.addSerialTo.set('');
+    this.addSuppliedQty.set('');
+    this.addReceivedQty.set('');
+    this.addWarrantyMonths.set('');
+    this.addNotes.set('');
+    this.addOpen.set(true);
+  }
+
+  closeAdd() { this.addOpen.set(false); }
+
+  /** Same preview as the inline edit: what the user typed, before it is sent. */
+  addPreviewAmount = computed(() =>
+    (parseFloat(this.addQty()) || 0) * (parseFloat(this.addRate()) || 0));
+
+  /**
+   * The client-side gate. It mirrors EP-BOQ-12's checks so the button explains
+   * itself before a round trip — the server re-checks every one of them, and
+   * its answer is the binding one.
+   *
+   * The two supply comparisons are `05 §6`'s rule: prevent the invalid entry
+   * rather than flagging it after the save fails.
+   */
+  addValid = computed(() => {
+    const base = this.addDescriptionAr().trim().length > 0
+      && this.addUnit().trim().length > 0
+      && (parseFloat(this.addQty()) || 0) > 0
+      && (parseFloat(this.addRate()) || 0) > 0
+      // «+ باب جديد…» is not a division until it is named.
+      && (!this.addNewDivision() || this.addDivisionName().trim().length > 0);
+    if (!base) return false;
+    if (!this.isSupplyBill()) return true;
+
+    const qty = parseFloat(this.addQty()) || 0;
+    const supplied = parseFloat(this.addSuppliedQty()) || 0;
+    const received = parseFloat(this.addReceivedQty()) || 0;
+    return supplied >= 0 && received >= 0 && received <= supplied && supplied <= qty;
+  });
+
+  /** Why the button is disabled, in words, when the numbers contradict. */
+  addHint = computed(() => {
+    if (!this.isSupplyBill()) return '';
+    const qty = parseFloat(this.addQty()) || 0;
+    const supplied = parseFloat(this.addSuppliedQty()) || 0;
+    const received = parseFloat(this.addReceivedQty()) || 0;
+    if (received > supplied) return this.lang.t('boq_add_err_received');
+    if (supplied > qty) return this.lang.t('boq_add_err_supplied');
+    return '';
+  });
+
+  submitAdd() {
+    if (!this.addValid() || this.saving()) return;
+    this.saving.set(true);
+    this.addError.set('');
+
+    // A NEW division carries its typed name as both key and label; an existing
+    // one is picked by key and its label comes from the bill it already has.
+    const newDiv = this.addNewDivision();
+    const divKey = newDiv ? this.addDivisionName().trim() : this.addDivision().trim();
+    const divName = newDiv
+      ? this.addDivisionName().trim()
+      : (this.divisionOptions().find(d => d.key === divKey)?.name ?? divKey);
+
+    const body: BoqItemCreate = {
+      // No `code` — EP-BOQ-12 generates it («يُولَّد تلقائياً»).
+      code: '',
+      descriptionAr: this.addDescriptionAr().trim(),
+      descriptionEn: this.addDescriptionEn().trim(),
+      unit: this.addUnit().trim(),
+      qty: parseFloat(this.addQty()),
+      rate: parseFloat(this.addRate()),
+      division: divKey,
+      divisionName: divName,
+    };
+
+    // SENT ONLY ON A SUPPLY BILL. EP-BOQ-12 refuses a supply payload on a works
+    // contract rather than dropping it, so this is not an optional extra.
+    if (this.isSupplyBill()) {
+      body.supply = {
+        manufacturer: this.addManufacturer().trim(),
+        country: this.addCountry().trim(),
+        model: this.addModel().trim(),
+        serialFrom: this.addSerialFrom().trim(),
+        serialTo: this.addSerialTo().trim(),
+        suppliedQty: parseFloat(this.addSuppliedQty()) || 0,
+        receivedQty: parseFloat(this.addReceivedQty()) || 0,
+        warrantyMonths: parseInt(this.addWarrantyMonths(), 10) || 0,
+        notes: this.addNotes().trim(),
+      };
+    }
+
+    this.api.addItem(this.projectId(), this.effectiveContractId(), body).subscribe({
+      next: r => {
+        this.reg.set(r);
+        this.saving.set(false);
+        this.addOpen.set(false);
+        // The allocation view reads the same amounts, so it is now stale.
+        this.asn.set(null);
+        this.toast.show(this.lang.t('boq_added'));
+      },
+      // Kept IN the modal rather than thrown at a toast: a duplicate code is
+      // fixed in the field that caused it, and closing the form would lose
+      // everything else the user typed.
+      error: e => { this.saving.set(false); this.addError.set(this.message(e)); },
     });
   }
 

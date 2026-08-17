@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
 import {
   BoqAllocationSave, BoqAssignmentResponse, BoqDistributionResponse, BoqDistributionSave,
-  BoqGateResponse, BoqItemEdit, BoqRegisterResponse,
+  BoqGateResponse, BoqItemCreate, BoqItemEdit, BoqRegisterResponse,
 } from './boq.types';
 
 /**
@@ -44,6 +44,13 @@ export class BoqApi {
   // [EP-BOQ-03] PUT /api/projects/{id}/boq/{contractId}/items/{code} → same file
   saveItem(projectId: string, contractId: string, code: string, body: BoqItemEdit) {
     return this.api.put<BoqRegisterResponse>(this.item(projectId, contractId, code), body);
+  }
+
+  // [EP-BOQ-12] POST /api/projects/{id}/boq/{contractId}/items → same file
+  // «الإدخال اليدوي» — المسار 3 step 3ب. Returns the recomputed register for the
+  // same reason the edit does: a new line moves every weight in the contract.
+  addItem(projectId: string, contractId: string, body: BoqItemCreate) {
+    return this.api.post<BoqRegisterResponse>(`${this.base(projectId, contractId)}/items`, body);
   }
 
   // [EP-BOQ-04] DELETE /api/projects/{id}/boq/{contractId}/items/{code} → same file

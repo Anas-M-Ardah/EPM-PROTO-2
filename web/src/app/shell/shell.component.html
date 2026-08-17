@@ -100,19 +100,15 @@
           </a>
         }
 
-        <!-- The way back out of a workspace, in the rail rather than only in
-             the switcher. The reference's switcher carries «العودة للتطبيق»
-             (desktop-shell.jsx:204) for the same reason: entering a scope has
-             to have a visible exit. -->
-        @if (currentWs()) {
-          <button type="button" class="d-nav-item epm-nav-exit" (click)="setWorkspace(null)"
-                  [title]="collapsed() ? lang.t('ws_back_to_ministry') : ''">
-            <span class="d-nav-ico">
-              <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="20" />
-            </span>
-            <span class="d-nav-label">{{ lang.t('ws_back_to_ministry') }}</span>
-          </button>
-        }
+        <!-- REMOVED — «العودة إلى المركز» as a seventh rail item.
+             It was ours, not the reference's: inside a workspace the reference
+             rail is exactly the six modules of wsNav (desktop-shell.jsx:172)
+             and the way out is the switcher's first row, «المساحة الرئيسية»,
+             which this shell already renders (line ~314) and which reads as
+             the same control that got you in. Verified against the deployed
+             build's DOM at both scopes. The exit is also still in the
+             breadcrumb and in the command palette, so removing the duplicate
+             costs no route out. -->
       </nav>
 
       <div class="d-side-foot">
