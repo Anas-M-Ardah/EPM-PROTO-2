@@ -356,10 +356,17 @@ public static class OverviewEndpoints
                 seriesUpdates, seriesContracts, curveFrom, asOf, PlannedAt, physical,
                 _ => string.Empty);          // the CLIENT labels the periods
 
-            var progressCurve = months
-                .Select(r => new OverviewCurvePeriod(
-                    r.At.ToString("yyyy-MM-dd"), r.PlanCum, r.ActCum, r.PlanPeriod, r.ActPeriod))
-                .ToList();
+            // `Drawable` is the same test SCR-E1 and SCR-E8 apply: two points
+            // at least, and something on them. A one-point flat curve is a dot
+            // on an axis, and the client's answer to a chart with no data is to
+            // hide it (P-144) — so an undrawable series comes back empty and the
+            // panel does not render.
+            var progressCurve = ProgressSeries.Drawable(months)
+                ? months
+                    .Select(r => new OverviewCurvePeriod(
+                        r.At.ToString("yyyy-MM-dd"), r.PlanCum, r.ActCum, r.PlanPeriod, r.ActPeriod))
+                    .ToList()
+                : [];
 
             // The cost curve, over the SAME month ends so the two rows read
             // against each other. Planned spend is BR-11's PV as a share of the
@@ -374,7 +381,7 @@ public static class OverviewEndpoints
 
             var firstPayment = paidRows.Count == 0 ? (DateOnly?)null : paidRows.Min(r => r.Date);
 
-            var costCurve = new List<OverviewCurvePeriod>(months.Count);
+            var costRows = new List<ProgressSeries.Period>(months.Count);
             {
                 decimal prevPlan = 0m, prevAct = 0m;
                 foreach (var m in months)
@@ -388,8 +395,8 @@ public static class OverviewEndpoints
                         act = Math.Round(upto / effectiveTotal * 100m, 2, MidpointRounding.AwayFromZero);
                     }
 
-                    costCurve.Add(new OverviewCurvePeriod(
-                        m.At.ToString("yyyy-MM-dd"), plan, act,
+                    costRows.Add(new ProgressSeries.Period(
+                        string.Empty, m.At, plan, act,
                         Math.Round(plan - prevPlan, 2, MidpointRounding.AwayFromZero),
                         act is null ? 0m : Math.Round(Math.Max(0m, act.Value - prevAct), 2, MidpointRounding.AwayFromZero)));
 
@@ -397,6 +404,13 @@ public static class OverviewEndpoints
                     if (act is not null) prevAct = act.Value;
                 }
             }
+
+            var costCurve = ProgressSeries.Drawable(costRows)
+                ? costRows
+                    .Select(r => new OverviewCurvePeriod(
+                        r.At.ToString("yyyy-MM-dd"), r.PlanCum, r.ActCum, r.PlanPeriod, r.ActPeriod))
+                    .ToList()
+                : [];
 
             var unavailable = new List<OverviewUnavailable>
             {

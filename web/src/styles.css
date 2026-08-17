@@ -551,10 +551,14 @@ epm-change-orders-page { display: contents; }
 }
 
 /* ── BREADCRUMBS ──────────────────────────────────────────────────────────
-   Z2 crumbs that name a destination are links now. `.d-crumbs a` already
-   styles them; this only adds the underline-on-hover that says so. */
+   Z2 crumbs that name a destination are links. `.d-crumbs a` already styles
+   them; these only remove the default underline. */
+/* The prototype's crumbs answer a hover with COLOUR and nothing else
+   (desktop.css:208, `.d-crumbs a:hover { color: var(--primary) }`). The
+   underline here was ours and it is the only place in the app where a link
+   grew a rule on hover — P-149. */
 .epm-crumb-link { text-decoration: none; }
-.epm-crumb-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.epm-crumb-link:hover { color: var(--primary); }
 
 /* The topbar scope crumb: "الوزارة › [UB] جامعة بغداد", both walkable. */
 .epm-crumb-btn {
@@ -567,7 +571,7 @@ epm-change-orders-page { display: contents; }
   text-decoration: none; min-width: 0;
 }
 .epm-crumb-ws b { color: var(--topbar-fg); }
-.epm-crumb-ws:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.epm-crumb-ws:hover b { color: var(--primary); }
 .epm-crumb-emblem {
   display: inline-grid; place-items: center; min-inline-size: 32px;
   padding: 2px var(--space-6, 6px); border-radius: var(--r-sm);
@@ -713,35 +717,6 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    with the border. */
 .d-form-input.epm-invalid { border-color: var(--error); }
 .epm-ws-f > small.epm-f-err { color: var(--error); }
-
-/* ── «العرض بصفة» in the topbar (epm-role-switch) ─────────────────────────
-   A global scope control, beside the workspace crumb it belongs with. Visible
-   rather than menu-deep — the demonstrator changes capacity constantly — but a
-   DROPDOWN, not a chip row: eight capacities of long Arabic role names would
-   wrap the command bar onto a second line.
-
-   The topbar is the charcoal plane and carries its own foreground tokens, so
-   this uses `--topbar-fg*` and never the canvas ones (05 §7). */
-.epm-roleswitch {
-  display: flex; align-items: center; gap: var(--space-6, 6px);
-  flex: none; min-width: 0;
-}
-.epm-roleswitch > .lbl {
-  font-size: 11.5px; color: var(--topbar-fg-dim); white-space: nowrap;
-}
-.epm-role-select {
-  max-width: 220px;
-  padding: 5px var(--space-8, 8px);
-  border: 1px solid var(--topbar-border); border-radius: var(--r-sm, 6px);
-  background: transparent; color: var(--topbar-fg);
-  font-family: inherit; font-size: 12px; line-height: 1.4;
-  cursor: pointer;
-}
-.epm-role-select:hover { border-color: var(--topbar-fg-dim); }
-/* The menu itself is painted by the OS on the light plane, so its options need
-   canvas colours — without this they inherit the topbar's light-on-dark and
-   render white on white when the menu opens. */
-.epm-role-select option { background: var(--surface); color: var(--on-surface); }
 
 /* ══ <epm-select> — THE APP'S ONE DROPDOWN ════════════════════════════════
    The trigger IS `.d-form-input` (same height, border, radius, focus ring), so
@@ -1096,3 +1071,28 @@ button.d-file > .fm { align-items: flex-start; }
    legend row. Same reasoning as .epm-stat-na .epm-na: a figure that has no
    input is not an adverse state, so it is quiet, never --error (05 §7.9). */
 .epm-na { color: var(--on-surface-variant); }
+
+/* A dashboard row whose CHART has no data: the chart is hidden (P-144), so the
+   side rail becomes the row. Auto-fit rather than a pinned column count, which
+   is the rule 05 §8 makes binding for every summary band in the app. */
+.d-dash.solo { grid-template-columns: 1fr; }
+/* SCR-W1's verdict row, same case: the chart is hidden, so the verdicts beside
+   it become the row. */
+.d-verdict.solo { grid-template-columns: 1fr; }
+/* …and its rows stop being two equal halves. `.verdicts` splits the CHART's
+   height between the big figure and the index row; with the chart hidden there
+   is no height to split, and reserving it anyway leaves a tall empty band
+   around one small card. Content height, not a share of something that is no
+   longer there. */
+.d-verdict.solo > .verdicts { grid-template-rows: auto; align-content: start; }
+/* …and its index row stops being a pinned three: with one or two cells left,
+   a repeat(3, 1fr) grid leaves the survivor sitting in a third of a full-width
+   row with nothing beside it. Auto-fit is the rule 05 §8 makes binding for
+   every summary band in the app, and it applies here for the same reason. */
+.d-verdict.solo .vdrow { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.d-dash.solo > .d-dash-side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-16, 16px);
+  align-items: stretch;
+}

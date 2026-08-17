@@ -7,9 +7,17 @@ import { WorkspaceOverviewResponse, CreateWorkspaceRequest } from './workspaces.
 export class WorkspacesApi {
   private api = inject(Api);
 
-  // [EP-WSP-01] GET /api/workspaces/{code}/overview → api/Features/Workspaces/WorkspacesEndpoints.cs
-  overview(code: string) {
-    return this.api.get<WorkspaceOverviewResponse>(`/api/workspaces/${encodeURIComponent(code)}/overview`);
+  /**
+   * [EP-WSP-01] GET /api/workspaces/{code}/overview → api/Features/Workspaces/WorkspacesEndpoints.cs
+   *
+   * `status` and `branch` are the toolbar's two filters and they go to the
+   * SERVER, which re-derives the whole band over what survives them. A headline
+   * computed on the whole workspace above a table filtered to part of it would
+   * be two workspaces on one screen.
+   */
+  overview(code: string, filters: { status?: string; branch?: string } = {}) {
+    return this.api.get<WorkspaceOverviewResponse>(
+      `/api/workspaces/${encodeURIComponent(code)}/overview`, filters);
   }
 
   // [EP-WSP-02] POST /api/workspaces → api/Features/Workspaces/WorkspacesEndpoints.cs

@@ -11,6 +11,12 @@
   payment dates, as of the project data date (D-06). Same chart; the numbers
   can be checked.
 
+  ── A CHART OR CARD WITH NO DATA IS HIDDEN (client decision, P-144) ──────
+  Not shown with an empty state, not shown as "unavailable + reason". When a
+  chart goes the row collapses to `.solo` and the tiles become the row; when
+  every tile in a row goes too, the row does not render at all. The reasons
+  are still on the response (`unavailable[]`) for anyone reading the API.
+
   ── NOTHING IS COMPUTED HERE ─────────────────────────────────────────────
   Every figure arrives derived. This template formats, isolates with <bdi>
   (05 §5.2) and lays out.
@@ -77,10 +83,14 @@
     }
   </div>
 
+  <!--
+    A SCREEN-LEVEL empty state is not a hidden panel: there is nowhere else to
+    look and there has to be a way out. Two different emptinesses, two
+    different messages, two different buttons (04 §9).
+  -->
   @if (d.projectCount === 0) {
     <div class="d-empty">
       <span class="d-empty-ico"><epm-icon name="dashboard" [size]="30" /></span>
-      <!-- Two different emptinesses, two different messages (04 §9). -->
       <b>{{ lang.t(filtered() ? 'prt_filtered_t' : 'empty_portfolio_t') }}</b>
       <span>{{ lang.t(filtered() ? 'prt_filtered_b' : 'empty_portfolio_b') }}</span>
       @if (filtered()) {
@@ -90,132 +100,115 @@
   } @else {
 
     <!-- ══ ROW 1 — the progress curve and what it means ═══════════════════ -->
-    <div class="d-dash">
-      <div class="d-dash-main">
-        <div class="d-panel">
-          <div class="d-panel-head">
-            <b>{{ lang.t('prt_curve_progress') }}</b>
-            <span class="d-cell-sub">
-              {{ lang.t('prt_planned') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi> ·
-              {{ lang.t('prt_actual') }} <bdi>{{ fmt.pct(d.physical, 0) }}</bdi>
-            </span>
-            @if (physVariance() !== null) {
-              <span class="d-pill" [class]="'d-pill ' + variancePill(physVariance())">
-                {{ lang.t(physVariance()! < 0 ? 'prt_behind' : 'prt_ahead') }}
-                <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
-              </span>
-            }
+    @if (showProgressRow()) {
+      <div class="d-dash" [class.solo]="progressCurve().length === 0">
+        @if (progressCurve().length > 0) {
+          <div class="d-dash-main">
+            <div class="d-panel">
+              <div class="d-panel-head">
+                <b>{{ lang.t('prt_curve_progress') }}</b>
+                <span class="d-cell-sub">
+                  {{ lang.t('prt_planned') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi> ·
+                  {{ lang.t('prt_actual') }} <bdi>{{ fmt.pct(d.physical, 0) }}</bdi>
+                </span>
+                @if (physVariance() !== null) {
+                  <span class="d-pill" [class]="'d-pill ' + variancePill(physVariance())">
+                    {{ lang.t(physVariance()! < 0 ? 'prt_behind' : 'prt_ahead') }}
+                    <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
+                  </span>
+                }
+              </div>
+              <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
+                          [caption]="lang.t('prt_curve_progress')" />
+            </div>
           </div>
-          @if (progressCurve().length > 0) {
-            <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
-                        [caption]="lang.t('prt_curve_progress')" />
-          } @else {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="trending_up" [size]="30" /></span>
-              <b>{{ lang.t('prt_no_curve_t') }}</b>
-              <span>{{ lang.t('prt_no_curve_b') }}</span>
+        }
+        <aside class="d-dash-side">
+          <!-- Each tile: the figure, its comparison, its threshold. Never a bare
+               number — DDashboard's own rule, and the reason it has a foot. -->
+          @if (d.physical !== null) {
+            <div class="d-stat">
+              <span class="d-stat-lbl">{{ lang.t('kpi_physical') }}</span>
+              <span class="d-stat-val"><bdi>{{ fmt.pct(d.physical, 0) }}</bdi></span>
+              <span class="d-stat-bar"><i [style.width.%]="d.physical"></i></span>
+              @if (physVariance() !== null) {
+                <span class="d-stat-delta" [class]="'d-stat-delta ' + deltaDir(physVariance())">
+                  {{ physVariance()! < 0 ? '▼' : '▲' }} <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
+                </span>
+              }
+              <span class="d-stat-foot">
+                {{ lang.t('prt_planned_to_date') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi>
+              </span>
             </div>
           }
-        </div>
-      </div>
-      <aside class="d-dash-side">
-        <!-- Each tile: the figure, its comparison, its threshold. Never a bare
-             number — DDashboard's own rule, and the reason it has a foot. -->
-        <div class="d-stat" [class.epm-stat-na]="d.physical === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_physical') }}</span>
-          @if (d.physical !== null) {
-            <span class="d-stat-val"><bdi>{{ fmt.pct(d.physical, 0) }}</bdi></span>
-            <span class="d-stat-bar"><i [style.width.%]="d.physical"></i></span>
-            @if (physVariance() !== null) {
-              <span class="d-stat-delta" [class]="'d-stat-delta ' + deltaDir(physVariance())">
-                {{ physVariance()! < 0 ? '▼' : '▲' }} <bdi>{{ absVariance() }}</bdi> {{ lang.t('prt_points') }}
-              </span>
-            }
-            <span class="d-stat-foot">
-              {{ lang.t('prt_planned_to_date') }} <bdi>{{ fmt.pct(d.planned, 0) }}</bdi>
-            </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('physical') }}</span>
-          }
-        </div>
 
-        <div class="d-stat" [class.epm-stat-na]="d.spi === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_spi') }}</span>
           @if (d.spi !== null) {
-            <span class="d-stat-val"><bdi>{{ fmt.index(d.spi) }}</bdi></span>
-            <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.spi < 1 ? 'down' : 'up')">
-              {{ d.spi < 1 ? '▼' : '▲' }} {{ lang.t(d.spi < 1 ? 'prt_below_one' : 'prt_at_target') }}
-            </span>
-            <span class="d-stat-foot">
-              {{ lang.t('prt_threshold') }} <bdi>{{ fmt.index(d.acceptableIndex) }}</bdi>
-            </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('spi') }}</span>
+            <div class="d-stat">
+              <span class="d-stat-lbl">{{ lang.t('kpi_spi') }}</span>
+              <span class="d-stat-val"><bdi>{{ fmt.index(d.spi) }}</bdi></span>
+              <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.spi < 1 ? 'down' : 'up')">
+                {{ d.spi < 1 ? '▼' : '▲' }} {{ lang.t(d.spi < 1 ? 'prt_below_one' : 'prt_at_target') }}
+              </span>
+              <span class="d-stat-foot">
+                {{ lang.t('prt_threshold') }} <bdi>{{ fmt.index(d.acceptableIndex) }}</bdi>
+              </span>
+            </div>
           }
-        </div>
 
-        <div class="d-stat" [class.epm-stat-na]="d.financial === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_financial') }}</span>
           @if (d.financial !== null) {
-            <span class="d-stat-val"><bdi>{{ fmt.pct(d.financial, 0) }}</bdi></span>
-            <span class="d-stat-bar"><i [style.width.%]="d.financial"></i></span>
-            @if (burnVariance() !== null) {
-              <!-- Spend running ahead of work is the WORSE direction here, so
-                   the arrow and the tone are deliberately inverted against the
-                   progress tile above. -->
-              <span class="d-stat-delta" [class]="'d-stat-delta ' + (burnVariance()! > 0 ? 'down' : 'up')">
-                {{ burnVariance()! > 0 ? '▲' : '▼' }} <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_vs_physical') }}
+            <div class="d-stat">
+              <span class="d-stat-lbl">{{ lang.t('kpi_financial') }}</span>
+              <span class="d-stat-val"><bdi>{{ fmt.pct(d.financial, 0) }}</bdi></span>
+              <span class="d-stat-bar"><i [style.width.%]="d.financial"></i></span>
+              @if (burnVariance() !== null) {
+                <!-- Spend running ahead of work is the WORSE direction here, so
+                     the arrow and the tone are deliberately inverted against the
+                     progress tile above. -->
+                <span class="d-stat-delta" [class]="'d-stat-delta ' + (burnVariance()! > 0 ? 'down' : 'up')">
+                  {{ burnVariance()! > 0 ? '▲' : '▼' }} <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_vs_physical') }}
+                </span>
+              }
+              <span class="d-stat-foot">
+                <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi> {{ lang.t('prt_spent') }}
               </span>
-            }
-            <span class="d-stat-foot">
-              <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi> {{ lang.t('prt_spent') }}
-            </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('financial') }}</span>
+            </div>
           }
-        </div>
-      </aside>
-    </div>
+        </aside>
+      </div>
+    }
 
-    <!-- ══ ROW 2 — the money, and the one-glance verdict ══════════════════ -->
-    <div class="d-dash">
-      <div class="d-dash-main">
-        <div class="d-panel">
-          <div class="d-panel-head">
-            <b>{{ lang.t('prt_curve_cost') }}</b>
-            <span class="d-cell-sub">
-              <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
-              {{ lang.t('ovw_of') }}
-              <bdi class="mono">{{ fmt.money(d.effectiveValue) }}</bdi>
-            </span>
-            @if (burnVariance() !== null) {
-              <span class="d-pill" [class]="'d-pill ' + burnPill()">
-                {{ burnLabel() }}
-                @if (burnVariance() !== 0) {
-                  <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_points') }}
-                }
+    <!-- ══ ROW 2 — the money, and the one-glance verdict ══════════════════
+         «المؤشر التنفيذي» always has data when there are projects, so this row
+         always renders; only the chart and the CPI tile can drop out. -->
+    <div class="d-dash" [class.solo]="costCurve().length === 0">
+      @if (costCurve().length > 0) {
+        <div class="d-dash-main">
+          <div class="d-panel">
+            <div class="d-panel-head">
+              <b>{{ lang.t('prt_curve_cost') }}</b>
+              <span class="d-cell-sub">
+                <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
+                {{ lang.t('ovw_of') }}
+                <bdi class="mono">{{ fmt.money(d.effectiveValue) }}</bdi>
               </span>
-            }
-          </div>
-          @if (costCurve().length > 0) {
+              @if (burnVariance() !== null) {
+                <span class="d-pill" [class]="'d-pill ' + burnPill()">
+                  {{ burnLabel() }}
+                  @if (burnVariance() !== 0) {
+                    <bdi>{{ absBurn() }}</bdi> {{ lang.t('prt_points') }}
+                  }
+                </span>
+              }
+            </div>
             <epm-scurve [data]="costCurve()" color="var(--success)"
                         [caption]="lang.t('prt_curve_cost')" />
-          } @else {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
-              <b>{{ lang.t('prt_no_curve_t') }}</b>
-              <span>{{ lang.t('prt_no_cost_curve_b') }}</span>
-            </div>
-          }
+          </div>
         </div>
-      </div>
+      }
       <aside class="d-dash-side">
-        <div class="d-stat" [class.epm-stat-na]="d.cpi === null">
-          <span class="d-stat-lbl">{{ lang.t('kpi_cpi') }}</span>
-          @if (d.cpi !== null) {
+        @if (d.cpi !== null) {
+          <div class="d-stat">
+            <span class="d-stat-lbl">{{ lang.t('kpi_cpi') }}</span>
             <span class="d-stat-val"><bdi>{{ fmt.index(d.cpi) }}</bdi></span>
             <span class="d-stat-delta" [class]="'d-stat-delta ' + (d.cpi < 1 ? 'down' : 'up')">
               {{ d.cpi < 1 ? '▼' : '▲' }} {{ lang.t(d.cpi < 1 ? 'prt_below_one' : 'prt_above_one') }}
@@ -225,15 +218,11 @@
               EV <bdi class="mono">{{ fmt.money(d.earnedValue) }}</bdi> /
               AC <bdi class="mono">{{ fmt.money(d.actualCost) }}</bdi>
             </span>
-          } @else {
-            <span class="d-stat-val"><span class="epm-na">{{ lang.t('unavailable') }}</span></span>
-            <span class="d-stat-foot">{{ reason('cpi') }}</span>
-          }
-        </div>
+          </div>
+        }
 
-        <!-- «المؤشر التنفيذي» — Domain/ExecutiveSignal. All three bands are
-             always drawn, even at zero: a band that vanishes when it empties
-             reads as a changed scale rather than as a count of none. -->
+        <!-- All three bands are drawn even at zero: a band that vanishes when
+             it empties reads as a changed scale rather than a count of none. -->
         <div class="d-panel sig">
           <div class="d-panel-head">
             <b>{{ lang.t('prt_signal') }}</b>
@@ -255,7 +244,10 @@
       </aside>
     </div>
 
-    <!-- ══ WATCHLIST — every tile above drills through to these records ═══ -->
+    <!-- ══ WATCHLIST — every tile above drills through to these records ═══
+         KEPT when empty: «لا مشاريع خارج المسار» is an ANSWER, not an absence.
+         Hiding it would make a clean portfolio indistinguishable from one whose
+         watchlist was never built. -->
     <div class="d-tablewrap" style="margin-bottom:16px">
       <div class="d-toolbar">
         <b style="font-size:14px">{{ lang.t('prt_watchlist') }}</b>
@@ -276,7 +268,7 @@
             <th>{{ lang.t('chg_col_progress') }}</th>
             <th class="r">{{ lang.t('prt_col_variance') }}</th>
             <th class="r">{{ lang.t('col_value') }}</th>
-            <th>{{ lang.t('prt_col_expected') }}</th>
+            <th class="r">{{ lang.t('prt_col_expected') }}</th>
           </tr></thead>
           <tbody>
             @for (r of d.watchlist; track r.projectId) {
@@ -291,13 +283,15 @@
                 <td class="d-cell-sub">{{ wsName(r) }}</td>
                 <td><epm-status-pill kind="project-status" [code]="r.status" /></td>
                 <td>
+                  <!-- A CELL cannot be hidden without shifting the row, so an
+                       absent figure here is a dash. -->
                   @if (r.physical !== null) {
                     <span class="d-mini-bar">
                       <span class="t"><span [style.width.%]="r.physical"></span></span>
                       <span class="pc"><bdi>{{ fmt.pct(r.physical, 0) }}</bdi></span>
                     </span>
                   } @else {
-                    <span class="epm-na">{{ lang.t('unavailable') }}</span>
+                    <span class="epm-na">—</span>
                   }
                 </td>
                 <!-- The variance is a magnitude with a direction, so it carries
@@ -324,7 +318,7 @@
       }
     </div>
 
-    <!-- ══ BREAKDOWN — paired panels, equal rows ══════════════════════════ -->
+    <!-- ══ BREAKDOWN — paired panels, equal rows. Each hides on its own. ══ -->
     <div class="d-grid c2 eqrows">
       <!-- 05 §1 — the ONE chart where status colour encodes data, and the
            legend beside it is what stops it being colour-only (05 §7.6). -->
@@ -349,52 +343,50 @@
         </div>
       </div>
 
-      <div class="d-panel">
-        <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
-        <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
-      </div>
-
-      <div class="d-panel">
-        <div class="d-panel-head">
-          <b>{{ lang.t('prt_annual_spend') }}</b>
-          <span class="d-cell-sub">{{ lang.t('prt_annual_sub') }}</span>
+      @if (hasCost()) {
+        <div class="d-panel">
+          <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
+          <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
         </div>
-        @if (spendBars().length > 0) {
-          <epm-bar-compare [items]="spendBars()" [caption]="lang.t('prt_annual_spend')" />
-        } @else {
-          <div class="d-empty">
-            <span class="d-empty-ico"><epm-icon name="payments" [size]="30" /></span>
-            <b>{{ lang.t('prt_no_spend_t') }}</b>
-            <span>{{ lang.t('prt_no_spend_b') }}</span>
+      }
+
+      @if (spendBars().length > 0) {
+        <div class="d-panel">
+          <div class="d-panel-head">
+            <b>{{ lang.t('prt_annual_spend') }}</b>
+            <span class="d-cell-sub">{{ lang.t('prt_annual_sub') }}</span>
           </div>
-        }
-      </div>
+          <epm-bar-compare [items]="spendBars()" [caption]="lang.t('prt_annual_spend')" />
+        </div>
+      }
 
       <!-- Value by workspace — the viz ramp, never status colour (05 §7.5). -->
-      <div class="d-panel">
-        <div class="d-panel-head">
-          <b>{{ lang.t('portfolio_by_entity') }}</b>
-          <span class="d-cell-sub"><bdi>{{ d.entityCount }}</bdi></span>
+      @if (entityBars().length > 0) {
+        <div class="d-panel">
+          <div class="d-panel-head">
+            <b>{{ lang.t('portfolio_by_entity') }}</b>
+            <span class="d-cell-sub"><bdi>{{ d.entityCount }}</bdi></span>
+          </div>
+          <div class="d-hbars">
+            @for (e of entityBars(); track e.code) {
+              <div class="row">
+                <span class="k">{{ entityName(e) }}</span>
+                <span class="t"><i [style.width.%]="e.pct" [style.background]="e.color"></i></span>
+                <span class="v mono"><bdi>{{ fmt.money(e.value) }}</bdi></span>
+              </div>
+            }
+          </div>
         </div>
-        <div class="d-hbars">
-          @for (e of entityBars(); track e.code) {
-            <div class="row">
-              <span class="k">{{ entityName(e) }}</span>
-              <span class="t"><i [style.width.%]="e.pct" [style.background]="e.color"></i></span>
-              <span class="v mono"><bdi>{{ fmt.money(e.value) }}</bdi></span>
-            </div>
-          }
-        </div>
-      </div>
+      }
     </div>
 
     <!-- ══ «معالم قادمة» — what is about to fall due ══════════════════════ -->
-    <div class="d-panel" style="margin-top:16px">
-      <div class="d-panel-head">
-        <b>{{ lang.t('prt_milestones') }}</b>
-        <span class="d-cell-sub">{{ lang.t('prt_milestones_sub') }}</span>
-      </div>
-      @if (d.milestones.length > 0) {
+    @if (d.milestones.length > 0) {
+      <div class="d-panel" style="margin-top:16px">
+        <div class="d-panel-head">
+          <b>{{ lang.t('prt_milestones') }}</b>
+          <span class="d-cell-sub">{{ lang.t('prt_milestones_sub') }}</span>
+        </div>
         @for (m of d.milestones; track m.projectId) {
           <button type="button" class="d-mini" (click)="openProject(m.projectId)">
             <span class="d-mini-main">
@@ -408,13 +400,8 @@
             <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="15" />
           </button>
         }
-      } @else {
-        <div class="d-empty">
-          <span class="d-empty-ico"><epm-icon name="event" [size]="30" /></span>
-          <b>{{ lang.t('prt_no_milestones') }}</b>
-        </div>
-      }
-    </div>
+      </div>
+    }
 
     <!-- 02 §9 — approved but NOT applied. A projection, stated as one, kept
          out of every figure above. Rendered only when it exists. -->

@@ -83,7 +83,7 @@ public static class PortfolioEndpoints
 
             var projects = (await db.Projects.AsNoTracking()
                     .Where(p => kindCodes.Contains(p.WorkspaceCode))
-                    .Select(p => new { p.Id, p.WorkspaceCode, p.Status, p.NameAr, p.NameEn, p.DataDate })
+                    .Select(p => new { p.Id, p.WorkspaceCode, p.Status, p.NameAr, p.NameEn, p.Branch, p.DataDate })
                     .ToListAsync())
                 .Where(p => string.IsNullOrEmpty(status) || p.Status == status)
                 .ToList();
@@ -147,24 +147,22 @@ public static class PortfolioEndpoints
                 .OrderByDescending(e => e.Value)
                 .ToList();
 
-            // ══ THE FOUR FIGURES THIS SCREEN CALLED "UNAVAILABLE" ═══════════
-            // They became derivable in Phase 4.4 and this endpoint went on
-            // reporting them as absent — the same staleness the overview's
-            // module list carried (P-131, now P-137). Everything below reads
-            // the SAME BoqEndpoints.Derive that SCR-W4, SCR-W6, SCR-W7 and
-            // SCR-W1 read, so the portfolio cannot disagree with the projects
-            // it sums.
+            // ══ THE BAND ═══════════════════════════════════════════════════
+            // Loaded here, derived in `Domain/PortfolioBand` — the SAME rule
+            // SCR-E8 calls, so the ministry total cannot stop being the sum of
+            // the workspaces underneath it (P-141).
             var fullContracts = await db.Contracts.AsNoTracking()
                 .Where(c => projectIds.Contains(c.ProjectId))
                 .ToListAsync();
 
             var activities = await db.Activities.AsNoTracking()
                 .Where(a => contractIds.Contains(a.ContractId) && !a.IsMilestone)
+                .Select(a => new PortfolioBand.Act(a.BudgetedCost, a.BaselineStart, a.BaselineFinish))
                 .ToListAsync();
 
             var payments = await db.Payments.AsNoTracking()
                 .Where(x => contractIds.Contains(x.ContractId) && x.Status == "paid")
-                .Select(x => new { x.ContractId, x.PaidDate, x.NetAmount })
+                .Select(x => new PortfolioBand.Pay(x.ContractId, x.PaidDate, x.NetAmount))
                 .ToListAsync();
 
             var progressLog = await db.ContractActivityEvents.AsNoTracking()
@@ -173,196 +171,74 @@ public static class PortfolioEndpoints
                 .Select(e => new { e.ContractId, e.At, e.Before, e.After })
                 .ToListAsync();
 
-            // D-06 — "now" is the DATA DATE. Projects can carry different ones,
-            // so the portfolio reads the latest: a band that used the earliest
-            // would report every project as of the least current one.
-            var asOf = projects.Where(x => x.DataDate is not null).Select(x => x.DataDate!.Value)
-                .DefaultIfEmpty(DateOnly.FromDateTime(DateTime.UtcNow))
-                .Max();
-
-            // Per contract: what the bill says is done, and what it is worth.
-            var billed = new Dictionary<string, decimal>();
-            var executed = new Dictionary<string, decimal>();
-            foreach (var c in fullContracts)
-            {
-                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
-                billed[c.Id] = derived.Sum(x => x.Line.Amount);
-                executed[c.Id] = derived.Sum(x => x.Progress.AchievedAmount);
-            }
-
-            decimal PlannedAt(DateOnly at)
-            {
-                var basis = activities.Sum(a => a.BudgetedCost);
-                if (basis <= 0m) return 0m;
-                var w = activities.Sum(a => a.BudgetedCost
-                    * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, at) / 100m);
-                return ProgressReflection.Rollup(basis, w);
-            }
+            var updates = progressLog
+                .Where(e => decimal.TryParse(e.After, out _))
+                .Select(e => new PortfolioBand.Update(e.ContractId, e.At, decimal.Parse(e.After!)))
+                .ToList();
 
             var effByContract = perContract.ToDictionary(x => x.ContractId, x => x.Effective);
 
-            // One planned figure for the whole portfolio at the data date. The
-            // baselines are shared, so deriving it per project would be the
-            // same arithmetic run once per row.
-            var plannedNow = PlannedAt(asOf);
-
-            // Per PROJECT, so the watchlist and the signal have something to
-            // point at, and the portfolio figures are a weighted roll-up of
-            // them rather than a second derivation.
-            var perProject = projects.Select(x =>
+            // What the bill says each contract is worth and how much of it is
+            // done — the SAME `BoqEndpoints.Derive` SCR-W4, SCR-W6 and SCR-W1
+            // read, so the portfolio cannot disagree with the pages it sums.
+            var bandContracts = new List<PortfolioBand.Contr>(fullContracts.Count);
+            foreach (var c in fullContracts)
             {
-                var mine = fullContracts.Where(c => c.ProjectId == x.Id).ToList();
-                var value = ProjectValue.Total(mine.Select(c => effByContract.TryGetValue(c.Id, out var v) ? v : 0m));
-                var bill = mine.Sum(c => billed.TryGetValue(c.Id, out var b) ? b : 0m);
-                var done = mine.Sum(c => executed.TryGetValue(c.Id, out var e) ? e : 0m);
-                var paid = payments.Where(pm => mine.Any(c => c.Id == pm.ContractId)).Sum(pm => pm.NetAmount);
-
-                decimal? physical = bill > 0m ? ProgressReflection.Rollup(bill, done) : null;
-
-                var worstDelay = mine
-                    .Where(c => c.ForecastFinish is not null)
-                    .Select(c => Penalty.DelayDays(c.OriginalFinish, c.ForecastFinish!.Value))
-                    .DefaultIfEmpty(0)
-                    .Max();
-                int? delay = mine.Any(c => c.ForecastFinish is not null) ? worstDelay : null;
-
-                var duration = mine.Count == 0 ? (int?)null : mine.Max(c => c.OriginalDurationDays);
-                decimal? spi = physical is not null && plannedNow > 0m
-                    ? EarnedValue.For(value, plannedNow / 100m, physical.Value / 100m, paid).Spi
-                    : null;
-
-                return new
-                {
-                    x.Id, x.NameAr, x.NameEn, x.Status, x.WorkspaceCode,
-                    Value = value, Physical = physical, Paid = paid, Delay = delay,
-                    Duration = duration, Spi = spi,
-                    Signal = ExecutiveSignal.For(x.Status, delay, duration, spi),
-                    Forecast = mine.Where(c => c.ForecastFinish is not null)
-                        .Select(c => c.ForecastFinish!.Value).DefaultIfEmpty().Max(),
-                    PlannedFinish = mine.Count == 0 ? (DateOnly?)null : mine.Max(c => c.OriginalFinish),
-                };
-            }).ToList();
-
-            // ── the portfolio band, weighted by contract value ──────────────
-            var billedTotal = billed.Values.Sum();
-            var executedTotal = executed.Values.Sum();
-            var paidTotal = payments.Sum(pm => pm.NetAmount);
-
-            decimal? physicalPct = billedTotal > 0m ? ProgressReflection.Rollup(billedTotal, executedTotal) : null;
-            decimal? plannedPct = activities.Count > 0 ? PlannedAt(asOf) : null;
-            decimal? financialPct = effectiveValue > 0m ? ProgressReflection.Rollup(effectiveValue, paidTotal) : null;
-
-            decimal? spiTotal = null, cpiTotal = null;
-            decimal earnedValue = 0m;
-            if (physicalPct is not null && plannedPct is > 0m)
-            {
-                var evm = EarnedValue.For(effectiveValue, plannedPct.Value / 100m, physicalPct.Value / 100m, paidTotal);
-
-                // BR-11 returns each index as nullable — a zero denominator
-                // gives no index rather than a zero one — so each is rounded
-                // only if it exists. Rounding a missing index into 0.00 is
-                // exactly the lie this screen was rebuilt to stop telling.
-                spiTotal = evm.Spi is null ? null : Math.Round(evm.Spi.Value, 2, MidpointRounding.AwayFromZero);
-                cpiTotal = evm.Cpi is null ? null : Math.Round(evm.Cpi.Value, 2, MidpointRounding.AwayFromZero);
-                earnedValue = evm.Ev;
-            }
-
-            // ── the two curves, over the portfolio's own months ─────────────
-            var curveFrom = activities.Any(a => a.BaselineStart is not null)
-                ? activities.Where(a => a.BaselineStart is not null).Min(a => a.BaselineStart!.Value)
-                : fullContracts.Count > 0 ? fullContracts.Min(c => c.Start) : asOf;
-
-            var seriesUpdates = progressLog
-                .Where(e => decimal.TryParse(e.After, out _))
-                .Select(e => new ProgressSeries.Update(e.ContractId, e.At, decimal.Parse(e.After!)))
-                .ToList();
-
-            var seriesContracts = fullContracts.Select(c =>
-            {
-                var first = progressLog
+                var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+                var startingPct = progressLog
                     .Where(e => e.ContractId == c.Id && decimal.TryParse(e.Before, out _))
                     .Select(e => (decimal?)decimal.Parse(e.Before!))
                     .FirstOrDefault();
-                return new ProgressSeries.Contract(
-                    c.Id, effByContract.TryGetValue(c.Id, out var v) ? v : 0m, first ?? 0m);
-            }).ToList();
 
-            var months = ProgressSeries.Monthly(
-                seriesUpdates, seriesContracts, curveFrom, asOf,
-                d => activities.Count > 0 ? PlannedAt(d) : null, physicalPct, _ => string.Empty);
-
-            // A curve needs SOMETHING recorded to be a curve. With no activity
-            // baselines and no progress updates, `Monthly` still returns one row
-            // per month — all zeros — and drawing that is the exact failure P-09
-            // names: a flat line along the axis reads as "nothing has happened",
-            // when the truth is "nothing has been recorded". Empty, so the
-            // panel's own empty state says which.
-            var progressCurve = activities.Count > 0 || seriesUpdates.Count > 0
-                ? months
-                    .Select(m => new PortfolioCurvePeriod(
-                        m.At.ToString("yyyy-MM-dd"), m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod))
-                    .ToList()
-                : [];
-
-            var firstPayment = payments.Count == 0 || payments.All(x => x.PaidDate is null)
-                ? (DateOnly?)null
-                : payments.Where(x => x.PaidDate is not null).Min(x => x.PaidDate!.Value);
-
-            // Same rule for the money: the planned side comes from the same
-            // baselines, the actual side from paid payments. Neither present,
-            // no curve.
-            var costCurve = new List<PortfolioCurvePeriod>(months.Count);
-            if (activities.Count > 0 || firstPayment is not null)
-            {
-                decimal prevPlan = 0m, prevAct = 0m;
-                foreach (var m in months)
-                {
-                    decimal? act = null;
-                    if (firstPayment is not null && m.At >= firstPayment && effectiveValue > 0m)
-                    {
-                        var upto = payments.Where(x => x.PaidDate is not null && x.PaidDate <= m.At).Sum(x => x.NetAmount);
-                        act = Math.Round(upto / effectiveValue * 100m, 2, MidpointRounding.AwayFromZero);
-                    }
-
-                    costCurve.Add(new PortfolioCurvePeriod(
-                        m.At.ToString("yyyy-MM-dd"), m.PlanCum, act,
-                        Math.Round(m.PlanCum - prevPlan, 2, MidpointRounding.AwayFromZero),
-                        act is null ? 0m : Math.Round(Math.Max(0m, act.Value - prevAct), 2, MidpointRounding.AwayFromZero)));
-
-                    prevPlan = m.PlanCum;
-                    if (act is not null) prevAct = act.Value;
-                }
+                bandContracts.Add(new PortfolioBand.Contr(
+                    c.Id, c.ProjectId,
+                    c.OriginalValue,
+                    effByContract.TryGetValue(c.Id, out var eff) ? eff : 0m,
+                    derived.Sum(x => x.Line.Amount),
+                    derived.Sum(x => x.Progress.AchievedAmount),
+                    c.Start, c.OriginalFinish, c.ForecastFinish,
+                    c.OriginalDurationDays, startingPct ?? 0m));
             }
 
-            // ── the signal, the watchlist and the panels ────────────────────
-            var signals = ExecutiveSignal.Counts(perProject.Select(x => x.Signal))
-                .Select(c => new SignalBand(c.Signal, c.Count,
-                    perProject.Count == 0 ? 0 : (int)Math.Round(c.Count / (decimal)perProject.Count * 100m)))
+            var band = PortfolioBand.Derive(
+                projects.Select(x => new PortfolioBand.Proj(
+                    x.Id, x.NameAr, x.NameEn, x.Status, x.WorkspaceCode, x.Branch, x.DataDate)).ToList(),
+                bandContracts, payments, updates, activities);
+
+            var progressCurve = band.ProgressCurve
+                .Select(m => new PortfolioCurvePeriod(
+                    m.At.ToString("yyyy-MM-dd"), m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod))
+                .ToList();
+
+            var costCurve = band.CostCurve
+                .Select(m => new PortfolioCurvePeriod(
+                    m.At.ToString("yyyy-MM-dd"), m.PlanCum, m.ActCum, m.PlanPeriod, m.ActPeriod))
+                .ToList();
+
+            var signals = band.Signals
+                .Select(b => new SignalBand(b.Code, b.Count, b.Share))
                 .ToList();
 
             var wsName = workspaces.ToDictionary(w => w.Code, w => (w.NameAr, w.NameEn));
 
-            var watchlist = perProject
+            // Off the plan, worst value first. Filtering and sorting is what an
+            // endpoint is for; the SIGNAL that decides membership is the rule's.
+            var watchlist = band.Projects
                 .Where(x => x.Signal != ExecutiveSignal.Green)
                 .OrderByDescending(x => x.Value)
                 .Take(6)
                 .Select(x => new WatchlistRow(
-                    x.Id, x.NameAr, x.NameEn,
-                    x.WorkspaceCode,
+                    x.Id, x.NameAr, x.NameEn, x.WorkspaceCode,
                     wsName.TryGetValue(x.WorkspaceCode, out var n) ? n.NameAr : x.WorkspaceCode,
                     wsName.TryGetValue(x.WorkspaceCode, out var n2) ? n2.NameEn : x.WorkspaceCode,
                     x.Status, x.Signal,
                     x.Physical,
-                    x.Physical is null || plannedPct is null ? null
-                        : Math.Round(x.Physical.Value - plannedPct.Value, 1, MidpointRounding.AwayFromZero),
+                    PortfolioBand.Variance(x.Physical, band.Planned),
                     x.Value,
-                    x.Forecast == default ? null : x.Forecast.ToString("yyyy-MM-dd")))
+                    x.ForecastFinish?.ToString("yyyy-MM-dd")))
                 .ToList();
 
-            var cost = new PortfolioCost(
-                ProjectValue.Total(perContract.Select(x => x.Original)),
-                effectiveValue,
-                paidTotal);
+            var cost = new PortfolioCost(band.ApprovedCost, band.RevisedCost, band.ActualCost);
 
             // Real years from real payment dates — never a weight table.
             var annualSpend = payments
@@ -375,8 +251,8 @@ public static class PortfolioEndpoints
             // «معالم قادمة» — the nearest planned finishes STILL AHEAD of the
             // data date. A finish already behind us is not upcoming; it is a
             // delay, and the watchlist above is where that belongs.
-            var milestones = perProject
-                .Where(x => x.PlannedFinish is not null && x.PlannedFinish >= asOf && x.Status != "completed")
+            var milestones = band.Projects
+                .Where(x => x.PlannedFinish is not null && x.PlannedFinish >= band.AsOf && x.Status != "completed")
                 .OrderBy(x => x.PlannedFinish)
                 .Take(4)
                 .Select(x => new UpcomingMilestone(
@@ -390,19 +266,19 @@ public static class PortfolioEndpoints
             // derived and is reported absent is worse than one that cannot:
             // it teaches a reader to stop looking.
             var unavailable = new List<Unavailable>();
-            if (physicalPct is null)
+            if (band.Physical is null)
                 unavailable.Add(new("physical",
                     "لا يوجد جدول كميات على أي عقد ضمن النطاق — الإنجاز المادي مرجّح بأوزان بنوده (BR-04).",
                     "No contract in scope has a bill of quantities — physical progress is weighted by its item weights (BR-04)."));
-            if (financialPct is null)
+            if (band.Financial is null)
                 unavailable.Add(new("financial",
                     "لا قيمة نافذة لأي عقد ضمن النطاق، فلا مقام لنسبة الصرف.",
                     "No contract in scope has an effective value, so the spend ratio has no denominator."));
-            if (spiTotal is null)
+            if (band.Spi is null)
                 unavailable.Add(new("spi",
                     "يتطلب الإنجاز المادي والمخطط معاً (BR-11)؛ أحدهما غير متوفر.",
                     "Needs physical and planned progress together (BR-11); one of them is missing."));
-            if (cpiTotal is null)
+            if (band.Cpi is null)
                 unavailable.Add(new("cpi",
                     "يتطلب القيمة المكتسبة والكلفة الفعلية معاً (BR-11).",
                     "Needs earned value and actual cost together (BR-11)."));
@@ -418,14 +294,12 @@ public static class PortfolioEndpoints
                 amendments.Count(a => a.AppliedAt == null),
                 amendments.Count(a => a.AppliedAt != null),
 
-                asOf.ToString("yyyy-MM-dd"),
+                band.AsOf.ToString("yyyy-MM-dd"),
                 entityKinds,
 
-                physicalPct is null ? null : Math.Round(physicalPct.Value, 2, MidpointRounding.AwayFromZero),
-                plannedPct is null ? null : Math.Round(plannedPct.Value, 2, MidpointRounding.AwayFromZero),
-                financialPct is null ? null : Math.Round(financialPct.Value, 2, MidpointRounding.AwayFromZero),
-                spiTotal, cpiTotal, AcceptableIndex,
-                earnedValue, paidTotal,
+                band.Physical, band.Planned, band.Financial,
+                band.Spi, band.Cpi, AcceptableIndex,
+                band.EarnedValue, band.ActualCost,
                 progressCurve, costCurve, signals, watchlist, cost, annualSpend, milestones,
 
                 statusDistribution,

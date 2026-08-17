@@ -16,7 +16,7 @@
 <epm-page-head
   [crumbs]="crumbs()"
   [title]="title()"
-  [sub]="isNew() ? lang.t('prj_new_sub') : ''">
+  [sub]="subLine()">
   <button actions type="button" class="d-btn" (click)="cancel()">
     {{ lang.t('cancel') }}
   </button>
@@ -42,6 +42,13 @@
     <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
     <b>{{ lang.t('prj_no_permission_t') }}</b>
     <span>{{ lang.t('prj_no_permission_b') }}</span>
+    <!--
+      The message above says «بدّل «العرض بصفة» للمتابعة», so the control it
+      names is HERE. A screen that refuses and then points at a button
+      somewhere else is a dead end — and with the app-wide switcher gone
+      (P-148) that button was nowhere at all (P-152).
+    -->
+    <epm-persona-switcher />
     <button type="button" class="d-btn" (click)="cancel()">{{ lang.t('cancel') }}</button>
   </div>
 } @else if (loading()) {
@@ -124,6 +131,30 @@
           <input class="d-form-input" dir="ltr" [value]="form().nameEn ?? ''"
                  (input)="setText('nameEn', $any($event.target).value)" />
         </label>
+
+        <!--
+          ── WHICH WORKSPACE (create only, and only when none is in scope) ──
+          الشكل 3 puts this screen at «مساحة العمل › المشاريع», so walking the
+          documented path always carries a `?ws=`. The ministry-wide register
+          also offers «مشروع جديد», and from there nothing does — the form used
+          to accept every field and then refuse on submit, naming a fix it did
+          not provide (P-147).
+
+          The list is what THIS capacity may open (BR-15). A workspace the
+          server would refuse is not offered.
+        -->
+        @if (isNew() && !scopedWorkspace()) {
+          <div class="epm-ws-f" style="margin-bottom:12px">
+            <span>{{ lang.t('inf_workspace') }}<i>*</i></span>
+            <epm-select [options]="workspaceOptions()"
+                        [value]="workspace()"
+                        [label]="lang.t('inf_workspace')"
+                        [placeholder]="lang.t('prj_pick_workspace')"
+                        [invalid]="!!formError() && !workspace()"
+                        (changed)="workspace.set($event)" />
+            <small class="d-cell-sub">{{ lang.t('prj_workspace_hint') }}</small>
+          </div>
+        }
 
         <div class="epm-ws-f2">
           <label class="epm-ws-f">
