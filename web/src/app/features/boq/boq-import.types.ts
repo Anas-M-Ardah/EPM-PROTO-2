@@ -71,4 +71,9 @@ export interface BoqImportVersionDto {
   actorRole: string;
   actorParty: string;
   at: string;
+  /** Who approved it (المسار 3 step 7) — empty until approved. */
+  approverName: string;
+  approverRole: string;
+  approverParty: string;
+  approvedAt: string | null;
 }

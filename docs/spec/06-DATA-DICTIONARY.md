@@ -15,8 +15,16 @@ All labels are bilingual. Arabic is the primary label; English is the fallback a
 Design · tender · award · mobilisation · foundations · structure · envelope · MEP first fix · finishes · MEP second fix · testing & commissioning · handover.
 *(Client value list, minutes §2.2 — carry the client's exact Arabic wording from `reference/app/data.jsx`.)*
 
-## 3. Project types (8)
-New build · extension · rehabilitation · maintenance · equipment supply · infrastructure · studies & design · consultancy.
+## 3. Project types (3)
+| Key | AR | EN |
+|---|---|---|
+| `construction` | المشاريع الإنشائية | Construction |
+| `equipment` | مشاريع التجهيز | Equipment supply |
+| `design-studies` | مشاريع التصنيف (التصاميم والدراسات الفنية) | Design & technical studies |
+
+*(Client value list, replacing the earlier inferred eight — new build · extension ·
+rehabilitation · maintenance · equipment supply · infrastructure · studies & design ·
+consultancy. See D-13.)*
 
 ## 4. Extended contract status (9)
 The 5-state set plus: awarded-not-started · suspended by administrative order · under settlement · terminated.

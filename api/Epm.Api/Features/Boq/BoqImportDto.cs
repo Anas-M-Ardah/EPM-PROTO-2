@@ -86,4 +86,9 @@ public record BoqImportVersionDto(
     string ActorName,
     string ActorRole,
     string ActorParty,
-    string At);
+    string At,
+    /// <summary>Who approved it (المسار 3 step 7) — empty until approved.</summary>
+    string ApproverName,
+    string ApproverRole,
+    string ApproverParty,
+    string? ApprovedAt);

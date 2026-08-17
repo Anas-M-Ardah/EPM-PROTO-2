@@ -154,4 +154,23 @@ public static class Personas
     /// الاعتماد»: there is no approval capacity to separate input from.
     /// </summary>
     public static bool CanDefineProjects(this Persona p) => p.Party == "الجامعة / التشكيل";
+
+    /// <summary>
+    /// المسار 3 step 7 — «اعتماد الإصدار الجديد».
+    ///
+    /// SEPARATION OF DUTIES IS THE POINT. The track has two lanes either side of
+    /// the approval: «المستخدم المختص» submits (step 6) and «إدارة المشاريع»
+    /// approves (step 7). One capacity doing both would make the approval a
+    /// formality, and this bill decides contract value, payments and earned
+    /// value — so `CanDefineProjects` is deliberately NOT accepted here.
+    ///
+    /// ── THE LANE HAS NO EXACT PERSONA, AND THAT IS REPORTED ──────────────
+    /// `03 §7`'s list has no party literally called «إدارة المشاريع». The two
+    /// project-side capacities are دائرة المهندس المقيم — who supervises the
+    /// works the bill measures — and مدير المشروع. Both are accepted; the rate
+    /// and change-order committees are not, because their remit is a PRICED
+    /// DECISION on a line, not the bill as a document. Flagged in DECISIONS.
+    /// </summary>
+    public static bool CanApproveBoqImport(this Persona p) =>
+        p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
 }

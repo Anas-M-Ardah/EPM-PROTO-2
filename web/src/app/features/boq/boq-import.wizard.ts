@@ -25,10 +25,10 @@ import {
  * force, the weights, and whether submit is allowed at all (`canSubmit`).
  *
  * ── .xlsx ─────────────────────────────────────────────────────────────────
- * A real .xlsx is a zip of XML and reading one needs a parser this build does
- * not have. Rather than pretend, the upload step accepts CSV/TSV — which is
- * `حفظ باسم` away in Excel — and says exactly that when handed a workbook. See
- * P-86: adding a spreadsheet library is a dependency decision, not a screen one.
+ * Read for real, through SheetJS (P-156, superseding P-86's CSV-only stand).
+ * The import is LAZY — `await import('xlsx')` — so the ~400KB parser is fetched
+ * the first time somebody opens a workbook and never on the register's first
+ * paint. CSV/TSV still goes through the inline parser below.
  */
 @Component({
   selector: 'epm-boq-import-wizard',
@@ -139,14 +139,12 @@ export class BoqImportWizard {
     this.fileName.set(f.name);
     this.fileSize.set(f.size);
 
-    if (/\.xlsx?$/i.test(f.name)) {
-      this.fileError.set(this.lang.t('boq_imp_xlsx'));
-      this.grid.set([]);
-      return;
-    }
+    // «تحليل Excel» — الشكل 13's own second step. A workbook goes through
+    // SheetJS; CSV/TSV keeps the inline parser, which is smaller and exact for
+    // the delimited case (P-86 superseded by P-156).
+    const read = /\.xlsx?$/i.test(f.name) ? readWorkbook(f) : f.text().then(parseDelimited);
 
-    f.text().then(text => {
-      const g = parseDelimited(text);
+    read.then(g => {
       if (g.length < 2) {
         this.fileError.set(this.lang.t('boq_imp_empty'));
         this.grid.set([]);
@@ -155,7 +153,10 @@ export class BoqImportWizard {
       this.grid.set(g);
       this.map.set(guessMapping(g[0]));
       this.step.set(2);
-    }).catch(() => this.fileError.set(this.lang.t('boq_imp_unreadable')));
+    }).catch(() => {
+      this.grid.set([]);
+      this.fileError.set(this.lang.t('boq_imp_unreadable'));
+    });
   }
 
   setMap(field: string, value: string) {
@@ -273,8 +274,56 @@ function num(v: string): number {
 }
 
 /**
- * CSV / TSV, with quoted fields. Small enough to read, which is why it is here
- * rather than a dependency — and a dependency is exactly what .xlsx would need.
+ * «تحليل Excel» — a real workbook, through SheetJS (P-156).
+ *
+ * ── THE FIRST SHEET, AND ONLY THE FIRST ──────────────────────────────────
+ * A bill is one table. Picking a sheet would be a sixth wizard step الشكل 13
+ * does not draw, and silently concatenating sheets would build a bill nobody
+ * submitted. If a workbook's first sheet is the wrong one, the fix is to move
+ * it — visible in Excel, not guessed here.
+ *
+ * ── EVERYTHING COMES BACK AS TEXT ────────────────────────────────────────
+ * `raw: false` + `defval: ''` makes SheetJS format each cell the way Excel
+ * displays it and fill blanks, so the grid this returns has the same shape as
+ * the CSV parser's: rows of strings, every row the same length. That matters
+ * because the mapping step, `num()` and the whole downstream path were written
+ * against that shape — a date arriving as the serial 45292 instead of its
+ * formatted text would look like a quantity.
+ *
+ * `header: 1` asks for an array-of-arrays rather than objects keyed by header,
+ * because «مطابقة الأعمدة» is a USER step (المسار 3 step 3أ): the wizard must
+ * show the columns as they are and let a person say which is which.
+ */
+async function readWorkbook(file: File): Promise<string[][]> {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+
+  const first = wb.SheetNames[0];
+  if (!first) return [];
+
+  const rows = XLSX.utils.sheet_to_json<string[]>(wb.Sheets[first], {
+    header: 1,
+    raw: false,
+    defval: '',
+    blankrows: false,
+  });
+
+  // Trailing empty columns are common in hand-made sheets — a stray formatted
+  // cell far to the right pads every row. Trimming to the widest row that has
+  // real content keeps the column mapper from offering empty columns.
+  const width = rows.reduce(
+    (w, r) => Math.max(w, (r ?? []).filter(c => String(c ?? '').trim() !== '').length ? r.length : 0), 0);
+
+  return rows.map(r => {
+    const out = Array.from({ length: width }, (_, i) => String((r ?? [])[i] ?? '').trim());
+    return out;
+  });
+}
+
+/**
+ * CSV / TSV, with quoted fields. Kept alongside the workbook reader: it is
+ * smaller and exact for the delimited case, and a sheet saved as CSV is still
+ * the fastest path for anyone without Excel to hand.
  */
 function parseDelimited(text: string): string[][] {
   const clean = text.replace(/^﻿/, '');            // Excel's BOM
@@ -316,7 +365,9 @@ function guessMapping(header: string[]): Record<string, number> {
   const hints: Record<string, string[]> = {
     code: ['رمز', 'الرمز', 'code', 'item'],
     description: ['وصف', 'الوصف', 'description', 'desc'],
-    division: ['قسم', 'القسم', 'مجموعة', 'division', 'section'],
+    // «الباب» is the word the design branch and the register both use for a
+    // division; «القسم» is the older one and still appears in client sheets.
+    division: ['باب', 'الباب', 'قسم', 'القسم', 'مجموعة', 'division', 'section'],
     unit: ['وحدة', 'الوحدة', 'unit', 'uom'],
     qty: ['كمية', 'الكمية', 'qty', 'quantity'],
     rate: ['سعر', 'السعر', 'rate', 'price', 'unit rate'],

@@ -142,6 +142,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<BoqRateBand> BoqRateBands => Set<BoqRateBand>();
     public DbSet<BoqDistribution> BoqDistributions => Set<BoqDistribution>();
     public DbSet<BoqActivityLink> BoqActivityLinks => Set<BoqActivityLink>();
+
+    // The SUPPLY sub-type of a bill line (D-14). Registered beside the base it
+    // extends, not instead of it: a supply bill IS a BoqItems bill, with one
+    // extra row per line carrying the device facts a works line has no use for.
+    public DbSet<SupplyItemDetail> SupplyItemDetails => Set<SupplyItemDetail>();
+
     public DbSet<Activity> Activities => Set<Activity>();
 
     // ── SCR-W8 the change-order register (Phase 5.1) ─────────────────────
@@ -212,6 +218,9 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         b.Entity<BoqRateBand>().HasKey(x => x.Id);
         b.Entity<BoqDistribution>().HasKey(x => x.Id);
         b.Entity<BoqActivityLink>().HasKey(x => x.Id);
+        // Its real identity is BoqItemId — one detail row per line. Compared in
+        // BoqEndpoints where the rule sits next to its message, like the rest.
+        b.Entity<SupplyItemDetail>().HasKey(x => x.Id);
         b.Entity<Activity>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered

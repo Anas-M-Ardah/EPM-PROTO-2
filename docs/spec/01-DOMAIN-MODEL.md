@@ -36,7 +36,7 @@ Generic master list — do **not** hard-code a "university" field; the same mode
 | `id` | `PRJ-####` |
 | `name_ar` / `name_en` | |
 | `status` | `ongoing · completed · delayed · suspended · cancelled` |
-| `type` | one of 8 project types (see `06` §3) |
+| `type` | one of 3 project types (see `06` §3) |
 | `execution_stage` | one of 12 (see `06` §2) |
 | `funding_type` | one of 10 |
 | `region`, `priority`, `branch`, `executor` | |

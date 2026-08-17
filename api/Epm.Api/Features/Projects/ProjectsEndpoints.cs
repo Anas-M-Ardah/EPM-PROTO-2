@@ -349,12 +349,17 @@ public static class ProjectsEndpoints
         if (string.IsNullOrWhiteSpace(p.ExpenditureCategory))
             p.ExpenditureCategory = p.Type switch
             {
-                "maintenance" or "rehabilitation" => "maintenance",
-                "equipment-supply" => "equipment",
-                "studies-design" or "consultancy" => "studies",
-                "new-build" or "extension" or "infrastructure" => "construction",
+                "construction"   => "construction",
+                "equipment"      => "equipment",
+                "design-studies" => "studies",
                 _ => "",
             };
+
+        // With the type list down to three (D-13), «صيانة» no longer has a
+        // project type that maps to it — maintenance work now registers as an
+        // إنشائي project and the specialist changes the suggested category by
+        // hand. The suggestion is overwritable by design, so this is a weaker
+        // suggestion, not a lost value.
 
         // «من الجهة» — the entity's own region. The Workspace table carries no
         // region column, so there is nothing to read it from; the field is left

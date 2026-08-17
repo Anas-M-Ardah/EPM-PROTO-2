@@ -102,7 +102,37 @@ public record BoqRow(
     decimal Distributed,
     decimal Remaining,
     string DistributionState,
-    bool Banded);
+    bool Banded,
+    /// <summary>
+    /// The SUPPLY sub-type's half of the line, or null on a works bill (D-14).
+    /// Null rather than a zeroed object: a works line has no supplied quantity,
+    /// and sending 0 would let the register print a receipt column against it.
+    /// </summary>
+    BoqSupplyDetail? Supply);
+
+/// <summary>
+/// الفقرة التجهيزية's own fields (الأشكال 50–52) — the sub-type half of a row
+/// whose shared half is `BoqRow`. Contracted quantity, rate, amount and weight
+/// are NOT here: they are the base line's, so a supply bill weighs and prices
+/// itself through exactly the same rules a works bill does.
+/// </summary>
+public record BoqSupplyDetail(
+    string Manufacturer,
+    string Country,
+    string Model,
+    string SerialFrom,
+    string SerialTo,
+    decimal SuppliedQty,
+    decimal ReceivedQty,
+    /// <summary>DERIVED — Domain/SupplyStatus. received · partial · supplied · pending.</summary>
+    string Status,
+    /// <summary>DERIVED — نسبة الاستلام.</summary>
+    decimal ReceivedPct,
+    /// <summary>DERIVED — contracted less received, never negative.</summary>
+    decimal RemainingQty,
+    int WarrantyMonths,
+    string? WarrantyExpiry,
+    string Notes);
 
 /// <summary>
 /// A division header row. The register groups into an expandable
@@ -147,7 +177,52 @@ public record BoqRegisterResponse(
     BoqTotals Totals,
     IReadOnlyDictionary<string, int> CountByCoverage,
     IReadOnlyDictionary<string, int> CountByDistribution,
-    string AsOf);
+    string AsOf,
+    /// <summary>
+    /// `works` · `supply` · `none` (D-14) — which shape this bill takes, from
+    /// the PROJECT's type. Sent so the register renders one column set rather
+    /// than guessing from whether `Supply` happens to be null on the first row:
+    /// an empty supply bill has no rows to guess from and still needs its own
+    /// columns and its own empty state.
+    /// </summary>
+    string Kind,
+    /// <summary>Counts by supply status — empty on a works bill.</summary>
+    IReadOnlyDictionary<string, int> CountBySupplyStatus);
+
+// ── EP-BOQ-12 · add one line by hand ─────────────────────────────────────
+
+/// <summary>
+/// «الإدخال اليدوي» (الشكل 12) — المسار 3 step 3ب, the branch that enters items
+/// one by one instead of importing a sheet.
+///
+/// ONE SHAPE, TWO KINDS. The shared fields are required whatever the bill is;
+/// `Supply` is required on a supply bill and REFUSED on a works one, rather
+/// than quietly ignored — a caller sending warranty months to a works contract
+/// has misunderstood something, and silently dropping it hides that.
+/// </summary>
+public record BoqItemCreate(
+    string Code,
+    string DescriptionAr,
+    string DescriptionEn,
+    string Unit,
+    decimal Qty,
+    decimal Rate,
+    string? Division,
+    string? DivisionName,
+    BoqSupplyInput? Supply);
+
+/// <summary>The sub-type half of a create. Quantities only — status is derived.</summary>
+public record BoqSupplyInput(
+    string? Manufacturer,
+    string? Country,
+    string? Model,
+    string? SerialFrom,
+    string? SerialTo,
+    decimal SuppliedQty,
+    decimal ReceivedQty,
+    int WarrantyMonths,
+    string? WarrantyExpiry,
+    string? Notes);
 
 // ── EP-BOQ-03 · edit one line ────────────────────────────────────────────
 

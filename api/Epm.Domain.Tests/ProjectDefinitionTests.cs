@@ -23,7 +23,7 @@ public class ProjectDefinitionTests
     /// <summary>A definition that passes every clause — each test breaks exactly one.</summary>
     private static ProjectDefinition.Candidate Valid() => new(
         NameAr: "مجمع الكليات الطبية",
-        Type: "new-build",
+        Type: "construction",
         RegistrationYear: 2026,
         ExecutionStage: "structure",
         FundingType: "federal-budget",

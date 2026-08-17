@@ -62,6 +62,32 @@ export interface BoqRow {
   /** 06 §10 — none · partial · full · over. */
   distributionState: string;
   banded: boolean;
+  /** The SUPPLY sub-type's half of the line (D-14), or null on a works bill. */
+  supply: BoqSupplyDetail | null;
+}
+
+/**
+ * الفقرة التجهيزية (الأشكال 50–52) — the sub-type half of a row. Contracted
+ * quantity, rate, amount and weight are NOT here: they are the base line's, so
+ * a supply bill weighs and prices itself through the same rules a works bill
+ * does. status · receivedPct · remainingQty all arrive derived from
+ * api/Epm.Api/Domain/SupplyStatus.
+ */
+export interface BoqSupplyDetail {
+  manufacturer: string;
+  country: string;
+  model: string;
+  serialFrom: string;
+  serialTo: string;
+  suppliedQty: number;
+  receivedQty: number;
+  /** received · partial · supplied · pending. */
+  status: string;
+  receivedPct: number;
+  remainingQty: number;
+  warrantyMonths: number;
+  warrantyExpiry: string | null;
+  notes: string;
 }
 
 export interface BoqDivision {
@@ -102,6 +128,15 @@ export interface BoqRegisterResponse {
   countByDistribution: Record<string, number>;
   /** The project data date. "Now" is never the wall clock (D-06). */
   asOf: string;
+  /**
+   * works · supply · none (D-14) — the bill's SHAPE, from the project's type.
+   * The page renders one column set off this rather than sniffing whether the
+   * first row happens to carry `supply`: an empty supply bill has no rows to
+   * sniff and still needs its own columns and its own empty state.
+   */
+  kind: string;
+  /** Counts by supply status. Empty on a works bill. */
+  countBySupplyStatus: Record<string, number>;
 }
 
 // ── EP-BOQ-03 · the inline row edit ──────────────────────────────────────
@@ -112,6 +147,38 @@ export interface BoqItemEdit {
   unit: string;
   qty: number;
   rate: number;
+}
+
+// ── EP-BOQ-12 · «الإدخال اليدوي» (المسار 3 step 3ب) ──────────────────────
+
+/**
+ * ONE SHAPE, TWO KINDS. `supply` is required on a supply bill and REFUSED on a
+ * works one — the server rejects the wrong pairing rather than ignoring it, so
+ * the form must send exactly what the bill's kind calls for.
+ */
+export interface BoqItemCreate {
+  code: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  unit: string;
+  qty: number;
+  rate: number;
+  division?: string;
+  divisionName?: string;
+  supply?: BoqSupplyInput;
+}
+
+export interface BoqSupplyInput {
+  manufacturer?: string;
+  country?: string;
+  model?: string;
+  serialFrom?: string;
+  serialTo?: string;
+  suppliedQty: number;
+  receivedQty: number;
+  warrantyMonths: number;
+  warrantyExpiry?: string;
+  notes?: string;
 }
 
 // ── EP-BOQ-05 / EP-BOQ-06 · the distribution drawer ──────────────────────

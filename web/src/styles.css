@@ -105,6 +105,41 @@ epm-change-orders-page { display: contents; }
   flex: none;
 }
 
+/* A section label inside a form — «بيانات الجهاز» over the supply half of the
+   add-item modal (EP-BOQ-12). Label + space, never a nested box (CLAUDE.md §6),
+   which is why this is not `.d-fgroup`: that class draws a bordered card with
+   its own elevation.
+
+   NOT `.d-pop-lbl`, the only existing small-label class: it sets
+   `text-transform: uppercase` and `letter-spacing: .5px`, and §6 forbids both —
+   Arabic has no case and letter-spacing breaks its shaping. Tokens only, no
+   literals (CLAUDE.md §3.7). */
+.epm-form-sec-lbl {
+  margin-block: var(--space-16) var(--space-8);
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+  font-weight: var(--fw-semibold);
+  color: var(--on-surface-variant);
+}
+
+/* ── The module rail must not underline on hover ──────────────────────────
+   The reference renders every rail item as a <button> (desktop-shell.jsx:248,
+   :207, :257) because it navigates by calling onNav(), not by URL. The port
+   renders them as <a routerLink> so a module is a real, shareable, middle-
+   clickable address — a deliberate improvement, but it drags in tokens.css:397
+   `a:hover { text-decoration: underline }`, which the reference never shows.
+
+   .d-nav-item:hover (desktop.css:90) already marks hover with a background and
+   a colour shift; the underline was a THIRD hover signal on the same element,
+   and it made the label reflow against the count badge. Declaring it here
+   rather than editing desktop.css keeps the copied sheets verbatim (P-07).
+
+   .d-side-acct and .d-side-switch are still <button> in the port, so they are
+   unaffected — this is scoped to the anchors the rail actually produces. */
+.d-nav-item,
+.d-nav-item:hover,
+.d-nav-item:focus-visible { text-decoration: none; }
+
 /* Secondary text. The reference only ever scoped .muted under .d-crumb, but
    every register needs it. --on-surface-variant is the secondary text token
    at 6.56:1 in v1.1 — NOT --outline, which is a graphic token (05 §7.2). */
@@ -582,17 +617,12 @@ epm-change-orders-page { display: contents; }
   font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-bold);
 }
 
-/* ── THE WAY OUT OF A WORKSPACE ───────────────────────────────────────────
-   A nav item, so it sits in the rail's rhythm, but separated by a hairline
-   because it LEAVES the scope every item above it belongs to. */
-.epm-nav-exit {
-  width: 100%; border: 0; background: none; font: inherit; cursor: pointer;
-  margin-block-start: var(--space-8);
-  padding-block-start: var(--space-12);
-  border-block-start: 1px solid var(--outline-variant);
-  border-start-start-radius: 0; border-start-end-radius: 0;
-  color: var(--on-surface-variant);
-}
+/* REMOVED with its markup: .epm-nav-exit, the «العودة إلى المركز» rail item.
+   The reference's workspace rail is the six wsNav modules and nothing else
+   (desktop-shell.jsx:172); the way out is the switcher's «المساحة الرئيسية»
+   row. Kept as a note rather than deleted silently, because the hairline-
+   separated "leaves this scope" treatment is worth reaching for again if a
+   rail ever does need an item that exits its own context. */
 
 /* ── THE WORKSPACE CODE CHIP, MADE VISIBLE ────────────────────────────────
    `.d-ctx-emblem` in the copied sheet sets `color: #fff` and NO background —

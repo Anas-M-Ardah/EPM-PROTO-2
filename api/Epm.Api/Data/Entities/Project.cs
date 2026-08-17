@@ -49,7 +49,7 @@ public class Project
     /// </summary>
     public string Status { get; set; } = "ongoing";
 
-    /// <summary>Lookup "project-type" — one of 8 (06 §3).</summary>
+    /// <summary>Lookup "project-type" — one of 3 (06 §3): construction · equipment · design-studies.</summary>
     public string Type { get; set; } = "";
 
     /// <summary>Lookup "execution-stage" — one of 12 (06 §2).</summary>

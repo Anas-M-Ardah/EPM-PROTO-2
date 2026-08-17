@@ -168,6 +168,142 @@ public static class BoqEndpoints
             return Results.Ok(await Register(db, ctx));
         });
 
+        // [EP-BOQ-12] POST /api/projects/{projectId}/boq/{contractId}/items
+        // web: not wired yet — API only
+        // spec: المسار 3 step 3ب «إدخال البنود يدويًا بندًا بندًا» · ملحق الشكل 12
+        // rules: BR-01, D-14 | tables: BoqItems · SupplyItemDetails (WRITTEN)
+        //
+        // «الإدخال اليدوي» — the branch of المسار 3 that does not import a sheet.
+        // The bill's SHAPE decides what this accepts (D-14): a works contract
+        // takes the shared columns, a supply contract takes those plus the
+        // device half, and a studies contract takes nothing because no bill is
+        // modelled for it yet.
+        app.MapPost("/api/projects/{projectId}/boq/{contractId}/items",
+            async (EpmDb db, HttpContext http, string projectId, string contractId, BoqItemCreate input) =>
+        {
+            var ctx = await Load(db, http, projectId, contractId);
+            if (ctx.Error is not null) return ctx.Error;
+
+            var kind = BoqKind.ForProjectType(ctx.Project.Type);
+
+            // REFUSED BEFORE ANYTHING IS VALIDATED. A studies contract has no
+            // bill shape, so there is no set of fields that could be correct —
+            // saying so is more use than nine field-level messages.
+            if (kind == BoqKind.None)
+            {
+                var (ar, en) = BoqKind.Unsupported(ctx.Project.Type);
+                return Results.BadRequest(new { messageAr = ar, messageEn = en });
+            }
+
+            // «الرمز — يُولَّد تلقائياً» (design/system-revamp boq-workspace.jsx:283).
+            // The form shows the code as a read-only, system-generated value, so a
+            // blank one is the NORMAL case here and not a validation failure. A
+            // caller may still name its own; the uniqueness check below covers both.
+            var siblings = await db.BoqItems.AsNoTracking()
+                .Where(i => i.ContractId == contractId)
+                .Select(i => i.Code).ToListAsync();
+
+            var code = string.IsNullOrWhiteSpace(input.Code)
+                ? NextCode(siblings)
+                : input.Code.Trim();
+
+            // The code is the line's identity WITHIN the contract (BoqItem.cs).
+            // There is no unique index — the rule is checked here, where the
+            // message that explains it lives (P-01).
+            if (await db.BoqItems.AnyAsync(i => i.ContractId == contractId && i.Code == code))
+                return Results.Conflict(new
+                {
+                    messageAr = $"الرمز {code} مستعمل في هذا العقد.",
+                    messageEn = $"Code {code} is already used in this contract.",
+                });
+
+            if (string.IsNullOrWhiteSpace(input.DescriptionAr))
+                return Results.BadRequest(new { message = "الوصف مطلوب" });
+            if (string.IsNullOrWhiteSpace(input.Unit))
+                return Results.BadRequest(new { message = "الوحدة مطلوبة" });
+            if (input.Qty <= 0m || input.Rate <= 0m)
+                return Results.BadRequest(new { message = "الكمية وسعر الوحدة يجب أن يكونا أكبر من صفر" });
+
+            // THE SUB-TYPE HALF IS REQUIRED OR REFUSED, NEVER IGNORED. Dropping
+            // a supply payload on a works bill would accept the request and lose
+            // the data — the caller would have no way to tell.
+            if (kind == BoqKind.Supply && input.Supply is null)
+                return Results.BadRequest(new
+                {
+                    messageAr = "بيانات الفقرة التجهيزية مطلوبة في مشاريع التجهيز.",
+                    messageEn = "The supply-item fields are required on an equipment project.",
+                });
+            if (kind == BoqKind.Works && input.Supply is not null)
+                return Results.BadRequest(new
+                {
+                    messageAr = "لا تُقبل بيانات الفقرة التجهيزية في مشروع إنشائي.",
+                    messageEn = "Supply-item fields are not accepted on a construction project.",
+                });
+
+            // Quantities that contradict each other are refused at entry rather
+            // than flagged afterwards (05 §6 — prevent invalid input).
+            if (input.Supply is { } sup)
+            {
+                if (sup.SuppliedQty < 0m || sup.ReceivedQty < 0m)
+                    return Results.BadRequest(new { message = "الكميات المجهَّزة والمستلمة لا تكون سالبة" });
+                if (sup.ReceivedQty > sup.SuppliedQty)
+                    return Results.BadRequest(new
+                    {
+                        messageAr = "الكمية المستلمة لا تتجاوز المجهَّزة.",
+                        messageEn = "Received quantity cannot exceed the supplied quantity.",
+                    });
+                if (sup.SuppliedQty > input.Qty)
+                    return Results.BadRequest(new
+                    {
+                        messageAr = "الكمية المجهَّزة لا تتجاوز المتعاقد عليها.",
+                        messageEn = "Supplied quantity cannot exceed the contracted quantity.",
+                    });
+            }
+
+            var item = new BoqItem
+            {
+                ContractId = contractId,
+                Code = code,
+                DescriptionAr = input.DescriptionAr.Trim(),
+                DescriptionEn = (input.DescriptionEn ?? "").Trim(),
+                Unit = input.Unit.Trim(),
+                Division = (input.Division ?? "").Trim(),
+                DivisionName = (input.DivisionName ?? "").Trim(),
+                // «مستورد» vs «يدوي» is part of the record (BoqItem.Source) — this
+                // route is the manual one and says so, whatever the client sends.
+                Source = "manual",
+                OriginalQty = input.Qty,
+                UnitRate = input.Rate,
+            };
+            db.BoqItems.Add(item);
+            await db.SaveChangesAsync();          // the id the detail hangs off
+
+            if (input.Supply is { } s)
+            {
+                db.SupplyItemDetails.Add(new Data.Entities.SupplyItemDetail
+                {
+                    BoqItemId = item.Id,
+                    Manufacturer = (s.Manufacturer ?? "").Trim(),
+                    Country = (s.Country ?? "").Trim(),
+                    Model = (s.Model ?? "").Trim(),
+                    SerialFrom = (s.SerialFrom ?? "").Trim(),
+                    SerialTo = (s.SerialTo ?? "").Trim(),
+                    SuppliedQty = s.SuppliedQty,
+                    ReceivedQty = s.ReceivedQty,
+                    WarrantyMonths = s.WarrantyMonths,
+                    WarrantyExpiry = DateOnly.TryParse(s.WarrantyExpiry, out var w) ? w : null,
+                    Notes = (s.Notes ?? "").Trim(),
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // The whole register, for EP-BOQ-03's reason: a new line changes
+            // EVERY weight in the contract (BR-01's denominator), so returning
+            // the one row would leave the others on screen no longer adding to
+            // 100.00.
+            return Results.Ok(await Register(db, ctx));
+        });
+
         // [EP-BOQ-04] DELETE /api/projects/{projectId}/boq/{contractId}/items/{code}
         // web: boq/boq.api.ts deleteItem() → boq.page.ts
         // spec: 04 §4 | rules: BR-01
@@ -190,6 +326,10 @@ public static class BoqEndpoints
             db.BoqDistributions.RemoveRange(db.BoqDistributions.Where(d => d.BoqItemId == item.Id));
             db.BoqActivityLinks.RemoveRange(db.BoqActivityLinks.Where(l => l.BoqItemId == item.Id));
             db.BoqRateBands.RemoveRange(db.BoqRateBands.Where(b => b.BoqItemId == item.Id));
+            // The sub-type half goes with the line for the same reason as the
+            // other three: with no foreign keys it would otherwise survive as a
+            // detail row pointing at an item that no longer exists (D-14).
+            db.SupplyItemDetails.RemoveRange(db.SupplyItemDetails.Where(s => s.BoqItemId == item.Id));
             db.BoqItems.Remove(item);
             await db.SaveChangesAsync();
 
@@ -422,6 +562,20 @@ public static class BoqEndpoints
     {
         var model = await Derive(db, ctx.Contract.Id, "cost");
 
+        // D-14 — the bill's shape, from the PROJECT's type. One lookup for the
+        // whole register: every row in a bill is the same kind, because the kind
+        // is a property of the project, not of the line.
+        var kind = BoqKind.ForProjectType(ctx.Project.Type);
+
+        // The sub-type rows, fetched once for the whole bill rather than per
+        // line. Only on a supply bill — a works register must not pay for a
+        // table it has no rows in.
+        var supply = kind == BoqKind.Supply
+            ? await db.SupplyItemDetails.AsNoTracking()
+                .Where(s => model.Select(d => d.Item.Id).Contains(s.BoqItemId))
+                .ToDictionaryAsync(s => s.BoqItemId)
+            : [];
+
         var rows = new List<BoqRow>();
         foreach (var d in model)
         {
@@ -432,7 +586,10 @@ public static class BoqEndpoints
                 d.Weight, Q(d.SharesTotal), Q(d.AssignedWeight), d.Links.Count, d.Coverage,
                 Q(d.Progress.Progress), M(d.Progress.AchievedAmount), Q(d.Progress.AchievedQty),
                 Q(d.Distribution.Distributed), Q(d.Distribution.Remaining), d.Distribution.State,
-                d.Line.Banded));
+                d.Line.Banded,
+                // The EFFECTIVE quantity is the contracted base for status, not
+                // the original — an applied change order moves what is owed.
+                SupplyOf(kind, supply.GetValueOrDefault(d.Item.Id), d.Line.Qty)));
         }
 
         // Divisions in first-appearance order — a division is a label on the
@@ -482,7 +639,80 @@ public static class BoqEndpoints
             Counts(model.Select(d => d.Coverage), ["unassigned", "full", "partial", "over"]),
             Counts(model.Select(d => d.Distribution.State), ["none", "partial", "full", "over"]),
             // "Now" is the project data date, never DateTime.Now (D-06).
-            ctx.Project.DataDate?.ToString("yyyy-MM-dd") ?? "");
+            ctx.Project.DataDate?.ToString("yyyy-MM-dd") ?? "",
+            kind,
+            kind == BoqKind.Supply
+                ? Counts(rows.Select(r => r.Supply!.Status),
+                    ["pending", "supplied", "partial", "received"])
+                : new Dictionary<string, int>());
+    }
+
+    /// <summary>
+    /// The sub-type half of a row (D-14), or null on a works bill. The three
+    /// derived fields come from `Domain/SupplyStatus` — this projects, it does
+    /// not compute (CLAUDE.md §3.1).
+    /// </summary>
+    /// <summary>
+    /// The next line code for a contract — «يُولَّد تلقائياً» on the add form.
+    ///
+    /// It follows the PREFIX THE BILL ALREADY USES rather than imposing one, so
+    /// an imported sheet numbered `BOQ-01-010` keeps growing in its own scheme
+    /// and a fixture bill of `BQ-001` keeps growing in its. The width follows
+    /// too: `BQ-001` yields `BQ-013`, not `BQ-13`.
+    ///
+    /// The number is max+1 over the codes present, never count+1 — a bill that
+    /// has had a line deleted would otherwise generate a code it already used.
+    /// Uniqueness is still checked by the caller; this only picks a good default.
+    /// </summary>
+    private static string NextCode(IReadOnlyList<string> existing)
+    {
+        const string fallbackPrefix = "BQ-";
+
+        var parsed = existing
+            .Select(c => (Code: c ?? "", Dash: (c ?? "").LastIndexOf('-')))
+            .Where(x => x.Dash > 0 && x.Dash < x.Code.Length - 1)
+            .Select(x => (Prefix: x.Code[..(x.Dash + 1)],
+                          Tail: x.Code[(x.Dash + 1)..]))
+            .Where(x => x.Tail.All(char.IsAsciiDigit))
+            .ToList();
+
+        if (parsed.Count == 0) return fallbackPrefix + "001";
+
+        // The prefix the most lines share — a bill with one stray code should
+        // not have that stray dictate every code after it.
+        var prefix = parsed.GroupBy(x => x.Prefix)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+            .First().Key;
+
+        var inPrefix = parsed.Where(x => x.Prefix == prefix).ToList();
+        var next = inPrefix.Max(x => int.Parse(x.Tail)) + 1;
+        var width = inPrefix.Max(x => x.Tail.Length);
+
+        return prefix + next.ToString(new string('0', width));
+    }
+
+    private static BoqSupplyDetail? SupplyOf(
+        string kind, Data.Entities.SupplyItemDetail? detail, decimal contractedQty)
+    {
+        if (kind != BoqKind.Supply) return null;
+
+        // A supply LINE always has supply fields, even when no detail row was
+        // written for it — an import (EP-BOQ-10) carries only the shared columns
+        // an Excel sheet has, so its lines start with nothing supplied and
+        // nothing received. Falling back to an empty detail keeps that line
+        // `pending` and countable, where returning null would drop it out of the
+        // status filter and leave a hole in a column the register always shows.
+        var s = detail ?? new Data.Entities.SupplyItemDetail();
+
+        return new BoqSupplyDetail(
+            s.Manufacturer, s.Country, s.Model, s.SerialFrom, s.SerialTo,
+            Q(s.SuppliedQty), Q(s.ReceivedQty),
+            SupplyStatus.Of(contractedQty, s.SuppliedQty, s.ReceivedQty),
+            Q(SupplyStatus.ReceivedPct(contractedQty, s.ReceivedQty)),
+            Q(SupplyStatus.Remaining(contractedQty, s.ReceivedQty)),
+            s.WarrantyMonths,
+            s.WarrantyExpiry?.ToString("yyyy-MM-dd"),
+            s.Notes);
     }
 
     /// <summary>Every contract's BOQ total, for the project roll-up.</summary>

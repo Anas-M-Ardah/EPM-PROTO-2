@@ -100,12 +100,17 @@
       <span class="sp"></span>
 
       <!-- «أزرار الإدخال اليدوي والاستيراد والجهات المستفيدة».
-           الاستيراد IS الشكل 13 and opens the wizard. The other two are still
-           demo stubs and each is blocked on something real: manual entry
-           needs a create endpoint (EP-BOQ-03 updates by code and 404s on a
-           new one), and a project-level beneficiaries screen has no figure
-           of its own anywhere in the appendix. -->
-      <button type="button" class="d-btn sm" (click)="toast.demo('إدخال يدوي', 'Manual entry')">
+           الإدخال اليدوي is المسار 3 step 3ب and opens EP-BOQ-12's form; the
+           استيراد is الشكل 13's wizard. الجهات المستفيدة is still a demo stub —
+           a project-level beneficiaries screen has no figure of its own
+           anywhere in the appendix.
+           DISABLED on a bill with no shape (D-14): a studies contract has no
+           set of fields that could be right, so the button says so rather
+           than opening a form the server will refuse. -->
+      <button type="button" class="d-btn sm"
+              [disabled]="kind() === 'none'"
+              [title]="kind() === 'none' ? lang.t('boq_add_studies') : ''"
+              (click)="openAdd()">
         <epm-icon name="add" [size]="15" />{{ lang.t('boq_manual_add') }}
       </button>
       <button type="button" class="d-btn sm" (click)="importOpen.set(true)">
@@ -114,6 +119,13 @@
       <button type="button" class="d-btn sm" (click)="toast.demo('الجهات المستفيدة', 'Beneficiaries')">
         <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_beneficiaries') }}
       </button>
+
+      <!-- The capacity switcher, as the change-order and project-form screens
+           already carry it. It belongs HERE because this screen has the two
+           sides of المسار 3 on it: the specialist submits an import (step 6) and
+           إدارة المشاريع approves it (step 7), and the only way to see both
+           views is to change صفة. `03 §7` asks for exactly that. -->
+      <epm-persona-switcher />
 
       @if (!singleContract()) {
         <!-- The selector stays reachable from inside the module, so switching
@@ -135,7 +147,7 @@
 
     <!-- The aside is الشكل 12's بطاقة البند and nothing else, so the body is
          `no-aside` until a row is opened. -->
-    <div class="d-pbody" [class.no-aside]="!cardRow()">
+    <div class="d-pbody" [class.no-aside]="!cardRow() && !addOpen()">
       <div class="d-pz7">
 
         @if (view() === 'register') {
@@ -156,6 +168,12 @@
                    the bill it did not change, because that is where a reader
                    would otherwise expect the import to have landed. -->
               @if (pendingImport(); as v) {
+                <!-- المسار 3 step 7 — «اعتماد الإصدار الجديد».
+                     SEPARATION OF DUTIES ON SCREEN: the specialist who submitted
+                     this sheet sees the bar and no button; إدارة المشاريع sees
+                     the button. The reason is printed rather than the control
+                     silently missing — a disabled action nobody can explain
+                     reads as a bug. Switch capacity in the header to see both. -->
                 <div class="d-msgbar info">
                   <epm-icon name="info" [size]="16" />
                   <div>
@@ -164,7 +182,16 @@
                       <bdi>{{ v.itemCount }}</bdi> {{ lang.t('boq_imp_rows') }} ·
                       <bdi>{{ fmt.money(v.totalAmount) }}</bdi> ·
                       <bdi>{{ v.actorName }}</bdi> · <bdi>{{ fmt.date(v.at) }}</bdi></span>
+                    @if (!canApproveImport()) {
+                      <span class="muted">{{ lang.t('boq_imp_approve_denied') }}</span>
+                    }
                   </div>
+                  @if (canApproveImport()) {
+                    <button type="button" class="d-btn sm primary"
+                            [disabled]="approving()" (click)="approveImport(v.no)">
+                      <epm-icon name="check" [size]="15" />{{ lang.t('boq_imp_approve') }}
+                    </button>
+                  }
                 </div>
               }
 
@@ -632,7 +659,7 @@
            for a record that is on screen. The two tabs with a deeper view of
            their own (التوزيع · التخصيص) open it rather than duplicate it.
       -->
-      @if (cardRow(); as r) {
+      @if (!addOpen() && cardRow(); as r) {
         <div class="d-pz8">
           <div class="d-rpane">
             <div class="rp-h">
@@ -810,6 +837,211 @@
           </div>
         </div>
       }
+    <!-- ══ EP-BOQ-12 — «الإدخال اليدوي» (المسار 3 step 3ب) ══════════════════
+         A DOCKED Z8 RECORD PANE, following design/system-revamp
+         boq-workspace.jsx:237: "Adding or editing an item is a record edit, so it
+         opens in the page's docked pane like every other record — not in a drawer
+         over the grid, which hid the very rows the new item has to sit among."
+         Same `.d-rpane` the item card above already uses.
+    
+         Three groups, in the branch's order: التصنيف · بيانات البند · القيم المحتسبة.
+         الرمز and المصدر are READ-ONLY value pairs, not inputs — "a read-only
+         attribute reads as a value pair, not as an input the user will keep trying
+         to type into" (:221). -->
+    @if (addOpen()) {
+      <div class="d-pz8">
+        <div class="d-rpane">
+          <div class="rp-h">
+            <div class="tx">
+              <b>{{ isSupplyBill() ? lang.t('boq_add_title_supply') : lang.t('boq_add_title') }}</b>
+              <span class="sub">{{ contractLabel() }}</span>
+            </div>
+            <div class="acts">
+              <button type="button" class="d-icon-btn sm"
+                      [attr.aria-label]="lang.t('scd_rec_close')" (click)="closeAdd()">
+                <epm-icon name="close" [size]="16" />
+              </button>
+            </div>
+          </div>
+    
+          <div class="rp-b">
+            @if (addError()) {
+              <div class="d-inline-err">
+                <epm-icon name="error" [size]="15" /><span>{{ addError() }}</span>
+              </div>
+            }
+    
+            <!-- ── التصنيف ────────────────────────────────────────────────── -->
+            <div class="epm-form-sec-lbl">{{ lang.t('boq_add_grp_class') }}</div>
+            <div class="d-form-grid">
+              <div class="d-form-i f-ro">
+                <span class="k">{{ lang.t('boq_contract') }}</span>
+                <span class="v num"><bdi>{{ contract()?.id }}</bdi></span>
+              </div>
+              <!-- «يُولَّد تلقائياً» — EP-BOQ-12 picks the next code in the bill's own
+                   scheme. Shown, not asked for. -->
+              <div class="d-form-i f-ro">
+                <span class="k">{{ lang.t('boq_col_code') }}</span>
+                <span class="v">{{ lang.t('boq_add_code_auto') }}</span>
+              </div>
+              <div class="d-form-i f-ro">
+                <span class="k">{{ lang.t('boq_card_source') }}</span>
+                <span class="v">{{ lang.t('boq_manual_add') }}</span>
+              </div>
+              <!-- <epm-select>, the app's one dropdown — a native <select> renders
+                   its list with the OPERATING SYSTEM, so our font, spacing, RTL and
+                   dark theme all stop at the popup's edge. -->
+              <div class="d-form-i f-half">
+                <span class="k">{{ lang.t('boq_add_division') }}</span>
+                <epm-select [options]="divisionSelectOptions()"
+                            [value]="addDivision()"
+                            [label]="lang.t('boq_add_division')"
+                            [placeholder]="lang.t('boq_add_division_none')"
+                            (changed)="addDivision.set($event)" />
+              </div>
+              @if (addNewDivision()) {
+                <div class="d-form-i f-half">
+                  <span class="k">{{ lang.t('boq_add_division_name') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_division_name')"
+                         [placeholder]="lang.t('boq_add_division_ph')"
+                         [value]="addDivisionName()"
+                         (input)="addDivisionName.set($any($event.target).value)" />
+                </div>
+              }
+            </div>
+    
+            <!-- ── بيانات البند ───────────────────────────────────────────── -->
+            <div class="epm-form-sec-lbl">{{ lang.t('boq_add_grp_item') }}</div>
+            <div class="d-form-grid">
+              <div class="d-form-i f-full">
+                <span class="k">{{ lang.t('boq_col_desc') }}</span>
+                <input class="d-form-input" [attr.aria-label]="lang.t('boq_col_desc')"
+                       [placeholder]="lang.t('boq_add_desc_ph')"
+                       [value]="lang.isAr() ? addDescriptionAr() : addDescriptionEn()"
+                       (input)="lang.isAr()
+                                  ? addDescriptionAr.set($any($event.target).value)
+                                  : addDescriptionEn.set($any($event.target).value)" />
+              </div>
+              <!-- «الوحدة» is a SELECT (boq-workspace.jsx:301): the units this bill
+                   already uses first, then the standard list. -->
+              <div class="d-form-i f-third">
+                <span class="k">{{ lang.t('boq_col_unit') }}</span>
+                <epm-select [options]="unitSelectOptions()"
+                            [value]="addUnit()"
+                            [label]="lang.t('boq_col_unit')"
+                            [placeholder]="'—'"
+                            [allowEmpty]="false"
+                            (changed)="addUnit.set($event)" />
+              </div>
+              <div class="d-form-i f-third">
+                <span class="k">{{ lang.t('boq_add_qty') }}</span>
+                <input class="d-form-input num" inputmode="decimal" placeholder="0"
+                       [attr.aria-label]="lang.t('boq_add_qty')"
+                       [value]="addQty()" (input)="addQty.set($any($event.target).value)" />
+              </div>
+              <div class="d-form-i f-third">
+                <span class="k">{{ lang.t('boq_col_rate') }}</span>
+                <input class="d-form-input num" inputmode="decimal" placeholder="0"
+                       [attr.aria-label]="lang.t('boq_col_rate')"
+                       [value]="addRate()" (input)="addRate.set($any($event.target).value)" />
+              </div>
+            </div>
+    
+            @if (isSupplyBill()) {
+              <!-- ── بيانات الجهاز — supply bills only (D-14) ──────────────── -->
+              <div class="epm-form-sec-lbl">{{ lang.t('boq_add_device') }}</div>
+              <div class="d-form-grid">
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_mfr') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_mfr')"
+                         [value]="addManufacturer()"
+                         (input)="addManufacturer.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_country') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_country')"
+                         [value]="addCountry()" (input)="addCountry.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_model') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_model')"
+                         [value]="addModel()" (input)="addModel.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_supplied') }}</span>
+                  <input class="d-form-input num" inputmode="decimal" placeholder="0"
+                         [attr.aria-label]="lang.t('boq_add_supplied')"
+                         [value]="addSuppliedQty()"
+                         (input)="addSuppliedQty.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_received') }}</span>
+                  <input class="d-form-input num" inputmode="decimal" placeholder="0"
+                         [attr.aria-label]="lang.t('boq_add_received')"
+                         [value]="addReceivedQty()"
+                         (input)="addReceivedQty.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-third">
+                  <span class="k">{{ lang.t('boq_add_warranty') }}</span>
+                  <input class="d-form-input num" inputmode="numeric" placeholder="0"
+                         [attr.aria-label]="lang.t('boq_add_warranty')"
+                         [value]="addWarrantyMonths()"
+                         (input)="addWarrantyMonths.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-half">
+                  <span class="k">{{ lang.t('boq_add_serial_from') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_serial_from')"
+                         [value]="addSerialFrom()"
+                         (input)="addSerialFrom.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-half">
+                  <span class="k">{{ lang.t('boq_add_serial_to') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_serial_to')"
+                         [value]="addSerialTo()" (input)="addSerialTo.set($any($event.target).value)" />
+                </div>
+                <div class="d-form-i f-full">
+                  <span class="k">{{ lang.t('boq_add_notes') }}</span>
+                  <input class="d-form-input" [attr.aria-label]="lang.t('boq_add_notes')"
+                         [value]="addNotes()" (input)="addNotes.set($any($event.target).value)" />
+                </div>
+              </div>
+    
+              @if (addHint()) {
+                <div class="d-inline-err">
+                  <epm-icon name="error" [size]="15" /><span>{{ addHint() }}</span>
+                </div>
+              }
+            }
+    
+            <!-- ── القيم المحتسبة ─────────────────────────────────────────── -->
+            <div class="epm-form-sec-lbl">{{ lang.t('boq_add_grp_calc') }}</div>
+            <div class="d-form-grid">
+              <!-- The one product this form computes, and only to show the user what
+                   they typed. The binding amount comes back from EP-BOQ-12 with
+                   every weight in the contract recomputed around it. `calc` is the
+                   branch's own badge for a value the system derives. -->
+              <div class="d-form-i f-half">
+                <span class="k">
+                  {{ lang.t('boq_add_amount') }}<span class="d-proposed">calc</span>
+                </span>
+                <span class="v num"><bdi>{{ fmt.money(addPreviewAmount()) }}</bdi></span>
+              </div>
+            </div>
+          </div>
+    
+          <div class="rp-f">
+            <span class="sp"></span>
+            <button type="button" class="d-btn sm" (click)="closeAdd()">
+              {{ lang.t('boq_add_cancel') }}
+            </button>
+            <button type="button" class="d-btn sm primary"
+                    [disabled]="!addValid() || saving()" (click)="submitAdd()">
+              <epm-icon name="check" [size]="15" />{{ lang.t('boq_add_save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
     </div>
 
     <!-- ══ Z10 — the status strip ═══════════════════════════════════════ -->
@@ -1134,6 +1366,7 @@
     </tr>
   }
 </ng-template>
+
 
 <!-- ══ الشكل 13 — استيراد جدول الكميات ═══════════════════════════════════
      A modal over the register, as the plate draws it: the item card and the

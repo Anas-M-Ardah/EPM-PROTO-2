@@ -101,16 +101,17 @@ public static class LookupCatalog
         yield return L("execution-stage", "testing-commissioning","الفحص والتشغيل التجريبي",                 "Testing & commissioning");
         yield return L("execution-stage", "handover",             "الاستلام والتسليم",                       "Handover");
 
-        // ── 06 §3 — project types (8) ─────────────────────────────────────
+        // ── 06 §3 — project types (3) ─────────────────────────────────────
+        // The client's own three-way split (D-13), replacing the earlier eight
+        // — new-build · extension · rehabilitation · maintenance ·
+        // equipment-supply · infrastructure · studies-design · consultancy.
+        // Those eight were a classification we inferred from the documents;
+        // these three are the department's actual programme families, so every
+        // project falls in exactly one and no code outside the three is valid.
         sort = 0;
-        yield return L("project-type", "new-build",        "بناء وتشييد",              "New build");
-        yield return L("project-type", "extension",        "توسعة",                    "Extension");
-        yield return L("project-type", "rehabilitation",   "تأهيل",                    "Rehabilitation");
-        yield return L("project-type", "maintenance",      "صيانة",                    "Maintenance");
-        yield return L("project-type", "equipment-supply", "تجهيز أجهزة ومعدات",       "Equipment supply");
-        yield return L("project-type", "infrastructure",   "بنى تحتية",                "Infrastructure");
-        yield return L("project-type", "studies-design",   "تصاميم ودراسات فنية",      "Studies & design");
-        yield return L("project-type", "consultancy",      "استشارات",                 "Consultancy");
+        yield return L("project-type", "construction",   "المشاريع الإنشائية",                         "Construction");
+        yield return L("project-type", "equipment",      "مشاريع التجهيز",                             "Equipment supply");
+        yield return L("project-type", "design-studies", "مشاريع التصنيف (التصاميم والدراسات الفنية)", "Design & technical studies");
 
         // ── 06 §4 — extended contract status (9) ──────────────────────────
         // The 5-state set plus four contract-only states. Arabic for the four
