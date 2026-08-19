@@ -1,0 +1,346 @@
+<!--
+  ملحق الشكل 24 — استيراد الجدول الزمني.
+
+  Five steps, named by the plate: الصيغة والملف · تحليل الملف · التحقق · تحليل
+  الأثر · تأكيد وتقديم. `.d-modal` and `.d-stepper` are the reference's own
+  primitives — the bill importer already uses them and no CSS is added here.
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-modal-scrim" (click)="closed.emit()">
+  <div class="d-modal" role="dialog" aria-modal="true"
+       [attr.aria-label]="lang.t('scd_impw_title')" (click)="$event.stopPropagation()">
+
+    <div class="d-modal-head">
+      <b>{{ lang.t('scd_impw_title') }}</b>
+      <button type="button" class="d-icon-btn sm"
+              [attr.aria-label]="lang.t('scd_rec_close')" (click)="closed.emit()">
+        <epm-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    <div class="d-stepper">
+      @for (s of steps; track s.n) {
+        <div class="d-step {{ stepState(s.n) }}">
+          <span class="n">
+            @if (stepState(s.n) === 'done') {
+              <epm-icon name="check" [size]="12" />
+            } @else {
+              <bdi>{{ s.n }}</bdi>
+            }
+          </span>
+          <span class="l">{{ lang.t(s.label) }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="d-modal-body">
+      @if (error()) {
+        <div class="d-inline-err">
+          <epm-icon name="error" [size]="15" /><span>{{ error() }}</span>
+        </div>
+      }
+
+      <!-- ══ 1 — الصيغة والملف ════════════════════════════════════════════ -->
+      @if (step() === 1) {
+        <div class="d-form-grid">
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('scd_imp_format') }}</span>
+            <select class="epm-select" [value]="format()"
+                    (change)="format.set($any($event.target).value)">
+              <option value="xer">Primavera XER</option>
+              <option value="p6xml">P6 XML</option>
+              <option value="excel">Excel</option>
+            </select>
+          </label>
+          <label class="d-form-i">
+            <!-- 02 §2 — the basis is chosen HERE, at import, and this build
+                 had nowhere to record it until now (P-48). -->
+            <span class="k">{{ lang.t('scd_imp_basis') }}</span>
+            <select class="epm-select" [value]="basis()"
+                    (change)="basis.set($any($event.target).value)">
+              <option value="cost">{{ lang.t('scd_imp_basis_cost') }}</option>
+              <option value="manhours">{{ lang.t('scd_imp_basis_mh') }}</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- «منطقة سحب وإفلات» — the plate's own control. -->
+        <label class="d-drop" [class.on]="dragging()"
+               (dragover)="onDrag($event, true)" (dragleave)="onDrag($event, false)"
+               (drop)="onDrop($event)">
+          <epm-icon name="upload" [size]="26" />
+          <b>{{ lang.t('scd_imp_drop') }}</b>
+          <span class="d-cell-sub">{{ lang.t('scd_imp_drop_b') }}</span>
+          <input type="file" hidden (change)="onPick($event)" />
+        </label>
+
+        @if (fileError()) {
+          <div class="d-inline-err">
+            <epm-icon name="error" [size]="15" /><span>{{ fileError() }}</span>
+          </div>
+        }
+        @if (fileName()) {
+          <p class="d-cell-sub">
+            <bdi class="mono">{{ fileName() }}</bdi> · <bdi>{{ size(fileSize()) }}</bdi>
+          </p>
+        }
+      }
+
+      <!-- ══ 2 — تحليل الملف ══════════════════════════════════════════════ -->
+      @if (step() === 2) {
+        <p class="d-cell-sub">{{ lang.t('scd_imp_s2_b') }}
+          <bdi>{{ rows().length }}</bdi> {{ lang.t('scd_imp_activities') }}</p>
+
+        <div class="d-tablewrap"><table class="d-table">
+          <thead><tr>
+            <th style="width: 100px">{{ lang.t('scd_col_id') }}</th>
+            <th>{{ lang.t('scd_wbs_activity') }}</th>
+            <th style="width: 110px">{{ lang.t('scd_col_bl_start') }}</th>
+            <th style="width: 110px">{{ lang.t('scd_col_bl_fin') }}</th>
+            <th class="r" style="width: 140px">{{ lang.t('scd_col_cost') }}</th>
+            <th class="r" style="width: 110px">{{ lang.t('scd_mh') }}</th>
+          </tr></thead>
+          <tbody>
+            @for (r of sample(); track r.row) {
+              <tr>
+                <td class="mono"><bdi>{{ r.activityId }}</bdi></td>
+                <td class="d-cell-strong">
+                  {{ r.name }}
+                  @if (r.isMilestone) { <span class="d-proposed">{{ lang.t('scd_milestone') }}</span> }
+                </td>
+                <td class="mono d-cell-sub"><bdi>{{ r.baselineStart ?? '—' }}</bdi></td>
+                <td class="mono d-cell-sub"><bdi>{{ r.baselineFinish ?? '—' }}</bdi></td>
+                <td class="r mono"><bdi>{{ fmt.money(r.budgetedCost) }}</bdi></td>
+                <td class="r mono"><bdi>{{ r.budgetedManHours ?? '—' }}</bdi></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+
+        @if (rows().length > sample().length) {
+          <p class="d-cell-sub">{{ lang.t('scd_imp_sample') }}</p>
+        }
+      }
+
+      <!-- ══ 3 — التحقق ═══════════════════════════════════════════════════ -->
+      @if (step() === 3) {
+        @if (preview(); as p) {
+          @if (violations().length === 0) {
+            <div class="d-msgbar">
+              <epm-icon name="verified" [size]="16" />
+              <div>
+                <b>{{ lang.t('scd_imp_ok_t') }}</b>
+                <span>{{ lang.t('scd_imp_ok_b') }}</span>
+              </div>
+            </div>
+          } @else {
+            <!-- EVERY violation, not the first — a wizard that reports one per
+                 upload makes a person re-upload once per row (04 §9). -->
+            <div class="d-msgbar danger">
+              <epm-icon name="error" [size]="16" />
+              <div>
+                <b><bdi>{{ violations().length }}</bdi> {{ lang.t('scd_imp_bad_t') }}</b>
+                <span>{{ lang.t('scd_imp_bad_b') }}</span>
+              </div>
+            </div>
+
+            <div class="d-tablewrap"><table class="d-table">
+              <thead><tr>
+                <th style="width: 80px">{{ lang.t('scd_imp_row') }}</th>
+                <th style="width: 140px">{{ lang.t('scd_imp_field') }}</th>
+                <th>{{ lang.t('scd_imp_problem') }}</th>
+              </tr></thead>
+              <tbody>
+                @for (v of violations(); track $index) {
+                  <tr>
+                    <td class="mono"><bdi>{{ v.row }}</bdi></td>
+                    <td class="mono d-cell-sub"><bdi>{{ v.field }}</bdi></td>
+                    <td>{{ lang.isAr() ? v.messageAr : v.messageEn }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+          }
+
+          @if (basisWarning()) {
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ lang.t('scd_imp_mh_t') }}</b>
+                <span>{{ lang.t('scd_imp_mh_b') }}</span>
+              </div>
+            </div>
+          }
+
+          <div class="d-form-grid">
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_imp_activities') }}</span>
+              <span class="v num"><bdi>{{ p.activityCount }}</bdi></span>
+            </div>
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_col_cost') }}</span>
+              <span class="v num"><bdi>{{ fmt.money(p.totalCost) }}</bdi></span>
+            </div>
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_mh') }}</span>
+              <span class="v num"><bdi>{{ fmt.qty(p.totalManHours) }}</bdi></span>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ══ 4 — تحليل الأثر ══════════════════════════════════════════════ -->
+      @if (step() === 4) {
+        @if (impact(); as im) {
+          <div class="d-fig-row">
+            <div class="d-fig">
+              <div class="k">{{ lang.t('scd_imp_added') }}</div>
+              <div class="v"><bdi>{{ im.added }}</bdi></div>
+            </div>
+            <div class="d-fig">
+              <div class="k">{{ lang.t('scd_imp_moved') }}</div>
+              <div class="v"><bdi>{{ im.moved }}</bdi></div>
+            </div>
+            <div class="d-fig">
+              <div class="k">{{ lang.t('scd_imp_removed') }}</div>
+              <div class="v"><bdi>{{ im.removed }}</bdi></div>
+            </div>
+            <div class="d-fig">
+              <div class="k">{{ lang.t('scd_imp_unchanged') }}</div>
+              <div class="v"><bdi>{{ im.unchanged }}</bdi></div>
+            </div>
+          </div>
+
+          <!-- The one figure a person is really being asked to accept. -->
+          <div class="d-recon">
+            <div class="tm">
+              <span class="k">{{ lang.t('scd_imp_fin_before') }}</span>
+              <b class="num"><bdi>{{ im.finishBefore ?? '—' }}</bdi></b>
+            </div>
+            <span class="op" aria-hidden="true">→</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('scd_imp_fin_after') }}</span>
+              <b class="num"><bdi>{{ im.finishAfter ?? '—' }}</bdi></b>
+            </div>
+            <span class="op" aria-hidden="true">=</span>
+            <div class="tm strong">
+              <span class="k">{{ lang.t('scd_imp_delta') }}</span>
+              <b class="num"><bdi>{{ fmt.delta(im.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}</b>
+            </div>
+          </div>
+
+          @if (im.contractFinishDelta !== 0) {
+            <!-- `03` gives a claim on the contract's dates to a change order and
+                 never to an import. Stated, and acted on by nothing. -->
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ lang.t('scd_imp_claim_t') }}</b>
+                <span>{{ lang.t('scd_imp_claim_b') }}</span>
+              </div>
+            </div>
+          }
+
+          @if (im.removed > 0) {
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ lang.t('scd_imp_gone_t') }}</b>
+                <span>{{ lang.t('scd_imp_gone_b') }}</span>
+              </div>
+            </div>
+          }
+
+          @if (im.changes.length === 0) {
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="verified" [size]="30" /></span>
+              <b>{{ lang.t('scd_imp_same_t') }}</b>
+              <span>{{ lang.t('scd_imp_same_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-tablewrap"><table class="d-table">
+              <thead><tr>
+                <th style="width: 100px">{{ lang.t('scd_col_id') }}</th>
+                <th>{{ lang.t('scd_wbs_activity') }}</th>
+                <th style="width: 110px">{{ lang.t('scd_imp_change') }}</th>
+                <th style="width: 110px">{{ lang.t('scd_imp_fin_before') }}</th>
+                <th style="width: 110px">{{ lang.t('scd_imp_fin_after') }}</th>
+                <th class="r" style="width: 90px">{{ lang.t('scd_col_slip') }}</th>
+              </tr></thead>
+              <tbody>
+                @for (c of im.changes; track c.activityId + c.kind) {
+                  <tr>
+                    <td class="mono"><bdi>{{ c.activityId }}</bdi></td>
+                    <td class="d-cell-strong">{{ c.name }}</td>
+                    <td><span class="d-pill">{{ changeLabel(c.kind) }}</span></td>
+                    <td class="mono d-cell-sub"><bdi>{{ c.beforeFinish ?? '—' }}</bdi></td>
+                    <td class="mono"><bdi>{{ c.afterFinish ?? '—' }}</bdi></td>
+                    <td class="r mono">
+                      <bdi>{{ c.slipDays === 0 ? '—' : fmt.delta(c.slipDays) }}</bdi>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table></div>
+          }
+        }
+      }
+
+      <!-- ══ 5 — تأكيد وتقديم ═════════════════════════════════════════════ -->
+      @if (step() === 5) {
+        <div class="d-msgbar info">
+          <epm-icon name="info" [size]="16" />
+          <div>
+            <b>{{ lang.t('scd_imp_version_t') }}</b>
+            <span>{{ lang.t('scd_imp_version_b') }}</span>
+          </div>
+        </div>
+
+        @if (preview(); as p) {
+          <div class="d-form-grid">
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_imp_format') }}</span>
+              <span class="v mono"><bdi>{{ p.format }}</bdi></span>
+            </div>
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_imp_basis') }}</span>
+              <span class="v">{{ lang.t(p.basis === 'manhours' ? 'scd_imp_basis_mh' : 'scd_imp_basis_cost') }}</span>
+            </div>
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('scd_imp_activities') }}</span>
+              <span class="v num"><bdi>{{ p.activityCount }}</bdi></span>
+            </div>
+            <div class="d-form-i">
+              <span class="k">{{ lang.t('pay_w_file') }}</span>
+              <span class="v mono"><bdi>{{ fileName() }}</bdi></span>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <div class="d-modal-foot">
+      @if (step() === 3 && !preview()?.canSubmit) {
+        <span class="d-cell-sub">{{ lang.t('scd_imp_blocked') }}</span>
+      }
+      <span class="sp"></span>
+      @if (step() > 1) {
+        <button type="button" class="d-btn" (click)="back()">{{ lang.t('boq_imp_back') }}</button>
+      }
+      @if (step() < 5) {
+        <button type="button" class="d-btn primary"
+                [disabled]="checking() || rows().length === 0
+                            || (step() === 3 && !preview()?.canSubmit)"
+                (click)="next()">
+          {{ checking() ? lang.t('scd_imp_checking') : lang.t('boq_imp_next') }}
+        </button>
+      } @else {
+        <button type="button" class="d-btn primary"
+                [disabled]="saving() || !preview()?.canSubmit" (click)="submit()">
+          {{ saving() ? lang.t('saving') : lang.t('scd_imp_submit') }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

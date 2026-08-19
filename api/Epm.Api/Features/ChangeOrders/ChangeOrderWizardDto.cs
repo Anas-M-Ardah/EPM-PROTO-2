@@ -22,6 +22,14 @@ namespace Epm.Api.Features.ChangeOrders;
 
 /// <param name="Weight">BR-01, already a share of THIS contract — fetched, never entered (`03 §8`).</param>
 /// <param name="ExecutedQty">Feeds the decrease-exceeds-remaining gate (BR-07).</param>
+/// <summary>
+/// الشكل 58 — one beneficiary's share of a supply line, as it stands NOW. The
+/// wizard's من/إلى pickers are built from this list and «المتاح» is measured
+/// against <see cref="Qty"/>, so the panel never offers a source that holds
+/// nothing.
+/// </summary>
+public record WizardAllocation(string Code, string NameAr, string NameEn, decimal Qty);
+
 public record WizardBoqLine(
     string Code,
     string DescriptionAr,
@@ -34,7 +42,11 @@ public record WizardBoqLine(
     decimal UnitRate,
     decimal Amount,
     decimal Weight,
-    string Status);
+    string Status,
+    /// <summary>BR-08's rows for this line. EMPTY on a works bill, and empty on
+    /// a supply line nobody has distributed yet — «غير موزّعة» is a real state
+    /// and the panel says so rather than offering an empty picker.</summary>
+    IReadOnlyList<WizardAllocation> Allocation);
 
 public record WizardActivity(
     string ActivityId,
@@ -72,6 +84,12 @@ public record WizardSourceResponse(
     string ViewerId,
     string ViewerParty,
     IReadOnlyList<string> Parties,
+    /// <summary>Every ACTIVE beneficiary the project may hand devices to
+    /// (`01 §2.1`). A redistribution's TARGET need not already hold anything —
+    /// جامعة تلعفر in الشكل 58 holds nothing, and giving it devices is the whole
+    /// point of the order — so the target picker cannot be built from
+    /// <see cref="WizardBoqLine.Allocation"/>.</summary>
+    IReadOnlyList<WizardAllocation> Beneficiaries,
     IReadOnlyList<WizardContract> Contracts);
 
 // ── what the browser sends back ──────────────────────────────────────────
@@ -82,6 +100,9 @@ public record WizardSourceResponse(
 /// `02 §5` gives the binding rate to لجنة تثبيت الأسعار, so no approved rate is
 /// accepted here at all.
 /// </param>
+/// <summary>الشكل 58's transfer row — «من» و«إلى» وكمية. Many per line.</summary>
+public record WizardTransferInput(string From, string To, decimal Qty);
+
 public record WizardLineInput(
     string Code,
     string ChangeType,
@@ -93,7 +114,12 @@ public record WizardLineInput(
     decimal? ReDeptExcessRate,
     string? TargetCode,
     decimal? DrawnQty,
-    decimal? DistributedQty);
+    decimal? DistributedQty,
+    /// <summary>الشكل 58's beneficiary transfers. Null or empty on every change
+    /// type but a supply `redist` — the BOQ-line-to-BOQ-line redistribution
+    /// that <see cref="TargetCode"/> names is a DIFFERENT movement and keeps
+    /// its own fields.</summary>
+    IReadOnlyList<WizardTransferInput>? Transfers);
 
 public record WizardActivityInput(
     string ActivityId,
@@ -131,6 +157,30 @@ public record PreviewParty(
     decimal ExcessCost,
     bool TripsThreshold);
 
+/// <summary>
+/// الشكل 58's «صافي التغيير في التوزيع بعد التطبيق» — one chip per beneficiary
+/// the transfers touch: البصرة −12 · الموصل −10 · تلعفر +22.
+/// </summary>
+/// <param name="Before">What it holds now.</param>
+/// <param name="Delta">Signed, and the reason the chip exists.</param>
+public record PreviewNet(
+    string Code, string NameAr, string NameEn,
+    decimal Before, decimal Delta, decimal After);
+
+/// <summary>
+/// One الشكل 58 transfer, echoed back with the figure the wizard cannot work
+/// out for itself.
+/// </summary>
+/// <param name="Available">
+/// «المتاح» — what THIS row may still draw from its source: what the source
+/// holds, less what the OTHER rows of this same order already take from it.
+/// The plate prints it beside the row being edited, and it is the cap the
+/// quantity field carries, so it comes from Domain/SupplyRedistribution rather
+/// than being subtracted in the browser.
+/// </param>
+public record PreviewTransfer(
+    int Index, string From, string To, decimal Qty, decimal Available);
+
 /// <param name="Remaining">ContractedQty − ExecutedQty — what a decrease may not exceed.</param>
 public record PreviewLine(
     string Code,
@@ -146,7 +196,15 @@ public record PreviewLine(
     decimal Weight,
     PreviewParty Contractor,
     PreviewParty ReDept,
-    bool Diverges);
+    bool Diverges,
+    /// <summary>Empty unless the line carries الشكل 58 transfers.</summary>
+    IReadOnlyList<PreviewNet> Nets,
+    /// <summary>Index-aligned with the line's <c>Transfers</c> input.</summary>
+    IReadOnlyList<PreviewTransfer> Transfers,
+    /// <summary>أثر إعادة التوزيع على قيمة العقد. ZERO by construction, and
+    /// returned rather than assumed so the screen prints a figure it was given
+    /// — الشكل 59's «الأثر 0» is the point of the whole flow, not a blank.</summary>
+    decimal RedistImpact);
 
 /// <param name="WeightDelta">
 /// الشكل 40's «تغيّر تراكمي 0.00%» — Σ|after − before| over the affected lines,

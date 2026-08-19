@@ -3,6 +3,7 @@ using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Boq;
+using Epm.Api.Features.Dev;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Financials;
@@ -369,6 +370,182 @@ public static class FinancialsEndpoints
                     M(revised), M(evm.Pv), M(evm.Ev), M(evm.Ac),
                     R(evm.Cpi), R(evm.Spi), Money(evm.Eac), Money(evm.Vac)),
                 rows, paymentRows, unavailable, allocations, letters, auditSla, years, year));
+        });
+
+        // [EP-FIN-02] POST /api/projects/{projectId}/financials/payments
+        // web: financials/financials.api.ts registerPayment() → payment.wizard.ts
+        // spec: ملحق الشكل 20 · المسار 8 step 1 | rules: BR-12, D-03
+        // tables: Payments · PaymentAttachments · PaymentAuditStages (WRITTEN)
+        //
+        // THE WRITE THIS SCREEN DID NOT HAVE (P-96, closed). `financials.api.ts`
+        // used to carry a comment saying a certificate is raised against works
+        // measured on site and that the wizard which does it was not built.
+        // الشكل 20 is that wizard, and this is what it posts to.
+        //
+        // ── IT REGISTERS A CERTIFICATE, IT DOES NOT PAY ONE ──────────────────
+        // The row lands `pending` with no `CertifiedDate` and no `PaidDate`, and
+        // the audit route is created with its first desk open. المسار 8's
+        // steps 2–4 — review, certify, disburse — are decisions with owners and
+        // dates that no screen in this build asks for, and writing them here
+        // would record approvals nobody gave. P-26's rule holds: nothing this
+        // endpoint writes moves المصروف.
+        //
+        // ── THE ORDER OF THE STEPS IS THE CONTROL ───────────────────────────
+        // الشكل 20: «يفرض ترتيبًا ثابتًا لإجراء الصرف: عقود ← مبالغ ← كتاب مالية
+        // ← ذرعات ← مراجعة، فيمنع تسجيل دفعة ناقصة المستندات». So the letter and
+        // at least one ذرعة are REQUIRED here and not merely asked for in the UI.
+        app.MapPost("/api/projects/{projectId}/financials/payments", async (
+            EpmDb db, HttpContext http, string projectId, PaymentRegisterInput input) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
+
+            var user = WorkspaceScope.User(http);
+            if (!user.CanRegisterPayment())
+                return Results.StatusCode(403);
+
+            var contract = await db.Contracts.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == input.ContractId && c.ProjectId == projectId);
+            if (contract is null)
+                return Results.NotFound(new
+                {
+                    messageAr = "العقد غير موجود في هذا المشروع.",
+                    messageEn = $"contract {input.ContractId} not found in project {projectId}",
+                });
+
+            if (input.GrossAmount <= 0m)
+                return Results.BadRequest(new
+                {
+                    messageAr = "المبلغ الإجمالي يجب أن يكون أكبر من صفر.",
+                    messageEn = "The gross amount must be greater than zero.",
+                });
+
+            // A retention or an advance recovery cannot exceed what is being
+            // certified — a net of less than nothing is not a payment.
+            var net = input.GrossAmount - input.RetentionAmount - input.AdvanceRecovery;
+            if (input.RetentionAmount < 0m || input.AdvanceRecovery < 0m || net <= 0m)
+                return Results.BadRequest(new
+                {
+                    messageAr = "الاستقطاعات تتجاوز المبلغ الإجمالي — الصافي يجب أن يكون أكبر من صفر.",
+                    messageEn = "Deductions exceed the gross amount — the net must be greater than zero.",
+                });
+
+            // الشكل 20 step 3 — «كتاب المالية». Its number AND its date, because
+            // BR-12 measures the audit route from the date and a letter with no
+            // number cannot be found again in the ministry's own registry.
+            if (string.IsNullOrWhiteSpace(input.FinanceLetterNo) || input.FinanceLetterDate is null)
+                return Results.BadRequest(new
+                {
+                    messageAr = "كتاب المالية مطلوب برقمه وتاريخه.",
+                    messageEn = "The finance letter is required, with its number and date.",
+                });
+
+            // الشكل 20 step 4 — «ذرعات الأعمال». The plate's own reasoning:
+            // «ربط الدفعة إلزاميًا بكتاب مالية وبذرعات الأعمال يجعل الصرف
+            // مستندًا إلى إنجاز موثّق». At least one.
+            var files = (input.Attachments ?? [])
+                .Where(a => !string.IsNullOrWhiteSpace(a.FileName))
+                .ToList();
+            if (files.Count == 0)
+                return Results.BadRequest(new
+                {
+                    messageAr = "أرفق ذرعة الأعمال المنجزة — لا تُسجَّل دفعة بلا سند إنجاز.",
+                    messageEn = "Attach the measurement sheet — no payment is registered without evidence of work done.",
+                });
+
+            // The three expense items the payment is drawn against must add up
+            // to it (الشكل 9's own split). Sent by the wizard so the person
+            // decides the split, checked here so the sum cannot be wrong.
+            var split = input.AwardPortion + input.ReservePortion + input.SupervisionPortion;
+            if (Math.Abs(split - net) > 0.01m)
+                return Results.BadRequest(new
+                {
+                    messageAr = "توزيع المبلغ على بنود الكلفة لا يساوي صافي الدفعة.",
+                    messageEn = "The split across the expense items does not equal the net amount.",
+                });
+
+            // P-79 — NO PAYMENT CODE IS INVENTED. The number is the next
+            // sequential one on this contract, which is what «دفعة N» prints;
+            // whether the ministry has an official scheme is still open.
+            var lastNo = await db.Payments
+                .Where(x => x.ContractId == contract.Id)
+                .MaxAsync(x => (int?)x.No) ?? 0;
+
+            var payment = new Data.Entities.Payment
+            {
+                ContractId = contract.Id,
+                No = lastNo + 1,
+                Kind = string.IsNullOrWhiteSpace(input.Kind) ? "interim" : input.Kind,
+                GrossAmount = input.GrossAmount,
+                RetentionAmount = input.RetentionAmount,
+                AdvanceRecovery = input.AdvanceRecovery,
+                NetAmount = net,
+                AwardPortion = input.AwardPortion,
+                ReservePortion = input.ReservePortion,
+                SupervisionPortion = input.SupervisionPortion,
+                FinanceLetterNo = input.FinanceLetterNo.Trim(),
+                FinanceLetterDate = input.FinanceLetterDate,
+                // PENDING, with no certified and no paid date. See above.
+                Status = "pending",
+                Note = (input.Note ?? "").Trim(),
+            };
+
+            db.Payments.Add(payment);
+            await db.SaveChangesAsync();
+
+            foreach (var f in files)
+                db.PaymentAttachments.Add(new Data.Entities.PaymentAttachment
+                {
+                    PaymentId = payment.Id,
+                    TitleAr = (f.TitleAr ?? "").Trim(),
+                    TitleEn = (f.TitleEn ?? "").Trim(),
+                    FileName = f.FileName!.Trim(),
+                    SizeBytes = f.SizeBytes,
+                });
+
+            // الشكل 17's route, opened at its first desk. The caps are D-03's
+            // default; `PaymentAuditStage.CapDays` records them per stage
+            // precisely so an instruction can change one without a migration.
+            var route = new[]
+            {
+                ("resident-engineer", "دائرة المهندس المقيم", "Resident engineer department"),
+                ("finance", "الدائرة المالية", "Finance department"),
+                ("audit", "الرقابة المالية", "Financial control"),
+                ("disbursement", "الصرف", "Disbursement"),
+            };
+
+            var no = 1;
+            foreach (var (key, ar, en) in route)
+            {
+                db.PaymentAuditStages.Add(new Data.Entities.PaymentAuditStage
+                {
+                    PaymentId = payment.Id,
+                    No = no,
+                    StageKey = key,
+                    PartyAr = ar,
+                    PartyEn = en,
+                    CapDays = SlaLeadTime.SlaDaysPerStage,
+                    // Only the FIRST desk has the file. The rest have not
+                    // received it, and a start date on them would make BR-12
+                    // measure a wait that has not begun.
+                    StartedAt = no == 1 ? input.FinanceLetterDate : null,
+                    FinishedAt = null,
+                });
+                no++;
+            }
+
+            await db.SaveChangesAsync();
+
+            // THE IDENTITY COMES BACK, NOT THE MODEL — and this is the one write
+            // in the build that does it that way. EP-FIN-01 is a 300-line inline
+            // projection over eight tables; extracting it to be re-run here
+            // would be a refactor of the read path in service of the write, and
+            // the client is a wizard that closes on success and re-reads the
+            // page it is standing on. The reason is here so the next person does
+            // not read the difference as an oversight.
+            return Results.Ok(new PaymentRegisterResult(
+                payment.Id, payment.No, payment.ContractId, M(payment.NetAmount)));
         });
     }
 

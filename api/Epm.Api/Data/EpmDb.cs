@@ -55,6 +55,14 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<BoqImportVersion> BoqImportVersions => Set<BoqImportVersion>();
     public DbSet<BoqImportVersionItem> BoqImportVersionItems => Set<BoqImportVersionItem>();
 
+    // ── الشكل 24 · المسار 4 — استيراد الجدول الزمني ───────────────────────
+    // The same shape, and for a stronger reason: `Activities.Baseline*` is what
+    // every slip, float and planned percentage in the system measures from, so
+    // an import writes a VERSION here and touches `Activities` not at all until
+    // it is approved.
+    public DbSet<ScheduleImportVersion> ScheduleImportVersions => Set<ScheduleImportVersion>();
+    public DbSet<ScheduleImportVersionItem> ScheduleImportVersionItems => Set<ScheduleImportVersionItem>();
+
     // ── الشكل 17 — مهل التدقيق ────────────────────────────────────────────
     // One row per DESK a certificate sits at. The route is data, not columns:
     // a ministry that adds a stage adds rows (P-97).
@@ -148,6 +156,19 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // extra row per line carrying the device facts a works line has no use for.
     public DbSet<SupplyItemDetail> SupplyItemDetails => Set<SupplyItemDetail>();
 
+    // ── المسار 11 · الأشكال 52–55 — الاستلامات ────────────────────────────
+    // One row per MOVEMENT, of two kinds that do not net against each other.
+    // `SupplyItemDetail.ReceivedQty` used to be a stored column; it is Σ these
+    // rows now, derived at projection time (01 §3).
+    public DbSet<SupplyReceipt> SupplyReceipts => Set<SupplyReceipt>();
+    public DbSet<SupplyReceiptAttachment> SupplyReceiptAttachments => Set<SupplyReceiptAttachment>();
+
+    // «العروض» — the register's saved views (الشكل 12). The one table here that
+    // holds no ministry data: it is a person's own toolbar state, owned by the
+    // X-Epm-User persona and scoped to nothing else. Persisted rather than left
+    // in localStorage where the reference keeps it — see BoqSavedView.
+    public DbSet<BoqSavedView> BoqSavedViews => Set<BoqSavedView>();
+
     public DbSet<Activity> Activities => Set<Activity>();
 
     // ── SCR-W8 the change-order register (Phase 5.1) ─────────────────────
@@ -160,6 +181,9 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<ChangeOrder> ChangeOrders => Set<ChangeOrder>();
     public DbSet<ChangeOrderLine> ChangeOrderLines => Set<ChangeOrderLine>();
     public DbSet<ChangeOrderActivity> ChangeOrderActivities => Set<ChangeOrderActivity>();
+    // الشكل 58 — many transfers per line, which is why it is a table and not
+    // three columns on ChangeOrderLine. See the entity's own header.
+    public DbSet<ChangeOrderRedistribution> ChangeOrderRedistributions => Set<ChangeOrderRedistribution>();
     public DbSet<ChangeOrderStage> ChangeOrderStages => Set<ChangeOrderStage>();
     public DbSet<ChangeOrderAttachment> ChangeOrderAttachments => Set<ChangeOrderAttachment>();
 
@@ -221,7 +245,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // Its real identity is BoqItemId — one detail row per line. Compared in
         // BoqEndpoints where the rule sits next to its message, like the rest.
         b.Entity<SupplyItemDetail>().HasKey(x => x.Id);
+        b.Entity<SupplyReceipt>().HasKey(x => x.Id);
+        b.Entity<SupplyReceiptAttachment>().HasKey(x => x.Id);
+        b.Entity<ChangeOrderRedistribution>().HasKey(x => x.Id);
         b.Entity<Activity>().HasKey(x => x.Id);
+        b.Entity<ScheduleImportVersion>().HasKey(x => x.Id);
+        b.Entity<ScheduleImportVersionItem>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

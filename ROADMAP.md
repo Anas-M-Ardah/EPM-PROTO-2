@@ -685,11 +685,13 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 > exactly the 14,094,000 the BOQ tab already assigns to A5. The two agree because
 > they are the same derivation (P-54).
 
-### 4.5 Amendment disclosure — shared by BOQ and Schedule
-- [ ] `DAmdMark` badge — count + three states: all applied · all pending · **mixed** (green with amber dot)
-- [ ] `DAmdPanel` drawer, identical for BOQ items and activities (`04 §6`)
-- [ ] Cell delta — effective figure + compact signed delta, coloured settled vs pending, **no strikethrough**
-- [ ] `docs/uml/amendment-disclosure.md`
+### 4.5 Amendment disclosure — shared by BOQ and Schedule ✅ COMPLETE
+- [x] `DAmdMark` badge — count + three states: all applied · all pending · **mixed** (green with amber dot). `shared/amendment-mark.component.ts`; the count IS the label, so the state is never colour-only
+- [x] `DAmdPanel` drawer, identical for BOQ items and activities (`04 §6`) — one component, two callers, each translating its own figures into the same step shape. `EP-BOQ-17` · `EP-SCD-03`
+- [x] Cell delta — effective figure + compact signed delta, coloured settled vs pending, **no strikethrough**. `shared/amendment-delta.component.ts`
+- [x] `docs/uml/amendment-disclosure.md`
+- [x] **`Domain/AmendmentDisclosure`** — the three rules the chain obeys, with 13 worked examples. Applied is read from the LINE (`AppliedDeltaQty`), not the order's lifecycle, so an `applied_partial` order marks only what it moved; a redistribution is mirrored onto its destination line; pending chains onto effective the way `Amendments.Projection` does
+- [x] **Two defects it exposed and closed** — the fixture's applied orders had never written their `BoqRateBands`, so the register read 1,400 where the order said 1,710; and `TierSplit.Line.Banded` conflated "has bands" with "carries more than one rate", putting «سعر مركّب» on a line moved inside the 20% threshold. `MultiRate` is now the narrower test
 
 ### 4.6 المسار 1 + الشكل 5 — project definition, and SCR-W2 completed ✅ COMPLETE
 

@@ -213,18 +213,26 @@ State per version: `original` (no. 0) · `superseded` (an earlier applied one) �
 
 ## 10. Delay penalty
 
-**Rule.** `0.1% of the contract value per day of delay, capped at 10% of the contract value.`
+**Rule.** `The contract value spread over the contract duration, times the penalty rate, per day of delay — capped at 10% of the contract value.`
+
+العرض الفني §11 states it in words — «غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷ (مدة العقد ± تغيّر المدة) × نسبة الغرامة» — and الشكل 10 prints **161,449 د.ع/day** against CNT-0170-EM's 587,673,564 د.ع over 364 days.
 
 ```
 days   = max(0, forecastFinish − contractualFinish)
-perDay = effectiveContractValue × 0.001
+perDay = effectiveContractValue ÷ effectiveDurationDays × 0.10
 cap    = effectiveContractValue × 0.10
 amount = min(perDay × days, cap)
 ```
 
-**An applied change order moves both terms** — the value (raising the per-day amount and the cap) and the contractual finish (usually reducing the delay days). Show **before vs after** and the resulting **waived amount**, because a time extension is often the point of the order.
+**The cap is reached after exactly one contract duration of delay**, because `perDay × durationDays = value × 0.10 = cap` identically. A short contract therefore exhausts its penalty faster than a long one of the same value.
 
-**Worked example.** Value 100,000,000, contractual finish 2026-06-30, forecast 2026-08-30 → 61 days × 100,000 = 6,100,000 (below the 10,000,000 cap). An applied order adds 45 days and 5,000,000 → new finish 2026-08-14, days 16, perDay 105,000 → 1,680,000. **Waived: 4,420,000.**
+**An applied change order moves both terms of the fraction** — the value (numerator) and the duration (denominator) — as well as the contractual finish. An extension can therefore **lower** the daily penalty while the contract value rises. Show **before vs after** and the resulting **waived amount**, because a time extension is often the point of the order.
+
+**A contract with no recorded duration charges nothing a day.** An undefined fraction is not a penalty of zero-point-something; it is a figure the record does not have, and inventing one is worse than showing none.
+
+**Worked example.** Value 365,000,000 over 365 days, contractual finish 2026-06-30, forecast 2026-08-30 → 61 days × 100,000 = 6,100,000 (below the 36,500,000 cap). An applied order adds 45 days and 4,000,000 → value 369,000,000 over 410 days, new finish 2026-08-14, days 16, perDay **90,000** → 1,440,000. **Waived: 4,660,000.**
+
+> **This rule was changed after the port.** It read `0.1% of the value per day, capped at 10%` — flagged `D-02 CONFIRM` from the start — which differs from the client's own two documents by 3.6× and in shape. The documents win; see `DECISIONS.md` P-81. What is still open is whether the 10% rate is fixed or whether الشكل 10's «النطاق القانوني 10%–25%» is a range.
 
 ---
 

@@ -1,4 +1,4 @@
-import { Component, Input, ViewEncapsulation, signal } from '@angular/core';
+import { Component, Input, ViewEncapsulation, booleanAttribute, signal } from '@angular/core';
 import { IconComponent } from '../core/icon.component';
 
 /**
@@ -43,7 +43,7 @@ import { IconComponent } from '../core/icon.component';
         <epm-icon name="expand_more" [size]="16" class="chev" />
       </header>
       @if (open()) {
-        <div class="gb"><ng-content /></div>
+        <div class="gb" [class.flush]="flush"><ng-content /></div>
       }
     </section>
   `,
@@ -54,6 +54,14 @@ export class FieldGroupComponent {
   @Input() sub = '';
   /** Anchor, so a section can be linked to. */
   @Input() id: string | null = null;
+
+  /**
+   * `DFGroup`'s own `flush` prop — the body drops its padding and gap so a
+   * toolbar and a table meet the card's edges and each other on a hairline.
+   * الشكل 50's register is drawn this way: title row, toolbar row, table, with
+   * nothing inset. Without it a table inside a card reads as a box in a box.
+   */
+  @Input({ transform: booleanAttribute }) flush = false;
 
   open = signal(true);
 

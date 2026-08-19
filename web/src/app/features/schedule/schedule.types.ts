@@ -60,6 +60,60 @@ export interface ScheduleRow {
   predecessors: string;
   /** Forecast − baseline in days. SIGNED: negative is early. */
   slipDays: number | null;
+  /**
+   * `04 §6` — the amendment badge, or null when no approved order has touched
+   * this activity. Always null on a WBS node: an order extends an ACTIVITY.
+   */
+  amendment: ScheduleAmendmentMark | null;
+}
+
+export interface ScheduleAmendmentSource {
+  no: string;
+  isApplied: boolean;
+}
+
+/** The schedule half of ROADMAP 4.5. An activity moves DAYS, not quantities. */
+export interface ScheduleAmendmentMark {
+  count: number;
+  appliedCount: number;
+  pendingCount: number;
+  /** applied · pending · mixed. */
+  state: string;
+  originalRemaining: number;
+  /** Effective − original remaining. SETTLED — already inside the row's dates. */
+  deltaDays: number;
+  /** What the approved-unapplied orders would add. Null when none awaits application. */
+  pendingDeltaDays: number | null;
+  sources: ScheduleAmendmentSource[];
+}
+
+// ── EP-SCD-03 · the drawer behind the badge ──────────────────────────────
+
+export interface ScheduleAmendmentStep {
+  no: string;
+  at: string | null;
+  isApplied: boolean;
+  remainingFrom: number;
+  remainingTo: number;
+  finishFrom: string | null;
+  finishTo: string | null;
+}
+
+export interface ScheduleAmendmentDetail {
+  activityId: string;
+  nameAr: string;
+  nameEn: string;
+  count: number;
+  appliedCount: number;
+  pendingCount: number;
+  state: string;
+  originalRemaining: number;
+  effectiveRemaining: number;
+  pendingRemaining: number | null;
+  originalFinish: string | null;
+  effectiveFinish: string | null;
+  pendingFinish: string | null;
+  chain: ScheduleAmendmentStep[];
 }
 
 export interface ScheduleTimeline {
@@ -92,4 +146,52 @@ export interface ScheduleResponse {
   timeline: ScheduleTimeline;
   summary: ScheduleSummary;
   countByStatus: Record<string, number>;
+  /** الشكل 23's third view. Empty when nothing has slipped. */
+  impact: ScheduleImpactRow[];
+  impactSummary: ScheduleImpactSummary;
+  /** الشكل 23's «مرشح إصدار خط الأساس». */
+  baselines: ScheduleBaselineOption[];
+}
+
+/**
+ * الشكل 23 — one affected activity, baseline beside current. The pair is what
+ * makes a 26-day slip inside 26 days of float read differently from the same
+ * slip inside none.
+ */
+export interface ScheduleImpactRow {
+  activityId: string;
+  nameAr: string;
+  nameEn: string;
+  status: string;
+  isCritical: boolean;
+  baselineStart: string | null;
+  baselineFinish: string | null;
+  currentStart: string | null;
+  currentFinish: string | null;
+  durationBefore: number;
+  durationAfter: number;
+  floatBefore: number;
+  floatAfter: number;
+  slipDays: number;
+  cost: number;
+  dailyRate: number;
+  dailyOverhead: number;
+  /** `Domain/ScheduleImpact` — an ESTIMATE, and the screen says so. */
+  costImpact: number;
+}
+
+export interface ScheduleImpactSummary {
+  affectedCount: number;
+  nowCriticalCount: number;
+  totalCostImpact: number;
+  /** D-15 — sent so the explainer states the rule the figures came from. */
+  overheadPct: number;
+}
+
+export interface ScheduleBaselineOption {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  takenAt: string;
+  isCurrent: boolean;
 }

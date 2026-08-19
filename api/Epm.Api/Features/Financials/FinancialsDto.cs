@@ -320,3 +320,57 @@ public record FinancialsResponse(
     IReadOnlyList<int> Years,
     /// <summary>The year in force, or null for «كل السنوات».</summary>
     int? Year);
+
+// ── EP-FIN-02 · ملحق الشكل 20 — «تسجيل دفعة» ─────────────────────────────
+
+/// <summary>
+/// One document behind a certificate. الشكل 20's fourth step — «ذرعات الأعمال»
+/// — and at least one is required: «ربط الدفعة إلزاميًا بكتاب مالية وبذرعات
+/// الأعمال يجعل الصرف مستندًا إلى إنجاز موثّق».
+///
+/// METADATA ONLY, as everywhere else in this prototype. The row is what الشكل 9
+/// prints; no bytes are stored.
+/// </summary>
+public record PaymentAttachmentInput(
+    string? TitleAr,
+    string? TitleEn,
+    string? FileName,
+    long SizeBytes);
+
+/// <summary>
+/// الشكل 20's five steps, as one payload: العقود المشمولة · المبالغ والبنود ·
+/// كتاب المالية · ذرعات الأعمال · مراجعة.
+///
+/// ── THE NET IS NOT SENT ──────────────────────────────────────────────────
+/// It is `gross − retention − advanceRecovery`, computed on the server. A
+/// client-sent net is a figure that can disagree with its own components, and
+/// this one decides how much money leaves the ministry.
+/// </summary>
+/// <param name="Kind">Lookup `payment-kind` — advance · interim · final.</param>
+/// <param name="AwardPortion">
+/// الشكل 9's split across the contract's three expense items. Σ must equal the
+/// net: the person decides the split and the server checks it adds up.
+/// </param>
+public record PaymentRegisterInput(
+    string ContractId,
+    string? Kind,
+    decimal GrossAmount,
+    decimal RetentionAmount,
+    decimal AdvanceRecovery,
+    decimal AwardPortion,
+    decimal ReservePortion,
+    decimal SupervisionPortion,
+    string? FinanceLetterNo,
+    DateOnly? FinanceLetterDate,
+    string? Note,
+    IReadOnlyList<PaymentAttachmentInput>? Attachments);
+
+/// <param name="No">
+/// «دفعة N» — the next sequential number on this contract. NOT an official
+/// payment code: P-79 is still open and nothing here invents one.
+/// </param>
+public record PaymentRegisterResult(
+    int Id,
+    int No,
+    string ContractId,
+    decimal NetAmount);

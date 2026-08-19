@@ -59,11 +59,31 @@ public static class WorkflowMachine
     public record PlannedStage(StageDef Def, bool Active, string? SkipAr, string? SkipEn);
 
     /// <summary>
+    /// الشكل 60 · `02 §5` — the SIX stages as a supply order sees them.
+    ///
+    /// A تجهيز contract has no resident engineer, so the party that owns
+    /// «دراسة الطلب» and «التنفيذ» on a works order does not exist on this one.
+    /// لجنة الفحص والاستلام owns them instead — it is the party that signs every
+    /// محضر استلام on المسار 11 and the one `EPM.voTerms`'s supply branch names.
+    ///
+    /// BR-14 matches a persona's Party against `Owner`, so this swap is what
+    /// decides who may act; leaving it out makes a supply order UNACTIONABLE
+    /// rather than merely mislabelled, because no persona carries the missing
+    /// party. Stage 3 (تثبيت الأسعار) needs no swap: it is conditioned on a line
+    /// tripping 20%, which a supply order never does (`02 §5`).
+    /// </summary>
+    public static IReadOnlyList<StageDef> StagesFor(bool supply) =>
+        !supply ? Stages : Stages.Select(s => s.Owner == "دائرة المهندس المقيم"
+            ? s with { Owner = "لجنة الفحص والاستلام", OwnerEn = "Inspection & receipt committee" }
+            : s).ToList();
+
+    /// <summary>
     /// The chain for one order. Returns ALL SIX — a skipped stage is marked
     /// with its reason, never dropped (03 §2).
     /// </summary>
-    public static IReadOnlyList<PlannedStage> Plan(bool tripsThreshold, bool needsEndorsement)
-        => Stages.Select(s => s.Condition switch
+    public static IReadOnlyList<PlannedStage> Plan(
+        bool tripsThreshold, bool needsEndorsement, bool supply = false)
+        => StagesFor(supply).Select(s => s.Condition switch
         {
             "exceeds20" when !tripsThreshold =>
                 new PlannedStage(s, false, "لم يتجاوز أي بند 20%", "No line exceeded 20%"),

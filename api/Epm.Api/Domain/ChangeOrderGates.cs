@@ -25,7 +25,16 @@ public static class ChangeOrderGates
         decimal ReDeptDeltaQty,
         string? TargetCode = null,
         decimal Drawn = 0m,
-        decimal Distributed = 0m);
+        decimal Distributed = 0m,
+        /// <summary>
+        /// How many الشكل 58 transfers this line carries. `redist` names TWO
+        /// different movements — BOQ line to BOQ line (`TargetCode`, `Drawn`,
+        /// `Distributed`) and beneficiary to beneficiary within one line — and
+        /// the gates below have to know which one is in front of them. A line
+        /// carrying transfers is checked by Domain/SupplyRedistribution, which
+        /// runs where the allocations can be read.
+        /// </summary>
+        int TransferCount = 0);
 
     public record Activity(string ActivityId, string ContractId);
 
@@ -67,11 +76,17 @@ public static class ChangeOrderGates
                         $"The RE department's decrease exceeds the remaining quantity ({remaining:0.###})"));
             }
 
-            if (l.ChangeType == "redist")
+            // الشكل 58's redistribution has no target ITEM — it has target
+            // BENEFICIARIES, and demanding one would refuse the plate's own
+            // worked example. Its balance is guaranteed by construction (every
+            // transfer takes from one side and gives to the other), so neither
+            // gate below applies to it.
+            if (l.ChangeType == "redist" && l.TransferCount == 0)
             {
                 if (string.IsNullOrWhiteSpace(l.TargetCode))
                     issues.Add(new("redist-no-target", l.Code,
-                        "إعادة توزيع دون بند هدف", "Redistribution with no target item"));
+                        "إعادة توزيع دون بند هدف ودون تحويلات بين الجهات",
+                        "Redistribution with neither a target item nor beneficiary transfers"));
 
                 if (Math.Abs(l.Drawn - l.Distributed) > 0.001m)
                     issues.Add(new("redist-unbalanced", l.Code,

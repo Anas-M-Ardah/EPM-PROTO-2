@@ -120,11 +120,26 @@ public static class Fixture
                 Id = "PRJ-0207", WorkspaceCode = "nu", Code = "PC-0207",
                 NameAr = "صيانة شبكة المياه", NameEn = "Water Network Maintenance",
                 RegistrationYear = 2025, PlannedCost = 62_000_000m,
-                ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2533",
+                ExpenditureCategory = "equipment", BudgetApprovalNumber = "BA-2533",
                 Coordinates = "33.34,44.40", Formation = "وزارة التعليم العالي والبحث العلمي",
                 OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › البنى التحتية",
                 Description = "استبدال شبكة المياه الرئيسية داخل الحرم الجامعي ومعالجة نقاط التسرب.",
-                Status = "delayed", Type = "construction", ExecutionStage = "mep-first-fix",
+                // THE ONE `equipment` PROJECT, SO `BoqKind` CAN RETURN `supply`
+                // ON SCREEN (D-14 · P-159). Every other project is typed
+                // `construction`, which left the supply sub-type built, tested
+                // and unreachable — the bill's shape follows the PROJECT's type,
+                // so with no project typed `equipment` no screen ever asked for
+                // it. Chosen because it is the only single-contract project
+                // whose bill is empty and whose retype moves NO money: CNT-0207
+                // carries no BOQ rows, so nothing re-weighs and no total shifts.
+                //
+                // ITS NAME AND EXECUTION STAGE NOW CONTRADICT ITS TYPE — see
+                // P-159. «صيانة شبكة المياه» is not a تجهيز project and
+                // `mep-first-fix` is one of `06 §2`'s twelve CONSTRUCTION
+                // stages. Both are recorded rather than papered over: renaming
+                // fixture rows to fit a type would invent a project, and `06 §2`
+                // has no supply stage list to move it to.
+                Status = "delayed", Type = "equipment", ExecutionStage = "mep-first-fix",
                 FundingType = "reconstruction-fund", Region = "baghdad", Priority = "high",
                 Branch = "شعبة البنى التحتية", Executor = "شركة الرافدين للمقاولات",
                 ConsultantParty = "المكتب الاستشاري الهندسي",
@@ -159,12 +174,12 @@ public static class Fixture
                 Id = "CNT-0279", ProjectId = "PRJ-0279",
                 NameAr = "الأعمال المدنية", NameEn = "Civil works",
                 OriginalValue = 240_000_000m, Status = "ongoing",
-                Start = new DateOnly(2025, 3, 1),
-                OriginalFinish = new DateOnly(2026, 6, 30),
+                Start = new DateOnly(2025, 5, 30),
+                OriginalFinish = new DateOnly(2026, 9, 28),
                 OriginalDurationDays = 486,
-                ForecastFinish = new DateOnly(2026, 8, 30),
+                ForecastFinish = new DateOnly(2026, 11, 28),
                 AwardAmount = 222_000_000m, ReserveAmount = 12_000_000m, SupervisionAmount = 6_000_000m,
-                IncomingNo = "3421", IncomingDate = new DateOnly(2025, 2, 11),
+                IncomingNo = "3421", IncomingDate = new DateOnly(2025, 5, 12),
                 Contractor = "شركة الفاو الهندسية", Consultant = "دار الهندسة",
                 Component = "المكوّن المدني", ExecutingParty = "شركة الفاو العامة", ContactInfo = "+964 771 222 3333",
             },
@@ -173,12 +188,12 @@ public static class Fixture
                 Id = "CNT-0279-EM", ProjectId = "PRJ-0279",
                 NameAr = "الأعمال الكهروميكانيكية", NameEn = "Electromechanical works",
                 OriginalValue = 100_000_000m, Status = "ongoing",
-                Start = new DateOnly(2025, 6, 1),
-                OriginalFinish = new DateOnly(2026, 6, 30),
+                Start = new DateOnly(2025, 8, 30),
+                OriginalFinish = new DateOnly(2026, 9, 28),
                 OriginalDurationDays = 394,
-                ForecastFinish = new DateOnly(2026, 8, 30),
+                ForecastFinish = new DateOnly(2026, 11, 28),
                 AwardAmount = 92_500_000m, ReserveAmount = 5_000_000m, SupervisionAmount = 2_500_000m,
-                IncomingNo = "3588", IncomingDate = new DateOnly(2025, 5, 6),
+                IncomingNo = "3588", IncomingDate = new DateOnly(2025, 8, 4),
                 Contractor = "شركة المنصور للتجهيزات", Consultant = "دار الهندسة",
                 Component = "المكوّن الكهربائي", ExecutingParty = "شركة الطاقة العامة", ContactInfo = "+964 780 444 5555",
             },
@@ -218,15 +233,19 @@ public static class Fixture
         //
         // CNT-0279 carries one APPLIED amendment and one APPROVED-BUT-UNAPPLIED,
         // so its effective value (250,000,000) and its projection (253,000,000)
-        // differ on screen. CNT-0279-EM has none, so both read 100,000,000 —
-        // which is what makes the difference legible rather than decorative.
+        // differ on screen. CNT-0279-EM carries an APPLIED one and NO pending
+        // one, so both of its figures read 101,250,000 — which is what makes the
+        // difference legible rather than decorative. The contrast is between a
+        // contract with something waiting and a contract with nothing waiting,
+        // NOT between an amended contract and a virgin one: EM was unamended
+        // until VO-06 was applied (P-160), and the pairing reads the same way.
         db.ContractAmendments.AddRange(
             new ContractAmendment
             {
                 ContractId = "CNT-0279", No = 1,
                 DeltaValue = 10_000_000m, DeltaDays = 45,
                 Value = 250_000_000m,
-                Finish = new DateOnly(2026, 8, 14), DurationDays = 531,
+                Finish = new DateOnly(2026, 11, 12), DurationDays = 531,
                 State = "effective",
                 // The day VO-01's التنفيذ stage closed. The amendment and the
                 // order that produced it are one event in two tables, so they
@@ -238,11 +257,27 @@ public static class Fixture
                 ContractId = "CNT-0279", No = 2,
                 DeltaValue = 3_000_000m, DeltaDays = 12,
                 Value = 253_000_000m,
-                Finish = new DateOnly(2026, 8, 26), DurationDays = 543,
+                Finish = new DateOnly(2026, 11, 24), DurationDays = 543,
                 // Approved by the committee, NOT yet applied. AppliedAt stays
                 // null — that null is the whole rule (BR-09).
                 State = "pending",
                 AppliedAt = null,
+            },
+            // VO-06's amendment. A RATE order moves value and NOT time, so
+            // DeltaDays is 0 and the finish and duration are the contract's own
+            // originals — 2026-06-30 / 394. An amendment that silently moved a
+            // date the order never asked for would be a fabricated extension.
+            new ContractAmendment
+            {
+                ContractId = "CNT-0279-EM", No = 1,
+                DeltaValue = 1_250_000m, DeltaDays = 0,
+                Value = 101_250_000m,
+                Finish = new DateOnly(2026, 9, 28), DurationDays = 394,
+                State = "effective",
+                // The day VO-06's التنفيذ stage closed — Ago(30) against the
+                // 2026-08-02 data date. Same rule as no. 1 on CNT-0279: the
+                // amendment and its order are one event in two tables.
+                AppliedAt = new DateTime(2026, 7, 3),
             },
             new ContractAmendment
             {
@@ -393,11 +428,16 @@ public static class Fixture
         );
 
         // ── PHASE 3 · SCR-W1 Overview — the beneficiaries (01 §2.1) ──────
-        // Every code already referenced by Projects.BeneficiaryCodes above, and
-        // no others: an unreferenced beneficiary would be a row no screen can
-        // reach. The tree is real — a faculty's ParentCode is its university,
-        // which is how the overview can say "كلية الهندسة — جامعة بغداد" without
-        // storing the university on the faculty.
+        // The tree is real — a faculty's ParentCode is its university, which is
+        // how the overview can say "كلية الهندسة — جامعة بغداد" without storing
+        // the university on the faculty.
+        //
+        // «EVERY CODE IS REFERENCED BY A PROJECT, AND NO OTHERS» WAS THE RULE
+        // HERE, and EP-PRJ-05 retired it. The overview only ever read the codes
+        // a project already held, so an unreferenced row was indeed unreachable;
+        // the beneficiaries drawer returns the WHOLE master list, and the
+        // unticked rows are half of what it is for. A list where every row is
+        // already ticked cannot demonstrate the control.
         db.Beneficiaries.AddRange(
             new Beneficiary { Code = "BEN-UOB", NameAr = "جامعة بغداد", NameEn = "University of Baghdad",
                 Type = "university" },
@@ -408,7 +448,22 @@ public static class Fixture
             new Beneficiary { Code = "BEN-UON", NameAr = "جامعة نينوى", NameEn = "University of Nineveh",
                 Type = "university" },
             new Beneficiary { Code = "BEN-UOT", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar",
-                Type = "university" }
+                Type = "university" },
+
+            // THE ONE INACTIVE BENEFICIARY, AND THE ONLY ROW THAT MAKES `01
+            // §2.1` VISIBLE. Its rule — an inactive beneficiary cannot receive
+            // new quantity — is enforced twice, by the drawer's disabled
+            // checkbox and by EP-PRJ-06's «لا يمكن ربط جهات موقوفة» refusal, and
+            // with every seeded row active NEITHER could fire. A guard no
+            // fixture can reach is a guard nobody reviews.
+            //
+            // The live prototype seeds exactly this row — «موقع الرصافة
+            // (موقوف)», a `site` under جامعة بغداد, the only موقوفة entry in its
+            // eight — so this is its shape, not an invented case. Referenced by
+            // NO project, which is the point: it is offered by the master list
+            // and refused by the rule.
+            new Beneficiary { Code = "BEN-UOB-RUS", NameAr = "موقع الرصافة", NameEn = "Rusafa Site",
+                Type = "site", ParentCode = "BEN-UOB", Active = false }
         );
 
         // ── PHASE 4.1 · SCR-W3 Contract tab — payments ───────────────────
@@ -429,15 +484,15 @@ public static class Fixture
                 GrossAmount = 24_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
                 NetAmount = 24_000_000m,
                 AwardPortion = 22_400_000m, ReservePortion = 1_100_000m, SupervisionPortion = 500_000m,
-                FinanceLetterNo = "1420/2025", FinanceLetterDate = new DateOnly(2025, 4, 10),
-                CertifiedDate = new DateOnly(2025, 4, 6), PaidDate = new DateOnly(2025, 4, 21),
+                FinanceLetterNo = "1420/2025", FinanceLetterDate = new DateOnly(2025, 7, 9),
+                CertifiedDate = new DateOnly(2025, 7, 5), PaidDate = new DateOnly(2025, 7, 20),
                 Status = "paid", Note = "سلفة تشغيلية 10% من مبلغ الإحالة" },
             new Payment { ContractId = "CNT-0279", No = 2, Kind = "interim",
                 GrossAmount = 62_000_000m, RetentionAmount = 3_100_000m, AdvanceRecovery = 6_200_000m,
                 NetAmount = 52_700_000m,
                 AwardPortion = 49_000_000m, ReservePortion = 2_500_000m, SupervisionPortion = 1_200_000m,
-                FinanceLetterNo = "2107/2025", FinanceLetterDate = new DateOnly(2025, 11, 3),
-                CertifiedDate = new DateOnly(2025, 10, 28), PaidDate = new DateOnly(2025, 11, 19),
+                FinanceLetterNo = "2107/2026", FinanceLetterDate = new DateOnly(2026, 2, 1),
+                CertifiedDate = new DateOnly(2026, 1, 26), PaidDate = new DateOnly(2026, 2, 17),
                 Status = "paid", Note = "المستخلص الأول — أعمال الأسس والهيكل" },
             new Payment { ContractId = "CNT-0279", No = 3, Kind = "interim",
                 GrossAmount = 48_500_000m, RetentionAmount = 2_425_000m, AdvanceRecovery = 4_850_000m,
@@ -454,8 +509,8 @@ public static class Fixture
                 GrossAmount = 10_000_000m, RetentionAmount = 0m, AdvanceRecovery = 0m,
                 NetAmount = 10_000_000m,
                 AwardPortion = 9_400_000m, ReservePortion = 400_000m, SupervisionPortion = 200_000m,
-                FinanceLetterNo = "1655/2025", FinanceLetterDate = new DateOnly(2025, 7, 8),
-                CertifiedDate = new DateOnly(2025, 7, 2), PaidDate = new DateOnly(2025, 7, 20),
+                FinanceLetterNo = "1655/2025", FinanceLetterDate = new DateOnly(2025, 10, 6),
+                CertifiedDate = new DateOnly(2025, 9, 30), PaidDate = new DateOnly(2025, 10, 18),
                 Status = "paid", Note = "سلفة تشغيلية" },
 
             // ── الشكل 16 — ONE LETTER, TWO CONTRACTS ─────────────────────
@@ -520,6 +575,10 @@ public static class Fixture
         // That is the invariant a bill of quantities is FOR, and a fixture that
         // broke it would make every weight on screen quietly wrong.
         Boq(db);
+
+        // ملحق الأشكال 50–56 · المسارات 10 و11 — الفقرات التجهيزية.
+        SupplyItems(db);
+
 
         // PHASE 5.1 — the six change orders 06 §12 asks for, in six states.
         ChangeOrders(db);
@@ -629,7 +688,7 @@ public static class Fixture
         //      A1 → A2 → A3 → A4 → A5 → A7 → A10 (with M1 hanging off A5), all
         //      at float 0. Every non-critical activity carries float > 0.
         //   2. THE LAST ACTIVITY'S FORECAST FINISH IS THE CONTRACT'S.
-        //      A10 and E4 both forecast 2026-08-30, which is what
+        //      A10 and E4 both forecast 2026-11-28, which is what
         //      Contracts.ForecastFinish says and what BR-10 charges the penalty
         //      on. A Gantt that ended somewhere else would make the contract
         //      tab and the schedule tab disagree about the same project.
@@ -637,51 +696,71 @@ public static class Fixture
         //      what absorbs their own slip, so the project is 16 days late
         //      rather than every activity being late — which is what makes the
         //      critical-path filter worth having.
+        //   4. THE BASELINE STRADDLES THE DATA DATE. This whole window was
+        //      moved 90 days later than it was first written. Every baseline
+        //      used to FINISH before 2026-08-02, so PlannedProgress answered
+        //      100% for every contract, the portfolio read «المخطط 100%», the
+        //      SPI that fell out of it (0.49) said the portfolio was half as
+        //      fast as planned when what it actually said was that the
+        //      fixture's schedules had all ended two months ago, «معالم قادمة»
+        //      was empty because no planned finish fell after the data date,
+        //      and SCR-W1's curve jumped 32%→49% at its last point. A live
+        //      portfolio has work on both sides of its data date and so does
+        //      this one now: A5–A10 and E3–E4 are mid-baseline at 2026-08-02,
+        //      M1 (2026-09-13) and E4's start (2026-08-30) are still ahead of
+        //      it, and CNT-0279 reads planned ≈74% against actual ≈55%.
+        //      NOTHING IN Domain/ CHANGED — this was never a rule problem.
+        //      The dates that are anchored to the DATA DATE rather than to the
+        //      contract did not move: the change orders' ages, the amendments'
+        //      AppliedAt, and the two certificates of 2026-07-09. The dates
+        //      anchored to the CONTRACT did: its start, its finish, its
+        //      forecast, its incoming letter, the baselines, and the two early
+        //      advance/interim certificates drawn against them.
         //
         // All five 06 §9 statuses appear: completed ×3, delayed ×3,
         // inprogress ×1, ahead ×1, notstarted ×3 (one of them the milestone).
         db.Activities.AddRange(
             Act("CNT-0279", "A1", "التهيئة وتسوية الموقع", "Site preparation and levelling",
                 "1", "الأعمال الترابية والأسس", 12_000_000m, 9_600m, 100m, "completed",
-                bl: ("2025-03-01", "2025-04-14"), actual: ("2025-03-01", "2025-04-14"),
+                bl: ("2025-05-30", "2025-07-13"), actual: ("2025-05-30", "2025-07-13"),
                 dur: 45, float_: 0, critical: true),
             Act("CNT-0279", "A2", "أعمال الحفر والردم", "Excavation and backfill",
                 "1", "الأعمال الترابية والأسس", 18_000_000m, 16_800m, 100m, "completed",
-                bl: ("2025-04-15", "2025-07-13"), actual: ("2025-04-15", "2025-07-13"),
+                bl: ("2025-07-14", "2025-10-11"), actual: ("2025-07-14", "2025-10-11"),
                 dur: 90, float_: 0, critical: true, preds: "A1"),
             Act("CNT-0279", "A3", "خرسانة الأسس المسلحة", "Reinforced foundation concrete",
                 "1", "الأعمال الترابية والأسس", 33_600_000m, 28_000m, 100m, "completed",
-                bl: ("2025-07-14", "2025-11-10"), actual: ("2025-07-14", "2025-11-18"),
+                bl: ("2025-10-12", "2026-02-08"), actual: ("2025-10-12", "2026-02-16"),
                 dur: 120, float_: 0, critical: true, preds: "A2"),
             Act("CNT-0279", "A4", "الأعمدة والجسور الخرسانية", "Concrete columns and beams",
                 "2", "الهيكل الإنشائي", 45_600_000m, 38_000m, 82m, "delayed",
-                bl: ("2025-11-11", "2026-04-09"), start: "2025-11-19", forecast: "2026-04-25",
+                bl: ("2026-02-09", "2026-07-08"), start: "2026-02-17", forecast: "2026-07-24",
                 dur: 150, float_: 0, critical: true, preds: "A3"),
             // 02 §4's own activity — the one Phase 4.4 drags to 100%.
             Act("CNT-0279", "A5", "الأسقف والسلالم", "Slabs and stairs",
                 "2", "الهيكل الإنشائي", 13_920_000m, 13_200m, 60m, "delayed",
-                bl: ("2026-01-10", "2026-05-10"), start: "2026-01-26", forecast: "2026-05-26",
+                bl: ("2026-04-10", "2026-08-08"), start: "2026-04-26", forecast: "2026-08-24",
                 dur: 121, float_: 0, critical: true, preds: "A4"),
             Act("CNT-0279", "A6", "الجدران والقواطع", "Walls and partitions",
                 "2", "الهيكل الإنشائي", 26_400_000m, 24_000m, 45m, "inprogress",
-                bl: ("2026-02-15", "2026-06-14"), start: "2026-02-20", forecast: "2026-06-14",
+                bl: ("2026-05-16", "2026-09-12"), start: "2026-05-21", forecast: "2026-09-12",
                 dur: 120, float_: 12, critical: false, preds: "A4"),
             Act("CNT-0279", "A7", "التبليط والإكساء الداخلي", "Tiling and internal finishes",
                 "3", "الإكساء والتشطيبات", 38_400_000m, 36_000m, 20m, "delayed",
-                bl: ("2026-03-01", "2026-06-28"), start: "2026-03-18", forecast: "2026-07-14",
+                bl: ("2026-05-30", "2026-09-26"), start: "2026-06-16", forecast: "2026-10-12",
                 dur: 120, float_: 0, critical: true, preds: "A5"),
             Act("CNT-0279", "A8", "أعمال الواجهات", "Facade works",
                 "3", "الإكساء والتشطيبات", 12_480_000m, 9_600m, 0m, "notstarted",
-                bl: ("2026-04-01", "2026-06-29"), forecast: "2026-06-29",
+                bl: ("2026-06-30", "2026-09-27"), forecast: "2026-09-27",
                 dur: 90, float_: 6, critical: false, preds: "A6"),
             // The one activity running EARLY — 9 days inside its baseline.
             Act("CNT-0279", "A9", "الأعمال الصحية والكهربائية الأولية", "First-fix plumbing and electrical",
                 "3", "الإكساء والتشطيبات", 21_600_000m, 20_400m, 15m, "ahead",
-                bl: ("2026-02-20", "2026-06-19"), start: "2026-02-20", forecast: "2026-06-10",
+                bl: ("2026-05-21", "2026-09-17"), start: "2026-05-21", forecast: "2026-09-08",
                 dur: 120, float_: 18, critical: false, preds: "A4"),
             Act("CNT-0279", "A10", "الأعمال الخارجية والتسليم", "External works and handover",
                 "4", "الأعمال الخارجية والتسليم", 18_000_000m, 14_400m, 0m, "notstarted",
-                bl: ("2026-05-01", "2026-06-30"), forecast: "2026-08-30",
+                bl: ("2026-07-30", "2026-09-28"), forecast: "2026-11-28",
                 dur: 60, float_: 0, critical: true, preds: "A7,A8,A9"),
             // Zero cost, zero man-hours, weight 0, excluded from allocation
             // (02 §2). It exists so the assignment picker has to skip it — and
@@ -689,25 +768,25 @@ public static class Fixture
             // duration, so its baseline start IS its baseline finish.
             Act("CNT-0279", "M1", "تسليم الهيكل الإنشائي", "Structure handover",
                 "2", "الهيكل الإنشائي", 0m, 0m, 0m, "notstarted", milestone: true,
-                bl: ("2026-06-15", "2026-06-15"), forecast: "2026-07-01",
+                bl: ("2026-09-13", "2026-09-13"), forecast: "2026-09-29",
                 dur: 0, float_: 0, critical: true, preds: "A5,A6"),
 
             // CNT-0279-EM electromechanical: four activities, 100,000,000.
             Act("CNT-0279-EM", "E1", "توريد المولدات ولوحات التوزيع", "Supply generators and distribution boards",
                 "1", "التجهيز والتوريد", 40_000_000m, 21_000m, 55m, "inprogress",
-                bl: ("2025-06-01", "2025-12-27"), start: "2025-06-10", forecast: "2026-01-10",
+                bl: ("2025-08-30", "2026-03-27"), start: "2025-09-08", forecast: "2026-04-10",
                 dur: 210, float_: 0, critical: true),
             Act("CNT-0279-EM", "E2", "توريد كابلات الضغط المتوسط", "Supply medium-voltage cabling",
                 "1", "التجهيز والتوريد", 16_131_000m, 8_400m, 40m, "delayed",
-                bl: ("2025-09-01", "2026-01-29"), start: "2025-09-20", forecast: "2026-03-01",
+                bl: ("2025-11-30", "2026-04-29"), start: "2025-12-19", forecast: "2026-05-30",
                 dur: 151, float_: 25, critical: false, preds: "E1"),
             Act("CNT-0279-EM", "E3", "تركيب منظومة التكييف", "Install the HVAC system",
                 "2", "التركيب والتشغيل", 28_000_000m, 18_000m, 25m, "inprogress",
-                bl: ("2026-01-01", "2026-05-31"), start: "2026-01-15", forecast: "2026-06-20",
+                bl: ("2026-04-01", "2026-08-29"), start: "2026-04-15", forecast: "2026-09-18",
                 dur: 151, float_: 0, critical: true, preds: "E1"),
             Act("CNT-0279-EM", "E4", "الفحص والتشغيل التجريبي", "Testing and trial operation",
                 "2", "التركيب والتشغيل", 15_869_000m, 9_600m, 0m, "notstarted",
-                bl: ("2026-06-01", "2026-06-30"), forecast: "2026-08-30",
+                bl: ("2026-08-30", "2026-09-28"), forecast: "2026-11-28",
                 dur: 30, float_: 0, critical: true, preds: "E2,E3")
         );
 
@@ -827,11 +906,277 @@ public static class Fixture
             // `none`, which is the state a freshly imported sheet is in.
         );
 
-        // BoqRateBands stays EMPTY. A band is created by APPLYING a change
-        // order that re-prices beyond the 20% threshold (02 §5), and no such
-        // order has been applied — Phase 5.4 is what writes here. Every line
-        // therefore reads at its single contract rate, which is the truth.
+        // BoqRateBands are written in `ChangeOrders` below, not here: a band
+        // belongs to the order that APPLIED it (02 §5 · 03 §9 step 3) and needs
+        // that order's id. See the block at the end of that method.
     }
+
+    /// <summary>
+    /// ملحق الأشكال 50–56 — مشروع تجهيز الأجهزة المختبرية العلمية.
+    ///
+    /// A REAL SUPPLY PROJECT, because there was not one. The only `equipment`
+    /// project in this fixture was PRJ-0207, a construction project retyped so
+    /// `BoqKind` could return `supply` on screen (P-159) — with an empty bill,
+    /// a name that contradicts its type and nothing to draw. الأشكال 50–56 name
+    /// a project, a contract, seven devices and their figures, so those are
+    /// what is seeded here.
+    ///
+    /// ── EVERY FIGURE IS الشكل 50'S OWN ───────────────────────────────────
+    /// Seven items, 762 contracted, 505 received, 2,171,639,875 د.ع. The
+    /// weights fall out of BR-01 from the amounts and are not seeded: 40.45% on
+    /// وحدة التكييف and 1.30% on المجهر are what the plate prints because they
+    /// are what the arithmetic gives.
+    ///
+    /// ── WHERE THE PLATE CONTRADICTS ITSELF, THE TABLE WINS ───────────────
+    /// الشكل 51's توزيع table gives ITM-002 as البصرة 34 · الموصل 61 = 95, and
+    /// الشكل 52's receipt card gives one preliminary receipt of 76 to البصرة.
+    /// Both cannot be true of one item. The DISTRIBUTION figures are seeded,
+    /// because they are the ones the beneficiary column derives from and the
+    /// ones الشكل 56 repeats for ITM-006. The receipt cards follow them.
+    ///
+    /// ── SEVEN WAREHOUSE RECEIPTS, FIVE PRELIMINARY ───────────────────────
+    /// الشكل 55's footer says «استلامات مخزنية 7 · استلامات أولية 7». Seven
+    /// warehouse receipts are seeded — one per item, on الشكل 55's own dates.
+    /// Only FIVE preliminary ones are, because only two items have a
+    /// distribution to hand devices out against, and inventing three more would
+    /// mean inventing the allocations behind them. Five items sitting in the
+    /// store with nothing handed on is a real state, and it is the one that
+    /// makes الشكل 56's «المستلم 118 / المجهّز 154» pair mean something.
+    /// </summary>
+    private static void SupplyItems(EpmDb db)
+    {
+        // ── الجهات المستفيدة الأربع التي تسمّيها الأشكال 51 · 56 · 58 ────
+        db.Beneficiaries.AddRange(
+            new Beneficiary { Code = "BEN-BAS", NameAr = "جامعة البصرة", NameEn = "University of Basrah", Type = "university" },
+            new Beneficiary { Code = "BEN-MOS", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Type = "university" },
+            new Beneficiary { Code = "BEN-KUF", NameAr = "جامعة الكوفة", NameEn = "University of Kufa", Type = "university" },
+            // الشكل 58's redistribution TARGET. It holds nothing yet, which is
+            // the whole point of that plate: a quantity moves TO it.
+            new Beneficiary { Code = "BEN-TAL", NameAr = "جامعة تلعفر", NameEn = "University of Tal Afar", Type = "university" }
+        );
+
+        db.Projects.Add(new Project
+        {
+            Id = "PRJ-0439", WorkspaceCode = "sp", Code = "PC-0439",
+            NameAr = "تجهيز الأجهزة المختبرية العلمية",
+            NameEn = "Scientific laboratory equipment supply",
+            RegistrationYear = 2025, PlannedCost = 2_600_000_000m,
+            ExpenditureCategory = "equipment", BudgetApprovalNumber = "BA-2547",
+            Coordinates = "33.31,44.39", Formation = "وزارة التعليم العالي والبحث العلمي",
+            OrgStructure = "المديرية العامة للتجهيز والمشتريات › قسم التجهيز",
+            Description = "تجهيز الجامعات بأجهزة مختبرية علمية وتوزيعها على الجهات المستفيدة.",
+            Status = "ongoing",
+            // D-14 — `equipment` is what makes the bill's shape `supply`, which
+            // is what makes this module exist at all.
+            Type = "equipment",
+            // 06 §2's stage list is CONSTRUCTION's. There is no supply stage
+            // list in the documents, so the nearest honest value is used and
+            // the absence is recorded rather than a stage invented (P-159).
+            ExecutionStage = "handover",
+            FundingType = "federal-budget", Region = "baghdad", Priority = "high",
+            Branch = "شعبة التجهيز", Executor = "شركة الشرق للتجهيزات العلمية",
+            ConsultantParty = "المكتب الاستشاري الهندسي",
+            BeneficiaryCodes = "BEN-BAS,BEN-MOS,BEN-KUF",
+            DataDate = new DateOnly(2026, 8, 2),
+            UpdatedAt = new DateOnly(2026, 7, 30),
+        });
+
+        db.Contracts.AddRange(
+            new Contract
+            {
+                Id = "CNT-0439", ProjectId = "PRJ-0439",
+                NameAr = "عقد التجهيز", NameEn = "Supply contract",
+                // Σ the seven items' amounts, exactly. The invariant a bill of
+                // quantities is FOR (see Load's own note above).
+                OriginalValue = 2_171_639_875m, Status = "ongoing",
+                Start = new DateOnly(2025, 9, 1),
+                OriginalFinish = new DateOnly(2026, 12, 31),
+                OriginalDurationDays = 486,
+                ForecastFinish = new DateOnly(2027, 2, 15),
+                AwardAmount = 2_040_341_482m, ReserveAmount = 98_298_393m, SupervisionAmount = 33_000_000m,
+                IncomingNo = "4118", IncomingDate = new DateOnly(2025, 8, 3),
+                Contractor = "شركة الشرق للتجهيزات العلمية", Consultant = "المكتب الاستشاري الهندسي",
+                Component = "المكوّن التجهيزي", ExecutingParty = "المديرية العامة للتجهيز والمشتريات",
+                ContactInfo = "+964 770 555 8899",
+            },
+            // الشكل 57's own contract — «CNT-0439-EM — عقد التركيب والتشغيل
+            // بقيمة IQD 416,160,000». The supply change order (الأشكال 57–60)
+            // is raised against it.
+            new Contract
+            {
+                Id = "CNT-0439-EM", ProjectId = "PRJ-0439",
+                NameAr = "عقد التركيب والتشغيل", NameEn = "Installation and commissioning",
+                OriginalValue = 416_160_000m, Status = "ongoing",
+                Start = new DateOnly(2026, 1, 15),
+                OriginalFinish = new DateOnly(2027, 1, 31),
+                OriginalDurationDays = 381,
+                ForecastFinish = new DateOnly(2027, 2, 15),
+                AwardAmount = 392_000_000m, ReserveAmount = 16_160_000m, SupervisionAmount = 8_000_000m,
+                IncomingNo = "4266", IncomingDate = new DateOnly(2025, 12, 20),
+                Contractor = "شركة الشرق للتجهيزات العلمية", Consultant = "المكتب الاستشاري الهندسي",
+                Component = "المكوّن التجهيزي", ExecutingParty = "المديرية العامة للتجهيز والمشتريات",
+                ContactInfo = "+964 770 555 8899",
+            }
+        );
+
+        // ── الفقرات السبع (الشكل 50) ─────────────────────────────────────
+        // The SHARED half is a BoqItem like any other: code, description, unit,
+        // quantity, rate. Weight and amount are BR-01's and are not seeded.
+        db.BoqItems.AddRange(
+            // ONE DIVISION, and that is الشكل 50 rather than a simplification:
+            // its table is a FLAT list of seven, with no division rows and no
+            // subtotals. A works bill is filed under أقسام because civil work
+            // is; a supply bill is a catalogue, and the plate draws it as one.
+            Item("CNT-0439", "ITM-001", "حاسبة مكتبية", "Desktop computer", "جهاز", 100m, 4_303_198m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-002", "مجهر إلكتروني", "Electron microscope", "جهاز", 111m, 254_194m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-003", "مولّدة كهرباء", "Power generator", "جهاز", 98m, 4_187_075m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-004", "بروجكتر تفاعلي", "Interactive projector", "جهاز", 49m, 3_858_171m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-005", "وحدة تكييف", "Air-conditioning unit", "جهاز", 184m, 4_774_187m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-006", "خادم شبكة", "Network server", "جهاز", 196m, 985_875m, "1", "الفقرات التجهيزية"),
+            Item("CNT-0439", "ITM-007", "خزانة سلامة مختبرية", "Laboratory safety cabinet", "جهاز", 24m, 1_751_621m, "1", "الفقرات التجهيزية")
+        );
+
+        db.SaveChanges();
+
+        var sup = db.BoqItems
+            .Where(i => i.ContractId == "CNT-0439")
+            .ToDictionary(i => i.Code, i => i.Id);
+
+        // ── النصف الجهازي (D-14) ─────────────────────────────────────────
+        // NO ReceivedQty — it is Σ the warehouse receipts below (المسار 11).
+        // المجهَّز is stored, because it is the supplier's delivery note and not
+        // a receipt: الشكل 56 prints «المجهّز 154» beside «المستلم 118» exactly
+        // because they are two different facts.
+        db.SupplyItemDetails.AddRange(
+            Device(sup["ITM-001"], "Dell", "الصين", "OptiPlex 7010", "SN-1000", "SN-1057", 84m, 24),
+            Device(sup["ITM-002"], "Zeiss", "ألمانيا", "Primo Star", "SN-3000", "SN-3095", 104m, 36),
+            Device(sup["ITM-003"], "Perkins", "المملكة المتحدة", "1104A-44", "SN-5000", "SN-5081", 90m, 24),
+            Device(sup["ITM-004"], "Epson", "إندونيسيا", "EB-685W", "SN-7000", "SN-7031", 40m, 12),
+            Device(sup["ITM-005"], "LG", "كوريا الجنوبية", "Multi V5", "SN-9000", "SN-9106", 140m, 36),
+            // الشكل 56's own card: المتعاقد 196 · المجهّز 154 · المستلم 118 ·
+            // المتبقي 78 · التسلسل SN-2000 ← SN-2118 · الكفالة 36 شهر.
+            Device(sup["ITM-006"], "HPE", "الولايات المتحدة", "ProLiant DL380", "SN-2000", "SN-2118", 154m, 36,
+                new DateOnly(2029, 5, 19)),
+            Device(sup["ITM-007"], "Esco", "سنغافورة", "Airstream", "SN-4000", "SN-4017", 20m, 24)
+        );
+
+        // ── التوزيع على الجهات المستفيدة (BR-08 · الشكل 51 · الشكل 56) ───
+        // Only two items are distributed, and that is a real state: a device
+        // sitting in the store with no allocation yet is what «غير موزّعة» is
+        // for, and المسار 10 is a step that happens per item rather than at
+        // once for the whole bill.
+        db.BoqDistributions.AddRange(
+            // الشكل 51 — المجموع المخصص 111, which is the whole contracted
+            // quantity: this item is fully allocated.
+            Dist(sup["ITM-002"], "BEN-BAS", 40m, null),
+            Dist(sup["ITM-002"], "BEN-MOS", 71m, null),
+            // الشكل 56 — 75 · 56 · 65 = 196.
+            Dist(sup["ITM-006"], "BEN-BAS", 75m, null),
+            Dist(sup["ITM-006"], "BEN-MOS", 56m, null),
+            Dist(sup["ITM-006"], "BEN-KUF", 65m, null),
+            // Two more allocated items, so الشكل 50's tab can read «الاستلامات
+            // 14» — seven warehouse and seven preliminary, which is the count
+            // the plate prints. A preliminary receipt needs an allocation to
+            // hand devices out against, so the allocation comes first.
+            Dist(sup["ITM-001"], "BEN-BAS", 60m, null),
+            Dist(sup["ITM-001"], "BEN-KUF", 40m, null),
+            Dist(sup["ITM-005"], "BEN-MOS", 104m, null),
+            Dist(sup["ITM-005"], "BEN-KUF", 80m, null)
+        );
+
+        // ── الاستلامات المخزنية (الشكل 55) ───────────────────────────────
+        // One per item, on the plate's own dates and quantities. Σ = 505, which
+        // is the footer's «المستلم 505 بنسبة 66%».
+        db.SupplyReceipts.AddRange(
+            Wr(sup["ITM-006"], "WR-0439-6-1", "2026-05-19", 118m),
+            Wr(sup["ITM-003"], "WR-0439-3-1", "2026-05-14", 81m),
+            Wr(sup["ITM-004"], "WR-0439-4-1", "2026-05-08", 31m),
+            Wr(sup["ITM-007"], "WR-0439-7-1", "2026-03-16", 17m),
+            Wr(sup["ITM-005"], "WR-0439-5-1", "2026-02-24", 106m),
+            Wr(sup["ITM-001"], "WR-0439-1-1", "2026-01-25", 57m),
+            Wr(sup["ITM-002"], "WR-0439-2-1", "2026-01-19", 95m),
+
+            // ── الاستلامات الأولية (الشكل 52 · الشكل 56) ─────────────────
+            // Against the DISTRIBUTION, not against the plate's own card: see
+            // the method comment. Σ per item never exceeds what arrived.
+            Pr(sup["ITM-002"], "PR-0439-2-1", "2026-02-02", 34m, "BEN-BAS"),
+            Pr(sup["ITM-002"], "PR-0439-2-2", "2026-02-10", 61m, "BEN-MOS"),
+            Pr(sup["ITM-006"], "PR-0439-6-1", "2026-06-02", 45m, "BEN-BAS"),
+            Pr(sup["ITM-006"], "PR-0439-6-2", "2026-06-09", 34m, "BEN-MOS"),
+            Pr(sup["ITM-006"], "PR-0439-6-3", "2026-06-16", 39m, "BEN-KUF"),
+            // ITM-001: 57 arrived, all of it handed to البصرة, whose allocation
+            // is 60 — so the item still owes 43 and البصرة is still owed 3.
+            Pr(sup["ITM-001"], "PR-0439-1-1", "2026-02-18", 57m, "BEN-BAS"),
+            // ITM-005: 106 arrived and 60 went to الموصل. The other 46 are
+            // in the store against a Kufa allocation nobody has handed out
+            // yet — which is exactly what «محجوز بانتظار الاستلام» means.
+            Pr(sup["ITM-005"], "PR-0439-5-1", "2026-03-11", 60m, "BEN-MOS")
+        );
+
+        db.SaveChanges();
+
+        // ── أرشيف الفقرة (الشكل 52) ──────────────────────────────────────
+        // Four documents on ITM-002, which is «أرشيف الفقرة ·4». The other
+        // receipts carry none, and الشكل 55's «لا مستند» column is what that
+        // looks like — the plate calls it «ثغرة توثيقية تستوجب المعالجة».
+        var rc = db.SupplyReceipts
+            .Where(r => r.No.StartsWith("WR-0439-2") || r.No.StartsWith("PR-0439-2"))
+            .ToDictionary(r => r.No, r => r.Id);
+
+        db.SupplyReceiptAttachments.AddRange(
+            Doc(rc["WR-0439-2-1"], "محضر استلام مخزني", "Warehouse receipt record", "ITM-2-1.pdf", 284_000),
+            Doc(rc["WR-0439-2-1"], "ذرعة الأجهزة", "Device measurement sheet", "ITM-2-2.pdf", 191_000),
+            Doc(rc["PR-0439-2-1"], "محضر استلام أولي — البصرة", "Preliminary receipt — Basrah", "ITM-2-3.pdf", 233_000),
+            Doc(rc["PR-0439-2-2"], "محضر استلام أولي — الموصل", "Preliminary receipt — Mosul", "ITM-2-4.pdf", 226_000)
+        );
+
+        db.SaveChanges();
+    }
+
+    private static SupplyItemDetail Device(
+        int boqItemId, string manufacturer, string country, string model,
+        string serialFrom, string serialTo, decimal supplied, int warrantyMonths,
+        DateOnly? warrantyExpiry = null) => new()
+    {
+        BoqItemId = boqItemId,
+        Manufacturer = manufacturer, Country = country, Model = model,
+        SerialFrom = serialFrom, SerialTo = serialTo,
+        SuppliedQty = supplied,
+        WarrantyMonths = warrantyMonths,
+        WarrantyExpiry = warrantyExpiry,
+    };
+
+    private static SupplyReceipt Wr(int boqItemId, string no, string date, decimal qty) => new()
+    {
+        BoqItemId = boqItemId, Kind = "warehouse", No = no,
+        Date = DateOnly.Parse(date), Qty = qty,
+        Store = "مخزن الوزارة المركزي",
+        Committee = "لجنة الاستلام المخزني",
+        Conformity = "مطابق",
+        ActorId = "user.co-committee", ActorName = "عضو لجنة الفحص والاستلام", ActorParty = "لجنة الفحص والاستلام",
+    };
+
+    private static SupplyReceipt Pr(int boqItemId, string no, string date, decimal qty, string ben) => new()
+    {
+        BoqItemId = boqItemId, Kind = "preliminary", No = no,
+        Date = DateOnly.Parse(date), Qty = qty,
+        BeneficiaryCode = ben,
+        // NO COMMITTEE on a preliminary receipt. الشكل 52 prints the two cards
+        // side by side and they differ exactly here — the warehouse one reads
+        // «مخزن الوزارة المركزي · لجنة الاستلام المخزني · مطابق» and the
+        // preliminary one «جامعة البصرة · مطابق». الشكل 54's field list omits it
+        // too. A hand-over is witnessed by the receiving party, not by a
+        // committee, and seeding one would put data on screen that الشكل 54's
+        // own drawer gives no way to enter.
+        Conformity = "مطابق",
+        ActorId = "user.co-committee", ActorName = "عضو لجنة الفحص والاستلام", ActorParty = "لجنة الفحص والاستلام",
+    };
+
+    private static SupplyReceiptAttachment Doc(
+        int receiptId, string ar, string en, string file, long size) => new()
+    {
+        ReceiptId = receiptId, TitleAr = ar, TitleEn = en, FileName = file, SizeBytes = size,
+    };
 
     /// <param name="bl">Baseline (start, finish). Equal on a milestone — zero duration.</param>
     /// <param name="actual">
@@ -1050,9 +1395,23 @@ public static class Fixture
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
 
-            // VO-06 — 5 days: pending and INSIDE the SLA. The control that
-            // proves «قيد الاعتماد» and «متأخر» are different sets. On the
-            // electromechanical contract, so the register spans both.
+            // VO-06 — THE RATE ORDER, APPLIED AND CLOSED. The only order in the
+            // fixture whose `ChangeType` is `rate`, and therefore the only one
+            // that puts a row in `BoqRateBands` — the table that was registered,
+            // read by three endpoints, and empty until this order was applied.
+            //
+            // It re-prices BQ-002 from 14,032,750 to the rate لجنة تثبيت الأسعار
+            // fixed at stage 3. `02 §5` has NO 20% tier on a rate — the quantity
+            // stands and the whole line re-prices — so the band it writes is a
+            // single band at the new rate, and «سعر الزائد» has nothing to show.
+            //
+            // AND THAT MOVES `02 §1`'s WORKED EXAMPLE OFF THE SCREEN. BQ-002 and
+            // BQ-004 were 56.13% / 43.87% of 100,000,000, which is the example
+            // `02 §1` and D-07 are written on; at 4 × 14,345,250 they become
+            // 56.67% / 43.33% of 101,250,000. The example is still asserted by
+            // `BoqWeightsTests` from its own inline inputs (P-04), so no test
+            // starts lying — but a reader looking for 56.13 on this screen will
+            // not find it. Recorded in P-160.
             new()
             {
                 No = "VO-06", ContractId = "CNT-0279-EM", Type = "supply",
@@ -1060,14 +1419,49 @@ public static class Fixture
                 TitleEn = "Change of the distribution board specification",
                 Justification = "عدم توفر المواصفة المتعاقد عليها لدى المجهّز.",
                 ResponsibleParty = ReDept,
-                IncomingNo = "0748/2026", IncomingDate = Ago(5),
+                IncomingNo = "0748/2026", IncomingDate = Ago(60),
                 // A SUPPLY order: the مجهّز writes, and the technical opinion
                 // comes from the inspection side rather than a design consultant
                 // — so the consultant letter is absent and the section shows one
                 // input, not an invented second one.
-                ContractorLetterNo = "0730/2026", ContractorLetterDate = Ago(12),
+                ContractorLetterNo = "0730/2026", ContractorLetterDate = Ago(67),
+                Lifecycle = "closed",
+                // 4 × (14,345,250 − 14,032,750) = 1,250,000. The committee
+                // CONFIRMED the RE department's rate rather than setting a third
+                // figure, so requested == approved == applied. `02 §6` makes the
+                // RE proposal the governing one and D-08 gives the committee the
+                // binding say; the two agreeing is the ordinary case, and
+                // inventing a divergence here would have invented a rate.
+                RequestedValue = 1_250_000m, RequestedDays = 0, AnalysisDays = 0,
+                ApprovedValue = 1_250_000m, ApprovedDays = 0,
+                AppliedValue = 1_250_000m, AppliedDays = 0,
+                DecisionDate = Ago(36), ApprovingAuthority = Minister,
+                DecisionReason = "تثبيت السعر الجديد للوحات التوزيع بموجب قرار لجنة تثبيت الأسعار.",
+                WeightRecalcState = "done",
+                CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-07 — 5 days: pending and INSIDE the SLA. THIS IS P-59's
+            // CONTROL, inherited from VO-06 when that order was applied. `06
+            // §12` seeds a young pending order beside VO-02's 22-day one to
+            // prove «قيد الاعتماد» and «متأخر» are DIFFERENT SETS; without one,
+            // both sets collapse to {VO-02} and the register's whole attention
+            // model becomes a synonym for its lifecycle column. On the
+            // electromechanical contract, so the register still spans both.
+            new()
+            {
+                No = "VO-07", ContractId = "CNT-0279-EM", Type = "supply",
+                TitleAr = "زيادة عدد وحدات التكييف",
+                TitleEn = "Increase in the number of HVAC units",
+                Justification = "توسعة قاعة المختبرات بعد تعديل التصميم الداخلي.",
+                ResponsibleParty = ReDept,
+                IncomingNo = "0791/2026", IncomingDate = Ago(5),
+                ContractorLetterNo = "0774/2026", ContractorLetterDate = Ago(12),
                 Lifecycle = "pending",
-                RequestedValue = 1_250_000m, RequestedDays = 0,
+                // Σ of the RE department's column on its one line: 1 × 7,311,500.
+                // `02 §6` makes that the governing figure, so the header value
+                // equals it exactly (the same rule VO-02's comment states).
+                RequestedValue = 7_311_500m, RequestedDays = 0,
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
             },
         };
@@ -1087,6 +1481,10 @@ public static class Fixture
             var a = db.ContractAmendments.First(x => x.ContractId == "CNT-0279" && x.No == no);
             a.SourceChangeOrderId = byNo[orderNo];
         }
+
+        // CNT-0279-EM's only amendment is VO-06 applied.
+        db.ContractAmendments.First(x => x.ContractId == "CNT-0279-EM" && x.No == 1)
+            .SourceChangeOrderId = byNo["VO-06"];
         db.SaveChanges();
 
         // ── THE STAGE CHAINS ─────────────────────────────────────────────
@@ -1186,18 +1584,34 @@ public static class Fixture
             St("VO-05", 5, "done", 3, 2, decision: "approve"),
             St("VO-05", 6, "active", 2),
 
-            // VO-06 — five days old, still with the change-order committee and
-            // comfortably inside its 5-day ceiling. It proposes a NEW UNIT
-            // RATE, so تثبيت الأسعار applies to it and simply has not been
-            // reached — which is why it carries no «بانتظار تثبيت الأسعار»
-            // chip while VO-02, sitting AT that stage, does.
-            St("VO-06", 1, "done", 5, 3, decision: "approve"),
-            St("VO-06", 2, "active", 3),
-            St("VO-06", 3, "pending"),
+            // VO-06 — all six walked, and stage 3 is the one that matters: it
+            // proposes a NEW UNIT RATE, so تثبيت الأسعار APPLIES, and the rate
+            // the committee fixed there is the line's `ApprovedRate` and the
+            // band on BQ-002. Every stage lands inside its own ceiling
+            // (3 · 5 · 7 · — · 14 · 7), so nothing here is retrospectively
+            // overdue on a closed order.
+            St("VO-06", 1, "done", 60, 58, decision: "approve"),
+            St("VO-06", 2, "done", 58, 54, decision: "approve"),
+            St("VO-06", 3, "done", 54, 48, decision: "approve",
+                note: "تثبيت سعر الوحدة الجديد للوحات التوزيع: 14,345,250 دينار."),
             St("VO-06", 4, "pending", applicable: false,
                 skip: "تعديل سعر ضمن قيمة العقد، فلا تخصيص إضافياً ولا مصادقة."),
-            St("VO-06", 5, "pending"),
-            St("VO-06", 6, "pending"),
+            St("VO-06", 5, "done", 48, 36, decision: "approve"),
+            St("VO-06", 6, "done", 36, 30, decision: "approve"),
+
+            // VO-07 — five days old, still with the change-order committee and
+            // comfortably inside its 5-day ceiling. P-59's control, inherited
+            // from VO-06. Its stage 3 is SKIPPED where VO-06's was walked: a
+            // 1-of-6 increase does not reach 20%, so no rate needs fixing —
+            // which is also why it carries no «بانتظار تثبيت الأسعار» chip
+            // while VO-02, sitting AT that stage, does.
+            St("VO-07", 1, "done", 5, 3, decision: "approve"),
+            St("VO-07", 2, "active", 3),
+            St("VO-07", 3, "pending", applicable: false,
+                skip: "لا كمية تتجاوز 20% في أي بند، فلا تنطبق مرحلة تثبيت الأسعار."),
+            St("VO-07", 4, "pending"),
+            St("VO-07", 5, "pending"),
+            St("VO-07", 6, "pending"),
         };
 
         db.ChangeOrderStages.AddRange(stages);
@@ -1311,7 +1725,88 @@ public static class Fixture
                 BeforeQty = 4m, BeforeRate = 14_032_750m, BeforeAmount = 56_131_000m,
                 ContractorNewRate = 14_500_000m,
                 ReDeptNewRate = 14_345_250m,
+                // THE RATE لجنة تثبيت الأسعار FIXED at stage 3, and the only
+                // `ApprovedRate` in the fixture. `ApprovedExcessRate` stays null
+                // on purpose: there is no excess on a rate change, so a value
+                // here would assert a 20% tier `02 §5` does not create.
+                ApprovedRate = 14_345_250m,
+                // 4 × 14,345,250. The line's amount AFTER the move, which is
+                // what the single band below re-derives.
+                AppliedAmount = 57_381_000m,
+                ApplyStatus = "done",
+            },
+
+            // VO-07 · BQ-004 (EM) — one more HVAC unit. A quantity increase of
+            // 1 on a contracted 6 is 16.7%, UNDER the 20% ceiling, so the whole
+            // delta prices at the original rate and تثبيت الأسعار does not apply
+            // to it — which is why its stage 3 is skipped with a reason and
+            // VO-06's was not.
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-07"], BoqItemId = boq["CNT-0279-EM|BQ-004"], ChangeType = "inc",
+                ContractedQty = 6m, ExecutedQty = 1m,
+                BeforeQty = 6m, BeforeRate = 7_311_500m, BeforeAmount = 43_869_000m,
+                ContractorDeltaQty = 2m, ReDeptDeltaQty = 1m,
                 ApplyStatus = "todo",
+            }
+        );
+
+        // ── THE BANDS THE APPLIED ORDERS WROTE (02 §5 · 03 §9 step 3) ─────
+        //
+        // FOUND BY ROADMAP 4.5, NOT BY PHASE 5.4. This block used to read
+        // "BoqRateBands stays EMPTY … no such order has been applied", which
+        // stopped being true the moment VO-01 was seeded `closed` and VO-04
+        // `applied_partial` with `AppliedDeltaQty` on their lines. The register
+        // reads its quantity from `TierSplit.Effective` over these rows, so
+        // without them the bill said 1,400 while the order that moved it said
+        // 1,710 — two screens, one contract, two answers.
+        //
+        // A band per line is what apply writes; the ORIGINAL quantity and rate
+        // stay untouched on BoqItems (non-negotiable #6), which is exactly what
+        // lets الفرق (أمر تغييري) be computed rather than remembered.
+        db.BoqRateBands.AddRange(
+            // VO-01 · BQ-001 — +2,000 inside the 3,600 threshold, so ONE band
+            // at the contract rate. 20,000 × 1,250 = 25,000,000, i.e. the
+            // +2,500,000 the line's AppliedAmount records.
+            new BoqRateBand
+            {
+                BoqItemId = boq["CNT-0279|BQ-001"], Seq = 1,
+                Qty = 20_000m, Rate = 1_250m,
+                SourceChangeOrderId = byNo["VO-01"], IsExcessBand = false,
+            },
+            // VO-01 · BQ-006 — the line that TRIPS 20%, and the only one in the
+            // fixture that carries two rates. Threshold 280: 1,400 + 280 = 1,680
+            // stay at 24,000 and the remaining 30 price at the 26,000 لجنة
+            // تثبيت الأسعار fixed. 40,320,000 + 780,000 = 41,100,000, which is
+            // 33,600,000 + the line's 7,500,000.
+            new BoqRateBand
+            {
+                BoqItemId = boq["CNT-0279|BQ-006"], Seq = 1,
+                Qty = 1_680m, Rate = 24_000m,
+                SourceChangeOrderId = byNo["VO-01"], IsExcessBand = false,
+            },
+            new BoqRateBand
+            {
+                BoqItemId = boq["CNT-0279|BQ-006"], Seq = 2,
+                Qty = 30m, Rate = 26_000m,
+                SourceChangeOrderId = byNo["VO-01"], IsExcessBand = true,
+            },
+            // VO-04 · BQ-008 → BQ-009 — إعادة توزيع at ONE rate: 500 م² leave
+            // one line and arrive at the other, both at 3,000. −1,500,000 and
+            // +1,500,000, so the contract value does not move and neither line
+            // is banded. The zero net is the point of the order, and it is
+            // visible here as two rows that cancel rather than as an absence.
+            new BoqRateBand
+            {
+                BoqItemId = boq["CNT-0279|BQ-008"], Seq = 1,
+                Qty = 8_300m, Rate = 3_000m,
+                SourceChangeOrderId = byNo["VO-04"], IsExcessBand = false,
+            },
+            new BoqRateBand
+            {
+                BoqItemId = boq["CNT-0279|BQ-009"], Seq = 1,
+                Qty = 13_300m, Rate = 3_000m,
+                SourceChangeOrderId = byNo["VO-04"], IsExcessBand = false,
             }
         );
 
@@ -1327,19 +1822,19 @@ public static class Fixture
             new ChangeOrderActivity
             {
                 ChangeOrderId = byNo["VO-01"], ActivityId = acts["CNT-0279|A4"], ChangeType = "inc",
-                BeforeStart = new DateOnly(2025, 11, 19), BeforeFinish = new DateOnly(2026, 4, 25),
+                BeforeStart = new DateOnly(2026, 2, 17), BeforeFinish = new DateOnly(2026, 7, 24),
                 BeforeRemainingDuration = 150,
                 RequestedDeltaDays = 35, AnalysisDays = 26, ApprovedDeltaDays = 26,
-                ApprovedFinish = new DateOnly(2026, 5, 21),
+                ApprovedFinish = new DateOnly(2026, 8, 19),
                 AppliedDeltaDays = 26, ApplyStatus = "done",
             },
             new ChangeOrderActivity
             {
                 ChangeOrderId = byNo["VO-01"], ActivityId = acts["CNT-0279|A5"], ChangeType = "inc",
-                BeforeStart = new DateOnly(2026, 1, 26), BeforeFinish = new DateOnly(2026, 5, 26),
+                BeforeStart = new DateOnly(2026, 4, 26), BeforeFinish = new DateOnly(2026, 8, 24),
                 BeforeRemainingDuration = 121,
                 RequestedDeltaDays = 25, AnalysisDays = 19, ApprovedDeltaDays = 19,
-                ApprovedFinish = new DateOnly(2026, 6, 14),
+                ApprovedFinish = new DateOnly(2026, 9, 12),
                 AppliedDeltaDays = 19, ApplyStatus = "done",
             },
 
@@ -1348,7 +1843,7 @@ public static class Fixture
             new ChangeOrderActivity
             {
                 ChangeOrderId = byNo["VO-03"], ActivityId = acts["CNT-0279|A8"], ChangeType = "inc",
-                BeforeStart = new DateOnly(2026, 4, 1), BeforeFinish = new DateOnly(2026, 6, 29),
+                BeforeStart = new DateOnly(2026, 6, 30), BeforeFinish = new DateOnly(2026, 9, 27),
                 BeforeRemainingDuration = 90,
                 RequestedDeltaDays = 120, AnalysisDays = 60,
                 ApplyStatus = "na",
@@ -1359,10 +1854,10 @@ public static class Fixture
             new ChangeOrderActivity
             {
                 ChangeOrderId = byNo["VO-05"], ActivityId = acts["CNT-0279|A10"], ChangeType = "inc",
-                BeforeStart = new DateOnly(2026, 5, 1), BeforeFinish = new DateOnly(2026, 8, 30),
+                BeforeStart = new DateOnly(2026, 7, 30), BeforeFinish = new DateOnly(2026, 11, 28),
                 BeforeRemainingDuration = 60,
                 RequestedDeltaDays = 15, AnalysisDays = 12, ApprovedDeltaDays = 12,
-                ApprovedFinish = new DateOnly(2026, 9, 11),
+                ApprovedFinish = new DateOnly(2026, 12, 10),
                 ApplyStatus = "todo",
             }
         );
@@ -1453,8 +1948,45 @@ public static class Fixture
             Step("VO-04", 5, "fail", message:
                 "تعذّر إكمال إعادة احتساب الأوزان: البند BQ-009 مرتبط بنشاط جدول مُعاد ترقيمه. يتطلب تصحيح الربط ثم إعادة التشغيل."),
             Step("VO-04", 6, "na"), Step("VO-04", 7, "na"), Step("VO-04", 8, "na"),
-            Step("VO-04", 9, "todo")
+            Step("VO-04", 9, "todo"),
+
+            // VO-06 — nine of nine, the second order in the fixture to reach
+            // «مغلق». Step 3 is the one that wrote the rate band.
+            Step("VO-06", 1, "done", 30), Step("VO-06", 2, "done", 30),
+            Step("VO-06", 3, "done", 30), Step("VO-06", 4, "done", 29),
+            Step("VO-06", 5, "done", 29), Step("VO-06", 6, "done", 29),
+            Step("VO-06", 7, "done", 29), Step("VO-06", 8, "done", 29),
+            Step("VO-06", 9, "done", 29)
         );
+
+        // ── BR-05 · THE RATE BANDS ───────────────────────────────────────
+        // `BoqRateBands` exists because a line legitimately carries MORE THAN
+        // ONE RATE after a change order is applied (`02 §5`), and until VO-06
+        // was applied the table was registered, read by three endpoints, and
+        // empty — so `banded` was false on every row in the system and the item
+        // card's «تفصيل الأسعار» had nothing to open.
+        //
+        // ONE BAND, NOT TWO. `02 §5`'s tier split is a QUANTITY rule: up to 20%
+        // of the original quantity stays at the original rate and only the
+        // excess re-prices. VO-06 changes no quantity, so there is no excess and
+        // no second tier — `Domain/ChangeOrderApply.BandsFor` returns exactly
+        // `[new(before.Qty, ApprovedRate)]` for a `rate` line, and this row is
+        // that. `IsExcessBand` is false for the same reason.
+        //
+        // THE 20% SPLIT ITSELF STILL HAS NO SEEDED EXAMPLE. It runs in
+        // `TierSplitTests` from `02 §5`'s own inline inputs and in the wizard's
+        // preview, but no fixture order applies a quantity increase past the
+        // ceiling, so no line in the database carries two bands. Recorded in
+        // P-160 — this seeds the TABLE, not the tier rule.
+        db.BoqRateBands.Add(new BoqRateBand
+        {
+            BoqItemId = boq["CNT-0279-EM|BQ-002"],
+            Seq = 1,
+            Qty = 4m,
+            Rate = 14_345_250m,
+            SourceChangeOrderId = byNo["VO-06"],
+            IsExcessBand = false,
+        });
 
         // ── الشكل 34 — المرفقات ───────────────────────────────────────────
         // VERSIONS ACCUMULATE AND FILES ARE NEVER REPLACED (`03 §9`): the
@@ -1472,7 +2004,11 @@ public static class Fixture
             Att("VO-02", byNo, "VO-2-pricing.xlsx", "analysis", 1, 2, "user.re-dept", 19),
             Att("VO-03", byNo, "VO-3-schedule.pdf", "analysis", 1, 2, "user.re-dept", 55),
             Att("VO-04", byNo, "VO-4-redistribution.xlsx", "boq", 1, 1, "user.re-dept", 120),
-            Att("VO-05", byNo, "VO-5-request.pdf", "letter", 1, 1, "user.re-dept", 9)
+            Att("VO-05", byNo, "VO-5-request.pdf", "letter", 1, 1, "user.re-dept", 9),
+            Att("VO-06", byNo, "VO-6-request.pdf", "letter", 1, 1, "user.re-dept", 60),
+            Att("VO-06", byNo, "VO-6-quote.pdf", "support", 1, 2, "user.re-dept", 56),
+            Att("VO-06", byNo, "VO-6-rate-decision.pdf", "support", 1, 3, "user.rate-committee", 48),
+            Att("VO-07", byNo, "VO-7-request.pdf", "letter", 1, 1, "user.re-dept", 5)
         );
 
         // ── السجل — one row per CHANGED FIELD (`03 §9` tab 6) ─────────────
@@ -1547,12 +2083,28 @@ public static class Fixture
             Log("VO-05", 2, "13:25", "user.co-rapporteur", "approve", 5, "value", "3,375,000", "3,000,000",
                 "الاعتماد النهائي — أمر وزاري. سُجِّل نيابةً عن الوزير / المفوَّض.", 2),
 
-            // VO-06 — five days old and moving.
-            Log("VO-06", 5, "09:00", "user.re-dept", "create", 1, null, null, "VO-06",
+            // VO-06 — the rate order, walked to «مغلق». The rate-fixing row at
+            // stage 3 is the one the band on BQ-002 came from, and the apply row
+            // at stage 6 is where the contract value moved.
+            Log("VO-06", 60, "09:00", "user.re-dept", "create", 1, null, null, "VO-06",
                 "عدم توفر المواصفة المتعاقد عليها لدى المجهّز."),
-            Log("VO-06", 4, "11:30", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
-            Log("VO-06", 3, "09:45", "user.co-committee", "edit", 2, "BQ-002.rate", "14,500,000", "14,345,250",
-                "سعر دائرة المهندس المقيم بعد مطابقة العرض الفني.")
+            Log("VO-06", 59, "11:30", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-06", 56, "09:45", "user.co-committee", "edit", 2, "BQ-002.rate", "14,500,000", "14,345,250",
+                "سعر دائرة المهندس المقيم بعد مطابقة العرض الفني."),
+            Log("VO-06", 48, "10:15", "user.rate-committee", "edit", 3, "BQ-002.approvedRate", null, "14,345,250",
+                "تثبيت سعر الوحدة بقرار لجنة تثبيت الأسعار — السعر الملزم."),
+            Log("VO-06", 36, "12:00", "user.senior-mgmt", "decide", 5, "lifecycle", "قيد الاعتماد", "معتمد",
+                "الاعتماد النهائي — أمر وزاري. سُجِّل نيابةً عن الوزير / المفوَّض.", 1),
+            Log("VO-06", 30, "09:20", "user.re-dept", "apply", 6, "lifecycle", "معتمد", "مغلق",
+                "تطبيق الأمر: ملحق تعاقدي رقم 1 على العقد، وشريحة سعر جديدة على البند BQ-002."),
+
+            // VO-07 — five days old and moving. P-59's control (see VO-06's own
+            // note); its trail is deliberately the shape VO-06's used to be.
+            Log("VO-07", 5, "09:00", "user.re-dept", "create", 1, null, null, "VO-07",
+                "توسعة قاعة المختبرات بعد تعديل التصميم الداخلي."),
+            Log("VO-07", 4, "11:30", "user.re-dept", "submit", 1, "lifecycle", "مسودة", "قيد الاعتماد"),
+            Log("VO-07", 3, "09:45", "user.co-committee", "edit", 2, "BQ-004.qty", "2", "1",
+                "كمية دائرة المهندس المقيم بعد الكشف الموقعي.")
         );
 
         db.SaveChanges();
@@ -2070,7 +2622,7 @@ public static class Fixture
                 ContractId = "CNT-0279", Action = "created", Source = "user",
                 ActorId = "user.univ-specialist", ActorName = "أحمد فؤاد",
                 ActorRole = "مهندس مشروع", ActorParty = "دائرة الإعمار والمشاريع",
-                At = new DateOnly(2025, 2, 18),
+                At = new DateOnly(2025, 5, 19),
             },
             // «تغيير المكوّن من الإنشائي إلى الميكانيكي بواسطة محللة موازنة في
             // الدائرة المالية» — the plate's own example of a second actor.
@@ -2080,7 +2632,7 @@ public static class Fixture
                 Field = "component", Before = "المكوّن الإنشائي", After = "المكوّن المدني",
                 ActorId = "user.fin-analyst", ActorName = "ليلى حسن",
                 ActorRole = "محللة موازنة", ActorParty = "الدائرة المالية",
-                At = new DateOnly(2025, 3, 6),
+                At = new DateOnly(2025, 6, 4),
             },
             System("CNT-0279", "2026-01-26", "change-order", "VO-01",
                 "زيادة كميات أعمال الكهرباء", null, null),
@@ -2092,6 +2644,9 @@ public static class Fixture
             System("CNT-0279", "2026-04-21", "change-order", "VO-02",
                 "تمديد مدة الإنجاز", null, null),
             System("CNT-0279", "2026-05-15", "progress", null, null, "25", "31"),
+            System("CNT-0279", "2026-06-12", "progress", null, null, "31", "38"),
+            System("CNT-0279", "2026-07-06", "progress", null, null, "38", "46"),
+            System("CNT-0279", "2026-07-28", "progress", null, null, "46", "55"),
 
             // The second contract carries a short log, so switching between the
             // two shows a different history rather than the same one twice.
@@ -2100,10 +2655,11 @@ public static class Fixture
                 ContractId = "CNT-0279-EM", Action = "created", Source = "user",
                 ActorId = "user.univ-specialist", ActorName = "أحمد فؤاد",
                 ActorRole = "مهندس مشروع", ActorParty = "دائرة الإعمار والمشاريع",
-                At = new DateOnly(2025, 5, 12),
+                At = new DateOnly(2025, 8, 10),
             },
-            User("CNT-0279-EM", "2025-06-02", "contractor", "شركة المنصور", "شركة المنصور للتجهيزات"),
-            System("CNT-0279-EM", "2026-05-15", "progress", null, null, "28", "35"));
+            User("CNT-0279-EM", "2025-08-31", "contractor", "شركة المنصور", "شركة المنصور للتجهيزات"),
+            System("CNT-0279-EM", "2026-05-15", "progress", null, null, "28", "33"),
+            System("CNT-0279-EM", "2026-07-20", "progress", null, null, "33", "35"));
     }
 
     /// <summary>

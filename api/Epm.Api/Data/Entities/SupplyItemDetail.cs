@@ -21,6 +21,7 @@ namespace Epm.Api.Data.Entities;
 /// a supply bill without a second code path.
 ///
 /// DERIVED — never stored (01 §3):
+///   ReceivedQty = Domain/SupplyReceipts.ReceivedInto(its SupplyReceipts rows)
 ///   Status      = SupplyStatus.Of(OriginalQty, SuppliedQty, ReceivedQty)
 ///   ReceivedPct = ReceivedQty ÷ OriginalQty
 ///   Remaining   = OriginalQty − ReceivedQty
@@ -49,16 +50,17 @@ public class SupplyItemDetail
     /// </summary>
     public decimal SuppliedQty { get; set; }
 
-    /// <summary>
-    /// مستلَم. STORED TODAY, AND THAT IS A SEAM, NOT A DESIGN CHOICE.
-    /// المسار 11 records receipts as events (استلام مخزني · استلام أولي,
-    /// الشكل 52), and once that table exists this becomes Σ its rows and moves
-    /// to the derived list above. The reference stores it on the item for the
-    /// same reason — it has no receipts table either (model.js:598). Until then
-    /// a supply line's progress has nowhere else to come from, and a register
-    /// that cannot show نسبة الاستلام is not the screen الشكل 50 describes.
-    /// </summary>
-    public decimal ReceivedQty { get; set; }
+    // مستلَم IS NO LONGER HERE. It used to be a stored column with a comment
+    // calling itself «a seam, not a design choice»: المسار 11 records receipts
+    // as EVENTS and no table held them. `SupplyReceipts` is that table now, so
+    // the received quantity is Σ its warehouse rows and is DERIVED at
+    // projection time like every other figure in this system (01 §3):
+    //
+    //   ReceivedQty = Domain/SupplyReceipts.ReceivedInto(rows for this item)
+    //
+    // The reference stores it on the item for the same reason this once did —
+    // it has no receipts table either (model.js:598). That is a prototype's
+    // licence and not a record's.
 
     // ── warranty (الشكل 51) ──────────────────────────────────────────────
     public int WarrantyMonths { get; set; }

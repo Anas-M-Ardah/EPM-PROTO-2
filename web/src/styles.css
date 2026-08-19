@@ -852,9 +852,11 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 }
 button.d-file { font: inherit; text-align: start; cursor: pointer; }
 
-/* الشكل 12 — «الأوزان من قيمة العقد؛ نسبة التنفيذ من الأنشطة المرتبطة»: the
-   register's own caveat, under the table it qualifies. */
-.boq-basis-note { display: flex; align-items: center; gap: var(--space-6); margin: var(--space-8) 0 0; }
+/* الشكل 12's caveat «الأوزان من قيمة العقد؛ نسبة التنفيذ من الأنشطة المرتبطة»
+   is drawn by `.d-pager.calcnote`, which the copied stylesheet already
+   provides and which is the one node the live prototype carries for it. The
+   `.boq-basis-note` rule that used to sit here dressed a SECOND copy of the
+   same sentence; both are gone. */
 button.d-file > .fm { align-items: flex-start; }
 
 /* ══ الشكل 7 — «تفصيل كلفة العقد» ═════════════════════════════════════════
@@ -1125,4 +1127,105 @@ button.d-file > .fm { align-items: flex-start; }
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-16, 16px);
   align-items: stretch;
+}
+
+/* ── «العروض» — the "no saved views" row (ملحق الشكل 12) ─────────────────
+   The reference carries this as an inline style (boq-register.jsx:579:
+   color var(--on-surface-variant), cursor default). It is a rule here because
+   inline literals and component-scoped CSS are both out (CLAUDE.md §3.7), and
+   it is the ONLY line the copied boq.css does not already provide for this
+   menu — .row.viewrow, .vw, .del and .row.save are all there verbatim.
+   The hover reset is load-bearing: .boq-colmenu .row:hover paints a background
+   on every row, and a row that lights up under the cursor claims to be
+   clickable when this one is a message. */
+.boq-colmenu .row.epm-menu-note { color: var(--on-surface-variant); cursor: default; }
+.boq-colmenu .row.epm-menu-note:hover { background: transparent; }
+
+/* ── الشكل 23 — «الأنشطة المتأثرة — قبل / بعد» ────────────────────────────
+   The reference draws this card with inline styles on nine elements
+   (schedule-module.jsx:678 onward). Inline literals are out (CLAUDE.md §3.7),
+   and `grep` of web/src/styles/ finds no before/after card anywhere — every
+   other comparison in the system is a TABLE with two columns, and this one is
+   not, because each side carries four labelled pairs rather than one figure.
+   So it is a rule here, built from tokens only. */
+.scd-impact { display: flex; flex-direction: column; gap: var(--space-12, 12px); }
+
+.scd-imp { padding: 0; }
+.scd-imp > .hd {
+  display: flex; align-items: center; gap: var(--space-10, 10px);
+  padding: var(--space-10, 10px) var(--space-12, 12px);
+  border-bottom: 1px solid var(--outline-variant);
+}
+.scd-imp > .hd > b { font-size: var(--fs-200); }
+.scd-imp > .hd > .sp { flex: 1; }
+
+/* Two columns that become one at the width where four labelled pairs stop
+   fitting side by side — auto-fit, never a pinned count (05 §8). */
+.scd-imp > .ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.scd-imp > .ba > .col { padding: var(--space-10, 10px) var(--space-12, 12px); }
+/* The CURRENT side is tinted, not coloured: it is the side that moved, and the
+   tint says which without claiming the movement is an error. The border is the
+   plane change that separates them (CLAUDE.md §6 — hairlines, never shadows). */
+.scd-imp > .ba > .col.cur {
+  border-inline-start: 1px solid var(--outline-variant);
+  background: color-mix(in srgb, var(--status-suspended) 5%, transparent);
+}
+.scd-imp > .ba .ln {
+  display: flex; justify-content: space-between; gap: var(--space-12, 12px);
+  padding: var(--space-2, 2px) 0; font-size: var(--fs-200);
+}
+
+.scd-imp > .ft {
+  display: flex; flex-wrap: wrap; gap: var(--space-4, 4px) var(--space-16, 16px);
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-top: 1px dashed var(--outline-variant);
+}
+.scd-imp > .ft b { margin-inline-start: var(--space-4, 4px); }
+
+/* ── الشكل 24's «منطقة سحب وإفلات» — the drag-over state ─────────────────
+   `.d-drop` is the reference's and came across with the stylesheet; the state
+   it is IN while a file hovers over it is not, because the reference's own
+   importer has no drop zone (its file input is a button). One rule, tokens
+   only: the border it already carries, in the accent it already defines. */
+.d-drop { cursor: pointer; }
+.d-drop.on {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+.d-drop:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ── الشكل 52 — «بطاقات استلام» و«بطاقات مستندات» ────────────────────────
+   The plate asks for CARDS: «بطاقات استلام مصنفة تحت عنوانين فرعيين … تحمل كل
+   بطاقة رقم الاستلام والكمية والتاريخ والجهة أو المخزن واللجنة ونتيجة
+   المطابقة». `.d-card-sub` (desktop.css:990) is the copied stylesheet's own
+   card and does all the work — border, radius, surface. What it has no rule
+   for is a HEADER ROW inside one, because nothing in the reference puts a
+   three-part head on a sub-card. That row is the whole of what follows. */
+.sup-card { margin-bottom: var(--space-8, 8px); }
+.sup-card > .hd {
+  display: flex; align-items: center; gap: var(--space-10, 10px);
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-bottom: 1px solid var(--outline-variant);
+}
+.sup-card > .hd > .sp { flex: 1; }
+.sup-card > .d-form-grid { padding: var(--space-10, 10px) var(--space-12, 12px); }
+
+/* ── الشكل 50's «الاستلام» cell ──────────────────────────────────────────
+   Three parts in one cell, and the plate is explicit about all three: a
+   progress bar, «المتعاقد / المستلم» beneath it, and the percentage beside it.
+   `.d-mini-bar` (desktop.css:331) is the bar and the figure under it, verbatim
+   from the reference; what it has no rule for is a percentage set ALONGSIDE
+   it, because nowhere else in the system puts one there. */
+.sup-recv { display: flex; align-items: center; gap: var(--space-10, 10px); }
+.sup-recv > b { font-variant-numeric: tabular-nums; }
+
+/* ── a table SHELL flush inside a record card ───────────────────────────
+   `desktop.css:3086` already flattens a `.d-toolbar` and a `.d-vow-tw` inside
+   `.d-fgroup > .gb.flush`, because the prototype's registers are drawn that
+   way — title row, toolbar row, grid, nothing inset. It has no rule for
+   `.d-tablewrap`, which is the shell `epm-data-table` emits, so a shared grid
+   inside a flush card kept its own border and rounded corners and read as a
+   box in a box. This is the `.d-vow-tw` rule, for the shell we actually emit. */
+.d-fgroup > .gb.flush > .d-tablewrap {
+  margin: 0; border-inline: 0; border-bottom: 0; border-top: 0; border-radius: 0;
 }

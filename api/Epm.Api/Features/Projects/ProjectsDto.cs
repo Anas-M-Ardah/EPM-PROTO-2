@@ -30,7 +30,14 @@ public record ProjectRow(
     /// <summary>الكلفة — DERIVED: Σ contract values. See Domain/ProjectValue.cs.</summary>
     decimal Cost,
     /// <summary>آخر تحديث — ISO date, or null.</summary>
-    string? UpdatedAt
+    string? UpdatedAt,
+    /// <summary>
+    /// D-13's three — construction · equipment · design-studies. Carried on the
+    /// register row because the workspace RAIL reads it: `modulesFor` swaps the
+    /// BOQ module for «الفقرات التجهيزية» and drops the 3D model on an
+    /// `equipment` project, and the rail is drawn from this list.
+    /// </summary>
+    string Type
 );
 
 /// <summary>The list plus the counts the filter chips need, in one response.</summary>
@@ -143,3 +150,36 @@ public record ProjectDefinitionResponse(
 /// capacity left now that the review step is gone.
 /// </param>
 public record ProjectPermissions(bool Edit);
+
+// ── EP-PRJ-05 / 06 · «الجهات المستفيدة» (ملحق الشكل 12) ───────────────────
+
+/// <summary>
+/// One row of the master beneficiary list, with this project's use of it.
+///
+/// `Assigned` is the tick. `Active` is the ministry's own state for the
+/// beneficiary and is INDEPENDENT of it: an inactive beneficiary may still be
+/// assigned (it can hold quantity distributed before it was stood down), which
+/// is why the drawer disables the checkbox rather than hiding the row.
+///
+/// The parent's NAME travels beside its code so the drawer can print «الجهة
+/// الأم» without a second request — the reference reads it off one in-memory
+/// master list and this is the same list, resolved server-side.
+/// </summary>
+public record ProjectBeneficiaryRow(
+    string Code,
+    string NameAr,
+    string NameEn,
+    string Type,
+    string? ParentCode,
+    string? ParentNameAr,
+    string? ParentNameEn,
+    bool Active,
+    bool Assigned);
+
+/// <summary>
+/// The ticked set, whole. A PUT of the complete list rather than a per-row
+/// toggle: the drawer's subject is which beneficiaries this project uses, and
+/// sending the answer avoids a half-applied state if one toggle of several
+/// fails.
+/// </summary>
+public record ProjectBeneficiariesInput(IReadOnlyList<string?>? Codes);

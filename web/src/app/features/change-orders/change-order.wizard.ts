@@ -11,8 +11,9 @@ import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
 import {
-  PreviewLine, PreviewParty, WizardActivity, WizardBoqLine, WizardContract, WizardDraft,
-  WizardPreviewResponse, WizardSourceResponse,
+  PreviewLine, PreviewNet, PreviewParty, PreviewTransfer, WizardActivity, WizardAllocation,
+  WizardBoqLine, WizardContract, WizardDraft, WizardPreviewResponse, WizardSourceResponse,
+  WizardTransferInput,
 } from './change-order-wizard.types';
 
 /** One BOQ line being composed. The DRAFT, not a computed figure. */
@@ -28,6 +29,8 @@ interface LineRow {
   targetCode: string | null;
   drawnQty: number | null;
   distributedQty: number | null;
+  /** الشكل 58's transfers. Empty on every change type but a supply `redist`. */
+  transfers: WizardTransferInput[];
 }
 
 interface ActRow {
@@ -222,6 +225,7 @@ export class ChangeOrderWizard {
       contractorDeltaQty: null, contractorNewRate: null, contractorExcessRate: null,
       reDeptDeltaQty: null, reDeptNewRate: null, reDeptExcessRate: null,
       targetCode: null, drawnQty: null, distributedQty: null,
+      transfers: [],
     }]);
     this.changed.next();
   }
@@ -234,6 +238,62 @@ export class ChangeOrderWizard {
 
   setLine(code: string, patch: Partial<LineRow>) {
     this.lines.update(rows => rows.map(r => (r.code === code ? { ...r, ...patch } : r)));
+    this.changed.next();
+  }
+
+  // ══ الشكل 58 — إعادة التوزيع بين الجهات المستفيدة ═══════════════════════
+  //
+  // NOTHING here computes. «المتاح» and «صافي التغيير» both arrive from
+  // EP-WIZ-02, which reads Domain/SupplyRedistribution — the same function that
+  // refuses the order. A browser-side cap and a server-side gate that were two
+  // implementations would eventually disagree, and the one the user sees is not
+  // the one that decides.
+
+  /** BR-08's rows for a line — the «من» picker, and nothing else. */
+  allocOf(code: string): WizardAllocation[] {
+    return this.boqOf(code)?.allocation ?? [];
+  }
+
+  /** الشكل 58's chip strip, as the preview returned it. */
+  netsOf(code: string): PreviewNet[] {
+    return this.previewOf(code)?.nets ?? [];
+  }
+
+  /** The row's «المتاح», or null while the preview is still in flight. */
+  transferOf(code: string, i: number): PreviewTransfer | null {
+    return this.previewOf(code)?.transfers?.[i] ?? null;
+  }
+
+  /**
+   * A supply order redistributing between beneficiaries. On a works bill the
+   * same `redist` type means the OTHER movement — BOQ line to BOQ line — and
+   * this panel would be answering a question nobody asked.
+   */
+  showsTransfers(r: LineRow): boolean {
+    return this.type() === 'supply' && r.changeType === 'redist';
+  }
+
+  addTransfer(code: string) {
+    const alloc = this.allocOf(code);
+    this.lines.update(rows => rows.map(r => (r.code === code
+      // The من picker opens on the line's first beneficiary rather than empty:
+      // an unset select that looks set is what «لا تحويلات» is for.
+      ? { ...r, transfers: [...r.transfers, { from: alloc[0]?.code ?? '', to: '', qty: 0 }] }
+      : r)));
+    this.changed.next();
+  }
+
+  setTransfer(code: string, i: number, patch: Partial<WizardTransferInput>) {
+    this.lines.update(rows => rows.map(r => (r.code === code
+      ? { ...r, transfers: r.transfers.map((t, j) => (j === i ? { ...t, ...patch } : t)) }
+      : r)));
+    this.changed.next();
+  }
+
+  dropTransfer(code: string, i: number) {
+    this.lines.update(rows => rows.map(r => (r.code === code
+      ? { ...r, transfers: r.transfers.filter((_, j) => j !== i) }
+      : r)));
     this.changed.next();
   }
 

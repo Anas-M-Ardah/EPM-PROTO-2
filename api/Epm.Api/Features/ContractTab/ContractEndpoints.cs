@@ -261,13 +261,18 @@ public static class ContractEndpoints
             if (c.ForecastFinish is null)
             {
                 penalty = new PenaltyImpact(0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    Penalty.PerDayPct, Penalty.CapPct, true);
+                    Penalty.RatePct, Penalty.CapPct, true);
             }
             else
             {
+                // BOTH terms of BR-10's fraction move: the value AND the
+                // duration. `effective` already carries the duration in force —
+                // Amendments.Effective adds every applied order's delta days to
+                // it — so the after-figure divides by the extended duration and
+                // not by the original one.
                 var impact = Penalty.Compare(
-                    c.OriginalValue, c.OriginalFinish,
-                    effective.Value, effective.Finish,
+                    c.OriginalValue, c.OriginalFinish, c.OriginalDurationDays,
+                    effective.Value, effective.Finish, effective.Duration,
                     c.ForecastFinish.Value);
 
                 penalty = new PenaltyImpact(
@@ -278,7 +283,7 @@ public static class ContractEndpoints
                     // قبل/بعد row. BR-10 already computes it; it simply had
                     // nowhere to go before this screen asked for it.
                     impact.Before.PerDay, impact.After.PerDay,
-                    Penalty.PerDayPct, Penalty.CapPct, false);
+                    Penalty.RatePct, Penalty.CapPct, false);
             }
 
             var disbursed = payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount);

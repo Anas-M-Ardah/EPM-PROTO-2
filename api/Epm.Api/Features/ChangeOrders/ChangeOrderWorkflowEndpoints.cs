@@ -264,7 +264,8 @@ public static class ChangeOrderWorkflowEndpoints
         // web: change-orders.api.ts apply() → change-order.page.ts
         // spec: 03 §6 · 02 §9 · ملحق الشكل 30 | rules: BR-01, BR-05, BR-09, BR-10
         // tables: ContractAmendments · BoqRateBands · Activities · ChangeOrders
-        //       · ChangeOrderLines · ChangeOrderActivities · ChangeOrderApplySteps
+        //       · ChangeOrderLines · ChangeOrderRedistributions · BoqDistributions
+        //       · ChangeOrderActivities · ChangeOrderApplySteps
         //       · ChangeOrderAuditEntries *(all **written**)*
         //
         // THE ONLY ENDPOINT IN THIS SYSTEM THAT MOVES A CONTRACT.
@@ -440,6 +441,72 @@ public static class ChangeOrderWorkflowEndpoints
                     null, version: 2));
             }
 
+            // ── الشكل 58 — إعادة التوزيع بين الجهات المستفيدة ─────────────
+            // The ONE thing a supply redistribution moves. It runs beside the
+            // band rewrite above and not inside it, because it is a different
+            // movement: the line's quantity, rate, amount and weight are all
+            // untouched here — الشكل 59 prints «الحالي 111 · المقترح 111 · الأثر
+            // 0» — and only BR-08's per-beneficiary rows change.
+            //
+            // Approved ≠ applied (§5.2): every row below has sat in the database
+            // since submission with `AppliedQty` null, and THIS is where it is
+            // written.
+            var lineIds = lineByItem.Values.Select(l => l.Id).ToList();
+            var transfers = await db.ChangeOrderRedistributions
+                .Where(t => lineIds.Contains(t.ChangeOrderLineId) && t.AppliedQty == null)
+                .OrderBy(t => t.Id).ToListAsync();
+
+            if (transfers.Count > 0)
+            {
+                var itemOfLine = lineByItem.ToDictionary(kv => kv.Value.Id, kv => kv.Key);
+                var dist = await db.BoqDistributions
+                    .Where(d => itemOfLine.Values.Contains(d.BoqItemId)).ToListAsync();
+
+                foreach (var t in transfers)
+                {
+                    if (!itemOfLine.TryGetValue(t.ChangeOrderLineId, out var itemId)) continue;
+
+                    var from = dist.FirstOrDefault(d =>
+                        d.BoqItemId == itemId && d.BeneficiaryCode == t.FromBeneficiaryCode);
+                    if (from is null) continue;
+
+                    var to = dist.FirstOrDefault(d =>
+                        d.BoqItemId == itemId && d.BeneficiaryCode == t.ToBeneficiaryCode);
+
+                    // جامعة تلعفر's case — a beneficiary that held nothing gets
+                    // a row rather than being refused. `02 §8`'s ceiling is on
+                    // the ITEM's total, which this leaves exactly where it was.
+                    if (to is null)
+                    {
+                        to = new BoqDistribution
+                        {
+                            BoqItemId = itemId, BeneficiaryCode = t.ToBeneficiaryCode, Qty = 0m,
+                        };
+                        db.BoqDistributions.Add(to);
+                        dist.Add(to);
+                    }
+
+                    var code = items.First(i => i.Id == itemId).Code;
+                    var fromBefore = from.Qty;
+                    var toBefore = to.Qty;
+
+                    from.Qty -= t.Qty;
+                    to.Qty += t.Qty;
+                    t.AppliedQty = t.Qty;
+
+                    db.ChangeOrderAuditEntries.Add(Audit(order, asOf, "system", "apply",
+                        current?.StageNo, $"{code}.dist.{t.FromBeneficiaryCode}",
+                        fromBefore.ToString("0.##"), from.Qty.ToString("0.##"),
+                        $"نُقلت {t.Qty:0.##} إلى {t.ToBeneficiaryCode} دون أثر على قيمة العقد.",
+                        version: 2));
+
+                    db.ChangeOrderAuditEntries.Add(Audit(order, asOf, "system", "apply",
+                        current?.StageNo, $"{code}.dist.{t.ToBeneficiaryCode}",
+                        toBefore.ToString("0.##"), to.Qty.ToString("0.##"),
+                        null, version: 2));
+                }
+            }
+
             // ── the schedule ─────────────────────────────────────────────
             foreach (var change in plan.Activities.Where(a => a.DeltaDays != 0))
             {
@@ -556,7 +623,10 @@ public static class ChangeOrderWorkflowEndpoints
     /// <summary>BR-13's plan for THIS order, read off the stages it already has.</summary>
     private static IReadOnlyList<WorkflowMachine.PlannedStage> Plan(
         ChangeOrder o, List<ChangeOrderStage> stages)
-        => WorkflowMachine.Stages.Select(def =>
+        // الشكل 60 — a supply order's stages 1 and 6 belong to لجنة الفحص
+        // والاستلام, and BR-14 reads the owner off the DEF, so the swap has to
+        // happen here or the order has an owner no persona can be.
+        => WorkflowMachine.StagesFor(o.Type == "supply").Select(def =>
         {
             var row = stages.FirstOrDefault(s => s.StageNo == def.No);
             return new WorkflowMachine.PlannedStage(def, row?.Applicable ?? true, row?.SkipReason, row?.SkipReason);

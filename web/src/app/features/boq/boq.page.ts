@@ -10,6 +10,11 @@ import { BoqImportWizard } from './boq-import.wizard';
 import { BoqImportApi } from './boq-import.api';
 import { BoqImportVersionDto } from './boq-import.types';
 import { SectionComponent } from '../../shared/section.component';
+import { AmendmentMarkComponent } from '../../shared/amendment-mark.component';
+import { AmendmentDeltaComponent } from '../../shared/amendment-delta.component';
+import {
+  AmendmentBandView, AmendmentFactView, AmendmentPanelComponent, AmendmentStepView,
+} from '../../shared/amendment-panel.component';
 import { SelectComponent, SelectOption } from '../../shared/select.component';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { PersonaService } from '../../core/persona';
@@ -19,8 +24,9 @@ import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { BoqApi } from './boq.api';
 import {
-  BoqAllocation, BoqAllocationRow, BoqAssignmentResponse, BoqContractOption,
-  BoqDistributionResponse, BoqDivision, BoqItemCreate, BoqRegisterResponse, BoqRow,
+  BoqAllocation, BoqAllocationRow, BoqAmendmentDetail, BoqAssignmentResponse,
+  BoqContractOption, BoqDistributionResponse, BoqDivision, BoqItemCreate,
+  BoqRegisterResponse, BoqRow, BoqSavedView, ProjectBeneficiaryRow,
 } from './boq.types';
 
 /** One row of the distribution drawer while it is being edited. */
@@ -79,7 +85,8 @@ interface ShareDraft {
   // edit, delete confirm) and is used from two places in the grid — grouped
   // under a division, and ungrouped. One template, one definition of a row.
   imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
-    SectionComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard],
+    SectionComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard,
+    AmendmentMarkComponent, AmendmentDeltaComponent, AmendmentPanelComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './boq.page.html',
 })
@@ -115,10 +122,42 @@ export class BoqPage {
   /** Divisions are open by default; this holds the ones collapsed. */
   collapsed = signal<Record<string, boolean>>({});
   colMenu = signal(false);
+  /**
+   * DEFAULTS ARE THE REFERENCE'S DEFAULT GRID, not «everything on». القيمة
+   * الأصلية and الفرق (أمر تغييري) stay off until a reader asks for them — on a
+   * bill with no amendments they are two columns of «—» — while القيمة المكتسبة
+   * is on, because the reference's own default grid carries it.
+   */
   cols = signal<Record<string, boolean>>({
     unit: true, qty: true, rate: true, amount: true, weight: true,
     links: true, assignedWeight: true, progress: true, distribution: true, coverage: true,
+    origAmount: false, variance: false, earned: true,
   });
+
+  // ── «العروض» — saved views (ملحق الشكل 12) ────────────────────────────
+  /**
+   * NOT scoped to the contract, and loaded ONCE rather than per switch: a view
+   * carries a search string, a coverage chip and a set of column toggles, none
+   * of which belongs to a bill. The server scopes them to the persona instead,
+   * so this list is «my views» wherever the page is standing.
+   */
+  viewMenu = signal(false);
+  savedViews = signal<BoqSavedView[]>([]);
+
+  // ── «الجهات المستفيدة» — the master list and this project's use of it ──
+  /**
+   * A DRAWER, per CLAUDE.md §6 — secondary detail, never an in-place expander —
+   * and the reference's own shape (contract-context.jsx:182 `DBenDrawer`).
+   *
+   * `benDraft` holds the ticked codes while the drawer is open, so closing
+   * without saving changes nothing. The reference toggles straight into
+   * persisted state and therefore has no cancel; a screen that writes a project
+   * field on every checkbox click cannot offer one.
+   */
+  benOpen = signal(false);
+  bens = signal<ProjectBeneficiaryRow[]>([]);
+  benDraft = signal<Set<string>>(new Set());
+  benSaving = signal(false);
 
   // ── inline row edit / delete (04 §4) ───────────────────────────────────
   editing = signal('');
@@ -162,7 +201,6 @@ export class BoqPage {
   addSerialFrom = signal('');
   addSerialTo = signal('');
   addSuppliedQty = signal('');
-  addReceivedQty = signal('');
   addWarrantyMonths = signal('');
   addNotes = signal('');
   addError = signal('');
@@ -260,7 +298,7 @@ export class BoqPage {
   queueFilter = signal('');
   picker = signal(false);
 
-  readonly colCount = 12;
+  readonly colCount = 13;
 
   readonly coverageKeys = ['full', 'partial', 'over', 'unassigned'];
 
@@ -270,6 +308,15 @@ export class BoqPage {
     { k: 'qty', label: 'boq_col_qty' },
     { k: 'rate', label: 'boq_col_rate' },
     { k: 'amount', label: 'boq_col_amount' },
+    // ملحق الشكل 12 · the reference's picker lists these three and ours did
+    // not. القيمة الأصلية and الفرق are 4.5's amendment disclosure by another
+    // name — the reference calls the delta «الفرق (أمر تغييري)» and gives it a
+    // column toggle, and `04 §6` wants the same fact at the cell.
+    { k: 'origAmount', label: 'boq_col_orig_amount' },
+    { k: 'variance', label: 'boq_col_variance' },
+    // On the reference's DEFAULT grid, computed by BR-04 here and by
+    // `Domain/EarnedValue` at contract level — and shown on no screen until now.
+    { k: 'earned', label: 'boq_col_earned' },
     { k: 'weight', label: 'boq_col_weight' },
     { k: 'links', label: 'boq_col_links' },
     { k: 'assignedWeight', label: 'boq_col_assigned_wt' },
@@ -323,12 +370,97 @@ export class BoqPage {
   groups = computed(() => {
     const shown = this.filtered();
     return (this.reg()?.divisions ?? [])
-      .map(d => ({ division: d, rows: shown.filter(r => r.division === d.key) }))
+      .map(d => ({ division: d, rows: this.sorted(shown.filter(r => r.division === d.key)) }))
       .filter(g => g.rows.length > 0);
   });
 
   /** Lines filed under no division. They follow the groups rather than vanish. */
-  ungrouped = computed(() => this.filtered().filter(r => !r.division));
+  ungrouped = computed(() => this.sorted(this.filtered().filter(r => !r.division)));
+
+  // ── the sort (ملحق الشكل 12 · the reference's own grid) ────────────────
+  //
+  // SORTING HAPPENS INSIDE EACH DIVISION, never across them. The reference does
+  // the same, and it is not a stylistic choice: a division is a heading with a
+  // SUBTOTAL row under it (01 §2.4), and a sort that dissolved the grouping
+  // would leave twelve subtotals with nothing beneath them. Clicking «القيمة»
+  // on CNT-0279 reorders the three lines inside «الأعمال الترابية والأسس» and
+  // leaves the group where it is.
+  //
+  // Empty `sortKey` is the BILL'S OWN ORDER — code within division, which is
+  // how a bill of quantities is written — and is the state the register opens
+  // in. Clicking a sorted header a third time returns to it, so there is always
+  // a way back to the document's order without reloading.
+
+  sortKey = signal('');
+  sortDir = signal<'asc' | 'desc'>('asc');
+
+  /** asc → desc → off, which is the reference's cycle. */
+  toggleSort(key: string) {
+    if (this.sortKey() !== key) { this.sortKey.set(key); this.sortDir.set('asc'); return; }
+    if (this.sortDir() === 'asc') { this.sortDir.set('desc'); return; }
+    this.sortKey.set('');
+    this.sortDir.set('asc');
+  }
+
+  sortState(key: string): 'asc' | 'desc' | '' {
+    return this.sortKey() === key ? this.sortDir() : '';
+  }
+
+  /** `05 §7` — the sort is announced, not only drawn. */
+  ariaSort(key: string): string {
+    const s = this.sortState(key);
+    return s === 'asc' ? 'ascending' : s === 'desc' ? 'descending' : 'none';
+  }
+
+  /**
+   * The caret. An UNSORTED column carries `unfold_more` rather than nothing:
+   * a header that only reveals it can be clicked once clicked is a control the
+   * reader has to discover by accident.
+   */
+  caret(key: string): string {
+    const s = this.sortState(key);
+    return s === 'asc' ? 'expand_less' : s === 'desc' ? 'expand_more' : 'unfold_more';
+  }
+
+  /**
+   * A stable sort over one group's rows. `Array.prototype.sort` is stable in
+   * every engine this targets, so equal values keep the bill's order — which
+   * matters on a column like التنفيذ where half the lines read 0%.
+   */
+  private sorted(rows: BoqRow[]): BoqRow[] {
+    const k = this.sortKey();
+    if (!k) return rows;
+    const dir = this.sortDir() === 'desc' ? -1 : 1;
+
+    return [...rows].sort((a, b) => dir * this.compare(a, b, k));
+  }
+
+  private compare(a: BoqRow, b: BoqRow, k: string): number {
+    const num = (v: number) => v ?? 0;
+    switch (k) {
+      case 'code': return a.code.localeCompare(b.code);
+      case 'desc': return this.description(a).localeCompare(this.description(b));
+      case 'unit': return a.unit.localeCompare(b.unit);
+      case 'qty': return num(a.qty) - num(b.qty);
+      case 'rate': return num(a.rate) - num(b.rate);
+      case 'amount': return num(a.amount) - num(b.amount);
+      case 'origAmount': return this.origAmountOf(a) - this.origAmountOf(b);
+      case 'variance': return num(a.amendment?.deltaAmount ?? 0) - num(b.amendment?.deltaAmount ?? 0);
+      case 'earned': return num(a.achievedAmount) - num(b.achievedAmount);
+      case 'weight': return num(a.weight) - num(b.weight);
+      case 'links': return num(a.links) - num(b.links);
+      case 'assignedWeight': return num(a.assignedWeight) - num(b.assignedWeight);
+      case 'progress': return num(a.progress) - num(b.progress);
+      // The two enumerations sort by their CODE, not by their translated label:
+      // the label changes with the language and a sort that reordered itself on
+      // «EN» would be reporting the dictionary, not the bill.
+      case 'distribution': return a.distributionState.localeCompare(b.distributionState);
+      case 'coverage': return a.coverage.localeCompare(b.coverage);
+      default: return 0;
+    }
+  }
+
+  origAmountOf(r: BoqRow): number { return r.amendment ? r.amendment.originalAmount : r.amount; }
 
   coverageCount(code: string): number { return this.reg()?.countByCoverage[code] ?? 0; }
 
@@ -375,6 +507,21 @@ export class BoqPage {
   /** How many <td>s a full-width row has to span, given the column menu. */
   spanCount = computed(() =>
     2 + this.columns.filter(c => this.cols()[c.k]).length + 1);
+
+  /**
+   * الأصلية for the whole bill. Summed from the rows' own original amounts —
+   * a line no order has touched contributes its current amount, because for it
+   * the two are the same figure.
+   */
+  totalOriginalAmount = computed(() =>
+    this.filtered().reduce((s, r) => s + (r.amendment ? r.amendment.originalAmount : r.amount), 0));
+
+  /**
+   * الفرق, with its sign kept. Never coloured by direction (CLAUDE.md §6): an
+   * increase and a decrease are both amendments, and this column reports which
+   * one happened, not whether it was welcome.
+   */
+  signed(v: number): string { return (v > 0 ? '+' : '') + fmt.money(v); }
 
   /**
    * The span the inline editor's buttons take: everything after the four
@@ -553,6 +700,10 @@ export class BoqPage {
         this.resetEditors();
         this.load();
       });
+
+    // Views belong to the PERSONA, not the contract, so this runs once for the
+    // life of the component rather than inside the subscription above.
+    this.loadViews();
   }
 
   private resetEditors() {
@@ -600,8 +751,24 @@ export class BoqPage {
     this.loading.set(false);
   }
 
+  /**
+   * THE API SPEAKS TWO ERROR SHAPES and this read only one of them. The older
+   * refusals carry `{ message }`; every bilingual one — `BoqKind.Unsupported`,
+   * EP-BOQ-13's banded-line guard, EP-PRJ-06's capacity and master-list checks —
+   * carries `{ messageAr, messageEn }`, and those all fell through to
+   * `e.message`, which is Angular's own «Http failure response for …: 409».
+   *
+   * Measured: EP-BOQ-13 refuses to overwrite a لجنة تثبيت الأسعار rate with a
+   * sentence naming the line, and the user was shown the raw HTTP string
+   * instead. A refusal nobody can read is a refusal that teaches nothing.
+   *
+   * The bilingual pair wins, then the single-language `message`, then the
+   * transport error as a last resort.
+   */
   private message(e: any): string {
-    return e?.error?.message ?? e?.message ?? 'request failed';
+    const body = e?.error;
+    const bilingual = this.lang.isAr() ? body?.messageAr : body?.messageEn;
+    return bilingual ?? body?.message ?? e?.message ?? 'request failed';
   }
 
   private qp() {
@@ -620,6 +787,124 @@ export class BoqPage {
   }
 
   clearFilters() { this.q.set(''); this.coverage.set(''); }
+
+  // ── «العروض» — save, restore, delete ──────────────────────────────────
+
+  private loadViews() {
+    this.api.views().subscribe({
+      next: v => this.savedViews.set(v),
+      // A failed view list must not take the register down with it: the bill is
+      // the screen's subject and the menu is a convenience over it.
+      error: () => this.savedViews.set([]),
+    });
+  }
+
+  /**
+   * Restores every control the view captured. A column key the grid no longer
+   * has is ignored, and one it has gained stays hidden — the stored set is the
+   * SHOWN set, so a view cannot start showing a column its author never chose.
+   */
+  applyView(v: BoqSavedView) {
+    this.q.set(v.query);
+    this.coverage.set(v.coverage);
+
+    const on = new Set(v.visibleColumns);
+    this.cols.set(Object.fromEntries(this.columns.map(c => [c.k, on.has(c.k)])));
+
+    // A view saved before the grid could sort restores as unsorted, which is
+    // the bill's own order and exactly what its author was looking at.
+    this.sortKey.set(v.sortKey ?? '');
+    this.sortDir.set(v.sortDir === 'desc' ? 'desc' : 'asc');
+    this.viewMenu.set(false);
+  }
+
+  /**
+   * THE NAME IS ASKED FOR WITH `prompt`, which is what the reference does
+   * (boq-register.jsx:452) and the only control on this screen that is not the
+   * design system's. `.boq-colmenu .row.save` in the copied stylesheet is a
+   * click target with no input in it, so an inline field would mean inventing a
+   * rule — and the row's own «…» already signals that it asks something.
+   * Recorded rather than papered over: a proper named-save control belongs in
+   * the design system, and this is the one place its absence shows.
+   */
+  saveCurrentView() {
+    const name = (window.prompt(this.lang.t('boq_view_name')) ?? '').trim();
+    if (!name) { this.viewMenu.set(false); return; }
+
+    this.api.saveView({
+      name,
+      query: this.q().trim(),
+      coverage: this.coverage(),
+      visibleColumns: this.columns.filter(c => this.cols()[c.k]).map(c => c.k),
+      sortKey: this.sortKey(),
+      sortDir: this.sortDir(),
+    }).subscribe({
+      next: () => { this.loadViews(); this.toast.show(this.lang.t('boq_view_saved')); },
+      error: e => this.toast.show(this.message(e)),
+    });
+    this.viewMenu.set(false);
+  }
+
+  // ── «الجهات المستفيدة» — open, tick, save ─────────────────────────────
+
+  openBeneficiaries() {
+    this.benOpen.set(true);
+    this.api.beneficiaries(this.projectId()).subscribe({
+      next: rows => {
+        this.bens.set(rows);
+        this.benDraft.set(new Set(rows.filter(b => b.assigned).map(b => b.code)));
+      },
+      error: e => { this.benOpen.set(false); this.toast.show(this.message(e)); },
+    });
+  }
+
+  benTicked(code: string) { return this.benDraft().has(code); }
+
+  /**
+   * `01 §2.1` — an inactive beneficiary cannot receive new quantity, so it
+   * cannot be newly ticked. One ALREADY ticked stays editable: it may hold
+   * quantity distributed before it was stood down, and the server refuses the
+   * same case, so the drawer is preventing the entry rather than reporting it
+   * afterwards (CLAUDE.md §6).
+   */
+  benLocked(b: ProjectBeneficiaryRow) { return !b.active && !this.benDraft().has(b.code); }
+
+  toggleBen(b: ProjectBeneficiaryRow) {
+    if (this.benLocked(b)) return;
+    this.benDraft.update(set => {
+      const next = new Set(set);
+      next.has(b.code) ? next.delete(b.code) : next.add(b.code);
+      return next;
+    });
+  }
+
+  saveBeneficiaries() {
+    this.benSaving.set(true);
+    this.api.saveBeneficiaries(this.projectId(), [...this.benDraft()]).subscribe({
+      next: () => {
+        this.benSaving.set(false);
+        this.benOpen.set(false);
+        this.toast.show(this.lang.t('boq_ben_saved'));
+        // The distribution drawer offers exactly the ticked set (BR-08), so the
+        // register is reloaded rather than left showing a list that no longer
+        // matches what a distribution would accept.
+        this.load();
+      },
+      error: e => { this.benSaving.set(false); this.toast.show(this.message(e)); },
+    });
+  }
+
+  /** `stopPropagation` so deleting a view does not also apply it. */
+  deleteView(v: BoqSavedView, ev: Event) {
+    ev.stopPropagation();
+    this.api.deleteView(v.id).subscribe({
+      next: () => {
+        this.savedViews.update(vs => vs.filter(x => x.id !== v.id));
+        this.toast.show(this.lang.t('boq_view_gone'));
+      },
+      error: e => this.toast.show(this.message(e)),
+    });
+  }
 
   setView(v: 'register' | 'assign') {
     this.view.set(v);
@@ -740,7 +1025,6 @@ export class BoqPage {
     this.addSerialFrom.set('');
     this.addSerialTo.set('');
     this.addSuppliedQty.set('');
-    this.addReceivedQty.set('');
     this.addWarrantyMonths.set('');
     this.addNotes.set('');
     this.addOpen.set(true);
@@ -772,8 +1056,9 @@ export class BoqPage {
 
     const qty = parseFloat(this.addQty()) || 0;
     const supplied = parseFloat(this.addSuppliedQty()) || 0;
-    const received = parseFloat(this.addReceivedQty()) || 0;
-    return supplied >= 0 && received >= 0 && received <= supplied && supplied <= qty;
+    // NO received check: a new item has received nothing by construction, and
+    // what it receives later is a محضر, not a field (المسار 11 · EP-SUP-04).
+    return supplied >= 0 && supplied <= qty;
   });
 
   /** Why the button is disabled, in words, when the numbers contradict. */
@@ -781,8 +1066,6 @@ export class BoqPage {
     if (!this.isSupplyBill()) return '';
     const qty = parseFloat(this.addQty()) || 0;
     const supplied = parseFloat(this.addSuppliedQty()) || 0;
-    const received = parseFloat(this.addReceivedQty()) || 0;
-    if (received > supplied) return this.lang.t('boq_add_err_received');
     if (supplied > qty) return this.lang.t('boq_add_err_supplied');
     return '';
   });
@@ -822,7 +1105,6 @@ export class BoqPage {
         serialFrom: this.addSerialFrom().trim(),
         serialTo: this.addSerialTo().trim(),
         suppliedQty: parseFloat(this.addSuppliedQty()) || 0,
-        receivedQty: parseFloat(this.addReceivedQty()) || 0,
         warrantyMonths: parseInt(this.addWarrantyMonths(), 10) || 0,
         notes: this.addNotes().trim(),
       };
@@ -884,6 +1166,100 @@ export class BoqPage {
   }
 
   closeDistribution() { this.distCode.set(''); this.dist.set(null); this.distDraft.set([]); }
+
+  // ── the amendment drawer (ROADMAP 4.5 · 04 §6) ─────────────────────────
+  //
+  // FETCHED ON OPEN, not sent with every row. The register needs the count and
+  // the two deltas — which the row already carries — and the chain is only ever
+  // read one line at a time. Sending twelve chains to draw one is the same
+  // trade the distribution drawer makes.
+
+  amdCode = signal('');
+  amd = signal<BoqAmendmentDetail | null>(null);
+
+  openAmendments(code: string) {
+    this.amdCode.set(code);
+    this.amd.set(null);
+    this.api.amendments(this.projectId(), this.effectiveContractId(), code).subscribe({
+      next: d => this.amd.set(d),
+      error: e => { this.amdCode.set(''); this.toast.show(this.message(e)); },
+    });
+  }
+
+  closeAmendments() { this.amdCode.set(''); this.amd.set(null); }
+
+  amdTitle = computed(() => {
+    const d = this.amd();
+    if (!d) return this.lang.t('amd_panel_boq');
+    return this.lang.isAr() ? d.descriptionAr : d.descriptionEn;
+  });
+
+  /** «الوضع النافذ» — the four figures the drawer opens on. */
+  amdFacts = computed<AmendmentFactView[]>(() => {
+    const d = this.amd();
+    if (!d) return [];
+    const delta = d.effectiveQty - d.originalQty;
+    return [
+      { key: this.lang.t('amd_orig_qty'), value: `${fmt.qty(d.originalQty)} ${d.unit}` },
+      {
+        key: this.lang.t('amd_eff_qty'),
+        value: `${fmt.qty(d.effectiveQty)} ${d.unit}`,
+        sub: delta === 0 ? null : (delta > 0 ? '+' : '') + fmt.qty(delta),
+      },
+      { key: this.lang.t('amd_eff_value'), value: fmt.money(d.effectiveAmount) },
+      {
+        key: this.lang.t('amd_blended'),
+        value: fmt.money(d.blendedRate),
+        sub: d.banded ? this.lang.t('amd_multi_rate') : null,
+      },
+    ];
+  });
+
+  /**
+   * The chain, in the drawer's own shape. A BOQ step's primary pair is the
+   * QUANTITY and its secondary the signed money impact — the activity drawer
+   * puts days first and the finish date second, which is why the panel takes
+   * strings rather than each caller's own record.
+   */
+  amdChain = computed<AmendmentStepView[]>(() =>
+    (this.amd()?.chain ?? []).map(s => ({
+      no: s.no,
+      at: s.at,
+      isApplied: s.isApplied,
+      from: `${fmt.qty(s.qtyFrom)} ${this.amd()?.unit ?? ''}`.trim(),
+      to: `${fmt.qty(s.qtyTo)} ${this.amd()?.unit ?? ''}`.trim(),
+      secondary: (s.amountTo - s.amountFrom > 0 ? '+' : '') + fmt.money(s.amountTo - s.amountFrom),
+      excess: s.excessRate === null ? null : fmt.money(s.excessRate),
+    })));
+
+  /**
+   * BR-05's bands, with the blended total as the last row. Empty on an
+   * unbanded line — one rate needs no breakdown, and printing a single-row
+   * table over it would suggest there is something to compare.
+   */
+  amdBands = computed<AmendmentBandView[]>(() => {
+    const d = this.amd();
+    if (!d || !d.banded || d.bands.length === 0) return [];
+    const rows: AmendmentBandView[] = d.bands.map(b => ({
+      label: this.lang.t(b.isExcess ? 'amd_band_excess' : 'amd_band_base'),
+      sourceNo: b.sourceNo,
+      qty: `${fmt.qty(b.qty)} ${d.unit}`,
+      rate: fmt.money(b.rate),
+      amount: fmt.money(b.amount),
+      isExcess: b.isExcess,
+      isTotal: false,
+    }));
+    rows.push({
+      label: this.lang.t('amd_band_total'),
+      sourceNo: null,
+      qty: `${fmt.qty(d.effectiveQty)} ${d.unit}`,
+      rate: fmt.money(d.blendedRate),
+      amount: fmt.money(d.effectiveAmount),
+      isExcess: false,
+      isTotal: true,
+    });
+    return rows;
+  });
 
   addDistRow(code: string) {
     if (!code) return;
@@ -1089,6 +1465,9 @@ export class BoqPage {
   }
 
   // ── labels ─────────────────────────────────────────────────────────────
+
+  /** `06 §6` beneficiary-type, from the Lookups like every other stored code. */
+  benTypeLabel(code: string): string { return this.lookups.label('beneficiary-type', code); }
 
   coverageLabel(code: string): string { return this.lookups.label('allocation-coverage', code); }
 

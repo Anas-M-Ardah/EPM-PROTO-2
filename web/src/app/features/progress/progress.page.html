@@ -51,28 +51,50 @@
         <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
       </span>
 
-      <div class="grp">
-        <button type="button" class="d-fchip" [class.on]="view() === 'summary'"
-                (click)="view.set('summary')">{{ lang.t('prg_tab_summary') }}</button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'activities'"
-                (click)="view.set('activities')">
-          {{ lang.t('prg_tab_activities') }}
-          <span class="n"><bdi>{{ d.activities.length }}</bdi></span>
+      <span class="sp"></span>
+
+      <!-- الشكل 25's own three controls. «مرشح مرجع المقارنة» is deliberately
+           absent and says so through «كيف تُحتسب»: there is ONE baseline in
+           this build (see EP-SCD-02's own note), so a picker would offer
+           comparisons that cannot be made. -->
+      <button type="button" class="d-btn sm" (click)="howOpen.set(true)">
+        <epm-icon name="functions" [size]="15" />{{ lang.t('prg_how') }}
+      </button>
+      <button type="button" class="d-btn sm" (click)="exportPdf()">
+        <epm-icon name="download" [size]="15" />{{ lang.t('prg_export_pdf') }}
+      </button>
+      @if (editing_mode()) {
+        <button type="button" class="d-btn sm primary" (click)="editing_mode.set(false)">
+          <epm-icon name="chevron_right" [size]="15" />{{ lang.t('prg_back_to_read') }}
         </button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'boq'"
-                (click)="view.set('boq')">
-          {{ lang.t('prg_tab_boq') }}
-          <span class="n"><bdi>{{ d.boqLines.length }}</bdi></span>
+      } @else {
+        <button type="button" class="d-btn sm primary" (click)="editing_mode.set(true)">
+          <epm-icon name="edit" [size]="15" />{{ lang.t('prg_update') }}
         </button>
-      </div>
+      }
     </div>
+
+    <!-- ══ Z5 — الشكل 25's four tabs ═══════════════════════════════════════
+         Hidden while the editor is open: the editor is not one of them, and a
+         tab strip with nothing selected reads as a bug. -->
+    @if (!editing_mode()) {
+      <div class="d-pz5" role="tablist" [attr.aria-label]="lang.t('mod_progress')">
+        @for (t of viewTabs(); track t.id) {
+          <button type="button" role="tab" [class.on]="view() === t.id"
+                  [attr.aria-selected]="view() === t.id" (click)="view.set(t.id)">
+            {{ lang.t(t.key) }}
+            @if (t.n !== null) { <span class="n"><bdi>{{ t.n }}</bdi></span> }
+          </button>
+        }
+      </div>
+    }
 
     <div class="d-pbody no-aside">
       <div class="d-pz7">
 
         <epm-summary-strip [stats]="summaryStats()" />
 
-        @if (view() === 'summary') {
+        @if (!editing_mode() && view() === 'summary') {
           <!-- ══ THE RECONCILIATION ═══════════════════════════════════════
                Planned − physical = the gap, with the middle term visible.
                The same shape SCR-W3 uses for contract value, and for the same
@@ -203,7 +225,54 @@
             </div>
           </div>
 
-        } @else if (view() === 'activities') {
+          <!-- ══ الشكل 25 — تحديثات الإنجاز (واردة من الأقسام) ════════════
+               «كل سطر معتمد من قسم مصدره — لا يُحرَّر هنا». The plate's own
+               sentence, and the reason this table has no controls: it is the
+               separation of entry from approval, printed. These are the SAME
+               rows Domain/ProgressSeries draws SCR-W1's actual line from. -->
+          <div class="d-sec">
+            <div class="d-sec-h">
+              <span class="n">{{ lang.t('prg_updates') }}</span>
+              <span class="d-cell-sub">{{ lang.t('prg_updates_sub') }}</span>
+            </div>
+            <div class="d-sec-b">
+              @if (updates().length === 0) {
+                <div class="d-empty">
+                  <span class="d-empty-ico"><epm-icon name="history" [size]="30" /></span>
+                  <b>{{ lang.t('prg_updates_empty_t') }}</b>
+                  <span>{{ lang.t('prg_updates_empty_b') }}</span>
+                </div>
+              } @else {
+                <div class="d-tablewrap"><table class="d-table">
+                  <thead><tr>
+                    <th style="width: 120px">{{ lang.t('prg_updates_at') }}</th>
+                    <th style="width: 130px">{{ lang.t('boq_contract') }}</th>
+                    <th class="r" style="width: 160px">{{ lang.t('prg_updates_move') }}</th>
+                    <th>{{ lang.t('prg_updates_by') }}</th>
+                    <th style="width: 220px">{{ lang.t('prg_updates_party') }}</th>
+                  </tr></thead>
+                  <tbody>
+                    @for (u of updates(); track u.contractId + u.at) {
+                      <tr>
+                        <td class="mono d-cell-sub"><bdi>{{ fmt.date(u.at) }}</bdi></td>
+                        <td class="mono"><bdi>{{ u.contractId }}</bdi></td>
+                        <td class="r mono">
+                          @if (u.before !== null) {
+                            <bdi>{{ fmt.pct(u.before, 0) }}</bdi> →
+                          }
+                          <b><bdi>{{ fmt.pct(u.after, 0) }}</bdi></b>
+                        </td>
+                        <td class="d-cell-strong">{{ u.actorName }}</td>
+                        <td class="d-cell-sub">{{ u.actorParty }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table></div>
+              }
+            </div>
+          </div>
+
+        } @else if (editing_mode()) {
           <!-- ══ THE EDITOR ════════════════════════════════════════════════
                `07 §M3`: change an activity's progress and watch the BOQ move.
                Each row names the lines it feeds BEFORE it is touched, so the
@@ -309,8 +378,11 @@
             </tbody>
           </table></div>
 
-        } @else {
-          <!-- ══ WHERE IT LANDS — BR-04 (02 §4) ════════════════════════════ -->
+          <!-- ══ WHERE IT LANDS — BR-04 (02 §4) ════════════════════════════
+               Inside the SAME branch as the activity table above it: the
+               editor is one act — move a percentage, watch it land — and
+               splitting it across two tabs made the consequence something you
+               had to go and look for. -->
           @if (unlinked() > 0) {
             <div class="d-msgbar warning">
               <epm-icon name="warning" [size]="16" />
@@ -405,9 +477,247 @@
               }
             </tbody>
           </table></div>
+        } @else if (view() === 'wbs') {
+          <!-- ══ الشكل 26 — الإنجاز حسب هيكل التجزئة ═══════════════════════
+               «محسوب صعودًا من الأنشطة، لا يُدخل يدويًا». There is no input on
+               this tab and no endpoint that would accept one: a WBS node has no
+               progress column to write to. -->
+          <section class="d-recon">
+            <div class="tm">
+              <span class="k">{{ lang.t('prg_wbs_rollup') }}</span>
+              <b class="num"><bdi>{{ fmt.pct(d.headline.physical, 1) }}</bdi></b>
+              <span class="n">{{ lang.t('prg_wbs_rollup_note') }}</span>
+            </div>
+            <span class="op" aria-hidden="true">·</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('prg_planned') }}</span>
+              <b class="num"><bdi>{{ fmt.pct(d.headline.planned, 1) }}</bdi></b>
+            </div>
+            <span class="op" aria-hidden="true">·</span>
+            <div class="tm">
+              <span class="k">{{ lang.t('prg_wbs_done') }}</span>
+              <b class="num"><bdi>{{ wbsComplete() }}</bdi> / <bdi>{{ wbs().length }}</bdi></b>
+            </div>
+            <span class="op" aria-hidden="true">=</span>
+            <div class="tm strong">
+              <span class="k">{{ lang.t('prg_gap') }}</span>
+              <b class="num"><bdi>{{ fmt.delta(wbsGap()) }}</bdi> {{ lang.t('prg_pts') }}</b>
+            </div>
+          </section>
+
+          <div class="d-sec">
+            <div class="d-sec-h">
+              <span class="n">{{ lang.t('prg_wbs_levels') }}</span>
+              <span class="d-cell-sub">{{ lang.t('prg_wbs_levels_sub') }}</span>
+            </div>
+            <div class="d-sec-b">
+              @if (wbs().length === 0) {
+                <!-- 04 §9 — no schedule has been imported, which is not the
+                     same state as a schedule with no levels. -->
+                <div class="d-empty">
+                  <span class="d-empty-ico"><epm-icon name="account_tree" [size]="30" /></span>
+                  <b>{{ lang.t('prg_wbs_empty_t') }}</b>
+                  <span>{{ lang.t('prg_wbs_empty_b') }}</span>
+                </div>
+              } @else {
+                <div class="d-tablewrap"><table class="d-table">
+                  <thead><tr>
+                    <th style="width: 110px">{{ lang.t('prg_wbs_path') }}</th>
+                    <th>{{ lang.t('prg_wbs_node') }}</th>
+                    <th style="width: 110px">{{ lang.t('boq_contract') }}</th>
+                    <th class="r" style="width: 80px">{{ lang.t('prg_wbs_acts') }}</th>
+                    <th class="r" style="width: 90px">{{ lang.t('scd_col_abs') }}</th>
+                    <th style="width: 170px">{{ lang.t('prg_physical') }}</th>
+                    <th class="r" style="width: 90px">{{ lang.t('prg_planned') }}</th>
+                    <th class="r" style="width: 90px">{{ lang.t('prg_gap') }}</th>
+                  </tr></thead>
+                  <tbody>
+                    @for (w of wbs(); track w.contractId + w.path) {
+                      <tr [class.lvl1]="w.level === 1">
+                        <td class="mono d-cell-sub"><bdi>{{ w.path }}</bdi></td>
+                        <td class="d-cell-strong"
+                            [style.padding-inline-start.px]="8 + (w.level - 1) * 18">
+                          {{ lang.pick(w.nameAr, w.nameEn) }}
+                          @if (w.isComplete) {
+                            <span class="d-proposed">{{ lang.t('prg_wbs_complete') }}</span>
+                          }
+                        </td>
+                        <td class="mono d-cell-sub"><bdi>{{ w.contractId }}</bdi></td>
+                        <td class="r mono"><bdi>{{ w.activities }}</bdi></td>
+                        <td class="r mono"><bdi>{{ fmt.pct(w.weight, 1) }}</bdi></td>
+                        <td><span class="d-mini-bar">
+                          <span class="t"><span [style.width.%]="w.progress"></span></span>
+                          <span class="pc"><bdi>{{ fmt.pct(w.progress, 0) }}</bdi></span>
+                        </span></td>
+                        <td class="r mono d-cell-sub"><bdi>{{ fmt.pct(w.planned, 0) }}</bdi></td>
+                        <!-- SIGNED and neutral: a gap is a magnitude, and
+                             CLAUDE.md §6 keeps the colour channel out of it. -->
+                        <td class="r mono"><bdi>{{ fmt.delta(w.gap) }}</bdi></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table></div>
+              }
+            </div>
+          </div>
+
+        } @else if (view() === 'cost') {
+          <!-- ══ الشكل 27 — الأثر والكلفة ══════════════════════════════════ -->
+          @if (costImpact(); as ci) {
+            <epm-summary-strip [stats]="costStats()" />
+
+            <!-- The plate's governing note, and 02 §9's rule in one line. -->
+            <div class="d-msgbar info">
+              <epm-icon name="info" [size]="16" />
+              <div>
+                <b>{{ lang.t('prg_cost_rule_t') }}</b>
+                <span>{{ lang.t('prg_cost_rule_b') }}</span>
+              </div>
+            </div>
+
+            <div class="d-sec">
+              <div class="d-sec-h">
+                <span class="n">{{ lang.t('prg_cost_orders') }}</span>
+                <span class="d-cell-sub">{{ lang.t('prg_cost_orders_sub') }}</span>
+              </div>
+              <div class="d-sec-b">
+                <div class="d-tablewrap"><table class="d-table">
+                  <thead><tr>
+                    <th>{{ lang.t('prg_cost_item') }}</th>
+                    <th class="r" style="width: 90px">{{ lang.t('con_pen_item') }}</th>
+                    <th class="r" style="width: 180px">
+                      {{ lang.t('boq_col_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                    </th>
+                    <th style="width: 260px">{{ lang.t('prg_cost_where') }}</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr>
+                      <td class="d-cell-strong">{{ lang.t('prg_cost_applied') }}</td>
+                      <td class="r mono"><bdi>{{ ci.approvedOrderCount }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.delta(ci.approvedOrders) }}</bdi></td>
+                      <td class="d-cell-sub">{{ lang.t('prg_cost_applied_note') }}</td>
+                    </tr>
+                    <tr>
+                      <td class="d-cell-strong">{{ lang.t('con_pending_title') }}</td>
+                      <td class="r mono"><bdi>{{ ci.pendingOrderCount }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.delta(ci.pendingOrders) }}</bdi></td>
+                      <td class="d-cell-sub">{{ lang.t('prg_cost_pending_note') }}</td>
+                    </tr>
+                    <tr>
+                      <td class="d-cell-strong">{{ lang.t('prg_cost_delay') }}</td>
+                      <td class="r mono"><bdi>{{ ci.delayDays }}</bdi></td>
+                      <td class="r mono"><bdi>{{ fmt.money(ci.delayCostImpact) }}</bdi></td>
+                      <td class="d-cell-sub">{{ lang.t('prg_cost_delay_note') }}</td>
+                    </tr>
+                  </tbody>
+                </table></div>
+              </div>
+            </div>
+          }
+
+        } @else if (view() === 'risk') {
+          <!-- ══ الشكل 28 — مخاطر الجدول ═══════════════════════════════════ -->
+          @if (scheduleRisk(); as risk) {
+            <epm-summary-strip [stats]="riskStats()" />
+
+            <div class="d-sec">
+              <div class="d-sec-h">
+                <span class="n">{{ lang.t('prg_risk_atrisk') }}</span>
+                <span class="d-cell-sub">{{ lang.t('prg_risk_atrisk_sub') }}
+                  <bdi>{{ risk.atRiskThresholdDays }}</bdi> {{ lang.t('amd_days') }}</span>
+              </div>
+              <div class="d-sec-b">
+                @if (risk.atRisk.length === 0) {
+                  <!-- 04 §9 — a RESULT, not an empty database, and the plate
+                       writes its message for us. -->
+                  <div class="d-empty">
+                    <span class="d-empty-ico"><epm-icon name="verified" [size]="30" /></span>
+                    <b>{{ lang.t('prg_risk_none_t') }}</b>
+                    <span>{{ lang.t('prg_risk_none_b') }}</span>
+                  </div>
+                } @else {
+                  <div class="d-tablewrap"><table class="d-table">
+                    <thead><tr>
+                      <th style="width: 90px">{{ lang.t('scd_col_id') }}</th>
+                      <th>{{ lang.t('scd_wbs_activity') }}</th>
+                      <th style="width: 110px">{{ lang.t('boq_contract') }}</th>
+                      <th style="width: 110px">{{ lang.t('scd_col_status') }}</th>
+                      <th style="width: 110px">{{ lang.t('scd_col_bl_fin') }}</th>
+                      <th style="width: 110px">{{ lang.t('scd_col_forecast') }}</th>
+                      <th class="r" style="width: 90px">{{ lang.t('scd_col_float') }}</th>
+                      <th class="r" style="width: 90px">{{ lang.t('scd_col_slip') }}</th>
+                    </tr></thead>
+                    <tbody>
+                      @for (a of risk.atRisk; track a.contractId + a.activityId) {
+                        <tr>
+                          <td class="mono">
+                            <bdi>{{ a.activityId }}</bdi>
+                            @if (a.isCritical) {
+                              <span class="d-crit-dot" style="display: inline-block; margin-inline-start: 6px"
+                                    [title]="lang.t('scd_critical')"></span>
+                            }
+                          </td>
+                          <td class="d-cell-strong">{{ lang.pick(a.nameAr, a.nameEn) }}</td>
+                          <td class="mono d-cell-sub"><bdi>{{ a.contractId }}</bdi></td>
+                          <td><epm-status-pill [code]="a.status" kind="activity-status" /></td>
+                          <td class="mono d-cell-sub"><bdi>{{ fmt.date(a.baselineFinish) }}</bdi></td>
+                          <td class="mono"><bdi>{{ fmt.date(a.forecastFinish) }}</bdi></td>
+                          <td class="r mono" [class.d-cell-strong]="a.totalFloat <= 0">
+                            <bdi>{{ fmt.days(a.totalFloat) }}</bdi>
+                          </td>
+                          <td class="r mono"><bdi>{{ fmt.delta(a.slipDays) }}</bdi></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table></div>
+                }
+              </div>
+            </div>
+          }
+
         }
       </div>
     </div>
     }
   }
 </div>
+
+<!-- ══ الشكل 25's «زر كيف تُحتسب» ═════════════════════════════════════════
+     Every rule behind the four tabs, in the one place a reader who doubts a
+     figure will look. A drawer and not a tooltip: these are paragraphs, and
+     `05 §6` wants the rule readable where the figure is read, not hovered. -->
+@if (howOpen()) {
+  <epm-drawer [title]="lang.t('prg_how_title')" [hasFooter]="true"
+              [closeLabel]="lang.t('amd_close')" (closed)="howOpen.set(false)">
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_phys_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_phys_b') }}</p>
+    </div>
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_plan_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_plan_b') }}</p>
+    </div>
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_wbs_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_wbs_b') }}</p>
+    </div>
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_cost_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_cost_b') }}</p>
+    </div>
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_risk_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_risk_b') }}</p>
+    </div>
+    <!-- الشكل 25 names «مرشح مرجع المقارنة» and this build has none. The
+         reason is a rule, not an omission, so it is stated here rather than
+         left as a missing control. -->
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_base_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_base_b') }}</p>
+    </div>
+    <ng-container footer>
+      <button type="button" class="d-btn" (click)="howOpen.set(false)">{{ lang.t('amd_close') }}</button>
+    </ng-container>
+  </epm-drawer>
+}

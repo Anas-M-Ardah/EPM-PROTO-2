@@ -22,6 +22,12 @@ export interface ProjectRow {
   cost: number;
   /** آخر تحديث — ISO date string, or null. */
   updatedAt: string | null;
+  /**
+   * D-13's three — construction · equipment · design-studies. The workspace
+   * RAIL reads it: `modulesFor` swaps the BOQ module for «الفقرات التجهيزية»
+   * and drops the 3D model on an `equipment` project.
+   */
+  type: string;
 }
 
 export interface ProjectsResponse {

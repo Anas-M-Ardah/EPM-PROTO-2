@@ -78,7 +78,12 @@ public record BoqGateResponse(
 /// point of the column.
 /// </param>
 /// <param name="DistributionState">06 §10 — none · partial · full · over (BR-08).</param>
-/// <param name="Banded">True when rate bands exist, so `Rate` is a blend of several.</param>
+/// <param name="Banded">
+/// `Domain/TierSplit.MultiRate` — the line carries MORE THAN ONE RATE, so
+/// `Rate` above is a blend. NOT merely "an order has been applied to it": a
+/// line moved inside the 20% threshold has one band at the contract rate, and
+/// «سعر مركّب» over it would claim a rate-fixing decision nobody took.
+/// </param>
 public record BoqRow(
     string Code,
     string DescriptionAr,
@@ -108,7 +113,102 @@ public record BoqRow(
     /// Null rather than a zeroed object: a works line has no supplied quantity,
     /// and sending 0 would let the register print a receipt column against it.
     /// </summary>
-    BoqSupplyDetail? Supply);
+    BoqSupplyDetail? Supply,
+    /// <summary>
+    /// `04 §6` — the amendment badge and the cell delta, or null when no
+    /// approved order has ever touched this line. Null rather than a zeroed
+    /// object for the same reason as `Supply`: an untouched row must print no
+    /// badge, and a count of 0 is a badge.
+    /// </summary>
+    BoqAmendmentMark? Amendment);
+
+/// <param name="No">The order's number, e.g. "VO-01".</param>
+/// <param name="IsApplied">
+/// From the LINE's own `AppliedDeltaQty`, not the order's lifecycle: a
+/// partially applied order has moved some of its lines and not others.
+/// </param>
+public record BoqAmendmentSource(string No, bool IsApplied);
+
+/// <summary>
+/// ROADMAP 4.5 · `04 §6` — the row-level disclosure. `Domain/AmendmentDisclosure`
+/// decides the state; this carries it and the two deltas the cell prints.
+/// </summary>
+/// <param name="State">applied · pending · mixed — `Domain/AmendmentDisclosure`.</param>
+/// <param name="DeltaQty">
+/// Effective − original. SETTLED: it is already inside the row's own `Qty`.
+/// Rendered as a compact signed delta beside the figure, never as a
+/// strikethrough over the original (`04 §6`).
+/// </param>
+/// <param name="PendingDeltaQty">
+/// What the approved-but-unapplied orders WOULD add, measured from the
+/// effective figure. Null when nothing is awaiting application — which is a
+/// different fact from a pending delta of zero.
+/// </param>
+public record BoqAmendmentMark(
+    int Count,
+    int AppliedCount,
+    int PendingCount,
+    string State,
+    decimal OriginalQty,
+    decimal OriginalAmount,
+    decimal DeltaQty,
+    decimal DeltaAmount,
+    decimal? PendingDeltaQty,
+    decimal? PendingDeltaAmount,
+    IReadOnlyList<BoqAmendmentSource> Sources);
+
+/// <summary>
+/// EP-BOQ-17 — one step of the drawer's chain. Each step records where the line
+/// STOOD when that order reached it, because several orders can hit one line
+/// and each applies to the running figure rather than to the original.
+/// </summary>
+/// <param name="ExcessQty">
+/// BR-05's re-priced portion, attributed to the order that introduced it — so
+/// the drawer can say which decision gave the line a second rate. Zero on every
+/// order that stayed inside the 20% threshold.
+/// </param>
+public record BoqAmendmentStep(
+    string No,
+    string? At,
+    bool IsApplied,
+    decimal QtyFrom,
+    decimal QtyTo,
+    decimal AmountFrom,
+    decimal AmountTo,
+    decimal ExcessQty,
+    decimal? ExcessRate);
+
+/// <param name="Bands">
+/// The line's rate bands as they stand — the contracted quantity at the
+/// contract rate, and the excess at the rate لجنة تثبيت الأسعار fixed (02 §5).
+/// Empty on a line that carries one rate.
+/// </param>
+/// <param name="BlendedRate">
+/// `Domain/TierSplit.BlendedRate`. Equal to the contract rate on an unbanded
+/// line, which is why the drawer only labels it «السعر المكافئ» when `Banded`
+/// — which here, as on the row, means MORE THAN ONE RATE.
+/// </param>
+public record BoqAmendmentBand(decimal Qty, decimal Rate, decimal Amount, bool IsExcess, string? SourceNo);
+
+public record BoqAmendmentDetail(
+    string Code,
+    string DescriptionAr,
+    string DescriptionEn,
+    string Unit,
+    int Count,
+    int AppliedCount,
+    int PendingCount,
+    string State,
+    decimal OriginalQty,
+    decimal OriginalAmount,
+    decimal EffectiveQty,
+    decimal EffectiveAmount,
+    decimal BlendedRate,
+    bool Banded,
+    decimal? PendingQty,
+    decimal? PendingAmount,
+    IReadOnlyList<BoqAmendmentStep> Chain,
+    IReadOnlyList<BoqAmendmentBand> Bands);
 
 /// <summary>
 /// الفقرة التجهيزية's own fields (الأشكال 50–52) — the sub-type half of a row
@@ -219,7 +319,9 @@ public record BoqSupplyInput(
     string? SerialFrom,
     string? SerialTo,
     decimal SuppliedQty,
-    decimal ReceivedQty,
+    // NO ReceivedQty. المسار 11 records receipts as events, and a new item has
+    // received nothing by construction. `EP-SUP-04` is the only way a received
+    // quantity moves, and it moves by recording a محضر.
     int WarrantyMonths,
     string? WarrantyExpiry,
     string? Notes);
@@ -359,3 +461,37 @@ public record BoqAllocationInput(string ActivityId, decimal SharePct);
 /// link on the line. `Rows` is then ignored.
 /// </param>
 public record BoqAllocationSave(bool Reset, IReadOnlyList<BoqAllocationInput> Rows);
+
+// ── EP-BOQ-14 / 15 / 16 · «العروض» saved views (ملحق الشكل 12) ────────────
+
+/// <summary>
+/// What a saved view restores. `VisibleColumns` is a LIST here and a CSV in the
+/// table — the wire shape matches what the client actually holds (a set of
+/// column keys), so neither side parses a string the other built.
+/// </summary>
+/// <param name="SortKey">
+/// The sorted column, or empty for the bill's own order (code within division).
+/// Stored as two flat columns rather than the reference's `{ k, d }` object,
+/// for the same reason `VisibleColumns` is a CSV.
+/// </param>
+public record BoqSavedViewDto(
+    int Id,
+    string Name,
+    string Query,
+    string Coverage,
+    IReadOnlyList<string> VisibleColumns,
+    string SortKey,
+    string SortDir);
+
+/// <summary>
+/// Saving a view. `Name` identifies it within the caller's own set, so posting
+/// a name that already exists UPDATES it rather than failing — that is how a
+/// view is edited, and the reference does the same.
+/// </summary>
+public record BoqSavedViewInput(
+    string? Name,
+    string? Query,
+    string? Coverage,
+    IReadOnlyList<string?>? VisibleColumns,
+    string? SortKey,
+    string? SortDir);

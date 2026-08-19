@@ -99,6 +99,83 @@
 
       <span class="sp"></span>
 
+      <!-- «الجهات المستفيدة» — the master list, and which of them this project
+           uses (contract-context.jsx:182 `DBenDrawer`). A DRAWER because the
+           list is secondary detail about the project, not about the bill on
+           screen behind it (CLAUDE.md §6). `.wide` because six columns do not
+           fit 440px. The ticks are a DRAFT until «حفظ» — see benDraft. -->
+      @if (benOpen()) {
+        <div class="d-drawer-scrim" (click)="benOpen.set(false)"></div>
+        <div class="d-drawer wide" role="dialog" aria-modal="true"
+             [attr.aria-label]="lang.t('boq_beneficiaries')">
+          <div class="d-drawer-head">
+            <div class="tx">
+              <b>{{ lang.t('boq_beneficiaries') }}</b>
+              <span>{{ lang.t('boq_ben_sub') }}</span>
+            </div>
+            <button type="button" class="d-icon-btn" [attr.aria-label]="lang.t('boq_ben_close')"
+                    (click)="benOpen.set(false)">
+              <epm-icon name="close" [size]="18" />
+            </button>
+          </div>
+
+          <div class="d-drawer-body">
+            <table class="d-line-table">
+              <thead>
+                <tr>
+                  <th style="width: 44px"></th>
+                  <th style="width: 118px">{{ lang.t('boq_ben_code') }}</th>
+                  <th style="min-width: 190px">{{ lang.t('boq_ben_name') }}</th>
+                  <th style="width: 110px">{{ lang.t('boq_ben_type') }}</th>
+                  <th style="min-width: 150px">{{ lang.t('boq_ben_parent') }}</th>
+                  <th style="width: 92px">{{ lang.t('boq_ben_state') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (b of bens(); track b.code) {
+                  <tr>
+                    <td>
+                      <input type="checkbox" [checked]="benTicked(b.code)"
+                             [disabled]="benLocked(b)"
+                             [title]="benLocked(b) ? lang.t('boq_ben_locked') : ''"
+                             (change)="toggleBen(b)" />
+                    </td>
+                    <td class="mono"><bdi>{{ b.code }}</bdi></td>
+                    <td>{{ lang.isAr() ? b.nameAr : b.nameEn }}</td>
+                    <td>{{ benTypeLabel(b.type) }}</td>
+                    <td class="d-cell-sub">
+                      @if (b.parentCode) {
+                        {{ lang.isAr() ? b.parentNameAr : b.parentNameEn }}
+                      } @else { — }
+                    </td>
+                    <td>
+                      <span class="d-pill" [class.completed]="b.active">
+                        {{ b.active ? lang.t('boq_ben_on') : lang.t('boq_ben_off') }}
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="6" class="d-cell-sub">{{ lang.t('boq_ben_empty') }}</td></tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="d-cell-sub" style="margin-top: 10px">{{ lang.t('boq_ben_note') }}</div>
+          </div>
+
+          <div class="d-drawer-foot">
+            <span class="sp"></span>
+            <button type="button" class="d-btn" (click)="benOpen.set(false)">
+              {{ lang.t('boq_cancel') }}
+            </button>
+            <button type="button" class="d-btn primary" [disabled]="benSaving()"
+                    (click)="saveBeneficiaries()">
+              {{ lang.t('boq_save') }}
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- «أزرار الإدخال اليدوي والاستيراد والجهات المستفيدة».
            الإدخال اليدوي is المسار 3 step 3ب and opens EP-BOQ-12's form; the
            استيراد is الشكل 13's wizard. الجهات المستفيدة is still a demo stub —
@@ -116,7 +193,7 @@
       <button type="button" class="d-btn sm" (click)="importOpen.set(true)">
         <epm-icon name="upload_file" [size]="15" />{{ lang.t('boq_import') }}
       </button>
-      <button type="button" class="d-btn sm" (click)="toast.demo('الجهات المستفيدة', 'Beneficiaries')">
+      <button type="button" class="d-btn sm" (click)="openBeneficiaries()">
         <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_beneficiaries') }}
       </button>
 
@@ -230,6 +307,41 @@
                   </button>
                 }
 
+                <!-- «العروض» — grid-scoped controls stay with the grid they act
+                     on (boq-register.jsx:573). Views are the PERSONA's, not the
+                     contract's, so this menu does not change when the contract
+                     does. -->
+                <div class="boq-colmenu-wrap">
+                  <button type="button" class="d-btn sm ghost" aria-haspopup="true"
+                          [attr.aria-expanded]="viewMenu()" (click)="viewMenu.set(!viewMenu())">
+                    <epm-icon name="view_list" [size]="15" />{{ lang.t('boq_views') }}
+                    @if (savedViews().length) {
+                      <span class="n"><bdi>{{ savedViews().length }}</bdi></span>
+                    }
+                  </button>
+                  @if (viewMenu()) {
+                    <div class="boq-menu-scrim" (click)="viewMenu.set(false)"></div>
+                    <div class="boq-colmenu" role="menu" style="width: 250px">
+                      @for (v of savedViews(); track v.id) {
+                        <div class="row viewrow">
+                          <button type="button" class="vw" (click)="applyView(v)">
+                            <epm-icon name="check_circle" [size]="14" />{{ v.name }}
+                          </button>
+                          <button type="button" class="del" [attr.aria-label]="lang.t('boq_view_del')"
+                                  (click)="deleteView(v, $event)">
+                            <epm-icon name="close" [size]="13" />
+                          </button>
+                        </div>
+                      } @empty {
+                        <div class="row epm-menu-note">{{ lang.t('boq_views_none') }}</div>
+                      }
+                      <div class="row save" (click)="saveCurrentView()">
+                        <epm-icon name="add" [size]="14" />{{ lang.t('boq_view_save') }}
+                      </div>
+                    </div>
+                  }
+                </div>
+
                 <div class="boq-colmenu-wrap">
                   <button type="button" class="d-btn sm ghost" aria-haspopup="true"
                           [attr.aria-expanded]="colMenu()" (click)="colMenu.set(!colMenu())">
@@ -251,28 +363,101 @@
 
               <div class="d-vow-tw">
                 <table class="d-line-table d-boqgrid">
+                  <!-- EVERY HEADER SORTS, and sorting reorders rows INSIDE each
+                       division rather than flattening the grid — a division
+                       carries a subtotal row (01 §2.4), and a sort across them
+                       would leave those subtotals with nothing beneath them.
+                       `.d-boqgrid th.sorted` and `th .srt` are already in
+                       `styles/boq.css:533`; the third click returns to the
+                       bill's own order. -->
                   <thead>
                     <tr>
-                      <th class="freeze" style="width: 96px">{{ lang.t('boq_col_code') }}</th>
-                      <th class="freeze nm" style="min-width: 240px">{{ lang.t('boq_col_desc') }}</th>
-                      @if (shown('unit')) { <th style="width: 80px">{{ lang.t('boq_col_unit') }}</th> }
-                      @if (shown('qty')) { <th class="r" style="width: 104px">{{ lang.t('boq_col_qty') }}</th> }
+                      <th class="freeze" style="width: 96px" [class.sorted]="!!sortState('code')"
+                          [attr.aria-sort]="ariaSort('code')" (click)="toggleSort('code')">
+                        {{ lang.t('boq_col_code') }}<epm-icon class="srt" [name]="caret('code')" [size]="13" />
+                      </th>
+                      <th class="freeze nm" style="min-width: 240px" [class.sorted]="!!sortState('desc')"
+                          [attr.aria-sort]="ariaSort('desc')" (click)="toggleSort('desc')">
+                        {{ lang.t('boq_col_desc') }}<epm-icon class="srt" [name]="caret('desc')" [size]="13" />
+                      </th>
+                      @if (shown('unit')) {
+                        <th style="width: 80px" [class.sorted]="!!sortState('unit')"
+                            [attr.aria-sort]="ariaSort('unit')" (click)="toggleSort('unit')">
+                          {{ lang.t('boq_col_unit') }}<epm-icon class="srt" [name]="caret('unit')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('qty')) {
+                        <th class="r" style="width: 104px" [class.sorted]="!!sortState('qty')"
+                            [attr.aria-sort]="ariaSort('qty')" (click)="toggleSort('qty')">
+                          {{ lang.t('boq_col_qty') }}<epm-icon class="srt" [name]="caret('qty')" [size]="13" />
+                        </th>
+                      }
                       @if (shown('rate')) {
-                        <th class="r" style="width: 120px">
-                          {{ lang.t('boq_col_rate') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                        <th class="r" style="width: 120px" [class.sorted]="!!sortState('rate')"
+                            [attr.aria-sort]="ariaSort('rate')" (click)="toggleSort('rate')">
+                          {{ lang.t('boq_col_rate') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('rate')" [size]="13" />
                         </th>
                       }
                       @if (shown('amount')) {
-                        <th class="r" style="width: 136px">
-                          {{ lang.t('boq_col_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span>
+                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('amount')"
+                            [attr.aria-sort]="ariaSort('amount')" (click)="toggleSort('amount')">
+                          {{ lang.t('boq_col_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('amount')" [size]="13" />
                         </th>
                       }
-                      @if (shown('weight')) { <th class="r" style="width: 92px">{{ lang.t('boq_col_weight') }}</th> }
-                      @if (shown('links')) { <th class="r" style="width: 80px">{{ lang.t('boq_col_links') }}</th> }
-                      @if (shown('assignedWeight')) { <th class="r" style="width: 110px">{{ lang.t('boq_col_assigned_wt') }}</th> }
-                      @if (shown('progress')) { <th style="width: 136px">{{ lang.t('boq_col_progress') }}</th> }
-                      @if (shown('distribution')) { <th style="width: 140px">{{ lang.t('boq_col_distribution') }}</th> }
-                      @if (shown('coverage')) { <th style="width: 140px">{{ lang.t('boq_col_coverage') }}</th> }
+                      @if (shown('origAmount')) {
+                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('origAmount')"
+                            [attr.aria-sort]="ariaSort('origAmount')" (click)="toggleSort('origAmount')">
+                          {{ lang.t('boq_col_orig_amount') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('origAmount')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('variance')) {
+                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('variance')"
+                            [attr.aria-sort]="ariaSort('variance')" (click)="toggleSort('variance')">
+                          {{ lang.t('boq_col_variance') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('variance')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('earned')) {
+                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('earned')"
+                            [attr.aria-sort]="ariaSort('earned')" (click)="toggleSort('earned')">
+                          {{ lang.t('boq_col_earned') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('earned')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('weight')) {
+                        <th class="r" style="width: 92px" [class.sorted]="!!sortState('weight')"
+                            [attr.aria-sort]="ariaSort('weight')" (click)="toggleSort('weight')">
+                          {{ lang.t('boq_col_weight') }}<epm-icon class="srt" [name]="caret('weight')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('links')) {
+                        <th class="r" style="width: 80px" [class.sorted]="!!sortState('links')"
+                            [attr.aria-sort]="ariaSort('links')" (click)="toggleSort('links')">
+                          {{ lang.t('boq_col_links') }}<epm-icon class="srt" [name]="caret('links')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('assignedWeight')) {
+                        <th class="r" style="width: 110px" [class.sorted]="!!sortState('assignedWeight')"
+                            [attr.aria-sort]="ariaSort('assignedWeight')" (click)="toggleSort('assignedWeight')">
+                          {{ lang.t('boq_col_assigned_wt') }}<epm-icon class="srt" [name]="caret('assignedWeight')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('progress')) {
+                        <th style="width: 136px" [class.sorted]="!!sortState('progress')"
+                            [attr.aria-sort]="ariaSort('progress')" (click)="toggleSort('progress')">
+                          {{ lang.t('boq_col_progress') }}<epm-icon class="srt" [name]="caret('progress')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('distribution')) {
+                        <th style="width: 140px" [class.sorted]="!!sortState('distribution')"
+                            [attr.aria-sort]="ariaSort('distribution')" (click)="toggleSort('distribution')">
+                          {{ lang.t('boq_col_distribution') }}<epm-icon class="srt" [name]="caret('distribution')" [size]="13" />
+                        </th>
+                      }
+                      @if (shown('coverage')) {
+                        <th style="width: 140px" [class.sorted]="!!sortState('coverage')"
+                            [attr.aria-sort]="ariaSort('coverage')" (click)="toggleSort('coverage')">
+                          {{ lang.t('boq_col_coverage') }}<epm-icon class="srt" [name]="caret('coverage')" [size]="13" />
+                        </th>
+                      }
                       <th style="width: 44px" [attr.aria-label]="lang.t('boq_col_actions')"></th>
                     </tr>
                   </thead>
@@ -308,6 +493,13 @@
                         @if (shown('qty')) { <td class="r d-cell-sub">—</td> }
                         @if (shown('rate')) { <td class="r d-cell-sub">—</td> }
                         @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(g.division.amount) }}</bdi></td> }
+                        <!-- A division subtotal has no original and no variance
+                             of its own: a division is a LABEL on the lines filed
+                             under it (01 §2.4), not a contracted thing. الإنجاز
+                             المكتسب does roll up, and already did. -->
+                        @if (shown('origAmount')) { <td class="r d-cell-sub">—</td> }
+                        @if (shown('variance')) { <td class="r d-cell-sub">—</td> }
+                        @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(g.division.achievedAmount) }}</bdi></td> }
                         @if (shown('weight')) { <td class="r num"><bdi>{{ g.division.weight.toFixed(2) }}</bdi></td> }
                         @if (shown('links')) { <td class="r num"><bdi>{{ g.division.links || '—' }}</bdi></td> }
                         @if (shown('assignedWeight')) { <td class="r d-cell-sub">—</td> }
@@ -351,6 +543,14 @@
                           @if (shown('qty')) { <td></td> }
                           @if (shown('rate')) { <td></td> }
                           @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(d.totals.amount) }}</bdi></td> }
+                          <!-- الأصلية is the contract's own award line, and الفرق
+                               is what every applied order has moved since. The
+                               two sum to the amount above them by construction. -->
+                          @if (shown('origAmount')) { <td class="r num"><bdi>{{ fmt.money(totalOriginalAmount()) }}</bdi></td> }
+                          @if (shown('variance')) {
+                            <td class="r num"><bdi>{{ signed(d.totals.amount - totalOriginalAmount()) }}</bdi></td>
+                          }
+                          @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(d.totals.achievedAmount) }}</bdi></td> }
                           <!-- BR-01's whole promise, printed: exactly 100.00. -->
                           @if (shown('weight')) { <td class="r num"><bdi>{{ d.totals.weight.toFixed(2) }}</bdi></td> }
                           @if (shown('links')) { <td class="r num"><bdi>{{ d.totals.links }}</bdi></td> }
@@ -371,14 +571,18 @@
                 </table>
               </div>
 
-              <!-- الشكل 12 prints this under the table, and it is the whole
-                   relationship between this screen and the schedule: the
+              <!-- الشكل 12 prints this ONCE under the table, and it is the
+                   whole relationship between this screen and the schedule: the
                    weights are the bill's, the execution % is the schedule's
-                   (BR-01 · BR-04). -->
-              <p class="d-cell-sub boq-basis-note">
-                <epm-icon name="functions" [size]="13" />{{ lang.t('boq_basis_note') }}
-              </p>
+                   (BR-01 · BR-04).
 
+                   IT USED TO PRINT TWICE. `boq_basis_note` and `boq_calc_note`
+                   are the same Arabic sentence, and both were rendered here
+                   back-to-back, each with its own `functions` icon — measured on
+                   screen, not inferred. The live prototype carries exactly one
+                   node for it, in `.d-pager.calcnote`, which is the block kept
+                   below; the `<p class="boq-basis-note">` above it was the
+                   duplicate and is gone. -->
               <div class="d-pager calcnote">
                 <epm-icon name="functions" [size]="14" />
                 <span>{{ lang.t('boq_calc_note') }}</span>
@@ -975,13 +1179,6 @@
                          (input)="addSuppliedQty.set($any($event.target).value)" />
                 </div>
                 <div class="d-form-i f-third">
-                  <span class="k">{{ lang.t('boq_add_received') }}</span>
-                  <input class="d-form-input num" inputmode="decimal" placeholder="0"
-                         [attr.aria-label]="lang.t('boq_add_received')"
-                         [value]="addReceivedQty()"
-                         (input)="addReceivedQty.set($any($event.target).value)" />
-                </div>
-                <div class="d-form-i f-third">
                   <span class="k">{{ lang.t('boq_add_warranty') }}</span>
                   <input class="d-form-input num" inputmode="numeric" placeholder="0"
                          [attr.aria-label]="lang.t('boq_add_warranty')"
@@ -1075,6 +1272,18 @@
     }
   }
 </div>
+
+<!-- ══ THE AMENDMENT DRAWER (ROADMAP 4.5 · 04 §6) ════════════════════════
+     The same component SCR-W5 mounts over an activity. It answers «كيف عُدِّل
+     هذا البند؟» and nothing else, which is why it is a drawer and not a sixth
+     tab on the row card. -->
+@if (amdCode()) {
+  @if (amd()) {
+    <epm-amd-panel [title]="amdTitle()" [code]="amdCode()"
+                   [facts]="amdFacts()" [chain]="amdChain()" [bands]="amdBands()"
+                   (closed)="closeAmendments()" />
+  }
+}
 
 <!-- ══ THE DISTRIBUTION DRAWER (02 §8) ═══════════════════════════════════
      Secondary detail goes in a drawer, not an in-place expander: an expander
@@ -1302,11 +1511,48 @@
         <span class="nmx" [title]="description(r)">{{ description(r) }}</span>
         @if (r.source === 'manual') { <span class="d-proposed">{{ lang.t('boq_manual') }}</span> }
         @if (r.banded) { <span class="d-proposed">{{ lang.t('boq_banded') }}</span> }
+        <!-- ROADMAP 4.5 · 04 §6 — the badge rides with the line's NAME, not in
+             a column of its own: it is a property of the row, and a column
+             would print eleven blanks to mark one amended line. -->
+        @if (r.amendment; as a) {
+          <epm-amd-mark [count]="a.count" [pendingCount]="a.pendingCount"
+                        [sources]="a.sources" (opened)="openAmendments(r.code)" />
+        }
       </td>
       @if (shown('unit')) { <td class="d-cell-sub"><bdi>{{ r.unit }}</bdi></td> }
-      @if (shown('qty')) { <td class="r num"><bdi>{{ fmt.qty(r.qty) }}</bdi></td> }
+      @if (shown('qty')) {
+        <!-- THE EFFECTIVE FIGURE, with the delta beneath it — never the
+             original struck through (04 §6). The original is not wrong; it is
+             superseded, and a strikethrough says the opposite. -->
+        <td class="r num">
+          <bdi>{{ fmt.qty(r.qty) }}</bdi>
+          @if (r.amendment; as a) {
+            <epm-amd-delta [delta]="a.deltaQty" [unit]="r.unit" />
+            <epm-amd-delta [delta]="a.pendingDeltaQty" [unit]="r.unit" [pending]="true" />
+          }
+        </td>
+      }
       @if (shown('rate')) { <td class="r num"><bdi>{{ fmt.money(r.rate) }}</bdi></td> }
-      @if (shown('amount')) { <td class="r num"><bdi>{{ fmt.money(r.amount) }}</bdi></td> }
+      @if (shown('amount')) {
+        <td class="r num">
+          <bdi>{{ fmt.money(r.amount) }}</bdi>
+          @if (r.amendment; as a) {
+            <epm-amd-delta [delta]="a.deltaAmount" [money]="true" />
+            <epm-amd-delta [delta]="a.pendingDeltaAmount" [money]="true" [pending]="true" />
+          }
+        </td>
+      }
+      @if (shown('origAmount')) {
+        <td class="r num">
+          <bdi>{{ fmt.money(r.amendment ? r.amendment.originalAmount : r.amount) }}</bdi>
+        </td>
+      }
+      @if (shown('variance')) {
+        <td class="r num">
+          @if (r.amendment) { <bdi>{{ signed(r.amendment.deltaAmount) }}</bdi> } @else { <span class="d-cell-sub">—</span> }
+        </td>
+      }
+      @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(r.achievedAmount) }}</bdi></td> }
       @if (shown('weight')) { <td class="r num"><bdi>{{ r.weight.toFixed(2) }}</bdi></td> }
       @if (shown('links')) { <td class="r num"><bdi>{{ r.links || '—' }}</bdi></td> }
       @if (shown('assignedWeight')) {

@@ -234,6 +234,25 @@ export const routes: Routes = [
             loadComponent: () => import('./features/boq/boq.page').then(m => m.BoqPage),
           },
 
+          // ملحق الأشكال 50–56 · features/supply · Features/Supply · [EP-SUP-01…04]
+          //
+          // A SEPARATE ROUTE FOR THE SAME MODULE. `EPM.modulesFor` keeps the
+          // `boq` id on a supply project and swaps its label, so the rail sends
+          // an equipment project here and a construction one to the register
+          // above. Two screens, one place in the navigation — which is what the
+          // prototype means by «الفقرات التجهيزية» being the BOQ module.
+          // The contract-less path IS the gate, exactly as `boq` above: a
+          // فقرة belongs to one contract, and a project with two supply
+          // contracts is asked which (P-46).
+          {
+            path: 'supply',
+            loadComponent: () => import('./features/supply/supply.page').then(m => m.SupplyPage),
+          },
+          {
+            path: 'supply/:contractId',
+            loadComponent: () => import('./features/supply/supply.page').then(m => m.SupplyPage),
+          },
+
           // SCR-W5 · features/schedule · Features/Schedule · [EP-SCD-01] [EP-SCD-02]
           // Gated on a contract for the same reason as the BOQ tab: an activity
           // belongs to exactly one contract (01 §1).

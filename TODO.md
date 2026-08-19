@@ -11,34 +11,33 @@ document's.
 
 ---
 
-## 1 · The delay penalty formula — P-81 · **changes money**
+## 1 · The delay penalty formula — P-81 · **RESOLVED — the money moved**
 
-**The conflict.** `02-BUSINESS-RULES.md §10` (BR-10, flagged `D-02 CONFIRM` since the
-port) and the client's own two documents state **different rules**:
+**What was decided.** The client's own two documents win. `02 §10` (BR-10) has been
+rewritten to العرض الفني §11's rule — «غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷
+(مدة العقد ± تغيّر المدة) × نسبة الغرامة» — and الشكل 10's own figure is now the
+first worked example in `PenaltyTests`.
 
 | source | rule | on CNT-0170-EM (587,673,564 د.ع · 364 days) |
 |---|---|---|
-| `02 §10` — what this build computes | value × **0.1% per day**, capped at 10% | **587,674** د.ع/day |
-| الشكل 10 plate · العرض الفني §11 | (value ÷ duration) × **10%** | **161,449** د.ع/day |
+| ~~`02 §10` as ported~~ | ~~value × **0.1% per day**, capped at 10%~~ | ~~587,674 د.ع/day~~ |
+| الشكل 10 · العرض الفني §11 — **what this build computes** | (value ÷ duration) × **10%** | **161,449** د.ع/day |
 
-العرض الفني §11 states it in words — «غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷ (مدة
-العقد ± تغيّر المدة) × نسبة الغرامة» — and الشكل 10 prints 161,449 against those exact
-inputs. The two differ by **3.6×**, and they differ in shape: under the client formula
-the 10% cap is reached after exactly one contract duration of delay; under ours after
-100 days regardless of duration.
+**What changed.** `Domain/Penalty.For` takes the contract duration; `Compare` passes
+the before/after durations `Amendments.Effective` already carries;
+`AppConfiguration.PenaltyPerDayPct` became `PenaltyRatePct = 0.10`; the DTO and the
+TypeScript interface renamed `perDayPct` → `ratePct`; `con_pen_how_b` now states the
+plate's equation. **No screen needed an edit** — الشكل 10's before/after table,
+SCR-E5's delay days and SCR-W3's penalty section all read `Domain/Penalty`.
 
-**What is built.** BR-10 is unchanged and الشكل 10 states the rule it actually applies
-in its «كيف تُحتسب الغرامة» box. `CLAUDE.md §1` settles which document wins where — *the
-written spec gives the rules, the plate gives the screen* — and silently swapping a
-penalty formula changes money on a legal record.
+**Three consequences, none of them cosmetic.** The cap is now reached after exactly
+one contract duration of delay rather than after 100 days regardless of duration. An
+applied extension can now **lower** the daily penalty, because it raises the
+denominator as well as the numerator. And a contract with no recorded duration
+charges nothing a day instead of dividing.
 
-**If the client formula is binding:** one change in `Domain/Penalty.For`, one worked
-example added to `PenaltyTests`, and the `con_pen_how_b` string. **Every screen already
-reads from there** — الشكل 10's before/after table, SCR-E5's delay days and SCR-W3's
-penalty section all follow with no further edits.
-
-**Question for the client:** which formula is contractually binding, and is the 10%
-rate fixed or the «النطاق القانوني 10%–25%» الشكل 10 mentions?
+**Still open for the client:** is the 10% rate fixed, or is الشكل 10's «النطاق
+القانوني 10%–25%» a range the contract picks from?
 
 ---
 
@@ -70,10 +69,10 @@ is CSV the expected exchange format?
 | # | Question | Built today |
 |---|---|---|
 | P-79 | Is there an official **payment code** (الشكل 9 prints `PAY-100`)? | «دفعة 1» from the sequential number; no code is invented |
-| P-85 | **إدخال يدوي** on the BOQ register needs a create endpoint (`EP-BOQ-09` was taken by the importer; a `POST …/items` does not exist) | The button is a demo stub, and a spawned task describes the endpoint |
-| P-87 | **Who approves** an imported BOQ version (المسار 3 steps 7–8)? No figure in the appendix shows it | Versions accumulate as `submitted`; nothing moves into the live bill |
+| P-85 | **إدخال يدوي** on the BOQ register needed a create endpoint (`EP-BOQ-09` was taken by the importer) | **Closed — `EP-BOQ-12` `POST …/items` exists and `boq.api.ts addItem()` calls it.** What is still open is `P-161`: the write is gated by workspace access alone, because المسار 3 step 3ب names no capacity for manual entry |
+| ~~P-87~~ | ~~Who approves an imported BOQ version?~~ | **Closed by `EP-BOQ-13`.** The same shape now governs the SCHEDULE: `EP-SCD-06` accepts دائرة المهندس المقيم or مدير المشروع, refuses whoever submitted the version, and is the only route in the build that moves `Activities.Baseline*` |
 | P-90 | How is a **component's forecast** apportioned (الشكل 14 prints one per expense item, by no stated ratio)? | Forecast at contract level only (BR-11); components print «—» |
-| P-96 | Who **registers a payment**? الشكل 16 names them; nothing records it | The panel says الشكل 20's wizard will capture it |
+| ~~P-96~~ | ~~Who **registers a payment**?~~ | **Closed.** الشكل 20's wizard is built (`EP-FIN-02`), and the capacity is دائرة المهندس المقيم or مدير المشروع — the party that MEASURES the works raises the certificate against them. It registers a `pending` certificate and its audit route; certifying and disbursing are المسار 8 steps 2–4 and belong to no screen yet |
 | Q-F5-2 | What derives أولوية المشروع · رقم اعتماد الموازنة · المنطقة الجغرافية, all tagged «مقترح»? | `Suggest()` fills only the code and the expenditure category |
 
 ---
@@ -105,67 +104,142 @@ this rather than the diff.
 
 ---
 
-## Phase 4.5 «Amendment disclosure» was never built
+## Phase 4.5 «Amendment disclosure» — **BUILT**
 
-Found during Phase 7's TRACE audit, not during Phase 4.
+Found during Phase 7's TRACE audit, not during Phase 4, and closed now. All four
+`ROADMAP.md §4.5` items exist: the `DAmdMark` badge with its three states, the
+`DAmdPanel` drawer shared by BOQ lines and schedule activities, the cell delta with
+no strikethrough, and `docs/uml/amendment-disclosure.md`.
 
-`ROADMAP.md`'s section 4.5 — the shared amendment badge and drawer for the BOQ
-and the schedule — has four unticked items and **none of them exists**:
+`.d-amd-mark` was already in `web/src/styles/desktop.css:2058` and had sat unused
+for six phases; **no CSS was added.**
 
-- `DAmdMark` badge — count plus three states: all applied · all pending · mixed
-- `DAmdPanel` drawer, identical for BOQ items and activities (`04 §6`)
-- the cell delta — effective figure plus a compact signed delta, coloured
-  settled vs pending, **no strikethrough**
-- `docs/uml/amendment-disclosure.md`
+**Two defects it exposed, both closed:**
 
-`.d-amd-mark` **is** in `web/src/styles/desktop.css:2058` — it came across with
-the rest of the reference stylesheet — but nothing in `web/src/app` uses it.
-Phases 4.6 onward were built on top and nobody came back.
+1. **The fixture's applied orders had never written their rate bands.** VO-01 was
+   seeded `closed` with `AppliedDeltaQty` on two lines and VO-04 `applied_partial`
+   on one, while `BoqRateBands` stayed empty on the stated grounds that "no such
+   order has been applied". So the register read BQ-006 as 1,400 م³ while the order
+   that moved it said 1,710. Five bands are now seeded and documented line by line.
+2. **`TierSplit.Line.Banded` was two facts under one name** — "the figures come
+   from bands" and "the line carries more than one rate". An order applied INSIDE
+   the 20% threshold writes one band at the contract rate, and «سعر مركّب» over it
+   claims a rate-fixing decision nobody took. `MultiRate` is now the narrower test
+   and the register chip reads it; `Banded` still governs the edit guard, which is
+   the question it was actually answering.
 
-**What it would show.** SCR-W4 and SCR-W5 currently print effective figures with
-no sign that an amendment moved them. `04 §6` wants the row to say so, and to
-tell an APPLIED move from a PENDING one — which is `02 §9` and CLAUDE.md §5.2's
-«معتمد ≠ مطبَّق» rendered at the cell rather than only in the contract tab. The
-data is all there: `ContractAmendments.SourceChangeOrderId` (P-104) and
-`BoqRateBands.SourceChangeOrderId` already say which order moved which line.
-
-It is a Phase 4 gap, not a Phase 7 one, and it is the only unbuilt item left in
-the roadmap outside the explicitly deferred ones.
-
----
-
-## SCR-W6 الإنجاز does not have الشكل 25's shape
+## SCR-W6 الإنجاز now has الشكل 25's shape — **REBUILT**
 
 Found by the plate fidelity round ([docs/PLATE-FIDELITY-ROUND.md](docs/PLATE-FIDELITY-ROUND.md)).
 
-الشكل 25 names **four** tabs — الملخص · حسب هيكل التجزئة · الأثر والكلفة ·
-مخاطر الجدول — and SCR-W6 has three, of which only «الملخص» matches. It also
-names «مرشح مرجع المقارنة», «زر «كيف تُحتسب»», «زر تحديث نسبة الإنجاز» and
-«تصدير PDF»; none is built.
+الشكل 25 names **four** tabs — الملخص · حسب هيكل التجزئة · الأثر والكلفة · مخاطر
+الجدول — and SCR-W6 had three, of which only «الملخص» matched. It now has the
+plate's four, in a `.d-pz5` strip like every other module.
 
-The screen is not wrong — BR-04's reflection, the earned-value figures and the
-one place progress MOVES are all correct and verified. It was built in Phase
-4.4 from `04 §3` and `DModProgress`, before the appendix plates became the
-binding visual reference for it.
+| الشكل 25 | Built |
+|---|---|
+| الملخص | ✅ plus «تحديثات الإنجاز (واردة من الأقسام)» — the SAME `ContractActivityEvents` rows `Domain/ProgressSeries` draws SCR-W1's actual line from |
+| حسب هيكل التجزئة (الشكل 26) | ✅ the WBS tree rolled up from the activities on cost weights, with the gap per node and «مستويات مكتملة N من M» |
+| الأثر والكلفة (الشكل 27) | ✅ six cards, plus a table saying which of them moves the revised cost and which is carried into nothing |
+| مخاطر الجدول (الشكل 28) | ✅ four cards and the at-risk list, ordered by slip, over a **declared** 10-day threshold printed on its own card |
 
-**The data for all four tabs already exists:**
+**الأنشطة and بنود الكميات are no longer tabs, and that is the plate's own call.**
+الشكل 25 makes updating progress a BUTTON — «زر تحديث نسبة الإنجاز» — not a
+reading surface. They live behind that button, full width, because two dense
+tables do not fit a drawer; the tab strip hides while the editor is open, and a
+«العودة إلى القراءة» button leaves it. **The one place progress MOVES is
+unchanged** and still verified.
 
-- «حسب هيكل التجزئة» → `ProgressReflection.Rollup` already rolls the WBS tree
-- «الأثر والكلفة» → `EarnedValue.For`, already on screen in three places
-- «مخاطر الجدول» → the at-risk activity list `DModProgress` itself draws
+**«كيف تُحتسب» is a drawer**, and it carries every rule behind the four tabs —
+including the reason الشكل 25's «مرشح مرجع المقارنة» is absent: there is exactly
+one baseline, because nothing in this build moves `Activities.Baseline*` after
+import, and a picker would offer comparisons that cannot be made. **«تصدير PDF»**
+is `window.print()`; there is no server-side renderer and inventing one is a
+dependency this phase does not own.
 
-So this is a re-shaping of one screen over data that is already computed, not
-new arithmetic. It is the largest single fidelity gap left in the build.
+**No new arithmetic.** `ProgressReflection.Rollup` does the WBS,
+`Domain/ScheduleImpact` (built for الشكل 23) does the delay cost, `EarnedValue`
+already had EAC and VAC, and `Amendments` already knew applied from pending.
 
-## الشكل 12's «زر العروض»
+## الشكل 12's «زر العروض» — **BUILT** (P-163)
 
-The BOQ register has «الأعمدة» (the column picker) and not «العروض». The plate
-names both. «العروض» implies saved column/filter presets — a feature, not a
-label — so it is recorded here rather than faked with a button that reopens the
-column picker.
+The register now has «العروض» beside «الأعمدة»: named presets over the search
+string, the coverage chip and the column toggles, saved as rows in
+`BoqSavedViews` and owned by the `X-Epm-User` persona (`EP-BOQ-14/15/16`) rather
+than the browser, which is where the reference keeps them.
+
+**One thing the preset cannot capture: sort.** See below.
 
 ---
 
+## The register sorts now, and inside its groups — **BUILT**
+
+Found by driving the live prototype beside this build, not from the plates.
+
+Every `<th>` in the prototype's BOQ grid carries a real sort handler, and sorting
+reorders rows **inside each division group** rather than flattening them. This build
+had no sort control at all, which is why `BoqSavedView` had no sort column — the
+absence was recorded there and is no longer true.
+
+**What was built.** Every header on `.d-boqgrid` sorts, on a three-click cycle:
+asc → desc → **the bill's own order** (code within division), so there is always a
+way back to the document's order without reloading. The sort applies within each
+group and leaves the grouping and its subtotal rows intact — verified on CNT-0279,
+where «القيمة» reorders BQ-005 · BQ-001 · BQ-006 inside «الأعمال الترابية والأسس»
+and leaves the four divisions where they are.
+
+The two enumeration columns sort by their **code**, not their translated label: a
+sort that reordered itself on «EN» would be reporting the dictionary, not the bill.
+The sort is stable, so equal values keep the bill's order — which matters on a
+column like التنفيذ where half the lines read 0%.
+
+`BoqSavedView` gained `SortKey`/`SortDir` (the reference's `sort: { k, d }`, split
+into two flat columns for the same reason `VisibleColumns` is a CSV), and
+`EP-BOQ-14/15/16` carry them. A view saved before this restores as unsorted, which
+is exactly what its author was looking at.
+
+## Three columns the reference's picker has and this one does not — **ADDED**
+
+The prototype's «الأعمدة» menu listed twelve and ours listed ten. All three are
+now in the picker:
+
+| Reference column | Here |
+|---|---|
+| القيمة الأصلية (`origAmount`) | **added** — `amendment.originalAmount`, defaulting OFF |
+| الفرق (أمر تغييري) (`variance`) | **added** — the settled delta, signed, defaulting OFF |
+| القيمة المكتسبة (`earned`) | **added** — BR-04's achieved amount, defaulting ON as the reference does |
+| التوزيع | ours only — BR-08 distribution, which the reference has no column for |
+
+The first two were Phase 4.5's amendment disclosure by another name and arrived
+with it; they default off because on a bill with no amendments they are two
+columns of «—». «القيمة المكتسبة» was the separate miss: the figure was computed
+all along and printed on no screen.
+
+## P-48 is closed: the weight basis is recorded at import
+
+`02 §2` says the weight basis is chosen at SCHEDULE IMPORT, and until now nothing
+in this build stored that choice — the BOQ register computed on cost always, and
+SCR-W5's toggle was a what-if. `ScheduleImportVersion.Basis` is where the choice
+now lives, written by `EP-SCD-05` and validated against the file: choosing
+ساعات العمل on a file that does not carry them for every assignable activity is
+REFUSED, not silently fallen back from.
+
+## Two smaller divergences, recorded and not changed
+
+**The beneficiaries drawer is 720px here (`.d-drawer wide`) and 440px there.**
+Measured: at 440px the reference's own drawer overflows — `scrollWidth` 699 in a
+439px body — and it scrolls horizontally. Ours shows all six columns with no
+scroll. The wider drawer is the better answer for a six-column table and the
+reason is in the template; it is listed here because it is a visible departure
+from the reference's geometry, not because it is wrong.
+
+**The coverage chips read differently.** `06 §11` gives «مخصص جزئياً» and
+«تخصيص زائد»; the prototype's chips say «جزئي» and «تجاوز», and it keeps the
+diacritics («مُخصَّص»). The lookup labels win here — they are the data
+dictionary's and `progress.page.ts` reads the same list — so a chip-only rewrite
+would split one vocabulary across two screens.
+
+---
 ## The checked-in reference is older than the live prototype
 
 Found while rebuilding SCR-W1 against `infinite-azaiton.github.io/epm`.
@@ -194,19 +268,30 @@ was built from, and it is not what the prototype draws today (P-133).
 
 ---
 
-## Fixture drift, seen on SCR-E1 and SCR-W1
+## Fixture drift, seen on SCR-E1 and SCR-W1 — **FIXED**
 
-Both screens now derive planned progress from `Activities` baselines at the
-data date (2026-08-02), and the portfolio reads **«المخطط 100%»** — every
-activity baseline in the fixture finishes before that date. The SPI that falls
-out of it (0.49) is therefore arithmetically right and narratively wrong: it
-says the portfolio is half as fast as planned, when what it actually says is
-that the fixture's schedules all ended two months ago.
+**What it was.** Both screens derive planned progress from `Activities` baselines at
+the data date (2026-08-02), and every baseline in the fixture FINISHED before that
+date. So the portfolio read «المخطط 100%», the SPI that fell out of it (0.49) was
+arithmetically right and narratively wrong — it said the portfolio was half as fast as
+planned when what it actually said was that the fixture's schedules had all ended two
+months ago — «معالم قادمة» was empty because no planned finish fell after the data
+date, and SCR-W1's curve jumped 32%→49% at its last point.
 
-The same drift makes «معالم قادمة» empty — no planned finish falls after the
-data date — and it is why SCR-W1's progress curve jumps from 32% to 49% at its
-last point.
+**What was done.** `Fixture.cs` only. Nothing in `Domain/` changed, because this was
+never a rule problem.
 
-**This is a fixture problem, not a rule problem.** `Fixture.cs` needs baselines
-that straddle the data date the way a live portfolio's would. Nothing in
-`Domain/` changes.
+- **The two PRJ-0279 contracts moved 90 days later** — start, original finish,
+  forecast, incoming letter, every activity baseline/actual/forecast, and the two
+  early advance/interim certificates drawn against them. The dates anchored to the
+  DATA DATE rather than to the contract did **not** move: the change orders' ages,
+  the amendments' `AppliedAt`, and the two certificates of 2026-07-09.
+- **Three more progress updates were recorded** on CNT-0279 (31→38→46→55) and one on
+  CNT-0279-EM (33→35). The curve's jump was never the baselines: the actual line is
+  only as current as its last RECORDED update (`Domain/ProgressSeries` interpolates
+  nothing, deliberately), and nothing had been logged since May against a derived 55%.
+
+**What it reads now.** Portfolio المخطط **75.96%** against الإنجاز **49.29%**, SPI
+**0.65**; one upcoming milestone; and a curve that climbs 21.6 → 26.3 → 30.5 → 41.1 →
+49.3 with no step at the end. The penalty story is untouched — both contracts are
+still 61 days late and الشكل 10's before/after table reads exactly as it did.

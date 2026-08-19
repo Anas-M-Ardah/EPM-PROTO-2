@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { ScheduleGateResponse, ScheduleResponse } from './schedule.types';
+import { ScheduleAmendmentDetail, ScheduleGateResponse, ScheduleResponse } from './schedule.types';
 
 /**
  * Every call SCR-W5 makes. One method per endpoint, carrying its anchor.
@@ -30,5 +30,14 @@ export class ScheduleApi {
     return this.api.get<ScheduleResponse>(
       `/api/projects/${encodeURIComponent(projectId)}/schedule/${encodeURIComponent(contractId)}`,
       { basis });
+  }
+
+  // [EP-SCD-03] GET …/schedule/{contractId}/activities/{activityId}/amendments → same file
+  // The drawer behind the row badge (04 §6 · ROADMAP 4.5), the same one
+  // EP-BOQ-17 fills for a BOQ line. Fetched on open, not sent with every row.
+  amendments(projectId: string, contractId: string, activityId: string) {
+    return this.api.get<ScheduleAmendmentDetail>(
+      `/api/projects/${encodeURIComponent(projectId)}/schedule/${encodeURIComponent(contractId)}`
+      + `/activities/${encodeURIComponent(activityId)}/amendments`);
   }
 }

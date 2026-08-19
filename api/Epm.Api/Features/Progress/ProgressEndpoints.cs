@@ -251,6 +251,140 @@ public static class ProgressEndpoints
         // BR-11 — progress is a FRACTION here, matching Domain/EarnedValue.
         var evm = EarnedValue.For(projectTotal, planned / 100m, physical / 100m, disbursed);
 
+        // ── الشكل 26 — حسب هيكل التجزئة ──────────────────────────────────
+        // The tree is materialised from `Activities.WbsPath`/`WbsNames` exactly
+        // as SCR-W5 builds its own (01 §2.5): the node names travel with the
+        // activities and there is no second table.
+        //
+        // A NODE HAS NO PROGRESS OF ITS OWN. Every figure here is rolled up
+        // from the activities beneath it on cost weights, which is the plate's
+        // «محسوبة صعودًا من الأنشطة المرجّحة بالكلفة» and `02 §4`'s own rule.
+        var wbsRows = new List<ProgressWbsDto>();
+        foreach (var c in contracts)
+        {
+            var acts = allActivities
+                .Where(a => a.ContractId == c.Id && !a.IsMilestone
+                         && !string.IsNullOrWhiteSpace(a.WbsPath))
+                .ToList();
+            var contractBasis = acts.Sum(a => a.BudgetedCost);
+
+            var names = new Dictionary<string, string>();
+            foreach (var a in acts)
+            {
+                var segs = a.WbsPath.Split(PathSep, StringSplitOptions.RemoveEmptyEntries);
+                var parts = a.WbsNames.Split(NameSep, StringSplitOptions.TrimEntries);
+                for (var i = 0; i < segs.Length; i++)
+                {
+                    var path = string.Join(PathSep, segs.Take(i + 1));
+                    if (!names.ContainsKey(path))
+                        names[path] = i < parts.Length ? parts[i] : path;
+                }
+            }
+
+            foreach (var path in names.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                // Everything filed at this node OR beneath it — a node's figure
+                // is its whole subtree, not the activities filed directly on it.
+                var under = acts
+                    .Where(a => a.WbsPath == path
+                             || a.WbsPath.StartsWith(path + PathSep, StringComparison.Ordinal))
+                    .ToList();
+                if (under.Count == 0) continue;
+
+                var basis = under.Sum(a => a.BudgetedCost);
+                var done = under.Sum(a => a.BudgetedCost * a.ProgressPct / 100m);
+                var plan = under.Sum(a =>
+                    a.BudgetedCost * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
+
+                var nodeProgress = ProgressReflection.Rollup(basis, done);
+                var nodePlanned = ProgressReflection.Rollup(basis, plan);
+
+                wbsRows.Add(new ProgressWbsDto(
+                    path, names[path], names[path],
+                    path.Count(ch => ch == PathSep) + 1, c.Id,
+                    Q(nodeProgress), Q(nodePlanned), Q(nodeProgress - nodePlanned),
+                    Q(ScheduleWeights.For(basis, contractBasis, contractBasis).Absolute),
+                    under.Count,
+                    under.All(a => a.ProgressPct >= 100m)));
+            }
+        }
+
+        // ── الشكل 27 — الأثر والكلفة ─────────────────────────────────────
+        // 02 §9's rule, at the level the plate states it: APPLIED amendments
+        // are already inside the revised cost, and approved-but-unapplied ones
+        // are counted separately and carried into nothing.
+        var appliedOrders = amendments.Where(a => a.AppliedAt is not null).ToList();
+        var pendingOrders = amendments.Where(a => a.AppliedAt is null).ToList();
+
+        // `Domain/ScheduleImpact` — the same estimate الشكل 23 draws, summed
+        // over every slipped activity in the project rather than one contract.
+        var delayCost = allActivities
+            .Where(a => !a.IsMilestone && a.BaselineFinish is not null && a.ForecastFinish is not null)
+            .Sum(a => ScheduleImpact.For(
+                a.BudgetedCost, a.OriginalDuration,
+                a.ForecastFinish!.Value.DayNumber - a.BaselineFinish!.Value.DayNumber).CostImpact);
+
+        var costImpact = new ProgressCostImpactDto(
+            M(disbursed), M(projectTotal),
+            Q(ProgressReflection.Rollup(projectTotal, disbursed)),
+            Money(evm.Eac), Money(evm.Vac),
+            worst.Days ?? 0, M(delayCost),
+            M(appliedOrders.Sum(a => a.DeltaValue)), appliedOrders.Count,
+            M(pendingOrders.Sum(a => a.DeltaValue)), pendingOrders.Count);
+
+        // ── الشكل 28 — مخاطر الجدول ──────────────────────────────────────
+        // The threshold is DECLARED, and the plate prints it on the card: «الحد:
+        // أكثر من 10 أيام». It turns a judgement about which slips matter into a
+        // stated rule, which is the whole point of the tab.
+        const int atRiskThreshold = 10;
+
+        var slipped = allActivities
+            .Where(a => !a.IsMilestone && a.BaselineFinish is not null && a.ForecastFinish is not null)
+            .Select(a => new
+            {
+                Act = a,
+                Slip = a.ForecastFinish!.Value.DayNumber - a.BaselineFinish!.Value.DayNumber,
+            })
+            .ToList();
+
+        var atRisk = slipped
+            .Where(x => x.Slip > atRiskThreshold)
+            .OrderByDescending(x => x.Slip)
+            .Select(x => new ProgressAtRiskDto(
+                x.Act.ActivityId, x.Act.NameAr, x.Act.NameEn, x.Act.ContractId,
+                x.Act.Status, x.Act.IsCritical, Q(x.Act.TotalFloat), x.Slip,
+                x.Act.BaselineFinish?.ToString("yyyy-MM-dd"),
+                x.Act.ForecastFinish?.ToString("yyyy-MM-dd")))
+            .ToList();
+
+        var scheduleRisk = new ProgressScheduleRiskDto(
+            worst.Days ?? 0,
+            allActivities.Count(a => a.IsCritical),
+            allActivities.Count(a => !a.IsMilestone),
+            allActivities.Count(a => !a.IsMilestone && a.TotalFloat < 0m),
+            atRisk.Count,
+            atRiskThreshold,
+            atRisk);
+
+        // ── الشكل 25 — تحديثات الإنجاز (واردة من الأقسام) ────────────────
+        // RECORDED, never entered here. The same rows Domain/ProgressSeries
+        // draws SCR-W1's actual line from, so the table and the curve are one
+        // source read twice.
+        var events = await db.ContractActivityEvents.AsNoTracking()
+            .Where(e => ids.Contains(e.ContractId) && e.Action == "progress" && e.After != null)
+            .OrderByDescending(e => e.At)
+            .Select(e => new { e.At, e.ContractId, e.Before, e.After, e.ActorName, e.ActorParty })
+            .ToListAsync();
+
+        var updateRows = events
+            .Where(e => decimal.TryParse(e.After, out _))
+            .Select(e => new ProgressUpdateDto(
+                e.At.ToString("yyyy-MM-dd"), e.ContractId,
+                decimal.TryParse(e.Before, out var b) ? Q(b) : null,
+                Q(decimal.Parse(e.After!)),
+                e.ActorName, e.ActorParty))
+            .ToList();
+
         return new ProgressResponse(
             p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
             new ProgressHeadline(
@@ -259,8 +393,15 @@ public static class ProgressEndpoints
             new ProgressEvm(
                 M(projectTotal), M(evm.Pv), M(evm.Ev), M(evm.Ac),
                 R(evm.Cpi), R(evm.Spi), Money(evm.Eac), Money(evm.Vac)),
-            contractRows, activityRows, boqRows);
+            contractRows, activityRows, boqRows,
+            wbsRows, costImpact, scheduleRisk, updateRows);
     }
+
+    /// <summary>The WBS path separator, and the one `01 §2.5` fixes.</summary>
+    private const char PathSep = '.';
+
+    /// <summary>`WbsNames` is slash-separated and positionally matched to the path.</summary>
+    private const char NameSep = '/';
 
     /// <summary>
     /// BR-09 — original + APPLIED amendment deltas. Approved-but-unapplied is a

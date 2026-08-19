@@ -14,8 +14,12 @@ public class AppConfiguration
     /// <summary>"Now". 06 §12 — all ages are measured back from this. (D-06)</summary>
     public DateOnly DataDate { get; set; }
 
-    /// <summary>Delay penalty per day, as a fraction of contract value. 0.001 = 0.1%/day. (D-02)</summary>
-    public decimal PenaltyPerDayPct { get; set; } = 0.001m;
+    /// <summary>
+    /// نسبة الغرامة — applied to value ÷ duration, NOT to the value per day.
+    /// 0.10 = 10%, matching Domain/Penalty.RatePct (BR-10, العرض الفني §11).
+    /// Superseded the 0.001 per-day form; see DECISIONS.md P-81.
+    /// </summary>
+    public decimal PenaltyRatePct { get; set; } = 0.10m;
 
     /// <summary>Delay penalty cap, as a fraction of contract value. 0.10 = 10%. (D-02)</summary>
     public decimal PenaltyCapPct { get; set; } = 0.10m;

@@ -142,14 +142,16 @@ public static class RuleCatalog
             () => Amendments.Apply(new(0, 100_000_000m, new DateOnly(2026, 6, 30), 365), 5_000_000m, 45)),
 
         new("PENALTY", "BR-10", "02.10",
-            "Delay penalty (0.1%/day, cap 10%)",
-            "days = max(0, forecastFinish − contractualFinish); perDay = value × 0.001; cap = value × " +
-            "0.10; amount = min(perDay × days, cap). An applied order moves BOTH terms (value and " +
-            "finish); show before vs after and the waived amount.",
-            new { value = 100_000_000m, contractualFinish = "2026-06-30", forecastFinish = "2026-08-30" },
-            "61 days × 100,000 = 6,100,000 (below the 10,000,000 cap)",
+            "Delay penalty (value ÷ duration × 10%, cap 10%)",
+            "days = max(0, forecastFinish − contractualFinish); perDay = value ÷ durationDays × 0.10; " +
+            "cap = value × 0.10; amount = min(perDay × days, cap). العرض الفني §11 states it in words " +
+            "and الشكل 10 prints 161,449 against 587,673,564 over 364 days. An applied order moves BOTH " +
+            "terms of the fraction — the value and the duration — as well as the finish; show before vs " +
+            "after and the waived amount. The cap is reached after exactly one contract duration of delay.",
+            new { value = 587_673_564m, durationDays = 364, contractualFinish = "2026-06-30", forecastFinish = "2026-08-30" },
+            "161,449 د.ع a day — the figure الشكل 10 prints on CNT-0170-EM",
             "Domain/Penalty.cs",
-            () => Penalty.For(100_000_000m, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30))),
+            () => Penalty.For(587_673_564m, 364, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30))),
 
         new("EVM", "BR-11", "02.11",
             "Earned value (CPI/SPI/EAC/VAC)",

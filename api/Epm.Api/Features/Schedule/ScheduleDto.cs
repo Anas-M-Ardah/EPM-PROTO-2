@@ -86,7 +86,65 @@ public record ScheduleRowDto(
     decimal BudgetedCost,
     string Calendar,
     string Predecessors,
-    int? SlipDays);
+    int? SlipDays,
+    /// <summary>
+    /// `04 §6` — the amendment badge, or null when no approved order has
+    /// touched this activity. Always null on a WBS node: an order extends an
+    /// ACTIVITY, and a node is the span of what is beneath it.
+    /// </summary>
+    ScheduleAmendmentMark? Amendment = null);
+
+public record ScheduleAmendmentSource(string No, bool IsApplied);
+
+/// <summary>
+/// ROADMAP 4.5 · `04 §6`, the schedule half. Same three states as the BOQ's
+/// mark and the same `Domain/AmendmentDisclosure` behind them — an activity
+/// moves DAYS where a BOQ line moves quantities, and that is the whole
+/// difference.
+/// </summary>
+/// <param name="DeltaDays">
+/// Effective − original remaining duration. SETTLED: already inside the row's
+/// own `RemainingDuration` and `ForecastFinish`.
+/// </param>
+/// <param name="PendingDeltaDays">
+/// What the approved-but-unapplied orders WOULD add. Null when none is
+/// awaiting application.
+/// </param>
+public record ScheduleAmendmentMark(
+    int Count,
+    int AppliedCount,
+    int PendingCount,
+    string State,
+    int OriginalRemaining,
+    int DeltaDays,
+    int? PendingDeltaDays,
+    IReadOnlyList<ScheduleAmendmentSource> Sources);
+
+/// <summary>EP-SCD-03 — one step of the drawer's chain, for one activity.</summary>
+public record ScheduleAmendmentStep(
+    string No,
+    string? At,
+    bool IsApplied,
+    int RemainingFrom,
+    int RemainingTo,
+    string? FinishFrom,
+    string? FinishTo);
+
+public record ScheduleAmendmentDetail(
+    string ActivityId,
+    string NameAr,
+    string NameEn,
+    int Count,
+    int AppliedCount,
+    int PendingCount,
+    string State,
+    int OriginalRemaining,
+    int EffectiveRemaining,
+    int? PendingRemaining,
+    string? OriginalFinish,
+    string? EffectiveFinish,
+    string? PendingFinish,
+    IReadOnlyList<ScheduleAmendmentStep> Chain);
 
 /// <summary>
 /// The bounds the chart is drawn in. Sent rather than derived in the browser
@@ -123,6 +181,52 @@ public record ScheduleSummary(
     string Basis,
     bool ManHoursAvailable);
 
+/// <summary>
+/// الشكل 23 — one affected activity, baseline beside current.
+///
+/// `04 §5`'s comparison is a BEFORE/AFTER of the same activity, not two rows:
+/// the pair is what makes a 26-day slip inside 26 days of float read
+/// differently from the same slip inside none.
+/// </summary>
+/// <param name="CostImpact">
+/// `Domain/ScheduleImpact` — an ESTIMATE, labelled «تقديري» on the plate and on
+/// screen. Nothing downstream reads it: it is not a payment, not an amendment,
+/// and not part of the contract value.
+/// </param>
+public record ScheduleImpactRow(
+    string ActivityId,
+    string NameAr,
+    string NameEn,
+    string Status,
+    bool IsCritical,
+    string? BaselineStart,
+    string? BaselineFinish,
+    string? CurrentStart,
+    string? CurrentFinish,
+    int DurationBefore,
+    int DurationAfter,
+    decimal FloatBefore,
+    decimal FloatAfter,
+    int SlipDays,
+    decimal Cost,
+    decimal DailyRate,
+    decimal DailyOverhead,
+    decimal CostImpact);
+
+/// <param name="NowCritical">
+/// Activities that are critical AND have slipped — the ones a slip moved onto
+/// the path that decides the finish, which is what الشكل 23's own tile counts.
+/// </param>
+/// <param name="OverheadPct">
+/// D-15, sent rather than hard-coded in the template so the explainer card can
+/// state the rule the figures were actually produced by.
+/// </param>
+public record ScheduleImpactSummary(
+    int AffectedCount,
+    int NowCriticalCount,
+    decimal TotalCostImpact,
+    decimal OverheadPct);
+
 public record ScheduleResponse(
     string ProjectId,
     string ProjectNameAr,
@@ -133,4 +237,30 @@ public record ScheduleResponse(
     IReadOnlyList<ScheduleRowDto> Rows,
     ScheduleTimeline Timeline,
     ScheduleSummary Summary,
-    IReadOnlyDictionary<string, int> CountByStatus);
+    IReadOnlyDictionary<string, int> CountByStatus,
+    /// <summary>الشكل 23's third view. Empty when nothing has slipped.</summary>
+    IReadOnlyList<ScheduleImpactRow> Impact,
+    ScheduleImpactSummary ImpactSummary,
+    /// <summary>
+    /// الشكل 23's «مرشح إصدار خط الأساس». One entry per baseline the contract
+    /// has had; the current one is last and is the one every figure above was
+    /// computed against.
+    /// </summary>
+    IReadOnlyList<ScheduleBaselineOption> Baselines);
+
+/// <param name="Id">`BL-0` for the programme the contract started with, then
+/// `BL-{n}` per approved schedule import — see `EP-SCD-06`, the only route that
+/// re-baselines.</param>
+/// <param name="IsCurrent">
+/// The baseline IN FORCE. Exactly one entry carries it, and it is the one the
+/// slip, the float and the impact are all measured from — a picker that let a
+/// reader compare against a superseded baseline while the figures stayed on the
+/// current one would be reporting two different schedules in one screen. A
+/// superseded entry is offered as history, not as a recomputation basis.
+/// </param>
+public record ScheduleBaselineOption(
+    string Id,
+    string LabelAr,
+    string LabelEn,
+    string TakenAt,
+    bool IsCurrent);
