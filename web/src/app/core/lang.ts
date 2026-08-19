@@ -114,7 +114,7 @@ const STR = {
   ws_no_results:   { ar: 'لا توجد مساحات عمل مطابقة',      en: 'No matching workspaces' },
   ws_no_results_b: { ar: 'جرّب اسماً أو رمزاً أو نوعاً آخر', en: 'Try another name, code or type' },
   empty_entities_t:{ ar: 'لا توجد مساحات عمل بعد',         en: 'No workspaces yet' },
-  empty_entities_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+  empty_entities_b:{ ar: 'التشكيل هو أعلى مستوى في النظام، ويُعرَّف قبل أي مشروع أو عقد.', en: 'A formation is the top of the hierarchy, and is defined before any project or contract.' },
   /** BR-15 — assigned to nothing is a real state, not an empty database. */
   empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
   empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
@@ -229,7 +229,7 @@ const STR = {
   prt_filtered_b:  { ar: 'المحفظة ليست فارغة — المرشّحات هي التي استبعدت كل شيء.',
                      en: 'The portfolio is not empty; the filters excluded everything.' },
   empty_portfolio_t:{ ar: 'لا توجد بيانات بعد',             en: 'No data yet' },
-  empty_portfolio_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+  empty_portfolio_b:{ ar: 'النظرة العامة تجميع لما في المشاريع، ولا مشروع بعد. تبدأ البيانات من شاشة المشاريع.', en: 'The overview rolls up what the projects hold, and there are none yet. Data starts at the Projects screen.' },
 
   // alerts center — ported from DAlertsCenter (v1.1, enterprise-areas.jsx:106).
   // The severity, kind and status LABELS are not here: they are stored codes and
@@ -878,7 +878,12 @@ const STR = {
 
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
-  empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },
+  empty_projects_b:{ ar: 'لم يُسجَّل مشروع بعد. سجّل أول مشروع، أو حمّل بيانات العرض للاطلاع.', en: 'No project registered yet. Register the first one, or load the demo fixture to explore.' },
+  empty_needs_ws_t:{ ar: 'لا توجد مساحة عمل بعد',           en: 'No workspace yet' },
+  empty_needs_ws_b:{ ar: 'المشروع يُسجَّل داخل تشكيل، ولا يوجد تشكيل بعد. تُعرَّف مساحات العمل أولاً.', en: 'A project is registered inside a formation, and none exists yet. Workspaces are defined first.' },
+  go_workspaces:   { ar: 'الذهاب إلى مساحات العمل',         en: 'Go to workspaces' },
+  go_projects:     { ar: 'الذهاب إلى المشاريع',             en: 'Go to projects' },
+  empty_ws_admin_b:{ ar: 'تعريف التشكيلات من صلاحية المستوى الوزاري. بدّل الصفة من بطاقة المستخدم لتعريف أول مساحة عمل.', en: 'Defining formations is a ministry-level capacity. Switch persona from the user card to define the first workspace.' },
   empty_filter_t:  { ar: 'لا نتائج مطابقة',                en: 'No matching projects' },
   empty_filter_b:  { ar: 'جرّب مصطلحاً آخر أو امسح المرشّحات.', en: 'Try another term or clear the filters.' },
   clear_filters:   { ar: 'مسح المرشّحات',                  en: 'Clear filters' },

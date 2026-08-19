@@ -1,4 +1,6 @@
-import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
+import {
+  Component, effect, inject, signal, computed, untracked, ViewEncapsulation,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -10,6 +12,7 @@ import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { PersonaService } from '../../core/persona';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { WorkspacesService } from '../../core/workspaces';
 import { WorkspacesApi } from '../workspaces/workspaces.api';
 import { EntitiesApi } from './entities.api';
@@ -47,7 +50,10 @@ type SortKey = 'name' | 'projectCount' | 'activeCount' | 'value';
 @Component({
   selector: 'epm-entities-page',
   standalone: true,
-  imports: [IconComponent, TableSkeletonComponent, PageHeadComponent, DrawerComponent],
+  imports: [
+    IconComponent, TableSkeletonComponent, PageHeadComponent, DrawerComponent,
+    PersonaSwitcherComponent,
+  ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './entities.page.html',
 })
@@ -125,7 +131,15 @@ export class EntitiesPage {
   readonly colCount = 7;
 
   constructor() {
-    this.load();
+    // SWITCHING صفة IS A RE-READ, not a client-side re-filter. `EP-ENT-01`
+    // returns the persona's own assignments and nothing else (BR-15), so rows
+    // fetched for one capacity are the wrong rows for another — and after
+    // defining the first تشكيل as a ministry persona, the register has to show
+    // it. Same pattern as SCR-W8 (P-05).
+    effect(() => {
+      this.persona.currentId();
+      untracked(() => this.load());
+    });
   }
 
   load() {

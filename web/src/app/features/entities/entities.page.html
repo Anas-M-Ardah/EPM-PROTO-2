@@ -12,6 +12,19 @@
   [crumbs]="crumbs()"
   [title]="lang.t('nav_entities')"
   [sub]="lang.t('entities_sub')">
+  <!-- «العرض بصفة» — and this screen is the THIRD place it belongs, for a
+       different reason from the change-order pair.
+
+       P-126 moved the switcher out of the shell because it is not a global
+       identity control: on الشكل 29 and الشكل 30 it is a filter that reveals
+       BR-14's permission model. Here it is neither a filter nor a review aid —
+       it is the only way to REACH the capacity this screen gates on. Defining
+       a تشكيل is ministry-level (§24), so on an empty database a university
+       specialist can see that «مساحة عمل جديدة» is withheld and has nowhere to
+       go; the control that changes the answer has to be on the screen that
+       states it. -->
+  <epm-persona-switcher actions />
+
   <!-- Z4 action cluster, verbatim from DSpaces (v1.1). Demo stubs. -->
   <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
     <epm-icon name="ios_share" [size]="16" />{{ lang.t('export') }}
@@ -140,7 +153,19 @@
       <span>{{ lang.t('empty_ws_assigned_b') }}</span>
     } @else {
       <b>{{ lang.t('empty_entities_t') }}</b>
-      <span>{{ lang.t('empty_entities_b') }}</span>
+      <!-- Two different dead ends, and only one is the reader's to fix.
+           Defining a تشكيل is a ministry-level capacity (§24), so a university
+           specialist facing an empty register is not doing anything wrong and
+           must not be handed a button that would be refused on submit — they
+           are told which صفة can. -->
+      @if (canCreate()) {
+        <span>{{ lang.t('empty_entities_b') }}</span>
+        <button type="button" class="d-btn primary" (click)="openCreate()">
+          <epm-icon name="add" [size]="16" />{{ lang.t('new_workspace') }}
+        </button>
+      } @else {
+        <span>{{ lang.t('empty_ws_admin_b') }}</span>
+      }
     }
   </div>
 } @else {

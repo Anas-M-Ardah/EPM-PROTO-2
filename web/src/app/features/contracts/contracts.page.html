@@ -15,6 +15,14 @@
   [crumbs]="crumbs()"
   [title]="lang.t('nav_contracts_all')"
   [sub]="scopeSub()">
+  <!-- «العرض بصفة» — the third register to carry it, and the setup path needs
+       all three. Defining a تشكيل is ministry-level (§24); defining a مشروع and
+       a عقد belong to «المستخدم المختص» (§23). The switcher is what lets one
+       person walk the chain workspace → project → contract without editing
+       storage by hand. As on the other two, this is not P-126's
+       filter-on-a-change-order-screen use. -->
+  <epm-persona-switcher actions />
+
   <!-- Z4 action cluster, verbatim from DContractsAll (v1.1 :331). Demo stubs
        in the reference and here — a contract is created from an award, which
        is not a screen this prototype builds. -->

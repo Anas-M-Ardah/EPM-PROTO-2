@@ -1,4 +1,6 @@
+using Epm.Api.Data;
 using Epm.Api.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Lookups;
 
@@ -456,5 +458,29 @@ public static class LookupCatalog
         yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
         yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
         yield return L("payment-status", "paid",      "مصروف",       "Paid");
+    }
+
+    /// <summary>
+    /// Writes the vocabulary into an empty `Lookups` table; does nothing when
+    /// it already has rows.
+    ///
+    /// ── THIS IS NOT SEEDING DEMO DATA ────────────────────────────────────
+    /// CLAUDE.md §4's «nothing is seeded automatically» is about the `06 §12`
+    /// SCENARIO — the projects, contracts and figures that are «illustrative,
+    /// not ministry data». These rows are neither: they are the system's own
+    /// vocabulary, defined in this file in code, and every enum column in the
+    /// app resolves its label through them.
+    ///
+    /// Leaving them to `load-fixture` made `POST /api/dev/reset` produce a
+    /// database the app cannot be USED on — «نوع التشكيل» and every other
+    /// lookup-backed select rendered empty, so the first تشكيل could not be
+    /// created and nothing downstream of it could either. A schema that exists
+    /// but cannot be typed into is not a working empty state (04 §9).
+    /// </summary>
+    public static async Task EnsureSeededAsync(EpmDb db)
+    {
+        if (await db.Lookups.AnyAsync()) return;
+        db.Lookups.AddRange(Rows());
+        await db.SaveChangesAsync();
     }
 }

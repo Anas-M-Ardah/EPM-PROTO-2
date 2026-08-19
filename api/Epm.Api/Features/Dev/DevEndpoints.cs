@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Features.Lookups;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Dev;
@@ -20,7 +21,18 @@ public static class DevEndpoints
             if (!env.IsDevelopment()) return Results.NotFound();
             await db.Database.EnsureDeletedAsync();
             await db.Database.EnsureCreatedAsync();
-            return Results.Ok(new { ok = true, message = "Schema recreated. Database is empty." });
+
+            // The VOCABULARY comes back with the schema. It is code-defined
+            // reference data, not the `06 §12` scenario — without it every
+            // lookup-backed select is empty and the app cannot be typed into,
+            // so «empty database» would mean «unusable» rather than «no data».
+            await LookupCatalog.EnsureSeededAsync(db);
+
+            return Results.Ok(new
+            {
+                ok = true,
+                message = "Schema recreated. Database is empty; lookup vocabulary seeded.",
+            });
         });
 
         // [EP-DEV-02] POST /api/dev/load-fixture
