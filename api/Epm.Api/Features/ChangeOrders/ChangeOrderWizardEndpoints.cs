@@ -67,7 +67,7 @@ public static class ChangeOrderWizardEndpoints
             // because a redistribution's TARGET may hold nothing yet, and
             // `allocations` is BR-08's rows, which is what «المتاح» measures
             // against. Read once for the project rather than once per contract.
-            var beneficiaries = await db.Beneficiaries.AsNoTracking()
+            var beneficiaries = await db.Workspaces.AsNoTracking()
                 .Where(x => x.Active).OrderBy(x => x.Code).ToListAsync();
             var benName = beneficiaries.ToDictionary(x => x.Code);
 
@@ -430,7 +430,7 @@ public static class ChangeOrderWizardEndpoints
         var itemIdsOfContract = derived.ToDictionary(x => x.Item.Id, x => x.Item.Code);
         var allocations = await db.BoqDistributions.AsNoTracking()
             .Where(x => itemIdsOfContract.Keys.Contains(x.BoqItemId)).ToListAsync();
-        var benName = await db.Beneficiaries.AsNoTracking()
+        var benName = await db.Workspaces.AsNoTracking()
             .ToDictionaryAsync(x => x.Code, x => x);
 
         var lines = new List<PreviewLine>();

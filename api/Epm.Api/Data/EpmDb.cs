@@ -118,11 +118,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
 
     // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
-    // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
-    // resolves it to names; nothing else reads the table yet, so its columns
-    // are pruned to what that list shows plus the tree link that gives a
-    // faculty its university.
-    public DbSet<Beneficiary> Beneficiaries => Set<Beneficiary>();
+    // There is NO separate beneficiaries table (P-174). A beneficiary IS a
+    // workspace: `Projects.BeneficiaryCodes` is a CSV of `Workspaces.Code`, and
+    // every screen that resolves a beneficiary code to a name reads the
+    // `Workspaces` set declared above.
 
     // ── PHASE 4.1 Contract tab — SCR-W3 ──────────────────────────────────
     // What has actually been paid against a contract. Nothing in the system
@@ -224,9 +223,6 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // no natural name. Ordered by Id, which is the order it occurred in.
         b.Entity<ProjectActivityEvent>().HasKey(x => x.Id);
         b.Entity<ContractActivityEvent>().HasKey(x => x.Id);
-
-        // The code IS the identity — it is what Projects.BeneficiaryCodes stores.
-        b.Entity<Beneficiary>().HasKey(x => x.Code);
 
         // (ContractId, No) is the real identity and is checked in the endpoint,
         // not here (P-01 — invariants live where they can be read).

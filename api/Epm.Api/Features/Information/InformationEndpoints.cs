@@ -57,7 +57,7 @@ public static class InformationEndpoints
         // [EP-INF-01] GET /api/projects/{projectId}/information
         // web: information.api.ts get() → information.page.ts
         // spec: الشكل 5 · 04 §3 | rules: BR-15, ProjectDefinition.RequiredFields
-        // tables: Projects · Workspaces · Beneficiaries · ProjectActivityEvents
+        // tables: Projects · Workspaces · ProjectActivityEvents
         app.MapGet("/api/projects/{projectId}/information", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking()
@@ -70,9 +70,9 @@ public static class InformationEndpoints
             var ws = await db.Workspaces.AsNoTracking()
                 .FirstOrDefaultAsync(w => w.Code == p.WorkspaceCode);
 
-            // ── الجهة المستفيدة — «جامعة بغداد», not «BEN-UOB» ───────────
+            // ── الجهة المستفيدة — «جامعة بغداد», not «ub» ────────────────
             // الشكل 5 prints the beneficiary's NAME. The column is a CSV of
-            // Beneficiary.Code (01 §2.1), so the codes are resolved here — the
+            // Workspace.Code (01 §2.1, P-174), so the codes are resolved here — the
             // same flat join BoqEndpoints does, and no new concept.
             // A code with no matching row falls back to the code itself rather
             // than vanishing: an unknown reference is a fact worth seeing.
@@ -82,8 +82,8 @@ public static class InformationEndpoints
 
             var bens = codes.Count == 0
                 ? []
-                : await db.Beneficiaries.AsNoTracking()
-                    .Where(b => codes.Contains(b.Code))
+                : await db.Workspaces.AsNoTracking()
+                    .Where(w => codes.Contains(w.Code))
                     .ToListAsync();
 
             var beneficiaryNames = string.Join("، ", codes.Select(c =>

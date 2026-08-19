@@ -6,7 +6,7 @@ namespace Epm.Api.Data.Entities;
 /// endpoint, one Angular service. Kind is the list name.
 ///
 /// Kinds (06): project-status · execution-stage · project-type · contract-status ·
-/// funding-type · beneficiary-type · co-type · boq-change-type · activity-change-type ·
+/// funding-type · co-type · boq-change-type · activity-change-type ·
 /// co-lifecycle · decision · apply-step-status · weight-recalc-state ·
 /// external-party-state · viewer-relation · amendment-state · activity-status ·
 /// distribution-state · allocation-coverage · attachment-category

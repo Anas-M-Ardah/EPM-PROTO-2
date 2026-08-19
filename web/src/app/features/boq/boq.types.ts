@@ -412,8 +412,11 @@ export interface BoqSavedViewInput {
 // ── EP-PRJ-05 / 06 · «الجهات المستفيدة» (ملحق الشكل 12) ───────────────────
 
 /**
- * One row of the ministry's master beneficiary list, with this project's use of
- * it. Member names match `ProjectBeneficiaryRow` in
+ * One WORKSPACE, with this project's use of it as a beneficiary (P-174). There
+ * is no second master list — «جهة مستفيدة» is a ROLE a workspace plays on a
+ * project, and `Projects.BeneficiaryCodes` is a CSV of `Workspaces.Code`.
+ *
+ * Member names match `ProjectBeneficiaryRow` in
  * api/Epm.Api/Features/Projects/ProjectsDto.cs — the endpoints live in the
  * PROJECTS feature because the tick writes `Projects.BeneficiaryCodes`, even
  * though the drawer opens from the BOQ toolbar.
@@ -422,11 +425,8 @@ export interface ProjectBeneficiaryRow {
   code: string;
   nameAr: string;
   nameEn: string;
-  /** Lookup kind `beneficiary-type` (06 §6). */
-  type: string;
-  parentCode: string | null;
-  parentNameAr: string | null;
-  parentNameEn: string | null;
+  /** Lookup kind `workspace-kind` (P-68). NOT `beneficiary-type`, which is gone. */
+  kind: string;
   /** The ministry's own state. Independent of `assigned`. */
   active: boolean;
   /** The tick — does THIS project use it. */

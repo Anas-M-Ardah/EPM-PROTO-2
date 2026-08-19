@@ -392,7 +392,7 @@ public static class BoqEndpoints
         // [EP-BOQ-05] GET /api/projects/{projectId}/boq/{contractId}/items/{code}/distribution
         // web: boq/boq.api.ts distribution() → boq.page.ts
         // spec: 04 §4, 02 §8 | rules: BR-08
-        // tables: Projects · BoqItems · BoqDistributions · Beneficiaries
+        // tables: Projects · BoqItems · BoqDistributions · Workspaces
         app.MapGet("/api/projects/{projectId}/boq/{contractId}/items/{code}/distribution",
             async (EpmDb db, HttpContext http, string projectId, string contractId, string code) =>
         {
@@ -410,7 +410,7 @@ public static class BoqEndpoints
         // [EP-BOQ-06] PUT /api/projects/{projectId}/boq/{contractId}/items/{code}/distribution
         // web: boq/boq.api.ts saveDistribution() → boq.page.ts
         // spec: 04 §4, 02 §8 | rules: BR-08
-        // tables: Projects · BoqItems · BoqDistributions · Beneficiaries
+        // tables: Projects · BoqItems · BoqDistributions · Workspaces
         app.MapPut("/api/projects/{projectId}/boq/{contractId}/items/{code}/distribution",
             async (EpmDb db, HttpContext http, string projectId, string contractId, string code, BoqDistributionSave input) =>
         {
@@ -985,19 +985,20 @@ public static class BoqEndpoints
     }
 
     /// <summary>
-    /// 01 §2.1 — `Projects.BeneficiaryCodes` is a CSV of codes, and 02 §8's
-    /// second import gate says a distribution may only name a beneficiary
-    /// assigned to THIS project and still active. That CSV is the assignment.
+    /// 01 §2.1 — `Projects.BeneficiaryCodes` is a CSV of `Workspaces.Code`
+    /// (P-174), and 02 §8's second import gate says a distribution may only name
+    /// a workspace assigned to THIS project and still active. That CSV is the
+    /// assignment.
     /// </summary>
-    private static async Task<List<Beneficiary>> ProjectBeneficiaries(EpmDb db, Project p)
+    private static async Task<List<Workspace>> ProjectBeneficiaries(EpmDb db, Project p)
     {
         var codes = (p.BeneficiaryCodes ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
 
-        return await db.Beneficiaries.AsNoTracking()
-            .Where(b => codes.Contains(b.Code) && b.Active)
-            .OrderBy(b => b.Code)
+        return await db.Workspaces.AsNoTracking()
+            .Where(w => codes.Contains(w.Code) && w.Active)
+            .OrderBy(w => w.Code)
             .ToListAsync();
     }
 

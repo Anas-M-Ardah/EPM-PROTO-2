@@ -10,6 +10,7 @@ import { BoqImportWizard } from './boq-import.wizard';
 import { BoqImportApi } from './boq-import.api';
 import { BoqImportVersionDto } from './boq-import.types';
 import { SectionComponent } from '../../shared/section.component';
+import { ModuleBarComponent } from '../../shared/module-bar.component';
 import { AmendmentMarkComponent } from '../../shared/amendment-mark.component';
 import { AmendmentDeltaComponent } from '../../shared/amendment-delta.component';
 import {
@@ -85,7 +86,7 @@ interface ShareDraft {
   // edit, delete confirm) and is used from two places in the grid — grouped
   // under a division, and ungrouped. One template, one definition of a row.
   imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
-    SectionComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard,
+    SectionComponent, ModuleBarComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard,
     AmendmentMarkComponent, AmendmentDeltaComponent, AmendmentPanelComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './boq.page.html',
@@ -123,15 +124,25 @@ export class BoqPage {
   collapsed = signal<Record<string, boolean>>({});
   colMenu = signal(false);
   /**
-   * DEFAULTS ARE THE REFERENCE'S DEFAULT GRID, not «everything on». القيمة
-   * الأصلية and الفرق (أمر تغييري) stay off until a reader asks for them — on a
-   * bill with no amendments they are two columns of «—» — while القيمة المكتسبة
-   * is on, because the reference's own default grid carries it.
+   * DEFAULTS ARE الشكل 12's TWELVE, in its order:
+   *
+   *   الرمز · الوصف · الوحدة · الكمية · سعر الوحدة · القيمة · الوزن % ·
+   *   الأنشطة · الوزن المُخصَّص · التنفيذ · القيمة المكتسبة · حالة التخصيص
+   *
+   * Everything else is opt-in through «الأعمدة». القيمة الأصلية and الفرق
+   * (أمر تغييري) stay off because on a bill with no amendments they are two
+   * columns of «—».
+   *
+   * `distribution` is off for a REASON, not to save width: الشكل 12 does not
+   * list التوزيع among the register's columns — it names it as a TAB of the
+   * item card («عام · التخصيص · التوزيع · الإنجاز · الكلفة · السجل»), which is
+   * where this page already shows it. Nothing is lost by the default, and a
+   * reader who wants the column can still switch it on.
    */
   cols = signal<Record<string, boolean>>({
     unit: true, qty: true, rate: true, amount: true, weight: true,
-    links: true, assignedWeight: true, progress: true, distribution: true, coverage: true,
-    origAmount: false, variance: false, earned: true,
+    links: true, assignedWeight: true, progress: true, coverage: true,
+    earned: true, distribution: false, origAmount: false, variance: false,
   });
 
   // ── «العروض» — saved views (ملحق الشكل 12) ────────────────────────────
@@ -1466,8 +1477,12 @@ export class BoqPage {
 
   // ── labels ─────────────────────────────────────────────────────────────
 
-  /** `06 §6` beneficiary-type, from the Lookups like every other stored code. */
-  benTypeLabel(code: string): string { return this.lookups.label('beneficiary-type', code); }
+  /**
+   * `workspace-kind`, from the Lookups like every other stored code. A
+   * beneficiary IS a workspace (P-174), so it is labelled from the workspace
+   * vocabulary — `beneficiary-type` went with the table it described.
+   */
+  benTypeLabel(code: string): string { return this.lookups.label('workspace-kind', code); }
 
   coverageLabel(code: string): string { return this.lookups.label('allocation-coverage', code); }
 

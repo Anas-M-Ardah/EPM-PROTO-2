@@ -65,10 +65,9 @@ public record OverviewContract(
     string Contractor,
     string Consultant);
 
-/// <param name="ParentNameAr">
-/// The beneficiary's parent in the 01 §2.1 tree — a faculty's university. Null
-/// at the root. Resolved here so the screen can say "كلية الهندسة — جامعة بغداد"
-/// without the university being stored on the faculty.
+/// <param name="Kind">
+/// The `workspace-kind` lookup (P-68). A beneficiary IS a workspace (P-174), so
+/// there is no parent tree to resolve and no `beneficiary-type` list.
 /// </param>
 /// <param name="Active">
 /// 01 §2.1 — an inactive beneficiary may not receive new quantity. Shown,
@@ -78,9 +77,7 @@ public record OverviewBeneficiary(
     string Code,
     string NameAr,
     string NameEn,
-    string Type,
-    string? ParentNameAr,
-    string? ParentNameEn,
+    string Kind,
     bool Active);
 
 /// <param name="EffectiveValue">

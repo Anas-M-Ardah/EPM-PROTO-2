@@ -30,7 +30,7 @@ public class ChangeOrderRedistribution
 
     public int ChangeOrderLineId { get; set; }
 
-    /// <summary>The beneficiary giving devices up. `Beneficiaries.Code`.</summary>
+    /// <summary>The beneficiary giving devices up. `Workspaces.Code` (P-174).</summary>
     public string FromBeneficiaryCode { get; set; } = "";
 
     /// <summary>The beneficiary receiving them. May hold nothing yet — جامعة

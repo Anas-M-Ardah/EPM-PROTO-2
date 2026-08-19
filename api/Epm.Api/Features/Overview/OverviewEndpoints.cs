@@ -64,8 +64,7 @@ public static class OverviewEndpoints
         // [EP-OVW-01] GET /api/projects/{projectId}/overview
         // web: overview.api.ts get() → overview.page.ts
         // spec: 04 §3 | rules: BR-00, BR-09, BR-10
-        // tables: Projects · Contracts · ContractAmendments · Workspaces
-        //       · Beneficiaries · Alerts
+        // tables: Projects · Contracts · ContractAmendments · Workspaces · Alerts
         app.MapGet("/api/projects/{projectId}/overview", async (EpmDb db, HttpContext http, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking()
@@ -211,27 +210,19 @@ public static class OverviewEndpoints
                 // so it is a named constant and the screen labels it as one.
                 AcceptableIndex);
 
-            // BeneficiaryCodes is a CSV of codes (01 §2.1). Split it here and
-            // resolve; the client never parses a stored string.
+            // BeneficiaryCodes is a CSV of Workspaces.Code (01 §2.1, P-174). Split
+            // it here and resolve; the client never parses a stored string.
             var codes = p.BeneficiaryCodes
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
 
-            var all = await db.Beneficiaries.AsNoTracking().ToListAsync();
+            var all = await db.Workspaces.AsNoTracking().ToListAsync();
 
             var beneficiaries = codes
-                .Select(code => all.FirstOrDefault(b => b.Code == code))
-                .Where(b => b is not null)
-                .Select(b =>
-                {
-                    var parent = b!.ParentCode is null
-                        ? null
-                        : all.FirstOrDefault(x => x.Code == b.ParentCode);
-
-                    return new OverviewBeneficiary(
-                        b.Code, b.NameAr, b.NameEn, b.Type,
-                        parent?.NameAr, parent?.NameEn, b.Active);
-                })
+                .Select(code => all.FirstOrDefault(w => w.Code == code))
+                .Where(w => w is not null)
+                .Select(w => new OverviewBeneficiary(
+                    w!.Code, w.NameAr, w.NameEn, w.Kind, w.Active))
                 .ToList();
 
             var open = await db.Alerts.AsNoTracking()

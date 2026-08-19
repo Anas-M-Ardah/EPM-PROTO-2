@@ -190,9 +190,9 @@ export class EntitiesPage {
 
   /**
    * The workspace kind, from the `workspace-kind` list (ملحق الشكل 1's four
-   * chips). NOT `beneficiary-type` — that is the list of things quantity is
-   * distributed TO (01 §2.1), and reading a workspace's kind out of it left a
-   * directorate rendering as the raw string `directorate`.
+   * chips) — now the only kind vocabulary. `beneficiary-type` was deleted with
+   * the beneficiaries table (P-174); reading a workspace's kind out of it had
+   * left a directorate rendering as the raw string `directorate`.
    */
   kindLabel(code: string) {
     return this.lookups.label('workspace-kind', code);

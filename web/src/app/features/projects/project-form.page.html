@@ -342,7 +342,7 @@
             <input class="d-form-input" [class.epm-invalid]="errorFor('beneficiaryCodes')"
                    [value]="form().beneficiaryCodes ?? ''"
                    (input)="setText('beneficiaryCodes', $any($event.target).value)"
-                   placeholder="BEN-UOB" />
+                   placeholder="ub" />
             @if (errorFor('beneficiaryCodes')) {
               <small class="epm-f-err">{{ errorFor('beneficiaryCodes') }}</small>
             }

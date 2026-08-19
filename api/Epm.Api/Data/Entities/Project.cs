@@ -104,7 +104,7 @@ public class Project
 
     /// <summary>
     /// Spec 01 §2.2 — the beneficiaries assigned to this project, as a
-    /// comma-separated list of Beneficiary.Code. ONLY these may receive quantity.
+    /// comma-separated list of Workspace.Code (P-174). ONLY these may receive quantity.
     /// A CSV column instead of a join table: it is a list of codes and nothing more.
     /// Split on ',' when you need them.
     /// </summary>

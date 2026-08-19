@@ -74,7 +74,7 @@ public static class SupplyEndpoints
         // [EP-SUP-02] GET /api/projects/{projectId}/supply/{contractId}/items/{code}
         // web: supply/supply.api.ts item() → supply.page.ts
         // spec: ملحق الشكل 51 · الشكل 52 | rules: BR-08, SupplyReceipts
-        // tables: BoqItems · SupplyItemDetails · BoqDistributions · Beneficiaries · SupplyReceipts
+        // tables: BoqItems · SupplyItemDetails · BoqDistributions · Workspaces · SupplyReceipts
         app.MapGet("/api/projects/{projectId}/supply/{contractId}/items/{code}", async (
             EpmDb db, HttpContext http, string projectId, string contractId, string code) =>
         {
@@ -106,9 +106,10 @@ public static class SupplyEndpoints
                 .Distinct()
                 .ToList();
 
-            var names = await db.Beneficiaries.AsNoTracking()
-                .Where(b => codes.Contains(b.Code))
-                .ToDictionaryAsync(b => b.Code);
+            // A beneficiary code IS a workspace code (P-174).
+            var names = await db.Workspaces.AsNoTracking()
+                .Where(w => codes.Contains(w.Code))
+                .ToDictionaryAsync(w => w.Code);
 
             var beneficiaries = codes
                 .Select(c => new SupplyBeneficiaryRow(
@@ -208,8 +209,8 @@ public static class SupplyEndpoints
             // exist and be active (`02 §8`'s own import gate, at the movement).
             if (input.Kind == SupplyReceipts.Preliminary)
             {
-                var ben = await db.Beneficiaries.AsNoTracking()
-                    .FirstOrDefaultAsync(b => b.Code == input.BeneficiaryCode);
+                var ben = await db.Workspaces.AsNoTracking()
+                    .FirstOrDefaultAsync(w => w.Code == input.BeneficiaryCode);
                 if (ben is null || !ben.Active)
                     return Results.BadRequest(new
                     {
@@ -316,8 +317,8 @@ public static class SupplyEndpoints
             .GroupBy(a => a.ReceiptId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var benNames = await db.Beneficiaries.AsNoTracking()
-            .ToDictionaryAsync(b => b.Code, b => b.NameAr);
+        var benNames = await db.Workspaces.AsNoTracking()
+            .ToDictionaryAsync(w => w.Code, w => w.NameAr);
 
         var dist = await db.BoqDistributions.AsNoTracking()
             .Where(d => ids.Contains(d.BoqItemId))

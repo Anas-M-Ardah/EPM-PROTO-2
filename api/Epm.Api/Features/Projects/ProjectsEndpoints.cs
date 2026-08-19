@@ -247,14 +247,16 @@ public static class ProjectsEndpoints
         // feature would have been a second way to change one column, and the
         // الشكل 5 activity log would have shown only one of them.
         //
-        // NOTHING NEW IS STORED. The master list is `Beneficiaries`, already
-        // registered; the assignment is the CSV that column has always held. The
-        // reference reaches the same state through `usePersistedState`, which is
-        // why its ticks vanish on reload and these do not.
+        // NOTHING NEW IS STORED, AND THERE IS NO SECOND LIST (P-174). The master
+        // list is `Workspaces` — the ministry's one register of universities and
+        // units — and «جهة مستفيدة» is a ROLE one of them plays on this project.
+        // The assignment is the CSV that column has always held. The reference
+        // reaches the same state through `usePersistedState`, which is why its
+        // ticks vanish on reload and these do not.
 
         // [EP-PRJ-05] GET /api/projects/{id}/beneficiaries
         // web: boq.api.ts beneficiaries() → boq.page.ts | spec: ملحق الشكل 12 · contract-context.jsx:182
-        // rules: BR-15 · 01 §2.1 | tables: Projects · Beneficiaries
+        // rules: BR-15 · 01 §2.1 | tables: Projects · Workspaces
         app.MapGet("/api/projects/{id}/beneficiaries", async (EpmDb db, HttpContext ctx, string id) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
@@ -263,23 +265,20 @@ public static class ProjectsEndpoints
 
             var assigned = Codes(p.BeneficiaryCodes);
 
-            // THE WHOLE MASTER LIST, not just the assigned ones — the drawer's
-            // subject is which of the ministry's beneficiaries this project uses,
-            // so the unticked rows are half the answer.
-            var all = await db.Beneficiaries.AsNoTracking()
-                .OrderBy(b => b.Code).ToListAsync();
+            // EVERY WORKSPACE, not just the assigned ones — the drawer's subject
+            // is which of the ministry's units this project serves, so the
+            // unticked rows are half the answer.
+            var all = await db.Workspaces.AsNoTracking()
+                .OrderBy(w => w.Code).ToListAsync();
 
-            return Results.Ok(all.Select(b => new ProjectBeneficiaryRow(
-                b.Code, b.NameAr, b.NameEn, b.Type, b.ParentCode,
-                ParentNameAr: all.FirstOrDefault(x => x.Code == b.ParentCode)?.NameAr,
-                ParentNameEn: all.FirstOrDefault(x => x.Code == b.ParentCode)?.NameEn,
-                b.Active,
-                Assigned: assigned.Contains(b.Code))).ToList());
+            return Results.Ok(all.Select(w => new ProjectBeneficiaryRow(
+                w.Code, w.NameAr, w.NameEn, w.Kind, w.Active,
+                Assigned: assigned.Contains(w.Code))).ToList());
         });
 
         // [EP-PRJ-06] PUT /api/projects/{id}/beneficiaries
         // web: boq.api.ts saveBeneficiaries() → boq.page.ts | spec: ملحق الشكل 12
-        // rules: BR-15 · 01 §2.1 | tables: Projects · Beneficiaries · ProjectActivityEvents (WRITTEN)
+        // rules: BR-15 · 01 §2.1 | tables: Projects · Workspaces · ProjectActivityEvents (WRITTEN)
         app.MapPut("/api/projects/{id}/beneficiaries", async (
             EpmDb db, HttpContext ctx, string id, ProjectBeneficiariesInput input) =>
         {
@@ -298,17 +297,17 @@ public static class ProjectsEndpoints
             var wanted = (input.Codes ?? []).Select(c => (c ?? "").Trim())
                 .Where(c => c.Length > 0).Distinct().ToList();
 
-            var known = await db.Beneficiaries.AsNoTracking().ToListAsync();
+            var known = await db.Workspaces.AsNoTracking().ToListAsync();
 
-            // A code that is not in the master list is a caller error, not a row
-            // to create: `Beneficiaries` is a register the ministry maintains,
-            // and a project may not mint one by ticking it.
-            var unknown = wanted.Where(c => known.All(b => b.Code != c)).ToList();
+            // A code that is not a workspace is a caller error, not a row to
+            // create: `Workspaces` is a register the ministry maintains, and a
+            // project may not mint one by ticking it.
+            var unknown = wanted.Where(c => known.All(w => w.Code != c)).ToList();
             if (unknown.Count > 0)
                 return Results.BadRequest(new
                 {
-                    messageAr = $"جهات غير معرَّفة في القائمة الرئيسية: {string.Join("، ", unknown)}.",
-                    messageEn = $"Not in the master beneficiary list: {string.Join(", ", unknown)}.",
+                    messageAr = $"جهات غير معرَّفة في مساحات العمل: {string.Join("، ", unknown)}.",
+                    messageEn = $"Not a known workspace: {string.Join(", ", unknown)}.",
                     codes = unknown,
                 });
 
@@ -318,7 +317,7 @@ public static class ProjectsEndpoints
             // dropping it would erase a distribution the drawer never showed.
             var newlyInactive = wanted
                 .Where(c => !Codes(p.BeneficiaryCodes).Contains(c))
-                .Where(c => known.First(b => b.Code == c).Active == false)
+                .Where(c => known.First(w => w.Code == c).Active == false)
                 .ToList();
 
             if (newlyInactive.Count > 0)

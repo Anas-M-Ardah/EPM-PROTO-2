@@ -73,7 +73,7 @@ public static class Fixture
                 FundingType = "federal-budget", Region = "baghdad", Priority = "high",
                 Branch = "شعبة الأبنية", Executor = "شركة الفاو الهندسية",
                 DesignerParty = "المكتب الاستشاري الهندسي", ConsultantParty = "دار الهندسة",
-                BeneficiaryCodes = "BEN-UOB,BEN-UOB-MED",
+                BeneficiaryCodes = "ub,nu",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 7, 28),
             },
@@ -90,7 +90,7 @@ public static class Fixture
                 FundingType = "federal-budget", Region = "baghdad", Priority = "medium",
                 Branch = "شعبة الأبنية", Executor = "شركة بغداد للمقاولات",
                 ConsultantParty = "المكتب الاستشاري الهندسي",
-                BeneficiaryCodes = "BEN-UOB-ENG",
+                BeneficiaryCodes = "tu",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 7, 15),
             },
@@ -107,7 +107,7 @@ public static class Fixture
                 FundingType = "grant", Region = "baghdad", Priority = "medium",
                 Branch = "شعبة الصيانة", Executor = "شركة النهرين",
                 ConsultantParty = "دار الهندسة",
-                BeneficiaryCodes = "BEN-UOB-ENG",
+                BeneficiaryCodes = "tu",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 3, 9),
             },
@@ -143,7 +143,7 @@ public static class Fixture
                 FundingType = "reconstruction-fund", Region = "baghdad", Priority = "high",
                 Branch = "شعبة البنى التحتية", Executor = "شركة الرافدين للمقاولات",
                 ConsultantParty = "المكتب الاستشاري الهندسي",
-                BeneficiaryCodes = "BEN-UON",
+                BeneficiaryCodes = "nu",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 6, 30),
             },
@@ -160,7 +160,7 @@ public static class Fixture
                 FundingType = "self-funding", Region = "baghdad", Priority = "low",
                 Branch = "شعبة الأبنية", Executor = "شركة الخليج للإنشاءات",
                 ConsultantParty = "دار الهندسة",
-                BeneficiaryCodes = "BEN-UOT",
+                BeneficiaryCodes = "tu",
                 DataDate = new DateOnly(2026, 8, 2),
                 UpdatedAt = new DateOnly(2026, 5, 12),
             }
@@ -425,45 +425,6 @@ public static class Fixture
                 TitleEn = "The data dictionary value lists have been updated",
                 RaisedAt = new DateTime(2026, 7, 6),
                 Acknowledged = true, AcknowledgedByUserId = "user.senior-mgmt" }
-        );
-
-        // ── PHASE 3 · SCR-W1 Overview — the beneficiaries (01 §2.1) ──────
-        // The tree is real — a faculty's ParentCode is its university, which is
-        // how the overview can say "كلية الهندسة — جامعة بغداد" without storing
-        // the university on the faculty.
-        //
-        // «EVERY CODE IS REFERENCED BY A PROJECT, AND NO OTHERS» WAS THE RULE
-        // HERE, and EP-PRJ-05 retired it. The overview only ever read the codes
-        // a project already held, so an unreferenced row was indeed unreachable;
-        // the beneficiaries drawer returns the WHOLE master list, and the
-        // unticked rows are half of what it is for. A list where every row is
-        // already ticked cannot demonstrate the control.
-        db.Beneficiaries.AddRange(
-            new Beneficiary { Code = "BEN-UOB", NameAr = "جامعة بغداد", NameEn = "University of Baghdad",
-                Type = "university" },
-            new Beneficiary { Code = "BEN-UOB-ENG", NameAr = "كلية الهندسة", NameEn = "College of Engineering",
-                Type = "department", ParentCode = "BEN-UOB" },
-            new Beneficiary { Code = "BEN-UOB-MED", NameAr = "كلية الطب", NameEn = "College of Medicine",
-                Type = "department", ParentCode = "BEN-UOB" },
-            new Beneficiary { Code = "BEN-UON", NameAr = "جامعة نينوى", NameEn = "University of Nineveh",
-                Type = "university" },
-            new Beneficiary { Code = "BEN-UOT", NameAr = "جامعة ذي قار", NameEn = "University of Thi-Qar",
-                Type = "university" },
-
-            // THE ONE INACTIVE BENEFICIARY, AND THE ONLY ROW THAT MAKES `01
-            // §2.1` VISIBLE. Its rule — an inactive beneficiary cannot receive
-            // new quantity — is enforced twice, by the drawer's disabled
-            // checkbox and by EP-PRJ-06's «لا يمكن ربط جهات موقوفة» refusal, and
-            // with every seeded row active NEITHER could fire. A guard no
-            // fixture can reach is a guard nobody reviews.
-            //
-            // The live prototype seeds exactly this row — «موقع الرصافة
-            // (موقوف)», a `site` under جامعة بغداد, the only موقوفة entry in its
-            // eight — so this is its shape, not an invented case. Referenced by
-            // NO project, which is the point: it is offered by the master list
-            // and refused by the rule.
-            new Beneficiary { Code = "BEN-UOB-RUS", NameAr = "موقع الرصافة", NameEn = "Rusafa Site",
-                Type = "site", ParentCode = "BEN-UOB", Active = false }
         );
 
         // ── PHASE 4.1 · SCR-W3 Contract tab — payments ───────────────────
@@ -882,7 +843,7 @@ public static class Fixture
         );
 
         // ── DISTRIBUTION TO BENEFICIARIES (BR-08) ────────────────────────
-        // PRJ-0279's beneficiaries are BEN-UOB and BEN-UOB-MED (01 §2.1), and
+        // PRJ-0279 serves جامعة بغداد (ub) and الجامعة المستنصرية (nu) (01 §2.1),
         // no row may name any other — the drawer offers only the project's own.
         // All four states are represented, and the `over` row is an IMPORTED
         // one: 02 §8 says a user cannot type their way into `over`, because
@@ -890,18 +851,18 @@ public static class Fixture
         // legacy data.
         db.BoqDistributions.AddRange(
             // full — 540 + 450 = 990, the whole line
-            Dist(I("CNT-0279", "BQ-003"), "BEN-UOB", 540m, "المبنى الرئيسي"),
-            Dist(I("CNT-0279", "BQ-003"), "BEN-UOB-MED", 450m, "مبنى كلية الطب"),
+            Dist(I("CNT-0279", "BQ-003"), "ub", 540m, "المبنى الرئيسي"),
+            Dist(I("CNT-0279", "BQ-003"), "nu", 450m, "مبنى المستنصرية"),
             // partial — 10,000 of 18,000
-            Dist(I("CNT-0279", "BQ-001"), "BEN-UOB", 10_000m, "الموقع العام"),
+            Dist(I("CNT-0279", "BQ-001"), "ub", 10_000m, "الموقع العام"),
             // over — 9,200 imported against a line of 8,800
-            Dist(I("CNT-0279", "BQ-008"), "BEN-UOB", 5_000m, "المبنى الرئيسي"),
-            Dist(I("CNT-0279", "BQ-008"), "BEN-UOB-MED", 4_200m, "مبنى كلية الطب"),
+            Dist(I("CNT-0279", "BQ-008"), "ub", 5_000m, "المبنى الرئيسي"),
+            Dist(I("CNT-0279", "BQ-008"), "nu", 4_200m, "مبنى المستنصرية"),
             // full — 2.5 + 1.5 = 4 generator sets
-            Dist(I("CNT-0279-EM", "BQ-002"), "BEN-UOB", 2.5m, "غرفة المولدات"),
-            Dist(I("CNT-0279-EM", "BQ-002"), "BEN-UOB-MED", 1.5m, "غرفة المولدات — الطب"),
+            Dist(I("CNT-0279-EM", "BQ-002"), "ub", 2.5m, "غرفة المولدات"),
+            Dist(I("CNT-0279-EM", "BQ-002"), "nu", 1.5m, "غرفة المولدات — المستنصرية"),
             // partial — 4 of 6 units
-            Dist(I("CNT-0279-EM", "BQ-004"), "BEN-UOB", 4m, "المبنى الرئيسي")
+            Dist(I("CNT-0279-EM", "BQ-004"), "ub", 4m, "المبنى الرئيسي")
             // BQ-005 / BQ-006 / BQ-007 / BQ-009 / BQ-010 / BQ-011 / BQ-012 —
             // `none`, which is the state a freshly imported sheet is in.
         );
@@ -945,16 +906,6 @@ public static class Fixture
     /// </summary>
     private static void SupplyItems(EpmDb db)
     {
-        // ── الجهات المستفيدة الأربع التي تسمّيها الأشكال 51 · 56 · 58 ────
-        db.Beneficiaries.AddRange(
-            new Beneficiary { Code = "BEN-BAS", NameAr = "جامعة البصرة", NameEn = "University of Basrah", Type = "university" },
-            new Beneficiary { Code = "BEN-MOS", NameAr = "جامعة الموصل", NameEn = "University of Mosul", Type = "university" },
-            new Beneficiary { Code = "BEN-KUF", NameAr = "جامعة الكوفة", NameEn = "University of Kufa", Type = "university" },
-            // الشكل 58's redistribution TARGET. It holds nothing yet, which is
-            // the whole point of that plate: a quantity moves TO it.
-            new Beneficiary { Code = "BEN-TAL", NameAr = "جامعة تلعفر", NameEn = "University of Tal Afar", Type = "university" }
-        );
-
         db.Projects.Add(new Project
         {
             Id = "PRJ-0439", WorkspaceCode = "sp", Code = "PC-0439",
@@ -976,7 +927,7 @@ public static class Fixture
             FundingType = "federal-budget", Region = "baghdad", Priority = "high",
             Branch = "شعبة التجهيز", Executor = "شركة الشرق للتجهيزات العلمية",
             ConsultantParty = "المكتب الاستشاري الهندسي",
-            BeneficiaryCodes = "BEN-BAS,BEN-MOS,BEN-KUF",
+            BeneficiaryCodes = "ub,nu,tu",
             DataDate = new DateOnly(2026, 8, 2),
             UpdatedAt = new DateOnly(2026, 7, 30),
         });
@@ -1068,20 +1019,20 @@ public static class Fixture
         db.BoqDistributions.AddRange(
             // الشكل 51 — المجموع المخصص 111, which is the whole contracted
             // quantity: this item is fully allocated.
-            Dist(sup["ITM-002"], "BEN-BAS", 40m, null),
-            Dist(sup["ITM-002"], "BEN-MOS", 71m, null),
+            Dist(sup["ITM-002"], "ub", 40m, null),
+            Dist(sup["ITM-002"], "nu", 71m, null),
             // الشكل 56 — 75 · 56 · 65 = 196.
-            Dist(sup["ITM-006"], "BEN-BAS", 75m, null),
-            Dist(sup["ITM-006"], "BEN-MOS", 56m, null),
-            Dist(sup["ITM-006"], "BEN-KUF", 65m, null),
+            Dist(sup["ITM-006"], "ub", 75m, null),
+            Dist(sup["ITM-006"], "nu", 56m, null),
+            Dist(sup["ITM-006"], "tu", 65m, null),
             // Two more allocated items, so الشكل 50's tab can read «الاستلامات
             // 14» — seven warehouse and seven preliminary, which is the count
             // the plate prints. A preliminary receipt needs an allocation to
             // hand devices out against, so the allocation comes first.
-            Dist(sup["ITM-001"], "BEN-BAS", 60m, null),
-            Dist(sup["ITM-001"], "BEN-KUF", 40m, null),
-            Dist(sup["ITM-005"], "BEN-MOS", 104m, null),
-            Dist(sup["ITM-005"], "BEN-KUF", 80m, null)
+            Dist(sup["ITM-001"], "ub", 60m, null),
+            Dist(sup["ITM-001"], "tu", 40m, null),
+            Dist(sup["ITM-005"], "nu", 104m, null),
+            Dist(sup["ITM-005"], "tu", 80m, null)
         );
 
         // ── الاستلامات المخزنية (الشكل 55) ───────────────────────────────
@@ -1099,18 +1050,18 @@ public static class Fixture
             // ── الاستلامات الأولية (الشكل 52 · الشكل 56) ─────────────────
             // Against the DISTRIBUTION, not against the plate's own card: see
             // the method comment. Σ per item never exceeds what arrived.
-            Pr(sup["ITM-002"], "PR-0439-2-1", "2026-02-02", 34m, "BEN-BAS"),
-            Pr(sup["ITM-002"], "PR-0439-2-2", "2026-02-10", 61m, "BEN-MOS"),
-            Pr(sup["ITM-006"], "PR-0439-6-1", "2026-06-02", 45m, "BEN-BAS"),
-            Pr(sup["ITM-006"], "PR-0439-6-2", "2026-06-09", 34m, "BEN-MOS"),
-            Pr(sup["ITM-006"], "PR-0439-6-3", "2026-06-16", 39m, "BEN-KUF"),
+            Pr(sup["ITM-002"], "PR-0439-2-1", "2026-02-02", 34m, "ub"),
+            Pr(sup["ITM-002"], "PR-0439-2-2", "2026-02-10", 61m, "nu"),
+            Pr(sup["ITM-006"], "PR-0439-6-1", "2026-06-02", 45m, "ub"),
+            Pr(sup["ITM-006"], "PR-0439-6-2", "2026-06-09", 34m, "nu"),
+            Pr(sup["ITM-006"], "PR-0439-6-3", "2026-06-16", 39m, "tu"),
             // ITM-001: 57 arrived, all of it handed to البصرة, whose allocation
             // is 60 — so the item still owes 43 and البصرة is still owed 3.
-            Pr(sup["ITM-001"], "PR-0439-1-1", "2026-02-18", 57m, "BEN-BAS"),
+            Pr(sup["ITM-001"], "PR-0439-1-1", "2026-02-18", 57m, "ub"),
             // ITM-005: 106 arrived and 60 went to الموصل. The other 46 are
             // in the store against a Kufa allocation nobody has handed out
             // yet — which is exactly what «محجوز بانتظار الاستلام» means.
-            Pr(sup["ITM-005"], "PR-0439-5-1", "2026-03-11", 60m, "BEN-MOS")
+            Pr(sup["ITM-005"], "PR-0439-5-1", "2026-03-11", 60m, "nu")
         );
 
         db.SaveChanges();

@@ -77,13 +77,13 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-ALR-02` | `POST /api/alerts/{id}/ack` | `Features/Alerts/AlertsEndpoints.cs` | `alerts.api.ts` `acknowledge()` | — | Alerts |
 | `EP-SCT-01` | `GET /api/schedule-control` | `Features/ScheduleControl/ScheduleControlEndpoints.cs` | `schedule-control.api.ts` `list()` | BR-09 · BR-10 | Projects · Contracts · ContractAmendments · Workspaces |
 | `EP-RPT-01` | `GET /api/reports` | `Features/Reports/ReportsEndpoints.cs` | `reports.api.ts` `list()` | — | Projects *(+ the `EpmDb` model itself, read as data — see P-38)* |
-| `EP-OVW-01` | `GET /api/projects/{id}/overview` | `Features/Overview/OverviewEndpoints.cs` | `overview.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Workspaces · Beneficiaries · Alerts · BoqItems · Activities · Payments |
-| `EP-INF-01` | `GET /api/projects/{id}/information` | `Features/Information/InformationEndpoints.cs` | `information.api.ts` `get()` | BR-15 · `ProjectDefinition.RequiredFields` | Projects · Workspaces · Beneficiaries · ProjectActivityEvents |
+| `EP-OVW-01` | `GET /api/projects/{id}/overview` | `Features/Overview/OverviewEndpoints.cs` | `overview.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-10 · BR-11 · P-53 | Projects · Contracts · ContractAmendments · Workspaces · Alerts · BoqItems · Activities · Payments |
+| `EP-INF-01` | `GET /api/projects/{id}/information` | `Features/Information/InformationEndpoints.cs` | `information.api.ts` `get()` | BR-15 · `ProjectDefinition.RequiredFields` | Projects · Workspaces · ProjectActivityEvents |
 | `EP-PRJ-02` | `POST /api/projects` | `Features/Projects/ProjectsEndpoints.cs` | `projects.api.ts` `create()` → `project-form.page.ts` | BR-15 · المسار 1 step 3 | Projects · ProjectActivityEvents *(**written**)* |
 | `EP-PRJ-03` | `PUT /api/projects/{id}` | `Features/Projects/ProjectsEndpoints.cs` | `information.api.ts` `save()` → `information.page.ts` | BR-15 · المسار 1 step 3 | Projects · ProjectActivityEvents *(**written**)* |
 | `EP-PRJ-04` | `GET /api/projects/{id}/definition` | `Features/Projects/ProjectsEndpoints.cs` | `information.api.ts` `definition()` → `information.page.ts` | BR-15 | Projects · Workspaces · ProjectActivityEvents |
-| `EP-PRJ-05` | `GET /api/projects/{id}/beneficiaries` | `Features/Projects/ProjectsEndpoints.cs` | `boq.api.ts` `beneficiaries()` → `boq.page.ts` | BR-15 · 01 §2.1 | Projects · Beneficiaries |
-| `EP-PRJ-06` | `PUT /api/projects/{id}/beneficiaries` | `Features/Projects/ProjectsEndpoints.cs` | `boq.api.ts` `saveBeneficiaries()` → `boq.page.ts` | BR-15 · 01 §2.1 | Projects · Beneficiaries · ProjectActivityEvents *(**written**)* |
+| `EP-PRJ-05` | `GET /api/projects/{id}/beneficiaries` | `Features/Projects/ProjectsEndpoints.cs` | `boq.api.ts` `beneficiaries()` → `boq.page.ts` | BR-15 · 01 §2.1 | Projects · Workspaces |
+| `EP-PRJ-06` | `PUT /api/projects/{id}/beneficiaries` | `Features/Projects/ProjectsEndpoints.cs` | `boq.api.ts` `saveBeneficiaries()` → `boq.page.ts` | BR-15 · 01 §2.1 | Projects · Workspaces · ProjectActivityEvents *(**written**)* |
 | `EP-CON-01` | `GET /api/projects/{id}/contracts` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `register()` | BR-00 · BR-09 | Projects · Contracts · ContractAmendments · Payments |
 | `EP-CON-02` | `GET /api/projects/{id}/contracts/{contractId}` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `detail()` | BR-04 · BR-09 · BR-10 · P-76 | Projects · Contracts · ContractAmendments · Payments · BoqItems · BoqRateBands · BoqActivityLinks · Activities |
 | `EP-CON-03` | `POST /api/projects/{id}/contracts` | `Features/ContractTab/ContractEndpoints.cs` | `contract.api.ts` `create()` → `contract-form.page.ts` | BR-15 · المسار 2 | Contracts *(**written**)* |
@@ -93,8 +93,8 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-BOQ-02` | `GET /api/projects/{id}/boq/{contractId}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `register()` | BR-00 · BR-01 · BR-03 · BR-04 · BR-05 · BR-08 | Projects · Contracts · BoqItems · BoqRateBands · BoqActivityLinks · BoqDistributions · Activities |
 | `EP-BOQ-03` | `PUT …/boq/{contractId}/items/{code}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveItem()` | BR-05 · BR-08 | BoqItems · BoqRateBands · BoqDistributions |
 | `EP-BOQ-04` | `DELETE …/boq/{contractId}/items/{code}` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `deleteItem()` | BR-01 | BoqItems · BoqDistributions · BoqActivityLinks · BoqRateBands |
-| `EP-BOQ-05` | `GET …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `distribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Beneficiaries |
-| `EP-BOQ-06` | `PUT …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveDistribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Beneficiaries |
+| `EP-BOQ-05` | `GET …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `distribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Workspaces |
+| `EP-BOQ-06` | `PUT …/items/{code}/distribution` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveDistribution()` | BR-08 | Projects · BoqItems · BoqDistributions · Workspaces |
 | `EP-BOQ-07` | `GET …/boq/{contractId}/assignment` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `assignment()` | BR-02 · BR-03 | Contracts · BoqItems · BoqRateBands · BoqActivityLinks · Activities |
 | `EP-BOQ-08` | `PUT …/items/{code}/allocation` | `Features/Boq/BoqEndpoints.cs` | `boq.api.ts` `saveAllocation()` | BR-03 | BoqItems · BoqActivityLinks · Activities |
 | `EP-BOQ-09` | `POST …/boq/{contractId}/import/preview` | `Features/Boq/BoqImportEndpoints.cs` | `boq-import.api.ts` `preview()` | BR-01 · `Domain/BoqImport` | Projects · Contracts · BoqItems *(read only)* |
@@ -126,7 +126,7 @@ endpoint asks it; `Features/Dev/Personas` is the data it reads.
 | `EP-FIN-01` | `GET /api/projects/{id}/financials` | `Features/Financials/FinancialsEndpoints.cs` | `financials.api.ts` `get()` | BR-00 · BR-04 · BR-09 · BR-11 · BR-12 | Projects · Contracts · ContractAmendments · Payments · PaymentAttachments · PaymentAuditStages · ProjectAllocations · BoqItems · Activities |
 | `EP-FIN-02` | `POST /api/projects/{id}/financials/payments` | `Features/Financials/FinancialsEndpoints.cs` | `financials.api.ts` `registerPayment()` → `payment.wizard.ts` | BR-12 · D-03 · P-79 · P-96 | Payments · PaymentAttachments · PaymentAuditStages *(**written**)* |
 | `EP-SUP-01` | `GET /api/projects/{id}/supply/{contractId}` | `Features/Supply/SupplyEndpoints.cs` | `supply.api.ts` `register()` → `supply.page.ts` | BR-01 · BR-08 · `Domain/SupplyStatus` · `Domain/SupplyReceipts` | BoqItems · SupplyItemDetails · SupplyReceipts · SupplyReceiptAttachments · BoqDistributions |
-| `EP-SUP-02` | `GET …/supply/{contractId}/items/{code}` | `Features/Supply/SupplyEndpoints.cs` | `supply.api.ts` `item()` → `supply.page.ts` | BR-08 · `Domain/SupplyReceipts` | BoqItems · SupplyItemDetails · BoqDistributions · Beneficiaries · SupplyReceipts · SupplyReceiptAttachments |
+| `EP-SUP-02` | `GET …/supply/{contractId}/items/{code}` | `Features/Supply/SupplyEndpoints.cs` | `supply.api.ts` `item()` → `supply.page.ts` | BR-08 · `Domain/SupplyReceipts` | BoqItems · SupplyItemDetails · BoqDistributions · Workspaces · SupplyReceipts · SupplyReceiptAttachments |
 | `EP-SUP-03` | `GET …/supply/{contractId}/inquiry?q=` | `Features/Supply/SupplyEndpoints.cs` | `supply.api.ts` `inquiry()` → `supply.page.ts` | — *(one field, four ways in — الشكل 56)* | as `EP-SUP-02` |
 | `EP-SUP-04` | `POST …/supply/{contractId}/items/{code}/receipts` | `Features/Supply/SupplyEndpoints.cs` | `supply.api.ts` `recordReceipt()` → `supply.page.ts` | `Domain/SupplyReceipts` · المسار 11 | SupplyReceipts · SupplyReceiptAttachments *(**written**)* |
 
@@ -180,7 +180,6 @@ Only tables a built page reads. `Data/Entities/` holds documented starting point
 | `Lookups` | Phase 1.1 | `EP-LKP-01` |
 | `ContractAmendments` | PAGE-02 | `EP-CNT-01` · `EP-PRJ-01` |
 | `Alerts` | Phase 2.4 | `EP-ALR-01` · `EP-ALR-02` *(the only table a screen writes so far)* |
-| `Beneficiaries` | Phase 3 | `EP-OVW-01` — resolves the `Projects.BeneficiaryCodes` CSV (01 §2.1) |
 | `Payments` | Phase 4.1 | `EP-CON-01` · `EP-CON-02` · `EP-FIN-01` · `EP-PRG-01` · `EP-OVW-01` — the first table that can say what was actually paid |
 | `BoqItems` | Phase 4.2 | `EP-BOQ-01` … `EP-BOQ-08` — **written** by `EP-BOQ-03` / `EP-BOQ-04` |
 | `ContractAmendments` | PAGE-02 | **written** by `EP-WFL-01` (pending) and `EP-WFL-03` (effective) — BR-09's row is what MAKES a change effective |

@@ -47,14 +47,13 @@ export interface OverviewContract {
   consultant: string;
 }
 
+/** One workspace this project serves (P-174). There is no beneficiary table. */
 export interface OverviewBeneficiary {
   code: string;
   nameAr: string;
   nameEn: string;
-  type: string;
-  /** The 01 §2.1 parent — a faculty's university. Null at the root. */
-  parentNameAr: string | null;
-  parentNameEn: string | null;
+  /** Lookup kind `workspace-kind` (P-68). */
+  kind: string;
   /** False means it may not receive new quantity (01 §2.1). */
   active: boolean;
 }

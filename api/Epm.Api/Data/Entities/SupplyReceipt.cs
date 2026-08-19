@@ -49,7 +49,7 @@ public class SupplyReceipt
     public string Store { get; set; } = "";
 
     /// <summary>
-    /// → Beneficiary.Code. REQUIRED on a preliminary receipt: الشكل 54 «تُحمّل
+    /// → Workspace.Code (P-174). REQUIRED on a preliminary receipt: الشكل 54 «تُحمّل
     /// الجامعة المستلمة مسؤولية الكمية», and a hand-over to nobody is a quantity
     /// off the books with no owner. Empty on a warehouse receipt — a store is
     /// not a beneficiary.

@@ -29,7 +29,7 @@ public class ProjectDefinitionTests
         FundingType: "federal-budget",
         WorkspaceCode: "ub",
         PlannedCost: 340_000_000m,
-        BeneficiaryCodes: "BEN-UOB",
+        BeneficiaryCodes: "ub",
         Status: "ongoing",
         Formation: "وزارة التعليم العالي والبحث العلمي",
         OrgStructure: "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",

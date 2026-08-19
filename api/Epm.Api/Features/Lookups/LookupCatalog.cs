@@ -142,25 +142,15 @@ public static class LookupCatalog
         yield return L("funding-type", "carry-over-allocation",   "تخصيص مُدوَّر",         "Carry-over allocation");
         yield return L("funding-type", "other",                   "أخرى",                 "Other");
 
-        // ── 06 §6 — beneficiary types (6) ─────────────────────────────────
-        sort = 0;
-        yield return L("beneficiary-type", "university", "جامعة",       "University");
-        yield return L("beneficiary-type", "department", "دائرة",       "Department");
-        yield return L("beneficiary-type", "campus",     "حرم جامعي",   "Campus");
-        yield return L("beneficiary-type", "site",       "موقع",        "Site");
-        yield return L("beneficiary-type", "facility",   "منشأة",       "Facility");
-        yield return L("beneficiary-type", "other",      "أخرى",        "Other");
-
         // ── WORKSPACE KINDS (4) — ملحق الشاشات، الشكل 1 ────────────────────
         // The four filter chips the workspace register shows, verbatim from the
         // addendum: «جامعة حكومية · جامعة تقنية · وحدة مركزية · مديرية تجهيز».
         //
-        // A workspace kind is NOT a beneficiary type. The register used to label
-        // itself from `beneficiary-type`, which shares the word "university" and
-        // nothing else — a directorate rendered as the raw code `directorate`
-        // because that list has no such entry. Two different vocabularies for
-        // two different things (01 §2.1: beneficiaries RECEIVE quantity;
-        // workspaces OWN projects — see P-24).
+        // THIS IS ALSO THE BENEFICIARY VOCABULARY (P-174). `06 §6`'s separate
+        // six-value `beneficiary-type` list is GONE with the table it described:
+        // a beneficiary is a workspace playing a role on a project, so it is
+        // labelled from the one list that names the ministry's units. The BOQ
+        // drawer, the overview card and الشكل 5 all read `workspace-kind`.
         sort = 0;
         yield return L("workspace-kind", "state-university",     "جامعة حكومية",  "State university");
         yield return L("workspace-kind", "technical-university", "جامعة تقنية",   "Technical university");

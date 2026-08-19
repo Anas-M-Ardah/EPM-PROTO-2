@@ -1229,3 +1229,21 @@ button.d-file > .fm { align-items: flex-start; }
 .d-fgroup > .gb.flush > .d-tablewrap {
   margin: 0; border-inline: 0; border-bottom: 0; border-top: 0; border-radius: 0;
 }
+
+
+/* ── Z6's tab row (epm-module-bar) ──────────────────────────────────────
+   الشكل 12 puts «السجل · الربط بالأنشطة» on their own line under the module
+   title bar, as UNDERLINE tabs. `.d-tabs`/`.d-tab` (desktop.css:885) is
+   already that control — v1.1 §9's 2px accent underline — but it is written
+   to sit in page content: it opens with `margin-top: 16px` and carries no
+   plane of its own. In Z6 it is a BAND, so it takes the bar's own surface and
+   inline padding and loses the content margin. Only the last line of the pair
+   closes, or the two hairlines a row apart read as an empty box. */
+.d-tabs.z6-tabs { margin-top: 0; padding-inline: var(--space-20);
+  background: var(--surface-container-lowest); border-bottom-color: var(--stroke-subtle); }
+.d-pz6:has(+ .d-tabs.z6-tabs) { border-bottom: 0; }
+
+/* The count a tab carries — «السجل ٤». `.d-fchip .n` (desktop.css:387) styles
+   the same badge for filter chips; a tab had no rule because until now no tab
+   in this build carried one. Same treatment, so the two agree on screen. */
+.d-tab .n { font-size: var(--fs-100); opacity: .8; font-variant-numeric: tabular-nums; }
