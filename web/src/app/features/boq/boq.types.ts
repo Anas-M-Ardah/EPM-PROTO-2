@@ -64,6 +64,83 @@ export interface BoqRow {
   banded: boolean;
   /** The SUPPLY sub-type's half of the line (D-14), or null on a works bill. */
   supply: BoqSupplyDetail | null;
+  /**
+   * `04 §6` — the amendment badge and the cell delta, or null when no approved
+   * order has ever touched this line. Null rather than a zeroed object: an
+   * untouched row prints no badge, and a count of 0 is a badge.
+   */
+  amendment: BoqAmendmentMark | null;
+}
+
+export interface BoqAmendmentSource {
+  no: string;
+  /** From the LINE's own applied delta — a partial apply moves some lines and not others. */
+  isApplied: boolean;
+}
+
+/**
+ * `Domain/AmendmentDisclosure` decides `state`; this carries it and the two
+ * deltas the cell prints beneath its figure.
+ */
+export interface BoqAmendmentMark {
+  count: number;
+  appliedCount: number;
+  pendingCount: number;
+  /** applied · pending · mixed. */
+  state: string;
+  originalQty: number;
+  originalAmount: number;
+  /** Effective − original. SETTLED — already inside the row's own `qty`. */
+  deltaQty: number;
+  deltaAmount: number;
+  /** What the approved-unapplied orders would add. Null when none is awaiting application. */
+  pendingDeltaQty: number | null;
+  pendingDeltaAmount: number | null;
+  sources: BoqAmendmentSource[];
+}
+
+// ── EP-BOQ-17 · the drawer behind the badge ──────────────────────────────
+
+export interface BoqAmendmentStep {
+  no: string;
+  at: string | null;
+  isApplied: boolean;
+  qtyFrom: number;
+  qtyTo: number;
+  amountFrom: number;
+  amountTo: number;
+  /** BR-05's re-priced portion, attributed to the order that introduced it. */
+  excessQty: number;
+  excessRate: number | null;
+}
+
+export interface BoqAmendmentBand {
+  qty: number;
+  rate: number;
+  amount: number;
+  isExcess: boolean;
+  sourceNo: string | null;
+}
+
+export interface BoqAmendmentDetail {
+  code: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  unit: string;
+  count: number;
+  appliedCount: number;
+  pendingCount: number;
+  state: string;
+  originalQty: number;
+  originalAmount: number;
+  effectiveQty: number;
+  effectiveAmount: number;
+  blendedRate: number;
+  banded: boolean;
+  pendingQty: number | null;
+  pendingAmount: number | null;
+  chain: BoqAmendmentStep[];
+  bands: BoqAmendmentBand[];
 }
 
 /**
@@ -80,6 +157,7 @@ export interface BoqSupplyDetail {
   serialFrom: string;
   serialTo: string;
   suppliedQty: number;
+  /** DERIVED — Σ the item's WAREHOUSE receipts (المسار 11), never stored. */
   receivedQty: number;
   /** received · partial · supplied · pending. */
   status: string;
@@ -175,7 +253,8 @@ export interface BoqSupplyInput {
   serialFrom?: string;
   serialTo?: string;
   suppliedQty: number;
-  receivedQty: number;
+  // NO receivedQty: a new item has received nothing, and what it receives
+  // later is a محضر (المسار 11 · EP-SUP-04) rather than a field.
   warrantyMonths: number;
   warrantyExpiry?: string;
   notes?: string;
@@ -292,4 +371,64 @@ export interface BoqAllocationSave {
   /** True discards the override and restores BR-03's shares; `rows` is ignored. */
   reset: boolean;
   rows: BoqAllocationInput[];
+}
+
+// ── EP-BOQ-14 / 15 / 16 · «العروض» saved views (ملحق الشكل 12) ────────────
+
+/**
+ * A named set of register controls, restored by one click.
+ *
+ * A RECORD, NOT A BROWSER PREFERENCE. The reference holds these in
+ * localStorage; here they are rows owned by the X-Epm-User persona, so a view
+ * survives the session and one user never sees another's. See
+ * api/Epm.Api/Data/Entities/BoqSavedView.cs for the reasoning.
+ *
+ * `sortKey`/`sortDir` are the reference's `sort: { k, d }`, split in two.
+ */
+export interface BoqSavedView {
+  id: number;
+  name: string;
+  query: string;
+  /** The 06 §11 coverage chip. Empty string means «الكل». */
+  coverage: string;
+  /** The column keys that are SHOWN. A key absent from the grid is ignored. */
+  visibleColumns: string[];
+  /** The sorted column, or empty for the bill's own order (code within division). */
+  sortKey: string;
+  /** asc · desc. Ignored when `sortKey` is empty. */
+  sortDir: string;
+}
+
+/** Saving a view. A name that already exists updates that view rather than failing. */
+export interface BoqSavedViewInput {
+  name: string;
+  query: string;
+  coverage: string;
+  visibleColumns: string[];
+  sortKey: string;
+  sortDir: string;
+}
+
+// ── EP-PRJ-05 / 06 · «الجهات المستفيدة» (ملحق الشكل 12) ───────────────────
+
+/**
+ * One row of the ministry's master beneficiary list, with this project's use of
+ * it. Member names match `ProjectBeneficiaryRow` in
+ * api/Epm.Api/Features/Projects/ProjectsDto.cs — the endpoints live in the
+ * PROJECTS feature because the tick writes `Projects.BeneficiaryCodes`, even
+ * though the drawer opens from the BOQ toolbar.
+ */
+export interface ProjectBeneficiaryRow {
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  /** Lookup kind `beneficiary-type` (06 §6). */
+  type: string;
+  parentCode: string | null;
+  parentNameAr: string | null;
+  parentNameEn: string | null;
+  /** The ministry's own state. Independent of `assigned`. */
+  active: boolean;
+  /** The tick — does THIS project use it. */
+  assigned: boolean;
 }

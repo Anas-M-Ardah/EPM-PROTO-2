@@ -1,0 +1,269 @@
+<!--
+  ملحق الشكل 20 — تسجيل دفعة.
+
+  The plate draws step 5 and names the four before it on its own stepper:
+  العقود المشمولة · المبالغ والبنود · كتاب المالية · ذرعات الأعمال · مراجعة.
+  `.d-modal` and `.d-stepper` are the reference's own primitives — the BOQ
+  importer already uses them and no CSS is added here.
+
+  Every number, date and ID is <bdi>-isolated (05 §5.2).
+-->
+<div class="d-modal-scrim" (click)="closed.emit()">
+  <div class="d-modal" role="dialog" aria-modal="true"
+       [attr.aria-label]="lang.t('pay_w_title')" (click)="$event.stopPropagation()">
+
+    <div class="d-modal-head">
+      <b>{{ lang.t('pay_w_title') }}</b>
+      <button type="button" class="d-icon-btn sm"
+              [attr.aria-label]="lang.t('scd_rec_close')" (click)="closed.emit()">
+        <epm-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    <div class="d-stepper">
+      @for (s of steps; track s.n) {
+        <div class="d-step {{ stepState(s.n) }}">
+          <span class="n">
+            @if (stepState(s.n) === 'done') {
+              <epm-icon name="check" [size]="12" />
+            } @else {
+              <bdi>{{ s.n }}</bdi>
+            }
+          </span>
+          <span class="l">{{ lang.t(s.label) }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="d-modal-body">
+      @if (error()) {
+        <div class="d-inline-err">
+          <epm-icon name="error" [size]="15" /><span>{{ error() }}</span>
+        </div>
+      }
+
+      <!-- ══ 1 — العقود المشمولة ══════════════════════════════════════════ -->
+      @if (step() === 1) {
+        <p class="d-cell-sub">{{ lang.t('pay_w_s1_b') }}</p>
+        <div class="d-form-grid">
+          @for (c of opts(); track c.id) {
+            <label class="d-form-i" style="cursor: pointer">
+              <span class="k">
+                <input type="radio" name="paycontract" [value]="c.id"
+                       [checked]="contractId() === c.id"
+                       (change)="contractId.set(c.id)" />
+                <bdi>{{ c.id }}</bdi>
+              </span>
+              <span class="v">{{ lang.pick(c.nameAr, c.nameEn) }}</span>
+              <span class="d-cell-sub">
+                {{ lang.t('fin_revised') }}
+                <bdi class="mono">{{ fmt.money(c.revised) }}</bdi>
+              </span>
+            </label>
+          } @empty {
+            <span class="d-cell-sub">{{ lang.t('ovw_no_contracts_b') }}</span>
+          }
+        </div>
+      }
+
+      <!-- ══ 2 — المبالغ والبنود ══════════════════════════════════════════ -->
+      @if (step() === 2) {
+        <p class="d-cell-sub">{{ lang.t('pay_w_s2_b') }}</p>
+
+        <div class="d-form-grid">
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_kindlbl') }}</span>
+            <select class="epm-select" [value]="kind()"
+                    (change)="kind.set($any($event.target).value)">
+              <option value="advance">{{ lang.t('pay_w_kind_advance') }}</option>
+              <option value="interim">{{ lang.t('pay_w_kind_interim') }}</option>
+              <option value="final">{{ lang.t('pay_w_kind_final') }}</option>
+            </select>
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_gross') }} *</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="gross()"
+                   (input)="gross.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_retention') }}</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="retention()"
+                   (input)="retention.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_advance') }}</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="advance()"
+                   (input)="advance.set($any($event.target).value)" />
+          </label>
+        </div>
+
+        <!-- The net, as a PREVIEW. EP-FIN-02 computes the binding one from the
+             three figures above, so a net typed here could never disagree. -->
+        <div class="d-msgbar info">
+          <epm-icon name="functions" [size]="16" />
+          <div>
+            <b>{{ lang.t('pay_w_net') }} <bdi class="mono">{{ fmt.money(net()) }}</bdi></b>
+            <span>{{ lang.t('pay_w_net_note') }}</span>
+          </div>
+        </div>
+
+        <!-- الشكل 9's three expense items. Σ must equal the net, and the server
+             refuses it if it does not — this only makes the remainder visible
+             while it is being typed (05 §6). -->
+        <div class="d-form-grid">
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('con_award') }} *</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="award()"
+                   (input)="award.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('con_reserve') }}</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="reserve()"
+                   (input)="reserve.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('con_supervision') }}</span>
+            <input class="d-cellinput num" inputmode="decimal" [value]="supervision()"
+                   (input)="supervision.set($any($event.target).value)" />
+          </label>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_unallocated') }}</span>
+            <span class="v num"><bdi>{{ fmt.money(splitRemaining()) }}</bdi></span>
+            @if (splitRemaining() !== 0) {
+              <button type="button" class="d-btn sm" (click)="fillAward()">
+                {{ lang.t('pay_w_fill') }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ══ 3 — كتاب المالية ═════════════════════════════════════════════ -->
+      @if (step() === 3) {
+        <p class="d-cell-sub">{{ lang.t('pay_w_s3_b') }}</p>
+        <div class="d-form-grid">
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_letter_no') }} *</span>
+            <input class="d-cellinput" [value]="letterNo()"
+                   (input)="letterNo.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_letter_date') }} *</span>
+            <input class="d-cellinput" type="date" [value]="letterDate()"
+                   (input)="letterDate.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i" style="grid-column: 1 / -1">
+            <span class="k">{{ lang.t('pay_w_note') }}</span>
+            <input class="d-cellinput" [value]="note()"
+                   (input)="note.set($any($event.target).value)" />
+          </label>
+        </div>
+      }
+
+      <!-- ══ 4 — ذرعات الأعمال ════════════════════════════════════════════ -->
+      @if (step() === 4) {
+        <p class="d-cell-sub">{{ lang.t('pay_w_s4_b') }}</p>
+
+        <label class="d-btn">
+          <epm-icon name="upload" [size]="15" />{{ lang.t('pay_w_attach') }}
+          <input type="file" multiple hidden (change)="onFiles($event)" />
+        </label>
+
+        @if (files().length === 0) {
+          <!-- 04 §9 — a step that cannot be left, and the reason on screen. -->
+          <div class="d-empty">
+            <span class="d-empty-ico"><epm-icon name="folder_open" [size]="30" /></span>
+            <b>{{ lang.t('pay_w_need_file') }}</b>
+            <span>{{ lang.t('pay_w_s4_why') }}</span>
+          </div>
+        } @else {
+          <div class="d-tablewrap"><table class="d-table">
+            <thead><tr>
+              <th>{{ lang.t('pay_w_file') }}</th>
+              <th class="r" style="width: 110px">{{ lang.t('pay_w_size') }}</th>
+              <th style="width: 44px"></th>
+            </tr></thead>
+            <tbody>
+              @for (f of files(); track f.fileName + $index) {
+                <tr>
+                  <td class="mono"><bdi>{{ f.fileName }}</bdi></td>
+                  <td class="r mono"><bdi>{{ size(f.sizeBytes) }}</bdi></td>
+                  <td>
+                    <button type="button" class="d-icon-btn sm"
+                            [attr.aria-label]="lang.t('boq_delete')" (click)="removeFile($index)">
+                      <epm-icon name="delete" [size]="15" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table></div>
+        }
+      }
+
+      <!-- ══ 5 — المراجعة (the plate's own step) ══════════════════════════ -->
+      @if (step() === 5) {
+        <p class="d-cell-sub">{{ lang.t('pay_w_s5_b') }}</p>
+
+        <div class="d-form-grid">
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_s1') }}</span>
+            <span class="v">
+              <bdi class="mono">{{ contractId() }}</bdi>
+              @if (contract(); as c) { — {{ lang.pick(c.nameAr, c.nameEn) }} }
+            </span>
+          </div>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_kindlbl') }}</span>
+            <span class="v">{{ kindLabel() }}</span>
+          </div>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_gross') }}</span>
+            <span class="v num"><bdi>{{ fmt.money(grossN()) }}</bdi> {{ lang.t('cur_iqd') }}</span>
+          </div>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_net') }}</span>
+            <span class="v num"><bdi>{{ fmt.money(net()) }}</bdi> {{ lang.t('cur_iqd') }}</span>
+          </div>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_letter_no') }}</span>
+            <span class="v mono"><bdi>{{ letterNo() }}</bdi> · <bdi>{{ letterDate() }}</bdi></span>
+          </div>
+          <div class="d-form-i">
+            <span class="k">{{ lang.t('pay_w_s4') }}</span>
+            <span class="v num"><bdi>{{ files().length }}</bdi></span>
+          </div>
+        </div>
+
+        <!-- WHAT THIS REGISTERS, said before it is registered. P-26's rule
+             survives this screen and the reader is told so. -->
+        <div class="d-msgbar warning">
+          <epm-icon name="warning" [size]="16" />
+          <div>
+            <b>{{ lang.t('pay_w_pending_t') }}</b>
+            <span>{{ lang.t('pay_w_pending_b') }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="d-modal-foot">
+      <!-- The reason the step is closed, in words. A disabled button that says
+           nothing is the thing 05 §6 is against. -->
+      @if (stepError()) { <span class="d-cell-sub">{{ stepError() }}</span> }
+      <span class="sp"></span>
+      @if (step() > 1) {
+        <button type="button" class="d-btn" (click)="back()">{{ lang.t('boq_imp_back') }}</button>
+      }
+      @if (step() < 5) {
+        <button type="button" class="d-btn primary" [disabled]="!canNext()" (click)="next()">
+          {{ lang.t('boq_imp_next') }}
+        </button>
+      } @else {
+        <button type="button" class="d-btn primary" [disabled]="saving()" (click)="submit()">
+          {{ saving() ? lang.t('saving') : lang.t('pay_w_submit') }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

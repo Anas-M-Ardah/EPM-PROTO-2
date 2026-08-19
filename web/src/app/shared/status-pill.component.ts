@@ -95,6 +95,16 @@ const CANONICAL_TO_CSS: Record<string, string> = {
   'schedule-import-status:published': 'completed',
   'schedule-import-status:pending': 'suspended',
 
+  // `supply-status` (الشكل 50 · Domain/SupplyStatus). Four states on a line
+  // between contracted and received, and the pills say which: fully received
+  // is settled, partial is in flight, supplied-awaiting-receipt is waiting on
+  // somebody, and not-yet-supplied has not started. QUALIFIED, because
+  // `pending` and `partial` already mean other things on other lists.
+  'supply-status:received': 'completed',
+  'supply-status:partial': 'ongoing',
+  'supply-status:supplied': 'suspended',
+  'supply-status:pending': 'withdrawn',
+
   // `payment-status` (الشكل 9). All three used to fall through to the neutral
   // pill, so مصروف and مصادق عليه rendered IDENTICALLY — and those two are the
   // whole of P-26: only a paid certificate is spend. The gap is 41,225,000 on

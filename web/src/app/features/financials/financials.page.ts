@@ -8,6 +8,8 @@ import { SummaryStripComponent, Stat } from '../../shared/summary-strip.componen
 import { SectionComponent } from '../../shared/section.component';
 import { FieldGroupComponent } from '../../shared/field-group.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { PersonaService } from '../../core/persona';
+import { PaymentWizard } from './payment.wizard';
 import { LangService } from '../../core/lang';
 import { ToastService } from '../../shared/toast.service';
 import { LookupsService } from '../../core/lookups';
@@ -44,12 +46,14 @@ import { FinancialsAuditStage, FinancialsPayment, FinancialsResponse } from './f
 @Component({
   selector: 'epm-financials-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent, SectionComponent, FieldGroupComponent],
+  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+    SectionComponent, FieldGroupComponent, PaymentWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './financials.page.html',
 })
 export class FinancialsPage {
   private api = inject(FinancialsApi);
+  private persona = inject(PersonaService);
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
   toast = inject(ToastService);
@@ -270,6 +274,29 @@ export class FinancialsPage {
       this.selected.set(0);
       this.load();
     });
+  }
+
+  // ── ملحق الشكل 20 — «تسجيل دفعة» ───────────────────────────────────────
+
+  payOpen = signal(false);
+
+  /**
+   * P-96 — the capacity that raises a certificate. Mirrors
+   * `Personas.CanRegisterPayment` exactly: the party that MEASURES the works is
+   * the party that raises the certificate against them, so دائرة المهندس المقيم
+   * and مدير المشروع, and not المستخدم المختص who defined the contract.
+   *
+   * The server checks it too — this only decides whether the button is drawn,
+   * and what it draws instead is the REASON rather than nothing.
+   */
+  canRegister = computed(() =>
+    this.persona.current()?.party === 'دائرة المهندس المقيم'
+    || this.persona.current()?.party === 'مدير المشروع');
+
+  paymentRegistered() {
+    this.payOpen.set(false);
+    this.toast.show(this.lang.t('pay_w_registered'));
+    this.load();
   }
 
   load() {

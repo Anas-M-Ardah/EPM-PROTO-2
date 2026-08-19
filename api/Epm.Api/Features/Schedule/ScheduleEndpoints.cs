@@ -116,7 +116,11 @@ public static class ScheduleEndpoints
 
             var contractTotal = assignable.Sum(Basis);
 
-            var rows = Build(activities, Basis, contractTotal, p.DataDate);
+            // ROADMAP 4.5 — one query for the whole schedule, then a badge per
+            // activity row. The same trade SCR-W4 makes on the bill.
+            var marks = await Marks(db, contractId);
+
+            var rows = Build(activities, Basis, contractTotal, p.DataDate, marks);
 
             var acts = activities.Where(a => !a.IsMilestone).ToList();
             var achieved = acts.Sum(a => Basis(a) * a.ProgressPct / 100m);
@@ -134,13 +138,100 @@ public static class ScheduleEndpoints
                 .GroupBy(a => a.Status)
                 .ToDictionary(g => g.Key, g => g.Count());
 
+            // ── الشكل 23 · المقارنة والأثر ────────────────────────────────
+            // MILESTONES ARE EXCLUDED. A milestone has no duration and no cost,
+            // so it has no daily rate — it can be late, and that shows on the
+            // Gantt, but it cannot accrue prolongation overhead.
+            var impact = activities
+                .Where(a => !a.IsMilestone)
+                .Select(a => new { Act = a, Slip = Slip(a.BaselineFinish, a.ForecastFinish) ?? 0 })
+                .Where(x => x.Slip > 0)
+                .OrderByDescending(x => x.Slip)
+                .Select(x =>
+                {
+                    var r = ScheduleImpact.For(x.Act.BudgetedCost, x.Act.OriginalDuration, x.Slip);
+                    return new ScheduleImpactRow(
+                        x.Act.ActivityId, x.Act.NameAr, x.Act.NameEn, x.Act.Status, x.Act.IsCritical,
+                        Iso(x.Act.BaselineStart), Iso(x.Act.BaselineFinish),
+                        Iso(x.Act.ActualStart ?? x.Act.BaselineStart), Iso(x.Act.ForecastFinish),
+                        x.Act.OriginalDuration, x.Act.OriginalDuration + r.SlipDays,
+                        Q(ScheduleImpact.FloatBefore(x.Act.TotalFloat, r.SlipDays)), Q(x.Act.TotalFloat),
+                        r.SlipDays,
+                        M(x.Act.BudgetedCost), M(r.DailyRate), M(r.DailyOverhead), M(r.CostImpact));
+                })
+                .ToList();
+
+            var impactSummary = new ScheduleImpactSummary(
+                impact.Count,
+                impact.Count(i => i.IsCritical),
+                M(impact.Sum(i => i.CostImpact)),
+                ScheduleImpact.OverheadPct);
+
             return Results.Ok(new ScheduleResponse(
                 p.Id, p.NameAr, p.NameEn,
                 c.Id, c.NameAr, c.NameEn,
                 rows,
                 Timeline(activities, p.DataDate),
                 summary,
-                countByStatus));
+                countByStatus,
+                impact,
+                impactSummary,
+                await Baselines(db, c)));
+        });
+
+        // [EP-SCD-03] GET /api/projects/{projectId}/schedule/{contractId}/activities/{activityId}/amendments
+        // web: schedule/schedule.api.ts amendments() → schedule.page.ts
+        // spec: 04 §6 · ROADMAP 4.5 | rules: BR-09, AmendmentDisclosure
+        // tables: Activities · ChangeOrders · ChangeOrderActivities
+        //
+        // The same drawer EP-BOQ-17 fills for a BOQ line, over an activity's
+        // days instead of a line's quantities. One question, one component, two
+        // owners — which is what `04 §6` asks for and what ROADMAP 4.5 means by
+        // «identical for BOQ items and activities».
+        app.MapGet("/api/projects/{projectId}/schedule/{contractId}/activities/{activityId}/amendments",
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string activityId) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
+
+            var c = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == contractId);
+            if (c is null || c.ProjectId != projectId)
+                return Results.NotFound(new
+                {
+                    message = $"contract {contractId} not found in project {projectId}",
+                });
+
+            var a = await db.Activities.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ContractId == contractId && x.ActivityId == activityId);
+            if (a is null)
+                return Results.NotFound(new
+                {
+                    message = $"activity {activityId} not found in contract {contractId}",
+                });
+
+            var touches = (await Touches(db, contractId)).GetValueOrDefault(a.Id) ?? [];
+
+            // The state BEFORE any order reached it — the first order's own
+            // record of it. `Activities` has already moved, so it cannot answer.
+            var first = await db.ChangeOrderActivities.AsNoTracking()
+                .Where(x => x.ActivityId == a.Id)
+                .OrderBy(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            var r = AmendmentDisclosure.ForActivity(
+                first?.BeforeRemainingDuration ?? a.RemainingDuration,
+                first?.BeforeFinish ?? a.ForecastFinish,
+                touches);
+
+            return Results.Ok(new ScheduleAmendmentDetail(
+                a.ActivityId, a.NameAr, a.NameEn,
+                r.Count, r.AppliedCount, r.PendingCount, r.State,
+                r.OriginalRemaining, r.EffectiveRemaining, r.PendingRemaining,
+                Iso(r.OriginalFinish), Iso(r.EffectiveFinish), Iso(r.PendingFinish),
+                r.Chain.Select(s => new ScheduleAmendmentStep(
+                    s.No, Iso(s.At), s.IsApplied,
+                    s.RemainingFrom, s.RemainingTo, Iso(s.FinishFrom), Iso(s.FinishTo))).ToList()));
         });
     }
 
@@ -155,7 +246,8 @@ public static class ScheduleEndpoints
     /// second query (01 §2.5).
     /// </summary>
     private static List<ScheduleRowDto> Build(
-        List<Activity> activities, Func<Activity, decimal> basis, decimal contractTotal, DateOnly? dataDate)
+        List<Activity> activities, Func<Activity, decimal> basis, decimal contractTotal, DateOnly? dataDate,
+        IReadOnlyDictionary<int, ScheduleAmendmentMark> marks)
     {
         // path → display name, discovered from the activities that live under it
         var nodeNames = new Dictionary<string, string>();
@@ -240,20 +332,21 @@ public static class ScheduleEndpoints
             // divisor and would make every activity's relative weight equal its
             // absolute one, which is `02 §2`'s example collapsing to nothing.
             foreach (var a in mine.OrderBy(a => a.ActivityId, StringComparer.Ordinal))
-                rows.Add(Row(a, basis, contractTotal, g.Total, level + 1));
+                rows.Add(Row(a, basis, contractTotal, g.Total, level + 1, marks.GetValueOrDefault(a.Id)));
         }
 
         // Activities filed under no WBS node at all. They follow the tree rather
         // than vanish — an unclassified activity is still work in the contract.
         foreach (var a in activities.Where(a => string.IsNullOrWhiteSpace(a.WbsPath))
                                     .OrderBy(a => a.ActivityId, StringComparer.Ordinal))
-            rows.Add(Row(a, basis, contractTotal, contractTotal, 1));
+            rows.Add(Row(a, basis, contractTotal, contractTotal, 1, marks.GetValueOrDefault(a.Id)));
 
         return rows;
     }
 
     private static ScheduleRowDto Row(
-        Activity a, Func<Activity, decimal> basis, decimal contractTotal, decimal parentTotal, int level)
+        Activity a, Func<Activity, decimal> basis, decimal contractTotal, decimal parentTotal, int level,
+        ScheduleAmendmentMark? mark)
     {
         var w = ScheduleWeights.For(basis(a), contractTotal, parentTotal);
 
@@ -267,7 +360,154 @@ public static class ScheduleEndpoints
             a.IsCritical, a.IsMilestone,
             Q(w.Relative), Q(w.Absolute),
             M(a.BudgetedCost), a.Calendar, a.Predecessors,
-            Slip(a.BaselineFinish, a.ForecastFinish));
+            Slip(a.BaselineFinish, a.ForecastFinish),
+            mark);
+    }
+
+    // ── ROADMAP 4.5 · 04 §6 — which orders touched which activity ────────
+    //
+    // The schedule half of the disclosure SCR-W4 gives the bill, over the same
+    // `Domain/AmendmentDisclosure`. An activity moves DAYS, so the touch is a
+    // signed day count and the finish follows it.
+    //
+    // APPLIED IS READ FROM THE ACTIVITY ROW, not the order: `AppliedDeltaDays`
+    // is written activity by activity by the apply run (`03 §9` step 6), so a
+    // partially applied order marks what it actually moved.
+    //
+    // The PENDING figure is the APPROVED day count, and falls back to the
+    // analysis figure when the committee has not fixed one — `03 §9` tab 3
+    // keeps the three counts apart deliberately, and the requested one is the
+    // contractor's ask, which discloses nothing about the contract.
+    private static async Task<Dictionary<int, List<AmendmentDisclosure.ActivityTouch>>> Touches(
+        EpmDb db, string contractId)
+    {
+        var orders = await db.ChangeOrders.AsNoTracking()
+            .Where(o => o.ContractId == contractId
+                     && (o.Lifecycle == "approved" || o.Lifecycle == "applied_partial" || o.Lifecycle == "closed"))
+            .OrderBy(o => o.No)
+            .ToListAsync();
+        if (orders.Count == 0) return [];
+
+        var orderIds = orders.Select(o => o.Id).ToList();
+        var coActs = await db.ChangeOrderActivities.AsNoTracking()
+            .Where(a => orderIds.Contains(a.ChangeOrderId))
+            .ToListAsync();
+
+        var byActivity = new Dictionary<int, List<AmendmentDisclosure.ActivityTouch>>();
+
+        foreach (var o in orders)
+        foreach (var a in coActs.Where(a => a.ChangeOrderId == o.Id))
+        {
+            var applied = a.AppliedDeltaDays is not null;
+            var days = applied
+                ? a.AppliedDeltaDays!.Value
+                : a.ApprovedDeltaDays ?? a.AnalysisDays ?? 0;
+
+            // Nothing proposed and nothing approved is nothing to disclose.
+            if (!applied && a.ApprovedDeltaDays is null && a.AnalysisDays is null) continue;
+
+            if (!byActivity.TryGetValue(a.ActivityId, out var list))
+                byActivity[a.ActivityId] = list = [];
+
+            list.Add(new AmendmentDisclosure.ActivityTouch(
+                o.No, o.DecisionDate ?? o.IncomingDate, applied, days));
+        }
+
+        return byActivity;
+    }
+
+    /// <summary>
+    /// The badge's own facts, keyed by `Activity.Id`. Activities nothing has
+    /// touched are absent from the map rather than present with a zero count —
+    /// the row then carries no badge at all.
+    /// </summary>
+    private static async Task<Dictionary<int, ScheduleAmendmentMark>> Marks(EpmDb db, string contractId)
+    {
+        var touches = await Touches(db, contractId);
+        if (touches.Count == 0) return [];
+
+        // The ORIGINAL remaining duration is the one the FIRST order recorded
+        // as `BeforeRemainingDuration` — `Activities.RemainingDuration` has
+        // already moved by every applied order, so reading it here would make
+        // the delta zero on exactly the rows that have one.
+        var coActs = await db.ChangeOrderActivities.AsNoTracking()
+            .Where(a => touches.Keys.Contains(a.ActivityId))
+            .ToListAsync();
+
+        var marks = new Dictionary<int, ScheduleAmendmentMark>();
+        foreach (var (activityId, list) in touches)
+        {
+            var original = coActs
+                .Where(a => a.ActivityId == activityId)
+                .OrderBy(a => a.Id)
+                .Select(a => a.BeforeRemainingDuration)
+                .First();
+
+            var r = AmendmentDisclosure.ForActivity(original, null, list);
+
+            marks[activityId] = new ScheduleAmendmentMark(
+                r.Count, r.AppliedCount, r.PendingCount, r.State,
+                r.OriginalRemaining,
+                r.EffectiveRemaining - r.OriginalRemaining,
+                r.PendingRemaining is null ? null : r.PendingRemaining.Value - r.EffectiveRemaining,
+                list.Select(t => new ScheduleAmendmentSource(t.No, t.IsApplied)).ToList());
+        }
+
+        return marks;
+    }
+
+    /// <summary>
+    /// الشكل 23's «مرشح إصدار خط الأساس (جدول منقّح)».
+    ///
+    /// ONE ENTRY PER BASELINE THE CONTRACT HAS ACTUALLY HAD, and the list is
+    /// built from `ScheduleImportVersions` rather than invented, because that
+    /// table IS the record of every re-baseline: `EP-SCD-06` is the only route
+    /// in the system that writes `Activities.BaselineStart/Finish`, and it
+    /// stamps the version it wrote them from and supersedes the one before.
+    ///
+    /// `BL-0` is the baseline the contract started with — the programme that
+    /// came in with the contract, before any P6 re-import. It is always first,
+    /// and on a contract that has never been re-baselined it is the only entry,
+    /// so the page renders a static field rather than a select.
+    ///
+    /// WHICH ONE IS CURRENT IS NOT A PREFERENCE. The slip, the float and the
+    /// whole impact view are measured from the dates now sitting on
+    /// `Activities`, so the current entry is the approved version that put them
+    /// there — the newest `approved` row, or `BL-0` when there is none. A
+    /// superseded entry is listed so a reader can see what the schedule USED to
+    /// be measured against, never so the figures can be recomputed against it;
+    /// that would report two schedules on one screen.
+    ///
+    /// An import still `submitted` is NOT here. It has changed nothing yet, and
+    /// listing it would name a baseline no figure on the screen was measured
+    /// from. It belongs to `EP-SCD-07`'s version list, which is where a pending
+    /// submission is shown.
+    /// </summary>
+    private static async Task<List<ScheduleBaselineOption>> Baselines(EpmDb db, Contract c)
+    {
+        var versions = await db.ScheduleImportVersions.AsNoTracking()
+            .Where(v => v.ContractId == c.Id && (v.State == "approved" || v.State == "superseded"))
+            .OrderBy(v => v.No)
+            .ToListAsync();
+
+        // The newest APPROVED version owns the dates on `Activities` right now.
+        // Everything else — every superseded row included — is history.
+        var current = versions.LastOrDefault(v => v.State == "approved");
+
+        var options = new List<ScheduleBaselineOption>
+        {
+            new("BL-0", "خط الأساس الأصلي", "Original baseline",
+                c.Start.ToString("yyyy-MM-dd"), current is null),
+        };
+
+        options.AddRange(versions.Select(v => new ScheduleBaselineOption(
+            $"BL-{v.No}",
+            $"جدول منقّح — الإصدار {v.No}",
+            $"Revised programme — version {v.No}",
+            (v.ApprovedAt ?? v.At).ToString("yyyy-MM-dd"),
+            current is not null && v.Id == current.Id)));
+
+        return options;
     }
 
     /// <summary>

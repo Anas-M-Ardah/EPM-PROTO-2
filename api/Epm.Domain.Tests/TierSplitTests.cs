@@ -5,6 +5,61 @@ namespace Epm.Domain.Tests;
 /// <summary>BR-05 · 02 §5 — THE 20% RULE.</summary>
 public class TierSplitTests
 {
+    // ── BANDED vs MULTI-RATE (02 §5) ─────────────────────────────────────
+    // Two different facts that used to be one flag. Found by ROADMAP 4.5:
+    // an order applied INSIDE the 20% threshold writes one band at the
+    // contract rate, and the register printed «سعر مركّب» over it.
+
+    [Fact]
+    public void One_band_at_the_contract_rate_is_banded_and_NOT_multi_rate()
+    {
+        var line = TierSplit.Effective(18_000m, 1_250m, [new TierSplit.Band(20_000m, 1_250m)]);
+
+        Assert.True(line.Banded);
+        Assert.False(line.MultiRate);
+        Assert.Equal(1_250m, line.Rate);
+        Assert.Equal(25_000_000m, line.Amount);
+    }
+
+    [Fact]
+    public void Two_bands_at_two_rates_are_both()
+    {
+        // BQ-006's own case: 1,680 at 24,000 and the 30 beyond the threshold
+        // at the 26,000 لجنة تثبيت الأسعار fixed.
+        var line = TierSplit.Effective(1_400m, 24_000m, [
+            new TierSplit.Band(1_680m, 24_000m),
+            new TierSplit.Band(30m, 26_000m),
+        ]);
+
+        Assert.True(line.Banded);
+        Assert.True(line.MultiRate);
+        Assert.Equal(1_710m, line.Qty);
+        Assert.Equal(41_100_000m, line.Amount);
+    }
+
+    [Fact]
+    public void Two_bands_at_ONE_rate_are_not_multi_rate_either()
+    {
+        // A redistribution splits a line's quantity without re-pricing it.
+        var line = TierSplit.Effective(8_800m, 3_000m, [
+            new TierSplit.Band(5_000m, 3_000m),
+            new TierSplit.Band(3_300m, 3_000m),
+        ]);
+
+        Assert.True(line.Banded);
+        Assert.False(line.MultiRate);
+    }
+
+    [Fact]
+    public void A_line_with_no_bands_is_neither()
+    {
+        var line = TierSplit.Effective(100m, 500m, []);
+
+        Assert.False(line.Banded);
+        Assert.False(line.MultiRate);
+        Assert.Equal(50_000m, line.Amount);
+    }
+
     [Fact]
     public void Worked_example_increase_original_100_add_30()
     {

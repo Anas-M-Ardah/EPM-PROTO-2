@@ -97,10 +97,15 @@ export interface PenaltyImpact {
   capAfter: number;
   /** What the applied amendments bought. */
   waived: number;
-  /** الغرامة اليومية before and after — BR-10 computed it all along (الشكل 10). */
+  /**
+   * الغرامة اليومية before and after — BR-10 computed it all along (الشكل 10).
+   * An applied order moves it in EITHER direction: it is value ÷ duration ×
+   * rate, and an extension raises both terms of the fraction.
+   */
   perDayBefore: number;
   perDayAfter: number;
-  perDayPct: number;
+  /** نسبة الغرامة — applied to value ÷ duration, NOT to the value per day. */
+  ratePct: number;
   capPct: number;
   /** True when no forecast finish is recorded — nothing is known about lateness. */
   unavailable: boolean;

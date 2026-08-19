@@ -106,6 +106,59 @@ public static class BoqEndpoints
             return ctx.Error ?? Results.Ok(await Register(db, ctx));
         });
 
+        // [EP-BOQ-17] GET /api/projects/{projectId}/boq/{contractId}/items/{code}/amendments
+        // web: boq/boq.api.ts amendments() → amendment-panel.component.ts
+        // spec: 04 §6 · ROADMAP 4.5 | rules: BR-05, BR-09, AmendmentDisclosure
+        // tables: BoqItems · BoqRateBands · ChangeOrders · ChangeOrderLines
+        //
+        // The drawer behind the row badge. It answers one question — «كيف
+        // عُدِّل هذا البند؟» — and SCR-W5 asks the same question of an activity
+        // through EP-SCD-03. One shape of answer, two owners, because a BOQ
+        // line moves quantities and an activity moves days.
+        app.MapGet("/api/projects/{projectId}/boq/{contractId}/items/{code}/amendments",
+            async (EpmDb db, HttpContext http, string projectId, string contractId, string code) =>
+        {
+            var ctx = await Load(db, http, projectId, contractId);
+            if (ctx.Error is not null) return ctx.Error;
+
+            var item = await db.BoqItems.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.ContractId == contractId && i.Code == code);
+            if (item is null)
+                return Results.NotFound(new { message = $"BOQ item {code} not found in contract {contractId}" });
+
+            var bandRows = await db.BoqRateBands.AsNoTracking()
+                .Where(b => b.BoqItemId == item.Id).OrderBy(b => b.Seq).ToListAsync();
+            var effective = TierSplit.Effective(item.OriginalQty, item.UnitRate, BandsOf(bandRows, item.Id));
+
+            var touches = (await Touches(db, contractId)).GetValueOrDefault(item.Id) ?? [];
+            var r = AmendmentDisclosure.For(item.OriginalQty, item.OriginalQty * item.UnitRate, touches);
+
+            // The band's source order, by number rather than by id, so the
+            // drawer can print «ما يزيد على 20% — VO-01» without a second read.
+            var orderNo = await db.ChangeOrders.AsNoTracking()
+                .Where(o => o.ContractId == contractId)
+                .ToDictionaryAsync(o => o.Id, o => o.No);
+
+            var bands = bandRows
+                .Select(b => new BoqAmendmentBand(
+                    Q(b.Qty), M(b.Rate), M(b.Qty * b.Rate), b.IsExcessBand,
+                    b.SourceChangeOrderId is { } id ? orderNo.GetValueOrDefault(id) : null))
+                .ToList();
+
+            return Results.Ok(new BoqAmendmentDetail(
+                item.Code, item.DescriptionAr, item.DescriptionEn, item.Unit,
+                r.Count, r.AppliedCount, r.PendingCount, r.State,
+                Q(item.OriginalQty), M(item.OriginalQty * item.UnitRate),
+                Q(effective.Qty), M(effective.Amount), M(effective.Rate), effective.MultiRate,
+                r.PendingQty is null ? null : Q(r.PendingQty.Value),
+                r.PendingValue is null ? null : M(r.PendingValue.Value),
+                r.Chain.Select(s => new BoqAmendmentStep(
+                    s.No, s.At?.ToString("yyyy-MM-dd"), s.IsApplied,
+                    Q(s.QtyFrom), Q(s.QtyTo), M(s.ValueFrom), M(s.ValueTo),
+                    Q(s.ExcessQty), s.ExcessRate is null ? null : M(s.ExcessRate.Value))).ToList(),
+                bands));
+        });
+
         // [EP-BOQ-03] PUT /api/projects/{projectId}/boq/{contractId}/items/{code}
         // web: boq/boq.api.ts saveItem() → boq.page.ts
         // spec: 04 §4 | rules: BR-05 | tables: BoqItems · BoqRateBands
@@ -169,7 +222,7 @@ public static class BoqEndpoints
         });
 
         // [EP-BOQ-12] POST /api/projects/{projectId}/boq/{contractId}/items
-        // web: not wired yet — API only
+        // web: boq.api.ts addItem() → boq.page.ts (the «إدخال يدوي» form)
         // spec: المسار 3 step 3ب «إدخال البنود يدويًا بندًا بندًا» · ملحق الشكل 12
         // rules: BR-01, D-14 | tables: BoqItems · SupplyItemDetails (WRITTEN)
         //
@@ -244,14 +297,12 @@ public static class BoqEndpoints
             // than flagged afterwards (05 §6 — prevent invalid input).
             if (input.Supply is { } sup)
             {
-                if (sup.SuppliedQty < 0m || sup.ReceivedQty < 0m)
-                    return Results.BadRequest(new { message = "الكميات المجهَّزة والمستلمة لا تكون سالبة" });
-                if (sup.ReceivedQty > sup.SuppliedQty)
-                    return Results.BadRequest(new
-                    {
-                        messageAr = "الكمية المستلمة لا تتجاوز المجهَّزة.",
-                        messageEn = "Received quantity cannot exceed the supplied quantity.",
-                    });
+                // THE RECEIVED QUANTITY IS NOT AN INPUT. A new item has received
+                // nothing by construction, and what it receives afterwards is a
+                // محضر recorded through `EP-SUP-04` (المسار 11) — never a number
+                // typed on a form.
+                if (sup.SuppliedQty < 0m)
+                    return Results.BadRequest(new { message = "الكمية المجهَّزة لا تكون سالبة" });
                 if (sup.SuppliedQty > input.Qty)
                     return Results.BadRequest(new
                     {
@@ -289,7 +340,9 @@ public static class BoqEndpoints
                     SerialFrom = (s.SerialFrom ?? "").Trim(),
                     SerialTo = (s.SerialTo ?? "").Trim(),
                     SuppliedQty = s.SuppliedQty,
-                    ReceivedQty = s.ReceivedQty,
+                    // NO ReceivedQty. A newly entered item has received nothing
+                    // by construction, and what it has received later is Σ its
+                    // receipts (المسار 11) — there is no column to seed.
                     WarrantyMonths = s.WarrantyMonths,
                     WarrantyExpiry = DateOnly.TryParse(s.WarrantyExpiry, out var w) ? w : null,
                     Notes = (s.Notes ?? "").Trim(),
@@ -521,7 +574,109 @@ public static class BoqEndpoints
 
             return Results.Ok(await Assignment(db, ctx, "cost"));
         });
+
+        // ── «العروض» — the register's saved views (الشكل 12) ─────────────
+        //
+        // THE ONLY ROUTES IN THIS FILE THAT CARRY NO PROJECT AND NO CONTRACT,
+        // and that is the design (BoqSavedView): a view stores a search string,
+        // a coverage chip and a set of column toggles — none of it scoped to a
+        // bill — and the reference keys its whole store on one unscoped string.
+        // The owner is the persona, so there is no workspace to guard (BR-15):
+        // filtering by `UserId` IS the rule, and it is applied on all three.
+
+        // [EP-BOQ-14] GET /api/boq/views
+        // web: boq.api.ts views() → boq.page.ts | spec: ملحق الشكل 12 · boq-register.jsx:575
+        // rules: — | tables: BoqSavedViews
+        app.MapGet("/api/boq/views", async (EpmDb db, HttpContext http) =>
+        {
+            var user = WorkspaceScope.User(http);
+
+            var views = await db.BoqSavedViews.AsNoTracking()
+                .Where(v => v.UserId == user.Id)
+                .OrderBy(v => v.Name)
+                .ToListAsync();
+
+            return Results.Ok(views.Select(Dto).ToList());
+        });
+
+        // [EP-BOQ-15] POST /api/boq/views
+        // web: boq.api.ts saveView() → boq.page.ts | spec: ملحق الشكل 12
+        // rules: — | tables: BoqSavedViews (WRITTEN)
+        //
+        // SAVING OVER A NAME REPLACES IT, which is the reference's own rule
+        // (`saveView` filters the name out before appending). An upsert is right
+        // here rather than a 409: «حفظ العرض الحالي» under a name you already
+        // use is how a person UPDATES a view, and there is no other control that
+        // would let them.
+        app.MapPost("/api/boq/views", async (EpmDb db, HttpContext http, BoqSavedViewInput input) =>
+        {
+            var user = WorkspaceScope.User(http);
+
+            var name = (input.Name ?? "").Trim();
+            if (name.Length == 0)
+                return Results.BadRequest(new
+                {
+                    messageAr = "اسم العرض مطلوب.",
+                    messageEn = "The view needs a name.",
+                });
+
+            var existing = await db.BoqSavedViews
+                .FirstOrDefaultAsync(v => v.UserId == user.Id && v.Name == name);
+
+            var row = existing ?? new BoqSavedView
+            {
+                UserId = user.Id,
+                Name = name,
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            row.Query = (input.Query ?? "").Trim();
+            row.Coverage = input.Coverage ?? "";
+            // Normalised here so the stored CSV cannot carry blanks or spacing
+            // that the client would then have to defend against on restore.
+            row.VisibleColumns = string.Join(",", (input.VisibleColumns ?? [])
+                .Select(c => (c ?? "").Trim())
+                .Where(c => c.Length > 0));
+            row.SortKey = (input.SortKey ?? "").Trim();
+            // Anything that is not `desc` is `asc`, including the empty string:
+            // a direction is only meaningful beside a key, and a stored "" would
+            // restore as a sort with no direction at all.
+            row.SortDir = input.SortDir == "desc" ? "desc" : "asc";
+
+            if (existing is null) db.BoqSavedViews.Add(row);
+            await db.SaveChangesAsync();
+
+            return Results.Ok(Dto(row));
+        });
+
+        // [EP-BOQ-16] DELETE /api/boq/views/{id}
+        // web: boq.api.ts deleteView() → boq.page.ts | spec: ملحق الشكل 12
+        // rules: — | tables: BoqSavedViews (WRITTEN)
+        //
+        // The `UserId` clause is not belt-and-braces: without it the id alone
+        // would let one persona delete another's view.
+        app.MapDelete("/api/boq/views/{id:int}", async (EpmDb db, HttpContext http, int id) =>
+        {
+            var user = WorkspaceScope.User(http);
+
+            var row = await db.BoqSavedViews
+                .FirstOrDefaultAsync(v => v.Id == id && v.UserId == user.Id);
+
+            if (row is null) return Results.NotFound();
+
+            db.BoqSavedViews.Remove(row);
+            await db.SaveChangesAsync();
+
+            return Results.NoContent();
+        });
     }
+
+    private static BoqSavedViewDto Dto(BoqSavedView v) => new(
+        v.Id, v.Name, v.Query, v.Coverage,
+        v.VisibleColumns.Length == 0
+            ? []
+            : v.VisibleColumns.Split(',', StringSplitOptions.RemoveEmptyEntries),
+        v.SortKey, v.SortDir);
 
     // ── the scope check, once ────────────────────────────────────────────
 
@@ -576,6 +731,21 @@ public static class BoqEndpoints
                 .ToDictionaryAsync(s => s.BoqItemId)
             : [];
 
+        // الكمية المستلمة — DERIVED, Σ the WAREHOUSE receipts (المسار 11). One
+        // query for the whole bill; `SupplyOf` is handed the sum rather than
+        // going back to the database once per row.
+        var received = kind == BoqKind.Supply
+            ? (await db.SupplyReceipts.AsNoTracking()
+                    .Where(r => r.Kind == Domain.SupplyReceipts.Warehouse
+                             && model.Select(d => d.Item.Id).Contains(r.BoqItemId))
+                    .ToListAsync())
+                .GroupBy(r => r.BoqItemId)
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.Qty))
+            : [];
+
+        // ROADMAP 4.5 — one query for the whole bill, then a badge per row.
+        var touches = await Touches(db, ctx.Contract.Id);
+
         var rows = new List<BoqRow>();
         foreach (var d in model)
         {
@@ -586,10 +756,12 @@ public static class BoqEndpoints
                 d.Weight, Q(d.SharesTotal), Q(d.AssignedWeight), d.Links.Count, d.Coverage,
                 Q(d.Progress.Progress), M(d.Progress.AchievedAmount), Q(d.Progress.AchievedQty),
                 Q(d.Distribution.Distributed), Q(d.Distribution.Remaining), d.Distribution.State,
-                d.Line.Banded,
+                d.Line.MultiRate,
                 // The EFFECTIVE quantity is the contracted base for status, not
                 // the original — an applied change order moves what is owed.
-                SupplyOf(kind, supply.GetValueOrDefault(d.Item.Id), d.Line.Qty)));
+                SupplyOf(kind, supply.GetValueOrDefault(d.Item.Id), d.Line.Qty,
+                    received.GetValueOrDefault(d.Item.Id)),
+                MarkOf(d.Item, d.Line.Qty, d.Line.Amount, touches.GetValueOrDefault(d.Item.Id))));
         }
 
         // Divisions in first-appearance order — a division is a label on the
@@ -692,7 +864,7 @@ public static class BoqEndpoints
     }
 
     private static BoqSupplyDetail? SupplyOf(
-        string kind, Data.Entities.SupplyItemDetail? detail, decimal contractedQty)
+        string kind, Data.Entities.SupplyItemDetail? detail, decimal contractedQty, decimal receivedQty)
     {
         if (kind != BoqKind.Supply) return null;
 
@@ -704,12 +876,15 @@ public static class BoqEndpoints
         // status filter and leave a hole in a column the register always shows.
         var s = detail ?? new Data.Entities.SupplyItemDetail();
 
+        // DERIVED, never stored — Σ the item's WAREHOUSE receipts (المسار 11).
+        // The caller reads them once for the whole bill and hands the sum in;
+        // a per-row query here would be twelve round trips to draw one register.
         return new BoqSupplyDetail(
             s.Manufacturer, s.Country, s.Model, s.SerialFrom, s.SerialTo,
-            Q(s.SuppliedQty), Q(s.ReceivedQty),
-            SupplyStatus.Of(contractedQty, s.SuppliedQty, s.ReceivedQty),
-            Q(SupplyStatus.ReceivedPct(contractedQty, s.ReceivedQty)),
-            Q(SupplyStatus.Remaining(contractedQty, s.ReceivedQty)),
+            Q(s.SuppliedQty), Q(receivedQty),
+            SupplyStatus.Of(contractedQty, s.SuppliedQty, receivedQty),
+            Q(SupplyStatus.ReceivedPct(contractedQty, receivedQty)),
+            Q(SupplyStatus.Remaining(contractedQty, receivedQty)),
             s.WarrantyMonths,
             s.WarrantyExpiry?.ToString("yyyy-MM-dd"),
             s.Notes);
@@ -831,6 +1006,151 @@ public static class BoqEndpoints
         var bands = await db.BoqRateBands.AsNoTracking()
             .Where(b => b.BoqItemId == item.Id).OrderBy(b => b.Seq).ToListAsync();
         return TierSplit.Effective(item.OriginalQty, item.UnitRate, BandsOf(bands, item.Id)).Qty;
+    }
+
+    // ── ROADMAP 4.5 · 04 §6 — which orders touched which line ────────────
+    //
+    // ONE QUERY FOR THE WHOLE BILL, not one per row: the register draws twelve
+    // lines and the drawer draws one, and both read this.
+    //
+    // An order counts once it is APPROVED — before that it is a proposal and
+    // `04 §6` has nothing to disclose. Whether it has been APPLIED is read from
+    // the LINE, not the order: `AppliedDeltaQty` is written line by line by the
+    // apply run (`03 §9` step 3), so a partially applied order marks the lines
+    // it actually moved and leaves the rest pending. Reading the order's
+    // lifecycle instead would mark every line of an `applied_partial` order as
+    // settled, which is the one state that word exists to deny.
+    //
+    // The PENDING delta comes from `Domain/ChangeOrderRecord.For` on the
+    // approved column — the same function الشكل 31 draws the record's own
+    // figures with. Computing it here would be a second answer to «كم يضيف هذا
+    // الأمر إلى هذا البند؟», and the two would eventually differ.
+    private static async Task<Dictionary<int, List<AmendmentDisclosure.Touch>>> Touches(
+        EpmDb db, string contractId)
+    {
+        var orders = await db.ChangeOrders.AsNoTracking()
+            .Where(o => o.ContractId == contractId
+                     && (o.Lifecycle == "approved" || o.Lifecycle == "applied_partial" || o.Lifecycle == "closed"))
+            .OrderBy(o => o.No)
+            .ToListAsync();
+        if (orders.Count == 0) return [];
+
+        var orderIds = orders.Select(o => o.Id).ToList();
+        var lines = await db.ChangeOrderLines.AsNoTracking()
+            .Where(l => orderIds.Contains(l.ChangeOrderId))
+            .ToListAsync();
+
+        var byItem = new Dictionary<int, List<AmendmentDisclosure.Touch>>();
+
+        void Add(int boqItemId, AmendmentDisclosure.Touch t)
+        {
+            if (!byItem.TryGetValue(boqItemId, out var list))
+                byItem[boqItemId] = list = [];
+            list.Add(t);
+        }
+
+        var bandRows = await db.BoqRateBands.AsNoTracking()
+            .Where(b => b.IsExcessBand && b.SourceChangeOrderId != null)
+            .ToListAsync();
+
+        foreach (var o in orders)
+        foreach (var l in lines.Where(l => l.ChangeOrderId == o.Id))
+        {
+            var applied = l.AppliedDeltaQty is not null;
+            var at = o.DecisionDate ?? o.IncomingDate;
+
+            decimal deltaQty, deltaValue, excessQty = 0m;
+            decimal? excessRate = null;
+
+            if (applied)
+            {
+                deltaQty = l.AppliedDeltaQty!.Value;
+
+                // A REDISTRIBUTION'S VALUE IS NOT ZERO AT THE LINE. `03 §9`
+                // moves quantity between two lines at ONE rate, so the contract
+                // value does not move — but each of the two lines does, by
+                // qty × rate in opposite directions. `AppliedAmount` records
+                // the CONTRACT's zero, which is the right figure for the order
+                // and the wrong one for the row: the register's own amount has
+                // already moved, and a chain saying it did not would contradict
+                // the cell it is explaining.
+                deltaValue = l.ChangeType == "redist"
+                    ? deltaQty * l.BeforeRate
+                    : l.AppliedAmount ?? 0m;
+
+                // The band the apply wrote, if it wrote one. `IsExcessBand` is
+                // the flag, not "the second row" — a line can be re-priced
+                // without tripping the tier on a later order.
+                var band = bandRows.FirstOrDefault(
+                    b => b.BoqItemId == l.BoqItemId && b.SourceChangeOrderId == o.Id);
+                if (band is not null) { excessQty = band.Qty; excessRate = band.Rate; }
+            }
+            else
+            {
+                var col = ChangeOrderRecord.For(
+                    new ChangeOrderRecord.Line(
+                        "", l.ChangeType, l.ContractedQty, l.BeforeQty, l.BeforeRate, l.BeforeAmount),
+                    new ChangeOrderRecord.Party(
+                        l.ApprovedDeltaQty ?? l.ReDeptDeltaQty,
+                        l.ApprovedRate ?? l.ReDeptNewRate,
+                        l.ApprovedExcessRate ?? l.ReDeptExcessRate));
+
+                // A party that has not proposed yet has nothing to disclose —
+                // an approved order can still carry a line nobody has priced.
+                if (col.QtyAfter is null && col.Impact is null) continue;
+
+                deltaQty = (col.QtyAfter ?? l.BeforeQty) - l.BeforeQty;
+                deltaValue = l.ChangeType == "redist" ? deltaQty * l.BeforeRate : col.Impact ?? 0m;
+                if (col.TripsThreshold) { excessQty = col.ExcessQty; excessRate = col.RateShown; }
+            }
+
+            Add(l.BoqItemId, new AmendmentDisclosure.Touch(
+                o.No, at, applied, deltaQty, deltaValue, excessQty, excessRate));
+
+            // ── THE OTHER END OF A REDISTRIBUTION ────────────────────────
+            //
+            // A redistribution is stored on its SOURCE line, with the
+            // destination in `TargetBoqItemId`. The destination row's quantity
+            // moves just as much, and without this it would show a delta with
+            // no order behind it — a badge reading «1 · pending» over a
+            // quantity that a second, applied order had already moved.
+            //
+            // The arriving quantity is `DistributedQty`, which need not equal
+            // what was drawn: `02 §8` allows a draw to be split across more
+            // than one destination.
+            if (l.ChangeType == "redist" && l.TargetBoqItemId is { } target && l.DistributedQty is { } arrived)
+                Add(target, new AmendmentDisclosure.Touch(
+                    o.No, at, applied, arrived, arrived * l.BeforeRate, 0m, null));
+        }
+
+        return byItem;
+    }
+
+    /// <summary>
+    /// The badge's own facts. Null when nothing touched the line — the row then
+    /// carries no badge at all rather than one reading zero.
+    /// </summary>
+    private static BoqAmendmentMark? MarkOf(
+        BoqItem item, decimal effectiveQty, decimal effectiveAmount,
+        IReadOnlyList<AmendmentDisclosure.Touch>? touches)
+    {
+        if (touches is null || touches.Count == 0) return null;
+
+        var r = AmendmentDisclosure.For(item.OriginalQty, item.OriginalQty * item.UnitRate, touches);
+
+        // THE CELL DELTA IS MEASURED AGAINST WHAT THE ROW ACTUALLY SHOWS, not
+        // against the chain's own running total. `Qty` and `Amount` on the row
+        // come from `TierSplit.Effective` over the bands, and that is the one
+        // figure the register prints. Sending the chain's total instead would
+        // give the cell a delta that its own two numbers do not span.
+        return new BoqAmendmentMark(
+            r.Count, r.AppliedCount, r.PendingCount, r.State,
+            Q(item.OriginalQty), M(item.OriginalQty * item.UnitRate),
+            Q(effectiveQty - item.OriginalQty),
+            M(effectiveAmount - item.OriginalQty * item.UnitRate),
+            r.PendingQty is null ? null : Q(r.PendingQty.Value - effectiveQty),
+            r.PendingValue is null ? null : M(r.PendingValue.Value - effectiveAmount),
+            touches.Select(t => new BoqAmendmentSource(t.No, t.IsApplied)).ToList());
     }
 
     // ── ONE derivation, shared by every read above ───────────────────────

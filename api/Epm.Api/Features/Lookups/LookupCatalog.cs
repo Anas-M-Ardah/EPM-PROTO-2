@@ -351,6 +351,16 @@ public static class LookupCatalog
         yield return L("allocation-coverage", "partial",    "مخصص جزئياً",      "Partially assigned");
         yield return L("allocation-coverage", "over",       "تخصيص زائد",       "Over-assigned");
 
+        // ── الشكل 50 — حالة الفقرة التجهيزية (Domain/SupplyStatus) ────────
+        // The plate's own five chips, and its own words: «مستلم بالكامل ·
+        // استلام جزئي · محجوز — بانتظار الاستلام · لم تُجهَّز». Four codes plus
+        // «الكل», which the register draws itself.
+        sort = 0;
+        yield return L("supply-status", "received", "مستلم بالكامل",             "Fully received");
+        yield return L("supply-status", "partial",  "استلام جزئي",               "Partially received");
+        yield return L("supply-status", "supplied", "محجوز — بانتظار الاستلام",  "Supplied — awaiting receipt");
+        yield return L("supply-status", "pending",  "لم تُجهَّز",                  "Not yet supplied");
+
         // ══ ADDENDUM — NOT IN 06 ══════════════════════════════════════════
         // The three lists below are OURS, not the data dictionary's. 06 §1–§11
         // stops before alerts, yet Alerts.Severity, Alerts.Kind and the derived

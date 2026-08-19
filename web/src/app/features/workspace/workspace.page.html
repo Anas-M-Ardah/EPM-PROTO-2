@@ -20,7 +20,7 @@
       <span class="ml">{{ lang.t(overview.key) }}</span>
     </button>
 
-    @for (g of groups; track g.key) {
+    @for (g of groups(); track g.key) {
       <div class="d-modnav-group">
         <span class="gl">{{ lang.t(g.key) }}</span>
         @for (m of g.modules; track m.id) {

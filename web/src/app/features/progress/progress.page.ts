@@ -6,7 +6,8 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
-import { LangService } from '../../core/lang';
+import { DrawerComponent } from '../../shared/drawer.component';
+import { LangService, StrKey } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
@@ -44,7 +45,8 @@ import { ProgressActivity, ProgressBoq, ProgressResponse } from './progress.type
 @Component({
   selector: 'epm-progress-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent],
+  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+    DrawerComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './progress.page.html',
 })
@@ -63,7 +65,60 @@ export class ProgressPage {
   error = signal<string | null>(null);
 
   /** summary · activities · boq */
-  view = signal<'summary' | 'activities' | 'boq'>('summary');
+  /**
+   * الشكل 25 names FOUR tabs, and these are they. الأنشطة and بنود الكميات are
+   * not among them: the plate makes updating progress a BUTTON — «زر تحديث
+   * نسبة الإنجاز» — not a reading surface, and this screen is the one place
+   * progress MOVES (P-55). They live behind `editing` instead, full width,
+   * because two dense tables do not fit a drawer.
+   */
+  view = signal<'summary' | 'wbs' | 'cost' | 'risk'>('summary');
+
+  /**
+   * «تحديث نسبة الإنجاز» — the editor, reached from Z6 and left by a back
+   * button. Not a tab, because it is an ACT rather than a view, and not a
+   * drawer, because it is two full-width tables.
+   */
+  editing_mode = signal(false);
+
+  /** «كيف تُحتسب» — the rules behind every figure on the current tab. */
+  howOpen = signal(false);
+
+  wbs = computed(() => this.data()?.wbs ?? []);
+  costImpact = computed(() => this.data()?.costImpact ?? null);
+  scheduleRisk = computed(() => this.data()?.scheduleRisk ?? null);
+  updates = computed(() => this.data()?.updates ?? []);
+
+  /** الشكل 26's «مستويات مكتملة 0 من 6». */
+  wbsComplete = computed(() => this.wbs().filter(w => w.isComplete).length);
+
+  /**
+   * الشكل 26's own headline pair — the project rollup against the plan, read
+   * off the SAME headline the الملخص tab prints, never re-derived from the
+   * node rows (their weights are per contract and would not add up).
+   */
+  wbsGap = computed(() => {
+    const h = this.data()?.headline;
+    return h ? h.physical - h.planned : 0;
+  });
+
+  viewTabs = computed(() => [
+    { id: 'summary' as const, key: 'prg_tab_summary' as StrKey, n: null as number | null },
+    { id: 'wbs' as const, key: 'prg_tab_wbs' as StrKey, n: this.wbs().length || null },
+    { id: 'cost' as const, key: 'prg_tab_cost' as StrKey, n: null as number | null },
+    {
+      id: 'risk' as const, key: 'prg_tab_risk' as StrKey,
+      n: this.scheduleRisk()?.atRiskCount || null,
+    },
+  ]);
+
+  /**
+   * «تصدير PDF» — the browser's own print dialogue, which is what produces a
+   * PDF here. There is no server-side renderer and inventing one would be a
+   * dependency this phase does not own; `window.print()` produces the page a
+   * reader is looking at, which is what the plate's button asks for.
+   */
+  exportPdf() { window.print(); }
 
   /** The activity being edited, and the text in its box. */
   editing = signal('');
@@ -126,6 +181,32 @@ export class ProgressPage {
         value: h.delayDays ?? 0,
         suffix: ' ' + this.lang.t('scd_days'),
       },
+    ];
+  });
+
+  /** الشكل 27's six cards, as the strip every other tab header uses (05 §8). */
+  costStats = computed<Stat[]>(() => {
+    const ci = this.costImpact();
+    if (!ci) return [];
+    return [
+      { label: this.lang.t('prg_cost_disbursed'), value: ci.disbursed },
+      { label: this.lang.t('prg_cost_revised'), value: ci.revisedCost },
+      { label: this.lang.t('prg_cost_spend_pct'), value: ci.disbursedPct, suffix: '%' },
+      { label: this.lang.t('prg_cost_eac'), value: ci.eac ?? 0 },
+      { label: this.lang.t('prg_cost_vac'), value: ci.vac ?? 0 },
+      { label: this.lang.t('prg_cost_delay'), value: ci.delayCostImpact },
+    ];
+  });
+
+  /** الشكل 28's four cards. */
+  riskStats = computed<Stat[]>(() => {
+    const r = this.scheduleRisk();
+    if (!r) return [];
+    return [
+      { label: this.lang.t('prg_delay'), value: r.delayDays, suffix: ' ' + this.lang.t('scd_days') },
+      { label: this.lang.t('prg_risk_critical'), value: r.criticalCount },
+      { label: this.lang.t('prg_risk_negfloat'), value: r.negativeFloat },
+      { label: this.lang.t('prg_risk_count'), value: r.atRiskCount },
     ];
   });
 

@@ -95,7 +95,8 @@ public static class ProjectsEndpoints
                     // Storing or guessing it would violate 01 §3.
                     null,
                     cost,
-                    p.UpdatedAt?.ToString("yyyy-MM-dd"));
+                    p.UpdatedAt?.ToString("yyyy-MM-dd"),
+                    p.Type);
             }).ToList();
 
             // Status counts come from the unfiltered-by-status set so the chips
@@ -235,6 +236,105 @@ public static class ProjectsEndpoints
             await db.SaveChangesAsync();
 
             return Results.Ok(new { p.Id });
+        });
+
+        // ── «الجهات المستفيدة» — the master list and this project's use of it ──
+        //
+        // Opened from the BOQ toolbar (الشكل 12) but it is a PROJECT edit, which
+        // is why it lives here and not in BoqEndpoints: the tick writes
+        // `Projects.BeneficiaryCodes` (01 §2.1), the same column EP-PRJ-03
+        // writes, and it has to be audited by the same writer. A copy in the BOQ
+        // feature would have been a second way to change one column, and the
+        // الشكل 5 activity log would have shown only one of them.
+        //
+        // NOTHING NEW IS STORED. The master list is `Beneficiaries`, already
+        // registered; the assignment is the CSV that column has always held. The
+        // reference reaches the same state through `usePersistedState`, which is
+        // why its ticks vanish on reload and these do not.
+
+        // [EP-PRJ-05] GET /api/projects/{id}/beneficiaries
+        // web: boq.api.ts beneficiaries() → boq.page.ts | spec: ملحق الشكل 12 · contract-context.jsx:182
+        // rules: BR-15 · 01 §2.1 | tables: Projects · Beneficiaries
+        app.MapGet("/api/projects/{id}/beneficiaries", async (EpmDb db, HttpContext ctx, string id) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            if (p is null) return Results.NotFound(new { message = $"المشروع «{id}» غير موجود." });
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
+
+            var assigned = Codes(p.BeneficiaryCodes);
+
+            // THE WHOLE MASTER LIST, not just the assigned ones — the drawer's
+            // subject is which of the ministry's beneficiaries this project uses,
+            // so the unticked rows are half the answer.
+            var all = await db.Beneficiaries.AsNoTracking()
+                .OrderBy(b => b.Code).ToListAsync();
+
+            return Results.Ok(all.Select(b => new ProjectBeneficiaryRow(
+                b.Code, b.NameAr, b.NameEn, b.Type, b.ParentCode,
+                ParentNameAr: all.FirstOrDefault(x => x.Code == b.ParentCode)?.NameAr,
+                ParentNameEn: all.FirstOrDefault(x => x.Code == b.ParentCode)?.NameEn,
+                b.Active,
+                Assigned: assigned.Contains(b.Code))).ToList());
+        });
+
+        // [EP-PRJ-06] PUT /api/projects/{id}/beneficiaries
+        // web: boq.api.ts saveBeneficiaries() → boq.page.ts | spec: ملحق الشكل 12
+        // rules: BR-15 · 01 §2.1 | tables: Projects · Beneficiaries · ProjectActivityEvents (WRITTEN)
+        app.MapPut("/api/projects/{id}/beneficiaries", async (
+            EpmDb db, HttpContext ctx, string id, ProjectBeneficiariesInput input) =>
+        {
+            var user = WorkspaceScope.User(ctx);
+            if (!user.CanDefineProjects())
+                return Results.Json(new
+                {
+                    messageAr = "تعديل الجهات المستفيدة من صلاحيات المستخدم المختص في الجهة.",
+                    messageEn = "Editing the beneficiary list is a university specialist permission.",
+                }, statusCode: StatusCodes.Status403Forbidden);
+
+            var p = await db.Projects.FirstOrDefaultAsync(x => x.Id == id);
+            if (p is null) return Results.NotFound(new { message = $"المشروع «{id}» غير موجود." });
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
+
+            var wanted = (input.Codes ?? []).Select(c => (c ?? "").Trim())
+                .Where(c => c.Length > 0).Distinct().ToList();
+
+            var known = await db.Beneficiaries.AsNoTracking().ToListAsync();
+
+            // A code that is not in the master list is a caller error, not a row
+            // to create: `Beneficiaries` is a register the ministry maintains,
+            // and a project may not mint one by ticking it.
+            var unknown = wanted.Where(c => known.All(b => b.Code != c)).ToList();
+            if (unknown.Count > 0)
+                return Results.BadRequest(new
+                {
+                    messageAr = $"جهات غير معرَّفة في القائمة الرئيسية: {string.Join("، ", unknown)}.",
+                    messageEn = $"Not in the master beneficiary list: {string.Join(", ", unknown)}.",
+                    codes = unknown,
+                });
+
+            // `01 §2.1` — an inactive beneficiary cannot receive new quantity, so
+            // it cannot be newly ASSIGNED either. One already ticked is left
+            // alone: it may already hold distributed quantity, and silently
+            // dropping it would erase a distribution the drawer never showed.
+            var newlyInactive = wanted
+                .Where(c => !Codes(p.BeneficiaryCodes).Contains(c))
+                .Where(c => known.First(b => b.Code == c).Active == false)
+                .ToList();
+
+            if (newlyInactive.Count > 0)
+                return Results.BadRequest(new
+                {
+                    messageAr = $"لا يمكن ربط جهات موقوفة: {string.Join("، ", newlyInactive)}.",
+                    messageEn = $"Inactive beneficiaries cannot be assigned: {string.Join(", ", newlyInactive)}.",
+                    codes = newlyInactive,
+                });
+
+            p.BeneficiaryCodes = string.Join(",", wanted);
+            p.UpdatedAt = Today(p);
+            db.ProjectActivityEvents.Add(Event(p.Id, "updated", user, Today(p)));
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { p.Id, count = wanted.Count });
         });
 
         // [EP-PRJ-04] GET /api/projects/{id}/definition
@@ -415,6 +515,17 @@ public static class ProjectsEndpoints
         p.NameAr, p.Type, p.RegistrationYear, p.ExecutionStage,
         p.FundingType, p.WorkspaceCode, p.PlannedCost, p.BeneficiaryCodes,
         p.Status, p.Formation, p.OrgStructure, p.ConsultantParty);
+
+    /// <summary>
+    /// `01 §2.1` — `Projects.BeneficiaryCodes` is a CSV. Split in one place so
+    /// the read and the write cannot disagree about what an empty column means
+    /// (it is "no beneficiaries", never a list containing one blank code).
+    /// </summary>
+    private static HashSet<string> Codes(string? csv) =>
+        (csv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim())
+            .Where(c => c.Length > 0)
+            .ToHashSet();
 
     /// <summary>
     /// One log row, carrying §7's four attribution facts — «باسم منفّذها وصفته

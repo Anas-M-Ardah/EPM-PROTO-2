@@ -26,6 +26,8 @@ One file per feature: `docs/uml/<feature>.md`, named after the feature folder
 | Project reports | SCR-W14 التقارير (تبويب المشروع) | `EP-PRP-01` | [project-reports.md](project-reports.md) |
 | Audit | SCR-W15 سجل التدقيق | `EP-AUD-01` | [audit.md](audit.md) |
 | Lookups | — (shared primitive) | `EP-LKP-01` | [lookups.md](lookups.md) |
+| Amendment disclosure | SCR-W4 + SCR-W5 · `04 §6` | `EP-BOQ-17` · `EP-SCD-03` | [amendment-disclosure.md](amendment-disclosure.md) |
+| Supply items | الفقرات التجهيزية · ملحق الأشكال 50–56 | `EP-SUP-01` … `EP-SUP-04` | [supply-items.md](supply-items.md) |
 | Domain rules | — (rules reference) | `EP-DOCS-01` | [rules.md](rules.md) |
 | Shared UI primitives | — (presentation only) | — | [_shared-primitives.md](_shared-primitives.md) |
 | Shell | — (frames every screen) | — (reads `EP-ENT-01` · `EP-DEV-03`) | [_shell.md](_shell.md) |

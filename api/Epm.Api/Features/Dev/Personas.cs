@@ -81,8 +81,8 @@ public static class Personas
     ///   user.univ-specialist  ub                  one university — enters المسار 1
     ///   user.re-dept          ub                  one university
     ///   user.project-manager  ub                  one university
-    ///   user.co-committee     ub · nu             two
-    ///   user.co-rapporteur    ub · nu             two (delegate for the same scope)
+    ///   user.co-committee     ub · nu · sp        three
+    ///   user.co-rapporteur    ub · nu · sp        three (delegate for the same scope)
     ///   user.rate-committee   ub · tu · sp       three, including a directorate
     ///   user.endorsement      ministry-wide       everything
     ///   user.senior-mgmt      ministry-wide       everything
@@ -101,19 +101,35 @@ public static class Personas
         // approval workflow: with no review step there was nothing for it to do.
         new("user.univ-specialist", MasterNameAr, MasterNameEn,
             "الجامعة / التشكيل", "المستخدم المختص في الجامعة", "University specialist", false,
-            ["ub"], false),
+            // `sp` — المديرية العامة للتجهيز والمشتريات, where PRJ-0439 lives.
+            // الشكل 50 opens الفقرات التجهيزية from that workspace, and a persona
+            // with no access to it could not reach the module at all.
+            ["ub", "sp"], false),
 
         new("user.re-dept", MasterNameAr, MasterNameEn,
             "دائرة المهندس المقيم", "مهندس مقيم", "Resident engineer", false,
             ["ub"], false),
 
+        // `sp` — لجنة أوامر الغيار owns FOUR of the six stages (2, 4, 5 and the
+        // decision at 3), on a supply order exactly as on a works one: الشكل 60
+        // draws the same committee. Without the directorate in scope a
+        // redistribution order raised on PRJ-0439 reaches stage 2 and stops,
+        // because the only persona that can act on it cannot see the project.
         new("user.co-committee", MasterNameAr, MasterNameEn,
             "لجنة أوامر الغيار", "عضو لجنة أوامر الغيار", "Change-order committee member", false,
-            ["ub", "nu"], false),
+            ["ub", "nu", "sp"], false),
 
         new("user.co-rapporteur", MasterNameAr, MasterNameEn,
             "لجنة أوامر الغيار", "مقرّر لجنة أوامر الغيار", "Change-order committee rapporteur", true,
-            ["ub", "nu"], false),
+            ["ub", "nu", "sp"], false),
+
+        // المسار 11's own party — الشكل 53 · الشكل 54 name it on every محضر, and
+        // `CanRecordReceipt` is its capacity. A supply contract has NO resident
+        // engineer to sign one; `EPM.voTerms`'s supply branch replaces دائرة
+        // المهندس المقيم with this committee for exactly that reason.
+        new("user.inspection", MasterNameAr, MasterNameEn,
+            "لجنة الفحص والاستلام", "عضو لجنة الفحص والاستلام", "Inspection & receipt committee member", false,
+            ["sp", "ub"], false),
 
         new("user.rate-committee", MasterNameAr, MasterNameEn,
             "لجنة تثبيت الأسعار", "عضو لجنة تثبيت الأسعار", "Rate-fixing committee member", false,
@@ -121,7 +137,7 @@ public static class Personas
 
         new("user.project-manager", MasterNameAr, MasterNameEn,
             "مدير المشروع", "مدير مشروع", "Project manager", false,
-            ["ub"], false),
+            ["ub", "sp"], false),
 
         new("user.endorsement", MasterNameAr, MasterNameEn,
             "لجنة المراجعة المصادقة", "عضو لجنة المراجعة المصادقة", "Endorsement review committee member", false,
@@ -173,4 +189,43 @@ public static class Personas
     /// </summary>
     public static bool CanApproveBoqImport(this Persona p) =>
         p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
+
+    /// <summary>
+    /// المسار 8 step 1 — «إنشاء الدفعة». P-96, closed.
+    ///
+    /// A certificate is raised against WORKS MEASURED ON SITE: the ذرعة is the
+    /// document behind it and الشكل 17 puts دائرة المهندس المقيم at the first
+    /// desk on its route. So the party that measures is the party that raises,
+    /// and مدير المشروع is accepted beside it for the same reason it is accepted
+    /// on the bill — it owns the contract the certificate is drawn against.
+    ///
+    /// «المستخدم المختص» is NOT accepted, and this is the same separation
+    /// `CanApproveBoqImport` keeps: the specialist defines the project and its
+    /// contracts, and a party that could both define a contract and raise money
+    /// against it would make the two documents one signature.
+    ///
+    /// THE PARTIES THAT REVIEW ARE NOT MODELLED AS CAPACITIES, because nothing
+    /// in this build reviews a payment: `EP-FIN-02` records a `pending`
+    /// certificate and its audit route, and moving it to `certified` or `paid`
+    /// belongs to المسار 8 steps 2–4, which no screen asks for yet.
+    /// </summary>
+    public static bool CanRegisterPayment(this Persona p) =>
+        p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
+
+    /// <summary>
+    /// المسار 11 — «تسجيل استلام مخزني أو أولي» (الشكل 53 · الشكل 54).
+    ///
+    /// A supply contract has no resident engineer: `EPM.voTerms`'s own supply
+    /// branch replaces دائرة المهندس المقيم with **لجنة الفحص والاستلام** for
+    /// exactly this reason — the party that inspects and receives is the party
+    /// that signs the محضر. مدير المشروع is accepted beside it, as everywhere
+    /// else, because the contract is theirs.
+    ///
+    /// The fixture has no inspection-committee persona of its own; لجنة أوامر
+    /// الغيار is the nearest committee it does have and is NOT accepted, because
+    /// its remit is a change to the order and not the receipt of a device.
+    /// Recorded in DECISIONS rather than stretched to fit.
+    /// </summary>
+    public static bool CanRecordReceipt(this Persona p) =>
+        p.Party is "لجنة الفحص والاستلام" or "مدير المشروع";
 }

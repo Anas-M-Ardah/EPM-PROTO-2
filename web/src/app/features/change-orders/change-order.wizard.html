@@ -478,6 +478,145 @@
                                   </div>
                                 </div>
 
+                                <!-- ══ الشكل 58 — إعادة التوزيع بين الجهات ═══
+                                     A supply order that moves devices between
+                                     universities. The فقرة keeps every device
+                                     it had; only the list of who gets them
+                                     changes — which is why nothing below is a
+                                     money field and why the impact row prints
+                                     zero rather than being left blank. -->
+                                @if (showsTransfers(r)) {
+                                  <div class="d-vow-block">
+                                    <div class="d-vow-edh">
+                                      <b>{{ lang.t('chg_rd_title') }}</b>
+                                      <span class="d-cell-sub">{{ lang.t('chg_rd_sub') }}</span>
+                                      <span style="flex: 1"></span>
+                                      <button type="button" class="d-btn sm"
+                                              [disabled]="allocOf(r.code).length === 0"
+                                              (click)="addTransfer(r.code)">
+                                        <epm-icon name="add" [size]="15" />{{ lang.t('chg_rd_add') }}
+                                      </button>
+                                    </div>
+
+                                    @if (allocOf(r.code).length === 0) {
+                                      <!-- «غير موزّعة» is a real state (BR-08) and
+                                           there is nothing to redistribute from. -->
+                                      <div class="d-vow-empty">
+                                        <epm-icon name="groups" [size]="22" />
+                                        <b>{{ lang.t('chg_rd_nodist_t') }}</b>
+                                        <span class="d-cell-sub">{{ lang.t('chg_rd_nodist_b') }}</span>
+                                      </div>
+
+                                    } @else if (r.transfers.length === 0) {
+                                      <div class="d-vow-empty">
+                                        <epm-icon name="swap_horiz" [size]="22" />
+                                        <b>{{ lang.t('chg_rd_none_t') }}</b>
+                                        <span class="d-cell-sub">{{ lang.t('chg_rd_none_b') }}</span>
+                                      </div>
+
+                                    } @else {
+                                      <div class="d-vow-tw">
+                                        <table class="d-line-table" style="min-width: 620px">
+                                          <thead><tr>
+                                            <th style="width: 220px">{{ lang.t('chg_rd_from') }}</th>
+                                            <th style="width: 220px">{{ lang.t('chg_rd_to') }}</th>
+                                            <th style="width: 110px" class="r">{{ lang.t('sup_qty') }}</th>
+                                            <th style="width: 110px" class="r">{{ lang.t('chg_rd_avail') }}</th>
+                                            <th style="width: 44px"></th>
+                                          </tr></thead>
+                                          <tbody>
+                                            @for (t of r.transfers; track $index) {
+                                              <tr>
+                                                <td>
+                                                  <select class="d-form-input sm"
+                                                          [attr.aria-label]="lang.t('chg_rd_from')"
+                                                          (change)="setTransfer(r.code, $index, { from: $any($event.target).value })">
+                                                    @for (a of allocOf(r.code); track a.code) {
+                                                      <option [value]="a.code" [selected]="a.code === t.from">
+                                                        {{ a.nameAr }} — {{ fmt.qty(a.qty) }}
+                                                      </option>
+                                                    }
+                                                  </select>
+                                                </td>
+                                                <td>
+                                                  <!-- The whole ACTIVE list, not the
+                                                       line's own: جامعة تلعفر holds
+                                                       nothing and giving it devices is
+                                                       the point of the order. -->
+                                                  <select class="d-form-input sm"
+                                                          [attr.aria-label]="lang.t('chg_rd_to')"
+                                                          (change)="setTransfer(r.code, $index, { to: $any($event.target).value })">
+                                                    <option value="" [selected]="!t.to">{{ lang.t('chg_rd_pick') }}</option>
+                                                    @for (b of source()?.beneficiaries ?? []; track b.code) {
+                                                      <option [value]="b.code" [selected]="b.code === t.to">{{ b.nameAr }}</option>
+                                                    }
+                                                  </select>
+                                                </td>
+                                                <td class="r">
+                                                  <!-- Capped at المتاح rather than
+                                                       flagged after (`05 §6`). The cap
+                                                       itself is the column beside it. -->
+                                                  <input class="d-form-input sm mono" inputmode="decimal"
+                                                         [attr.aria-label]="lang.t('sup_qty')"
+                                                         [attr.max]="transferOf(r.code, $index)?.available ?? null"
+                                                         [value]="t.qty || ''"
+                                                         (input)="setTransfer(r.code, $index, { qty: num($any($event.target).value) ?? 0 })" />
+                                                </td>
+                                                <td class="r mono">
+                                                  @if (transferOf(r.code, $index); as pt) {
+                                                    <bdi>{{ fmt.qty(pt.available) }}</bdi>
+                                                  } @else { — }
+                                                </td>
+                                                <td>
+                                                  <button type="button" class="d-icon-btn"
+                                                          [attr.aria-label]="lang.t('chg_rd_drop')"
+                                                          (click)="dropTransfer(r.code, $index)">
+                                                    <epm-icon name="delete" [size]="15" />
+                                                  </button>
+                                                </td>
+                                              </tr>
+                                            }
+                                          </tbody>
+                                        </table>
+                                      </div>
+
+                                      <!-- «صافي التغيير في التوزيع بعد التطبيق» —
+                                           البصرة −12 · الموصل −10 · تلعفر +22. The
+                                           delta is NOT coloured by sign: it is a
+                                           magnitude, and the colour channel belongs
+                                           to status (`05 §6`). -->
+                                      @if (netsOf(r.code).length > 0) {
+                                        <div class="d-vow-tx">
+                                          <span class="d-cell-sub">{{ lang.t('chg_rd_net') }}</span>
+                                        </div>
+                                        <div class="d-vow-chips">
+                                          @for (n of netsOf(r.code); track n.code) {
+                                            <span class="d-vow-inline">
+                                              {{ n.nameAr }}
+                                              <b class="mono"><bdi>{{ fmt.qty(n.before) }}</bdi></b>
+                                              ←
+                                              <b class="mono"><bdi>{{ fmt.qty(n.after) }}</bdi></b>
+                                              <b class="mono"><bdi>{{ fmt.delta(n.delta) }}</bdi></b>
+                                            </span>
+                                          }
+                                        </div>
+                                      }
+
+                                      <!-- الشكل 59's own summary row, said here as
+                                           well: the zero is the POINT of this flow,
+                                           not a figure that has not arrived. -->
+                                      <div class="d-msgbar info">
+                                        <epm-icon name="balance" [size]="16" />
+                                        <div>
+                                          <b>{{ lang.t('chg_rd_zero_t') }}
+                                            <bdi class="mono">{{ fmt.money(p.redistImpact) }}</bdi></b>
+                                          <span>{{ lang.t('chg_rd_zero_b') }}</span>
+                                        </div>
+                                      </div>
+                                    }
+                                  </div>
+                                }
+
                                 <!-- Who fixes the excess rate, said on the line
                                      that has one (`02 §5`). -->
                                 @if (showsExcessRate(r.code)) {

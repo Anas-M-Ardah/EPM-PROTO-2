@@ -99,3 +99,45 @@ export const ALL_MODULES: ProjectModule[] = [
 export function moduleById(id: string): ProjectModule | undefined {
   return ALL_MODULES.find(m => m.id === id);
 }
+
+/**
+ * `EPM.modulesFor` — the live prototype's own type gate (model.js:751).
+ *
+ * On a SUPPLY project:
+ *   · `boq` KEEPS ITS ID and becomes «الفقرات التجهيزية». Receipts and item
+ *     inquiry are facets inside it, not new entries on the rail — الشكل 50
+ *     draws them as three tabs of one module, and the prototype's own comment
+ *     says so in as many words: «BOQ is ONE entity, not two».
+ *   · `model` is DROPPED. There is no 3D/BIM model of a delivery of microscopes,
+ *     and a tab that could only ever be empty is worse than none (04 §9).
+ *   · schedule and progress STAY — a supply project has a delivery programme and
+ *     earns against it, and `02 §2`'s weights do not care what the work is.
+ *
+ * Everything else is unchanged, which is the point: one rail, one order, one
+ * set of ids, and exactly two differences that the project's own type explains.
+ */
+export function modulesFor(projectType: string | null | undefined): ModuleGroup[] {
+  if (projectType !== 'equipment') return MODULE_GROUPS;
+
+  return MODULE_GROUPS
+    .map(g => ({
+      ...g,
+      modules: g.modules
+        .filter(m => m.id !== 'model')
+        .map(m => m.id === 'boq'
+          ? { ...m, key: 'mod_supplyitems' as const, icon: 'inventory_2' }
+          : m),
+    }))
+    // A group whose every module was dropped does not render as an empty
+    // heading. None is today; the filter is here so adding one cannot.
+    .filter(g => g.modules.length > 0);
+}
+
+/**
+ * The route segment a module resolves to for this project type. `boq` is the
+ * one id that answers differently: a supply bill is a different SCREEN over the
+ * same table, so it has its own route and the same place in the rail.
+ */
+export function moduleRoute(id: string, projectType: string | null | undefined): string {
+  return id === 'boq' && projectType === 'equipment' ? 'supply' : id;
+}

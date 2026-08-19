@@ -1,15 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { FinancialsResponse } from './financials.types';
+import { FinancialsResponse, PaymentRegisterInput, PaymentRegisterResult } from './financials.types';
 
 /**
- * Every call SCR-W7 makes — one, and it reads.
+ * Every call SCR-W7 makes.
  *
- * Registering a payment is a WRITE this phase does not build: a certificate is
- * raised against works measured on site, and the wizard that does it
- * (`DPaymentWizard`, project-modules.jsx:825) needs a measurement source this
- * data model does not have yet. The register shows what the finance department
- * recorded; it does not pretend to originate it.
+ * REGISTERING A PAYMENT IS NOW A WRITE (ملحق الشكل 20 · P-96, closed). This
+ * file used to say the wizard needed a measurement source the model did not
+ * have; it does not — the plate makes the ذرعة an ATTACHMENT, and requiring one
+ * is what «يجعل الصرف مستنداً إلى إنجاز موثّق» means. What the wizard registers
+ * is a `pending` certificate and its audit route; certifying and disbursing it
+ * are المسار 8 steps 2–4 and belong to no screen yet.
  */
 @Injectable({ providedIn: 'root' })
 export class FinancialsApi {
@@ -25,5 +26,15 @@ export class FinancialsApi {
     return this.api.get<FinancialsResponse>(
       `/api/projects/${encodeURIComponent(projectId)}/financials`,
       year ? { year } : undefined);
+  }
+
+  // [EP-FIN-02] POST /api/projects/{id}/financials/payments → same file
+  /**
+   * الشكل 20. Returns the new certificate's IDENTITY rather than the whole
+   * model — the endpoint's own comment says why — so the caller re-reads.
+   */
+  registerPayment(projectId: string, body: PaymentRegisterInput) {
+    return this.api.post<PaymentRegisterResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/financials/payments`, body);
   }
 }

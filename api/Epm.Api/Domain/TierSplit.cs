@@ -88,17 +88,36 @@ public static class TierSplit
     /// The ORIGINAL quantity and rate are untouched by this (non-negotiable #6);
     /// they persist on the line and are what D-01 measures the 20% against.
     /// </summary>
-    public record Line(decimal Qty, decimal Rate, decimal Amount, bool Banded);
+    /// <param name="Banded">
+    /// The line's figures come from BANDS rather than from its own quantity and
+    /// rate — i.e. an order has been applied to it. This is what makes the line
+    /// uneditable in place (EP-BOQ-03): typing over a quantity a priced
+    /// decision produced would discard that decision.
+    /// </param>
+    /// <param name="MultiRate">
+    /// The line carries MORE THAN ONE RATE, which is the narrower fact `02 §5`
+    /// is about and the only one that justifies a rate breakdown. A line moved
+    /// by an order that stayed inside the 20% threshold is `Banded` and NOT
+    /// `MultiRate`: it has one band, at the contract rate. Conflating the two
+    /// puts «سعر مركّب» on a line with a single rate, which is a lie about a
+    /// priced decision that was never taken.
+    /// </param>
+    public record Line(decimal Qty, decimal Rate, decimal Amount, bool Banded, bool MultiRate);
+
+    /// <summary>02 §5 — more than one DISTINCT rate, not merely more than one band.</summary>
+    public static bool MultiRate(IReadOnlyList<Band> bands) =>
+        bands.Select(b => b.Rate).Distinct().Count() > 1;
 
     public static Line Effective(decimal originalQty, decimal originalRate, IReadOnlyList<Band> bands)
     {
         if (bands.Count == 0)
-            return new Line(originalQty, originalRate, originalQty * originalRate, false);
+            return new Line(originalQty, originalRate, originalQty * originalRate, false, false);
 
         return new Line(
             bands.Sum(b => b.Qty),
             BlendedRate(bands),
             bands.Sum(b => b.Qty * b.Rate),
-            true);
+            true,
+            MultiRate(bands));
     }
 }

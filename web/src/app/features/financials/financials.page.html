@@ -64,6 +64,18 @@
 
       <span class="sp"></span>
 
+      <!-- ملحق الشكل 20 — «تسجيل دفعة». The capacity is دائرة المهندس المقيم
+           or مدير المشروع: the party that measures the works is the party that
+           raises the certificate (P-96). Any other persona sees the reason
+           rather than a button that 403s. -->
+      @if (canRegister()) {
+        <button type="button" class="d-btn sm primary" (click)="payOpen.set(true)">
+          <epm-icon name="add" [size]="15" />{{ lang.t('pay_w_title') }}
+        </button>
+      } @else {
+        <span class="d-cell-sub" style="max-width: 380px">{{ lang.t('pay_w_denied') }}</span>
+      }
+
       <!-- الشكل 14 — «ستة تبويبات». Four of them are الأشكال 15 · 17 · 18 · 19
            and are not built: each names what it needs rather than being left
            off a strip the document draws (04 §9). -->
@@ -684,3 +696,17 @@
     }
   }
 </div>
+
+<!-- ══ ملحق الشكل 20 — تسجيل دفعة ══════════════════════════════════════════
+     Outside the frame so its scrim covers the workspace, as every modal does.
+     On success the page re-reads: EP-FIN-02 returns the new certificate's
+     identity, not the model, and its own comment says why. -->
+@if (payOpen()) {
+  @if (data(); as d) {
+    <epm-payment-wizard
+      [projectId]="projectId()"
+      [contracts]="d.contracts"
+      (registered)="paymentRegistered()"
+      (closed)="payOpen.set(false)" />
+  }
+}

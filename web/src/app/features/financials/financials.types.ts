@@ -215,3 +215,42 @@ export interface FinancialsResponse {
   /** The year in force, or null for «كل السنوات». */
   year: number | null;
 }
+
+// ── EP-FIN-02 · ملحق الشكل 20 — «تسجيل دفعة» ─────────────────────────────
+
+/** One document behind a certificate. Metadata only; no bytes are stored. */
+export interface PaymentAttachmentInput {
+  titleAr: string;
+  titleEn: string;
+  fileName: string;
+  sizeBytes: number;
+}
+
+/**
+ * الشكل 20's five steps as one payload. THE NET IS NOT SENT — it is
+ * `gross − retention − advanceRecovery` and the server computes it, because a
+ * client-sent net can disagree with its own components.
+ */
+export interface PaymentRegisterInput {
+  contractId: string;
+  kind: string;
+  grossAmount: number;
+  retentionAmount: number;
+  advanceRecovery: number;
+  /** الشكل 9's split across the three expense items. Σ must equal the net. */
+  awardPortion: number;
+  reservePortion: number;
+  supervisionPortion: number;
+  financeLetterNo: string;
+  financeLetterDate: string;
+  note: string;
+  attachments: PaymentAttachmentInput[];
+}
+
+export interface PaymentRegisterResult {
+  id: number;
+  /** «دفعة N» — sequential on the contract, NOT an official code (P-79). */
+  no: number;
+  contractId: string;
+  netAmount: number;
+}

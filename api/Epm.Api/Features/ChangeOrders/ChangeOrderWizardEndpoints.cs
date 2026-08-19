@@ -63,6 +63,22 @@ public static class ChangeOrderWizardEndpoints
             var contracts = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).OrderBy(c => c.Id).ToListAsync();
 
+            // الشكل 58's two pickers. `beneficiaries` is the whole ACTIVE list
+            // because a redistribution's TARGET may hold nothing yet, and
+            // `allocations` is BR-08's rows, which is what «المتاح» measures
+            // against. Read once for the project rather than once per contract.
+            var beneficiaries = await db.Beneficiaries.AsNoTracking()
+                .Where(x => x.Active).OrderBy(x => x.Code).ToListAsync();
+            var benName = beneficiaries.ToDictionary(x => x.Code);
+
+            var contractIds = contracts.Select(c => c.Id).ToList();
+            var itemIds = await db.BoqItems.AsNoTracking()
+                .Where(i => contractIds.Contains(i.ContractId))
+                .Select(i => new { i.Id, i.Code }).ToListAsync();
+            var itemCode = itemIds.ToDictionary(x => x.Id, x => x.Code);
+            var allocations = await db.BoqDistributions.AsNoTracking()
+                .Where(x => itemCode.Keys.Contains(x.BoqItemId)).ToListAsync();
+
             var amendments = await db.ContractAmendments.AsNoTracking()
                 .Where(a => contracts.Select(c => c.Id).Contains(a.ContractId))
                 .OrderBy(a => a.No).ToListAsync();
@@ -94,7 +110,16 @@ public static class ChangeOrderWizardEndpoints
                     M(d.Line.Amount),
                     d.Weight,
                     d.Progress.Progress >= 100m ? "completed"
-                        : d.Progress.Progress > 0m ? "inprogress" : "notstarted")).ToList();
+                        : d.Progress.Progress > 0m ? "inprogress" : "notstarted",
+                    allocations
+                        .Where(x => x.BoqItemId == d.Item.Id)
+                        .OrderBy(x => x.BeneficiaryCode)
+                        .Select(x => new WizardAllocation(
+                            x.BeneficiaryCode,
+                            benName.GetValueOrDefault(x.BeneficiaryCode)?.NameAr ?? x.BeneficiaryCode,
+                            benName.GetValueOrDefault(x.BeneficiaryCode)?.NameEn ?? x.BeneficiaryCode,
+                            x.Qty))
+                        .ToList())).ToList();
 
                 var activities = await db.Activities.AsNoTracking()
                     .Where(a => a.ContractId == c.Id && !a.IsMilestone)
@@ -113,7 +138,9 @@ public static class ChangeOrderWizardEndpoints
 
             return Results.Ok(new WizardSourceResponse(
                 p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
-                persona.Id, persona.Party, Parties, model));
+                persona.Id, persona.Party, Parties,
+                beneficiaries.Select(x => new WizardAllocation(x.Code, x.NameAr, x.NameEn, 0m)).ToList(),
+                model));
         });
 
         // [EP-WIZ-02] POST /api/projects/{projectId}/change-orders/preview
@@ -142,8 +169,8 @@ public static class ChangeOrderWizardEndpoints
         // [EP-WIZ-03] POST /api/projects/{projectId}/change-orders
         // web: change-order-wizard.api.ts create() → change-order.wizard.ts
         // spec: 03 §8 step 5 · ملحق الشكل 42 | rules: BR-07, BR-13
-        // tables: ChangeOrders · ChangeOrderLines · ChangeOrderActivities
-        //       · ChangeOrderStages · ChangeOrderAttachments
+        // tables: ChangeOrders · ChangeOrderLines · ChangeOrderRedistributions
+        //       · ChangeOrderActivities · ChangeOrderStages · ChangeOrderAttachments
         //       · ChangeOrderAuditEntries *(all **written**)*
         app.MapPost("/api/projects/{projectId}/change-orders",
             async (EpmDb db, HttpContext ctx, string projectId, string kind, WizardDraft draft) =>
@@ -218,6 +245,12 @@ public static class ChangeOrderWizardEndpoints
             db.ChangeOrders.Add(order);
             await db.SaveChangesAsync();
 
+            // BR-08's rows as they stand NOW — الشكل 58's «قبل» figures, frozen
+            // onto each transfer so the order can still say what it moved after
+            // the apply step has rewritten them (§5.6).
+            var allocBefore = await db.BoqDistributions.AsNoTracking()
+                .Where(x => items.Select(i => i.Id).Contains(x.BoqItemId)).ToListAsync();
+
             foreach (var l in draft.Lines)
             {
                 var item = items.FirstOrDefault(i => i.Code == l.Code);
@@ -226,7 +259,7 @@ public static class ChangeOrderWizardEndpoints
                 var target = l.TargetCode is null ? null : items.FirstOrDefault(i => i.Code == l.TargetCode);
                 var executed = preview.Lines.FirstOrDefault(x => x.Code == l.Code);
 
-                db.ChangeOrderLines.Add(new ChangeOrderLine
+                var line = new ChangeOrderLine
                 {
                     ChangeOrderId = order.Id,
                     BoqItemId = item.Id,
@@ -249,7 +282,28 @@ public static class ChangeOrderWizardEndpoints
                     DrawnQty = l.DrawnQty,
                     DistributedQty = l.DistributedQty,
                     ApplyStatus = "todo",
-                });
+                };
+
+                db.ChangeOrderLines.Add(line);
+                // The transfers point at the LINE, so its id has to exist first.
+                await db.SaveChangesAsync();
+
+                foreach (var t in l.Transfers ?? [])
+                    db.ChangeOrderRedistributions.Add(new ChangeOrderRedistribution
+                    {
+                        ChangeOrderLineId = line.Id,
+                        FromBeneficiaryCode = t.From,
+                        ToBeneficiaryCode = t.To,
+                        Qty = t.Qty,
+                        FromQtyBefore = allocBefore
+                            .FirstOrDefault(x => x.BoqItemId == item.Id
+                                && x.BeneficiaryCode == t.From)?.Qty ?? 0m,
+                        ToQtyBefore = allocBefore
+                            .FirstOrDefault(x => x.BoqItemId == item.Id
+                                && x.BeneficiaryCode == t.To)?.Qty ?? 0m,
+                        // NOT applied. Approving changes nothing (§5.2).
+                        AppliedQty = null,
+                    });
             }
 
             foreach (var a in draft.Activities)
@@ -297,7 +351,13 @@ public static class ChangeOrderWizardEndpoints
             {
                 var plan = WorkflowMachine.Plan(
                     preview.Summary.LinesOverTier > 0,
-                    NeedsEndorsement(preview, contract));
+                    NeedsEndorsement(preview, contract),
+                    // الشكل 60 — a supply order has no resident engineer, so
+                    // stages 1 and 6 are stamped to لجنة الفحص والاستلام HERE,
+                    // when the chain is created. `OwnerParty` is a stored
+                    // column and BR-14 reads it, so getting it right later is
+                    // not the same as getting it right now.
+                    draft.Type == "supply");
 
                 int[] slaOf = [3, 5, 7, 10, 14, 7];
                 var first = plan.First(x => x.Active).Def.No;
@@ -365,8 +425,17 @@ public static class ChangeOrderWizardEndpoints
             .Where(a => a.ContractId == contract.Id && a.AppliedAt != null).ToListAsync();
         var contractValue = contract.OriginalValue + amendments.Sum(a => a.DeltaValue);
 
+        // الشكل 58's pickers again, on the preview side: «المتاح» is checked
+        // against BR-08's rows, not against anything the browser sent.
+        var itemIdsOfContract = derived.ToDictionary(x => x.Item.Id, x => x.Item.Code);
+        var allocations = await db.BoqDistributions.AsNoTracking()
+            .Where(x => itemIdsOfContract.Keys.Contains(x.BoqItemId)).ToListAsync();
+        var benName = await db.Beneficiaries.AsNoTracking()
+            .ToDictionaryAsync(x => x.Code, x => x);
+
         var lines = new List<PreviewLine>();
         var gateLines = new List<ChangeOrderGates.Line>();
+        var redistIssues = new List<PreviewIssue>();
 
         decimal? conNet = null, reNet = null;
         var overTier = 0;
@@ -391,6 +460,44 @@ public static class ChangeOrderWizardEndpoints
             if (re.Impact is { } ri) reNet = (reNet ?? 0m) + ri;
             if (con.TripsThreshold || re.TripsThreshold) overTier++;
 
+            // ── الشكل 58 — إعادة التوزيع بين الجهات ──────────────────────
+            // The arithmetic is `Domain/SupplyRedistribution`'s, in full: the
+            // نets it prints and the refusal it produces both come from the same
+            // place, so a strip that shows a legal move and a gate that refuses
+            // it cannot disagree.
+            var transfers = (input.Transfers ?? [])
+                .Select(t => new SupplyRedistribution.Transfer(t.From, t.To, t.Qty))
+                .ToList();
+
+            var nets = new List<PreviewNet>();
+            var transferRows = new List<PreviewTransfer>();
+            if (transfers.Count > 0)
+            {
+                var held = allocations
+                    .Where(x => x.BoqItemId == item.Id)
+                    .ToDictionary(x => x.BeneficiaryCode, x => x.Qty, StringComparer.OrdinalIgnoreCase);
+
+                if (SupplyRedistribution.Check(held, transfers) is { } refusal)
+                    redistIssues.Add(new PreviewIssue(
+                        "redistribution", item.Code, refusal.MessageAr, refusal.MessageEn, true));
+
+                // «المتاح» per row, from the domain: the SAME function the
+                // gate above uses, asked once per row about the other rows.
+                transferRows = transfers.Select((t, i) => new PreviewTransfer(
+                    i, t.From, t.To, t.Qty,
+                    SupplyRedistribution.Available(
+                        t.From, held, transfers.Where((_, j) => j != i)))).ToList();
+
+                nets = SupplyRedistribution.Nets(held, transfers)
+                    .Where(n => n.Delta != 0m || held.ContainsKey(n.Code))
+                    .Select(n => new PreviewNet(
+                        n.Code,
+                        benName.GetValueOrDefault(n.Code)?.NameAr ?? n.Code,
+                        benName.GetValueOrDefault(n.Code)?.NameEn ?? n.Code,
+                        n.Before, n.Delta, n.After))
+                    .ToList();
+            }
+
             lines.Add(new PreviewLine(
                 item.Code, item.DescriptionAr, item.DescriptionEn, item.Unit, input.ChangeType,
                 item.OriginalQty, item.UnitRate, M(item.OriginalQty * item.UnitRate),
@@ -399,13 +506,17 @@ public static class ChangeOrderWizardEndpoints
                 d.Weight,
                 Party(con, item.UnitRate), Party(re, item.UnitRate),
                 con.Impact is not null && re.Impact is not null
-                    && Math.Abs(con.Impact.Value - re.Impact.Value) > 0.5m));
+                    && Math.Abs(con.Impact.Value - re.Impact.Value) > 0.5m,
+                nets,
+                transferRows,
+                SupplyRedistribution.Impact(transfers)));
 
             gateLines.Add(new ChangeOrderGates.Line(
                 item.Code, contract.Id, input.ChangeType,
                 item.OriginalQty, executed,
                 input.ContractorDeltaQty ?? 0m, input.ReDeptDeltaQty ?? 0m,
-                input.TargetCode, input.DrawnQty ?? 0m, input.DistributedQty ?? 0m));
+                input.TargetCode, input.DrawnQty ?? 0m, input.DistributedQty ?? 0m,
+                transfers.Count));
         }
 
         // BR-07 — every reason this order cannot be submitted. The wizard is
@@ -441,7 +552,10 @@ public static class ChangeOrderWizardEndpoints
             requestedDays,
             "awaiting-financial-review");
 
-        var plan = WorkflowMachine.Plan(overTier > 0, NeedsEndorsementFrom(reNet ?? conNet, requestedDays, contract));
+        var plan = WorkflowMachine.Plan(
+            overTier > 0,
+            NeedsEndorsementFrom(reNet ?? conNet, requestedDays, contract),
+            draft.Type == "supply");
 
         var path = plan.Select(s => new PreviewStage(
             s.Def.No, s.Def.Ar, s.Def.En, s.Def.Owner, s.Def.OwnerEn,
@@ -454,10 +568,11 @@ public static class ChangeOrderWizardEndpoints
                 Math.Round(weights.SumBefore, 2), Math.Round(weights.SumAfter, 2),
                 Math.Round(weights.Rows.Sum(r => Math.Abs(r.Delta)), 2), weights.Valid),
             path,
-            issues.Select(i => new PreviewIssue(i.Gate, i.Ref, i.MsgAr, i.MsgEn, true)).ToList(),
+            issues.Select(i => new PreviewIssue(i.Gate, i.Ref, i.MsgAr, i.MsgEn, true))
+                .Concat(redistIssues).ToList(),
             // An EMPTY order is a gate of its own (BR-07), so `CanSubmit` is
             // exactly "no blocking issue" — never "the user filled something in".
-            issues.Count == 0);
+            issues.Count == 0 && redistIssues.Count == 0);
     }
 
     /// <summary>

@@ -150,7 +150,14 @@ public record AmendmentVersion(
 /// الغرامة اليومية — <c>Penalty.Result.PerDay</c>, which BR-10 already computes
 /// and nothing used to carry. الشكل 10 prints it as a headline figure, and the
 /// قبل/بعد table gives it a row of its own: an applied order moves it, because
-/// it is a function of the contract value.
+/// it is a function of the contract value AND the contract duration. An
+/// extension can therefore LOWER it while the value rises.
+/// </param>
+/// <param name="RatePct">
+/// نسبة الغرامة — the rate applied to the value spread over the duration
+/// (العرض الفني §11), not a rate per day of the value. It is sent so the panel
+/// can print the rule it actually applied rather than hard-coding a number that
+/// would silently drift from <c>Domain/Penalty</c>.
 /// </param>
 /// <param name="Unavailable">
 /// True when the contract carries no recorded forecast finish. Then nothing is
@@ -166,7 +173,7 @@ public record PenaltyImpact(
     decimal Waived,
     decimal PerDayBefore,
     decimal PerDayAfter,
-    decimal PerDayPct,
+    decimal RatePct,
     decimal CapPct,
     bool Unavailable);
 

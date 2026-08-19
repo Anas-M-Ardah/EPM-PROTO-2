@@ -7,7 +7,9 @@ import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ProjectScopeService } from '../../core/project-scope';
 import { ToastService } from '../../shared/toast.service';
-import { MODULE_GROUPS, OVERVIEW_MODULE, ProjectModule, moduleById } from './project-modules';
+import {
+  MODULE_GROUPS, OVERVIEW_MODULE, ProjectModule, moduleById, moduleRoute, modulesFor,
+} from './project-modules';
 
 /**
  * The project workspace shell (`04 §3`).
@@ -56,7 +58,13 @@ export class WorkspacePage {
   toast = inject(ToastService);
 
   readonly overview = OVERVIEW_MODULE;
-  readonly groups = MODULE_GROUPS;
+  /**
+   * `EPM.modulesFor` — the rail is TYPE-GATED. On a supply project the `boq`
+   * entry reads «الفقرات التجهيزية» and the 3D model is not on the rail at
+   * all: there is no BIM model of a delivery of microscopes, and a tab that
+   * could only ever be empty is worse than none (04 §9).
+   */
+  groups = computed(() => modulesFor(this.project()?.type));
 
   projectId = signal('');
   /** The active module id, off the URL's third segment. */
@@ -126,7 +134,11 @@ export class WorkspacePage {
 
   open(m: ProjectModule) {
     if (!m.built) return;
-    this.router.navigate(['/projects', this.projectId(), m.id], { queryParams: this.qp() });
+    // `boq` is one id with two screens: a works bill and a supply register over
+    // the same table. The rail keeps the id; the route resolves the screen.
+    this.router.navigate(
+      ['/projects', this.projectId(), moduleRoute(m.id, this.project()?.type)],
+      { queryParams: this.qp() });
   }
 
   /**

@@ -42,8 +42,9 @@ public static class ChangeOrdersEndpoints
     /// `03 §10`'s "overdue" is about the WHOLE ORDER, not one stage: how long
     /// it has sat since the incoming letter. The per-stage SLA is BR-12's
     /// `SlaDaysPerStage` and drives «تجاوزت السقف» instead — which is why
-    /// `06 §12` can seed VO-02 (22 days, past both) and VO-06 (5 days, past
-    /// neither) to prove the two chips are different sets.
+    /// `06 §12` can seed VO-02 (22 days, past both) and VO-07 (5 days, past
+    /// neither) to prove the two chips are different sets. VO-07 inherited that
+    /// job from VO-06 when VO-06 was seeded applied (P-160).
     /// </summary>
     private const int OrderOverdueDays = 14;
 
@@ -390,7 +391,11 @@ public static class ChangeOrdersEndpoints
             // ── الشكل 33 — المسار ─────────────────────────────────────────
             var recordStages = stageRows.Select(s =>
             {
-                var def = WorkflowMachine.Stages.FirstOrDefault(x => x.No == s.StageNo);
+                // الشكل 60 — a supply order's stages 1 and 6 belong to لجنة
+                // الفحص والاستلام, and BR-14 matches a persona against this
+                // owner, so the record must print the one that can actually act.
+                var def = WorkflowMachine.StagesFor(o.Type == "supply")
+                    .FirstOrDefault(x => x.No == s.StageNo);
                 var mine = external.Where(x => x.ChangeOrderStageId == s.Id).ToList();
                 var (received, required) = WorkflowMachine.ExternalProgress(mine.Select(x => x.State).ToList());
 

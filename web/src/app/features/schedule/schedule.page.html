@@ -78,25 +78,44 @@
         <em><bdi>{{ contract()?.id }}</bdi> · {{ contractLabel() }}</em>
       </span>
 
-      <div class="grp">
-        <button type="button" class="d-fchip" [class.on]="view() === 'gantt'" (click)="view.set('gantt')">
-          {{ lang.t('scd_tab_gantt') }}
-        </button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'table'" (click)="view.set('table')">
-          {{ lang.t('scd_tab_table') }}
-        </button>
-      </div>
-
       <span class="sp"></span>
 
       @if (data(); as d) {
-        <!-- The critical-path filter. The dot is the reference's; the chart's
-             own criticality mark is the ring, named in the legend. -->
-        <button type="button" class="d-fchip" [class.on]="criticalOnly()"
-                [attr.aria-pressed]="criticalOnly()" (click)="criticalOnly.set(!criticalOnly())">
-          <span class="dot crit"></span>{{ lang.t('scd_critical') }}
-          <span class="n"><bdi>{{ d.summary.critical }}</bdi></span>
-        </button>
+        <!-- الشكل 23's «مرشح إصدار خط الأساس». ONE baseline exists and the
+             field says which: nothing in this build moves
+             `Activities.BaselineStart/Finish` after import, so a select with
+             invented revisions would offer comparisons that cannot be made.
+             It becomes a select when الشكل 24's re-import creates a second. -->
+        @if (currentBaseline(); as bl) {
+          @if (baselines().length > 1) {
+            <label class="boq-ctxsel">
+              <span>{{ lang.t('scd_baseline') }}</span>
+              <select [attr.aria-label]="lang.t('scd_baseline')">
+                @for (b of baselines(); track b.id) {
+                  <option [value]="b.id" [selected]="b.isCurrent">
+                    {{ lang.pick(b.labelAr, b.labelEn) }} · {{ b.takenAt }}
+                  </option>
+                }
+              </select>
+            </label>
+          } @else {
+            <span class="boq-ctxsel">
+              <span>{{ lang.t('scd_baseline') }}</span>
+              <b class="d-cell-strong">{{ lang.pick(bl.labelAr, bl.labelEn) }}</b>
+              <span class="d-cell-sub mono"><bdi>{{ bl.takenAt }}</bdi></span>
+            </span>
+          }
+        }
+
+        @if (view() !== 'compare') {
+          <!-- The critical-path filter. The dot is the reference's; the chart's
+               own criticality mark is the ring, named in the legend. -->
+          <button type="button" class="d-fchip" [class.on]="criticalOnly()"
+                  [attr.aria-pressed]="criticalOnly()" (click)="criticalOnly.set(!criticalOnly())">
+            <span class="dot crit"></span>{{ lang.t('scd_critical') }}
+            <span class="n"><bdi>{{ d.summary.critical }}</bdi></span>
+          </button>
+        }
 
         @if (view() === 'gantt') {
           <label class="boq-ctxsel">
@@ -124,6 +143,23 @@
           </span>
         }
 
+        <!-- ملحق الشكل 24 — «استيراد الجدول الزمني». Not gated by capacity:
+             SUBMITTING a version is open, and it changes nothing. The capacity
+             is on the APPROVAL (EP-SCD-06), which is where the baseline moves. -->
+        <button type="button" class="d-btn sm" (click)="importOpen.set(true)">
+          <epm-icon name="upload" [size]="15" />{{ lang.t('scd_imp_open') }}
+        </button>
+
+        <!-- الشكل 23's own two buttons, and only on its own view. -->
+        @if (view() === 'compare') {
+          <button type="button" class="d-btn sm" (click)="exportImpact()">
+            <epm-icon name="download" [size]="15" />{{ lang.t('scd_imp_export') }}
+          </button>
+          <button type="button" class="d-btn sm primary" (click)="approveImpact()">
+            <epm-icon name="verified" [size]="15" />{{ lang.t('scd_impw_approve') }}
+          </button>
+        }
+
         @if (!singleContract()) {
           <label class="boq-ctxsel">
             <span>{{ lang.t('boq_contract') }}</span>
@@ -140,8 +176,49 @@
       }
     </div>
 
+    <!-- ══ Z5 — the three views الشكل 23 names ═════════════════════════════
+         The live prototype puts them here, as a tab strip beneath the toolbar,
+         and so does every other module in this build. They were chips inside
+         Z6 and there were only two of them. -->
+    <div class="d-pz5" role="tablist" [attr.aria-label]="lang.t('mod_schedule')">
+      @for (t of viewTabs(); track t.id) {
+        <button type="button" role="tab" [class.on]="view() === t.id"
+                [attr.aria-selected]="view() === t.id" (click)="setView(t.id)">
+          <epm-icon [name]="t.icon" [size]="14" />{{ lang.t(t.key) }}
+          @if (t.n !== null) { <span class="n"><bdi>{{ t.n }}</bdi></span> }
+        </button>
+      }
+    </div>
+
     <div class="d-pbody" [class.no-aside]="!selectedRow()">
       <div class="d-pz7">
+
+        <!-- ملحق الشكل 24 — a submitted version, on the schedule it has NOT
+             replaced. The bar says which schedule is on screen, because the
+             answer is not obvious once a newer one exists. -->
+        @if (pendingVersion(); as v) {
+          <div class="d-msgbar warning">
+            <epm-icon name="warning" [size]="16" />
+            <div>
+              <b>{{ lang.t('scd_imp_pending_t') }}
+                — <bdi class="mono">{{ v.fileName }}</bdi> ·
+                <bdi>{{ v.activityCount }}</bdi> {{ lang.t('scd_imp_activities') }}</b>
+              <span>{{ lang.t('scd_imp_pending_b') }}
+                @if (v.contractFinishDelta !== 0) {
+                  · {{ lang.t('scd_imp_delta') }}
+                  <bdi>{{ fmt.delta(v.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}
+                }
+              </span>
+            </div>
+            @if (canApproveImport()) {
+              <button type="button" class="d-btn sm primary" (click)="approveImport(v.no)">
+                {{ lang.t('scd_impw_approve') }}
+              </button>
+            } @else {
+              <span class="d-cell-sub">{{ lang.t('scd_imp_no_cap') }}</span>
+            }
+          </div>
+        }
 
         @if (data(); as d) {
           @if (d.rows.length === 0) {
@@ -340,6 +417,118 @@
                 </div>
               </div>
 
+            } @else if (view() === 'compare') {
+              <!-- ══ الشكل 23 — المقارنة والأثر ══════════════════════════ -->
+              @if (impactSummary(); as s) {
+                <div class="d-section-title">{{ lang.t('scd_impw_title') }}</div>
+
+                <div class="d-fig-row">
+                  <div class="d-fig">
+                    <div class="k">{{ lang.t('scd_imp_affected') }}</div>
+                    <div class="v"><bdi>{{ s.affectedCount }}</bdi></div>
+                  </div>
+                  <div class="d-fig">
+                    <div class="k">{{ lang.t('scd_imp_critical') }}</div>
+                    <div class="v"><bdi>{{ s.nowCriticalCount }}</bdi></div>
+                  </div>
+                  <div class="d-fig">
+                    <div class="k">{{ lang.t('scd_imp_worst') }}</div>
+                    <div class="v"><bdi>{{ worstSlip() }}</bdi> {{ lang.t('amd_days') }}</div>
+                  </div>
+                  <div class="d-fig">
+                    <!-- «تقديري» is on the LABEL, not in a footnote: the figure
+                         is a planning estimate and must not be read as a claim. -->
+                    <div class="k">{{ lang.t('scd_imp_cost') }}</div>
+                    <div class="v mono"><bdi>{{ fmt.money(s.totalCostImpact) }}</bdi></div>
+                  </div>
+                </div>
+
+                <!-- الشكل 23's «بطاقة تفسيرية لطريقة الاحتساب». The rule the
+                     figures above were actually produced by, stated where they
+                     are read (05 §6). -->
+                <div class="d-msgbar">
+                  <epm-icon name="info" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('scd_imp_how_t') }}</b>
+                    <span>{{ lang.t('scd_imp_how_b') }}</span>
+                  </div>
+                </div>
+
+                @if (impact().length === 0) {
+                  <!-- 04 §9 — nothing has slipped, which is a RESULT and not an
+                       empty database. Its own message and no button. -->
+                  <div class="d-empty">
+                    <span class="d-empty-ico"><epm-icon name="verified" [size]="30" /></span>
+                    <b>{{ lang.t('scd_imp_none_t') }}</b>
+                    <span>{{ lang.t('scd_imp_none_b') }}</span>
+                  </div>
+                } @else {
+                  <div class="d-section-title">{{ lang.t('scd_imp_rows') }}</div>
+
+                  <div class="scd-impact">
+                    @for (im of impact(); track im.activityId) {
+                      <div class="d-card-sub scd-imp">
+                        <div class="hd">
+                          <span class="mono d-cell-sub"><bdi>{{ im.activityId }}</bdi></span>
+                          <b>{{ name(im) }}</b>
+                          <epm-status-pill [code]="im.status" kind="activity-status" />
+                          @if (im.isCritical) {
+                            <span class="d-pill stalled">{{ lang.t('scd_critical') }}</span>
+                          }
+                          <span class="sp"></span>
+                          <!-- SIGNED and neutral. A slip is a magnitude, and
+                               CLAUDE.md §6 forbids colouring one by threshold. -->
+                          <span class="mono d-cell-strong">
+                            <bdi>+{{ im.slipDays }}</bdi> {{ lang.t('amd_days') }}
+                          </span>
+                          <span class="d-cell-sub mono"><bdi>{{ fmt.money(im.costImpact) }}</bdi></span>
+                        </div>
+
+                        <!-- BEFORE AND AFTER, side by side. The pair is the
+                             point: 26 days lost out of 26 days of float moved
+                             nothing, out of none it moved the finish. -->
+                        <div class="ba">
+                          <div class="col">
+                            <div class="d-cell-sub">{{ lang.t('scd_imp_base') }}</div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_bl_start') }}</span>
+                              <span class="mono"><bdi>{{ fmt.date(im.baselineStart) }}</bdi></span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_bl_fin') }}</span>
+                              <span class="mono"><bdi>{{ fmt.date(im.baselineFinish) }}</bdi></span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_dur') }}</span>
+                              <span class="mono"><bdi>{{ im.durationBefore }}</bdi> {{ lang.t('amd_days') }}</span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_float') }}</span>
+                              <span class="mono"><bdi>{{ fmt.days(im.floatBefore) }}</bdi></span></div>
+                          </div>
+                          <div class="col cur">
+                            <div class="d-cell-sub">{{ lang.t('scd_imp_cur') }}</div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_act_start') }}</span>
+                              <span class="mono"><bdi>{{ fmt.date(im.currentStart) }}</bdi></span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_forecast') }}</span>
+                              <span class="mono"><bdi>{{ fmt.date(im.currentFinish) }}</bdi></span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_dur') }}</span>
+                              <span class="mono"><bdi>{{ im.durationAfter }}</bdi> {{ lang.t('amd_days') }}</span></div>
+                            <div class="ln"><span class="d-cell-sub">{{ lang.t('scd_col_float') }}</span>
+                              <span class="mono"><bdi>{{ fmt.days(im.floatAfter) }}</bdi></span></div>
+                          </div>
+                        </div>
+
+                        <!-- The three numbers the estimate is built from, on the
+                             row that used them — so the total above is auditable
+                             line by line rather than only explained. -->
+                        <div class="ft d-cell-sub">
+                          <span>{{ lang.t('scd_col_cost') }}
+                            <b class="mono"><bdi>{{ fmt.money(im.cost) }}</bdi></b></span>
+                          <span>{{ lang.t('scd_imp_daily') }}
+                            <b class="mono"><bdi>{{ fmt.money(im.dailyRate) }}</bdi></b></span>
+                          <span>{{ lang.t('scd_imp_overhead') }}
+                            <b class="mono"><bdi>{{ fmt.money(im.dailyOverhead) }}</bdi></b></span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+
             } @else {
               <!-- ══ THE TABLE ═══════════════════════════════════════════ -->
               <div class="d-tablewrap">
@@ -390,6 +579,13 @@
                             <td><epm-status-pill [code]="r.status" kind="activity-status" /></td>
                             <td class="d-cell-strong" [style.padding-inline-start.px]="8 + indent(r.level)">
                               {{ name(r) }}
+                              <!-- ROADMAP 4.5 · 04 §6 — the same badge SCR-W4
+                                   puts on an amended BOQ line, on the activity
+                                   an order extended. -->
+                              @if (r.amendment; as a) {
+                                <epm-amd-mark [count]="a.count" [pendingCount]="a.pendingCount"
+                                              [sources]="a.sources" (opened)="openAmendments(r.id)" />
+                              }
                             </td>
                             <td class="r mono">
                               <bdi>{{ r.isMilestone ? '—' : r.originalDuration }}</bdi>
@@ -522,3 +718,25 @@
     </div>
   }
 </div>
+
+<!-- ══ THE AMENDMENT DRAWER (ROADMAP 4.5 · 04 §6) ════════════════════════
+     The same component SCR-W4 mounts over a BOQ line. Outside the page frame
+     so the scrim covers the whole workspace, as every other drawer does. -->
+@if (amdId()) {
+  @if (amd()) {
+    <epm-amd-panel [title]="amdTitle()" [code]="amdId()"
+                   [facts]="amdFacts()" [chain]="amdChain()"
+                   (closed)="closeAmendments()" />
+  }
+}
+
+<!-- ══ ملحق الشكل 24 — استيراد الجدول الزمني ═══════════════════════════════
+     Outside the frame, like every modal. On submit the page re-reads its
+     versions; the schedule itself is untouched until somebody approves. -->
+@if (importOpen()) {
+  <epm-schedule-import-wizard
+    [projectId]="projectId()"
+    [contractId]="effectiveContractId()"
+    (submitted)="importSubmitted($event)"
+    (closed)="importOpen.set(false)" />
+}

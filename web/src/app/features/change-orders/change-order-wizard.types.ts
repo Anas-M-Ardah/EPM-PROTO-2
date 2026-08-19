@@ -10,6 +10,18 @@
  * record page reads.
  */
 
+/**
+ * الشكل 58 — one beneficiary's share of a supply line. Used for BOTH pickers:
+ * the من list is the line's own allocation, and المتاح is measured against
+ * the qty below.
+ */
+export interface WizardAllocation {
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  qty: number;
+}
+
 export interface WizardBoqLine {
   code: string;
   descriptionAr: string;
@@ -25,6 +37,8 @@ export interface WizardBoqLine {
   /** BR-01, fetched and never entered (`03 §8`). */
   weight: number;
   status: string;
+  /** BR-08's rows. Empty on a works bill and on an undistributed supply line. */
+  allocation: WizardAllocation[];
 }
 
 export interface WizardActivity {
@@ -61,10 +75,20 @@ export interface WizardSourceResponse {
   viewerId: string;
   viewerParty: string;
   parties: string[];
+  /** Every ACTIVE beneficiary — the «إلى» picker, which may target one that
+   *  holds nothing yet. جامعة تلعفر in الشكل 58 is exactly that case. */
+  beneficiaries: WizardAllocation[];
   contracts: WizardContract[];
 }
 
 // ── what the wizard sends ────────────────────────────────────────────────
+
+/** الشكل 58's transfer row. */
+export interface WizardTransferInput {
+  from: string;
+  to: string;
+  qty: number;
+}
 
 export interface WizardLineInput {
   code: string;
@@ -78,6 +102,8 @@ export interface WizardLineInput {
   targetCode: string | null;
   drawnQty: number | null;
   distributedQty: number | null;
+  /** الشكل 58's beneficiary transfers. Empty on every other change type. */
+  transfers: WizardTransferInput[];
 }
 
 export interface WizardActivityInput {
@@ -122,6 +148,26 @@ export interface PreviewParty {
   tripsThreshold: boolean;
 }
 
+/** الشكل 58's «صافي التغيير في التوزيع بعد التطبيق» — one chip per beneficiary. */
+export interface PreviewNet {
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  before: number;
+  delta: number;
+  after: number;
+}
+
+/** One الشكل 58 transfer, echoed back with «المتاح» — the cap its quantity
+ *  field carries. Worked out by Domain/SupplyRedistribution, never here. */
+export interface PreviewTransfer {
+  index: number;
+  from: string;
+  to: string;
+  qty: number;
+  available: number;
+}
+
 export interface PreviewLine {
   code: string;
   descriptionAr: string;
@@ -138,6 +184,12 @@ export interface PreviewLine {
   contractor: PreviewParty;
   reDept: PreviewParty;
   diverges: boolean;
+  /** Empty unless the line carries الشكل 58 transfers. */
+  nets: PreviewNet[];
+  /** Index-aligned with the line's own transfers. */
+  transfers: PreviewTransfer[];
+  /** ZERO, and printed rather than left blank — الشكل 59's «الأثر 0». */
+  redistImpact: number;
 }
 
 export interface PreviewWeights {

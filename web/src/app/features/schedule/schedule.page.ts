@@ -6,12 +6,22 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
-import { LangService } from '../../core/lang';
+import { LangService, StrKey } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ScheduleApi } from './schedule.api';
-import { ScheduleContractOption, ScheduleResponse, ScheduleRow } from './schedule.types';
+import { ScheduleImportApi } from './schedule-import.api';
+import { ScheduleImportWizard } from './schedule-import.wizard';
+import { ScheduleImportVersion } from './schedule-import.types';
+import { PersonaService } from '../../core/persona';
+import { AmendmentMarkComponent } from '../../shared/amendment-mark.component';
+import {
+  AmendmentFactView, AmendmentPanelComponent, AmendmentStepView,
+} from '../../shared/amendment-panel.component';
+import {
+  ScheduleAmendmentDetail, ScheduleContractOption, ScheduleResponse, ScheduleRow,
+} from './schedule.types';
 
 /** One month column of the timeline header. */
 interface MonthCol { label: string; year: string; }
@@ -47,12 +57,15 @@ interface MonthCol { label: string; year: string; }
 @Component({
   selector: 'epm-schedule-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent],
+  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+    AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './schedule.page.html',
 })
 export class SchedulePage {
   private api = inject(ScheduleApi);
+  private importApi = inject(ScheduleImportApi);
+  private persona = inject(PersonaService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   lang = inject(LangService);
@@ -70,7 +83,12 @@ export class SchedulePage {
   error = signal<string | null>(null);
 
   /** gantt · table */
-  view = signal<'gantt' | 'table'>('gantt');
+  /**
+   * الشكل 23 names THREE views, and the live prototype renders them as a
+   * `.d-pz5` tab strip beneath Z6 rather than as chips inside it — which is
+   * what every other module in this build already does (`04 §5`).
+   */
+  view = signal<'gantt' | 'table' | 'compare'>('gantt');
 
   basis = signal<'cost' | 'mh'>('cost');
   criticalOnly = signal(false);
@@ -105,7 +123,8 @@ export class SchedulePage {
   singleContract = computed(() => this.contracts().length === 1);
   gated = computed(() => !this.contractId() && !this.singleContract());
 
-  private effectiveContractId = computed(() =>
+  /** Public: the import wizard is mounted outside the frame and needs it. */
+  effectiveContractId = computed(() =>
     this.contractId() || (this.singleContract() ? this.contracts()[0].id : ''));
 
   contract = computed(() => this.contracts().find(c => c.id === this.effectiveContractId()));
@@ -193,6 +212,147 @@ export class SchedulePage {
 
   rows = computed(() => this.data()?.rows ?? []);
 
+  // ── الشكل 23 · المقارنة والأثر ─────────────────────────────────────────
+  //
+  // The plate's third view, and the prototype's third tab. Everything on it is
+  // projected by `EP-SCD-02` off `Domain/ScheduleImpact`; this component holds
+  // the tab list and formats, and computes nothing.
+
+  impact = computed(() => this.data()?.impact ?? []);
+  impactSummary = computed(() => this.data()?.impactSummary ?? null);
+  baselines = computed(() => this.data()?.baselines ?? []);
+
+  /** The baseline in force — the one every figure on the screen is measured from. */
+  currentBaseline = computed(() => this.baselines().find(b => b.isCurrent) ?? null);
+
+  /**
+   * The three views, in the plate's order. The count rides on المقارنة والأثر
+   * because that tab is empty on a schedule that has not slipped, and a tab you
+   * can open to find nothing is worse than one that says so first.
+   */
+  viewTabs = computed(() => [
+    { id: 'gantt' as const, key: 'scd_tab_gantt' as StrKey, icon: 'calendar_month', n: null as number | null },
+    { id: 'table' as const, key: 'scd_tab_table' as StrKey, icon: 'list_alt', n: null as number | null },
+    {
+      id: 'compare' as const, key: 'scd_tab_compare' as StrKey, icon: 'difference',
+      n: this.impact().length || null,
+    },
+  ]);
+
+  /** D-15 as a percentage, for the explainer card that states the rule. */
+  overheadPct = computed(() => {
+    const s = this.impactSummary();
+    return s ? fmt.pct(s.overheadPct * 100, 0) : '';
+  });
+
+  /** The single worst slip — the row a reader should open first. */
+  worstSlip = computed(() =>
+    this.impact().reduce((m, i) => Math.max(m, i.slipDays), 0));
+
+  // ── ملحق الشكل 24 — «استيراد الجدول الزمني» ────────────────────────────
+
+  importOpen = signal(false);
+  versions = signal<ScheduleImportVersion[]>([]);
+
+  /** The one awaiting a decision. There is at most one — approving supersedes. */
+  pendingVersion = computed(() => this.versions().find(v => v.state === 'submitted') ?? null);
+
+  /**
+   * Mirrors `Personas.CanApproveBoqImport`: the baseline is what slip, float,
+   * planned progress and the penalty are all measured against, so accepting a
+   * new one is دائرة المهندس المقيم's or مدير المشروع's. The server checks it
+   * too, AND that the submitter is not the approver — this only draws the
+   * button, and prints the reason when it does not.
+   */
+  canApproveImport = computed(() =>
+    this.persona.current()?.party === 'دائرة المهندس المقيم'
+    || this.persona.current()?.party === 'مدير المشروع');
+
+  private loadVersions() {
+    const c = this.effectiveContractId();
+    if (!c) return;
+    this.importApi.versions(this.projectId(), c).subscribe({
+      next: v => this.versions.set(v),
+      error: () => this.versions.set([]),
+    });
+  }
+
+  importSubmitted(versions: ScheduleImportVersion[]) {
+    this.importOpen.set(false);
+    this.versions.set(versions);
+    this.toast.show(this.lang.t('scd_imp_submitted'));
+  }
+
+  approveImport(no: number) {
+    this.importApi.approve(this.projectId(), this.effectiveContractId(), no).subscribe({
+      next: v => {
+        this.versions.set(v);
+        this.toast.show(this.lang.t('scd_imp_approved'));
+        // The baseline MOVED, so every figure on this screen did with it.
+        this.fetch(this.effectiveContractId());
+      },
+      error: e => this.toast.show(e?.error?.messageAr ?? this.lang.t('scd_imp_no_cap')),
+    });
+  }
+
+  /**
+   * Switching view CLEARS THE SELECTION. The record pane is docked beside the
+   * grid and describes a row that the next view may not draw at all — the
+   * compare view lists only what slipped.
+   */
+  setView(v: 'gantt' | 'table' | 'compare') {
+    this.view.set(v);
+    this.selected.set('');
+  }
+
+  /**
+   * الشكل 23's «تصدير تحليل الأثر». CSV, built from the rows already on screen
+   * — the export and the table cannot disagree because there is one source.
+   */
+  exportImpact() {
+    const rows = this.impact();
+    if (rows.length === 0) { this.toast.show(this.lang.t('scd_imp_none_t')); return; }
+
+    const head = [
+      'activityId', 'name', 'critical', 'baselineStart', 'baselineFinish',
+      'currentStart', 'currentFinish', 'durationBefore', 'durationAfter',
+      'floatBefore', 'floatAfter', 'slipDays', 'cost', 'dailyRate',
+      'dailyOverhead', 'costImpact',
+    ];
+    const body = rows.map(r => [
+      r.activityId, this.name(r), r.isCritical ? '1' : '0',
+      r.baselineStart ?? '', r.baselineFinish ?? '',
+      r.currentStart ?? '', r.currentFinish ?? '',
+      r.durationBefore, r.durationAfter, r.floatBefore, r.floatAfter,
+      r.slipDays, r.cost, r.dailyRate, r.dailyOverhead, r.costImpact,
+    ]);
+
+    // A BOM, because the file is opened in Excel on an Arabic Windows and
+    // without one the activity names arrive as mojibake.
+    const csv = '\uFEFF' + [head, ...body]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `impact-${this.effectiveContractId()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.toast.show(this.lang.t('scd_imp_exported'));
+  }
+
+  /**
+   * «اعتماد الأثر» — NAMED, NOT DRAWN. Approving a schedule impact analysis is
+   * a decision with an owner, a date and a stage, and `03` gives none of that
+   * to the schedule: the only approval track this system models is the change
+   * order's. Recording a second, weaker one here would put an approval on a
+   * legal record with nothing behind it.
+   */
+  approveImpact() {
+    this.toast.show(this.lang.t('scd_imp_approve_needs'));
+  }
+
   /**
    * What actually renders: the flat list, minus collapsed subtrees, minus
    * everything off the critical path when that filter is on.
@@ -242,6 +402,63 @@ export class SchedulePage {
     if (r.kind !== 'act') return;
     this.selected.set(this.selected() === r.id ? '' : r.id);
   }
+
+  // ── the amendment drawer (ROADMAP 4.5 · 04 §6) ─────────────────────────
+  //
+  // The SAME component SCR-W4 mounts over a BOQ line. An activity's primary
+  // pair is DAYS and its secondary the finish date, where a line's are the
+  // quantity and the money — the panel takes both as strings so neither screen
+  // has to know the other's shape.
+
+  amdId = signal('');
+  amd = signal<ScheduleAmendmentDetail | null>(null);
+
+  openAmendments(activityId: string) {
+    this.amdId.set(activityId);
+    this.amd.set(null);
+    this.api.amendments(this.projectId(), this.effectiveContractId(), activityId).subscribe({
+      next: d => this.amd.set(d),
+      error: e => { this.amdId.set(''); this.toast.show(e?.error?.message ?? 'request failed'); },
+    });
+  }
+
+  closeAmendments() { this.amdId.set(''); this.amd.set(null); }
+
+  amdTitle = computed(() => {
+    const d = this.amd();
+    return d ? this.name(d) : this.lang.t('amd_panel_act');
+  });
+
+  amdFacts = computed<AmendmentFactView[]>(() => {
+    const d = this.amd();
+    if (!d) return [];
+    const days = this.lang.t('amd_days');
+    const delta = d.effectiveRemaining - d.originalRemaining;
+    return [
+      { key: this.lang.t('amd_orig_rem'), value: `${d.originalRemaining} ${days}` },
+      {
+        key: this.lang.t('amd_eff_rem'),
+        value: `${d.effectiveRemaining} ${days}`,
+        sub: delta === 0 ? null : (delta > 0 ? '+' : '') + delta,
+      },
+      { key: this.lang.t('amd_finish_before'), value: fmt.date(d.originalFinish) },
+      { key: this.lang.t('amd_eff_finish'), value: fmt.date(d.effectiveFinish) },
+    ];
+  });
+
+  amdChain = computed<AmendmentStepView[]>(() => {
+    const days = this.lang.t('amd_days');
+    return (this.amd()?.chain ?? []).map(s => ({
+      no: s.no,
+      at: s.at,
+      isApplied: s.isApplied,
+      from: `${s.remainingFrom} ${days}`,
+      to: `${s.remainingTo} ${days}`,
+      secondary: `${fmt.date(s.finishFrom)} → ${fmt.date(s.finishTo)}`,
+      // An activity carries no rate, so it can never introduce a second one.
+      excess: null,
+    }));
+  });
 
   name(r: { nameAr: string; nameEn: string }): string {
     return this.lang.pick(r.nameAr, r.nameEn);
@@ -346,6 +563,9 @@ export class SchedulePage {
         this.basis.set(d.summary.basis === 'mh' ? 'mh' : 'cost');
         this.applyLevel(this.wbsLevel());
         this.loading.set(false);
+        // ملحق الشكل 24 — the submitted versions, so a pending one is visible
+        // on the schedule it has not yet replaced.
+        this.loadVersions();
       },
       error: e => this.fail(e),
     });

@@ -86,8 +86,11 @@ public record ChangeOrderGroup(string Key, int Count);
 /// <param name="NeedsAction">Pending orders whose current stage has breached its SLA (BR-12).</param>
 /// <param name="Overdue">
 /// Pending orders past the whole-order lead-time ceiling. DIFFERENT from
-/// NeedsAction on purpose — `06 §12` seeds VO-02 and VO-06 precisely to prove
-/// "pending" and "overdue" are not the same set.
+/// NeedsAction on purpose — `06 §12` seeds VO-02 and VO-07 precisely to prove
+/// "pending" and "overdue" are not the same set. (VO-07 took that role from
+/// VO-06 when VO-06 was seeded applied — P-160.) The sets differ in BOTH
+/// directions: VO-07 is pending and not overdue, VO-03 is overdue and not
+/// pending, because a RETURNED order is back with its originator and still ages.
 /// </param>
 /// <param name="AvgCycleDays">
 /// BR-12's mean over CLOSED orders only. Null when none has closed — an average

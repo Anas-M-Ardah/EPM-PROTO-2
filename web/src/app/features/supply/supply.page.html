@@ -1,0 +1,686 @@
+<!--
+  الفقرات التجهيزية — ملحق الأشكال 50–56.
+
+  Ported from the live prototype's app/supply-items.jsx (DModSupplyItems :24,
+  DModReceipts :627, DModItemInquiry :694) — a file the checked-in reference
+  does not contain.
+
+  Three tabs in Z5, the register in Z7, the item panel in Z8, the two receipt
+  forms as drawers over it. Every number, date and ID is <bdi>-isolated.
+-->
+<div class="d-pframe">
+
+  @if (loading()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_supplyitems') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <epm-table-skeleton [cols]="colCount" [rows]="7" [loadingLabel]="lang.t('loading')" />
+    </div></div>
+
+  } @else if (error()) {
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_supplyitems') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+        <b>{{ lang.t('error_t') }}</b>
+        <span><bdi>{{ error() }}</bdi></span>
+        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      </div>
+    </div></div>
+
+  } @else if (gated()) {
+    <!-- ══ THE CONTRACT GATE (P-46) ══════════════════════════════════════
+         A فقرة belongs to exactly one contract, so the register cannot open
+         until one is chosen. Not a stub — this IS the screen for a project
+         with more than one supply contract. -->
+    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_supplyitems') }}</span></div>
+    <div class="d-pbody no-aside"><div class="d-pz7">
+      <div class="d-empty">
+        <span class="d-empty-ico"><epm-icon name="inventory_2" [size]="30" /></span>
+        <b>{{ lang.t('sup_gate_t') }}</b>
+        <span>{{ lang.t('sup_gate_b') }}</span>
+      </div>
+      <div class="d-facets" role="group" [attr.aria-label]="lang.t('boq_contract')">
+        @for (c of gateContracts(); track c.id) {
+          <button type="button" class="d-fchip" (click)="chooseContract(c.id)">
+            <bdi>{{ c.id }}</bdi> — {{ lang.pick(c.nameAr, c.nameEn) }}
+            <span class="n"><bdi>{{ c.itemCount }}</bdi></span>
+          </button>
+        }
+      </div>
+    </div></div>
+
+  } @else {
+    @if (data(); as d) {
+    <!-- ══ Z6 ══════════════════════════════════════════════════════════════ -->
+    <div class="d-pz6">
+      <span class="z6-t">
+        {{ lang.t('mod_supplyitems') }}
+        <em><bdi>{{ d.contractId }}</bdi> · {{ lang.pick(d.contractNameAr, d.contractNameEn) }}</em>
+      </span>
+
+      <span class="sp"></span>
+
+      @if (view() === 'items') {
+        <!-- الشكل 50's «زر إضافة فقرة». A supply line is a BOQ line (D-14), so
+             it is entered where every other line is — «الإدخال اليدوي» on the
+             bill (EP-BOQ-12), which already refuses a works payload on a supply
+             bill and requires the device half. This is the way in, not a second
+             form for the same table. -->
+        <button type="button" class="d-btn sm primary" (click)="addItem()">
+          <epm-icon name="add" [size]="15" />{{ lang.t('sup_add') }}
+        </button>
+      }
+
+      @if (view() === 'receipts') {
+        <!-- الشكل 55's «مبدّل نوع الاستلام بخيارين أولي ومخزني». -->
+        <span class="boq-basis">
+          <span class="lbl">{{ lang.t('sup_receipt_kind') }}</span>
+          <span class="seg">
+            <button type="button" [class.on]="receiptKind() === 'warehouse'"
+                    (click)="receiptKind.set('warehouse')">{{ lang.t('sup_kind_warehouse') }}</button>
+            <button type="button" [class.on]="receiptKind() === 'preliminary'"
+                    (click)="receiptKind.set('preliminary')">{{ lang.t('sup_kind_preliminary') }}</button>
+          </span>
+        </span>
+      }
+    </div>
+
+    <!-- ══ Z5 — الشكل 50's three tabs ══════════════════════════════════════ -->
+    <div class="d-pz5" role="tablist" [attr.aria-label]="lang.t('mod_supplyitems')">
+      <button type="button" role="tab" [class.on]="view() === 'items'"
+              [attr.aria-selected]="view() === 'items'" (click)="view.set('items')">
+        {{ lang.t('sup_tab_items') }}<span class="n"><bdi>{{ d.totals.itemCount }}</bdi></span>
+      </button>
+      <button type="button" role="tab" [class.on]="view() === 'receipts'"
+              [attr.aria-selected]="view() === 'receipts'" (click)="view.set('receipts')">
+        {{ lang.t('sup_tab_receiptlog') }}<span class="n"><bdi>{{ d.receipts.length }}</bdi></span>
+      </button>
+      <button type="button" role="tab" [class.on]="view() === 'inquiry'"
+              [attr.aria-selected]="view() === 'inquiry'" (click)="view.set('inquiry')">
+        {{ lang.t('sup_tab_inquiry') }}
+      </button>
+    </div>
+
+    <div class="d-pbody" [class.no-aside]="!openCode()">
+      <div class="d-pz7">
+
+        <!-- ══ الشكل 50 — سجل الفقرات التجهيزية ══════════════════════════
+             A TOOLBAR, AND THEN THE TABLE — no heading above it. الشكل 50 lists
+             its own furniture in order («وسم العقد CNT-0439، وزر إضافة فقرة،
+             وتبويبات …، وحقل بحث …، ومرشحات الكل 7 …، وجدول بأعمدة …») and names
+             no title, no counter and no collapse toggle over the items table.
+             الشكل 51 says it in one word: «شريط أدوات يضم حقل بحث … ومرشحات حالة
+             على هيئة شارات».
+
+             The titled collapsible section belongs to الشكل 55, which DOES ask
+             for «عنوان القسم سجل الاستلام المخزني مع عدّاد وزر طيّ» — it is
+             rendered there instead. -->
+        @if (view() === 'items') {
+                <epm-data-table
+                  [title]="lang.t('sup_tab_items')"
+                  [sub]="filtered().length + ' ' + lang.t('sup_of') + ' ' + items().length"
+                  frameId="sup-reg"
+                  [columns]="itemColumns()" [rows]="filtered()"
+                  rowKey="code" [selectedKey]="openCode()"
+                  emptyIcon="inventory_2"
+                  [emptyTitle]="lang.t('sup_empty_t')" [emptyBody]="lang.t('sup_empty_b')"
+                  [filtered]="isFiltered()"
+                  [filteredTitle]="lang.t('sup_filter_empty_t')"
+                  [filteredBody]="lang.t('sup_filter_empty_b')"
+                  (clear)="clearFilters()">
+
+                  <!-- الشكل 50's toolbar, projected into the frame between the
+                       title row and the grid. SEARCH FIRST, then «الكل», then
+                       the four states — the order both الشكل 50 and الشكل 51
+                       print, and the order supply-items.jsx:548 emits.
+
+                       EVERY chip is drawn including the zeroes, and a zero one
+                       is DISABLED rather than hidden (the prototype's own
+                       `disabled={f !== 'all' && !COUNT(f)}`): a chip that
+                       vanishes at nought is one whose absence has to be
+                       interpreted. -->
+                  <div epmTableToolbar class="d-toolbar">
+                    <div class="d-field">
+                      <epm-icon name="search" [size]="16" />
+                      <input type="search" class="epm-bare-input" [value]="q()"
+                             [attr.aria-label]="lang.t('sup_search')"
+                             [attr.placeholder]="lang.t('sup_search')"
+                             (input)="q.set($any($event.target).value)" />
+                    </div>
+
+                    <button type="button" class="d-fchip" [class.on]="status() === ''"
+                            (click)="status.set('')">
+                      {{ lang.t('all') }}<span class="n"><bdi>{{ items().length }}</bdi></span>
+                    </button>
+                    @for (k of statusKeys; track k) {
+                      <button type="button" class="d-fchip" [class.on]="status() === k"
+                              [disabled]="statusCount(k) === 0"
+                              (click)="status.set(status() === k ? '' : k)">
+                        {{ statusLabel(k) }}<span class="n"><bdi>{{ statusCount(k) }}</bdi></span>
+                      </button>
+                    }
+
+                    <span class="sp"></span>
+
+                    @if (isFiltered()) {
+                      <button type="button" class="d-btn sm ghost" (click)="clearFilters()">
+                        <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
+                      </button>
+                    }
+                  </div>
+
+                  <ng-template epmCell="code" let-r>
+                    <button type="button" class="lnk"
+                            [attr.aria-expanded]="openCode() === r.code"
+                            (click)="open(r.code)"><bdi>{{ r.code }}</bdi></button>
+                  </ng-template>
+
+                  <!-- «الاستلام»: the bar, «المتعاقد / المستلم» under it, and
+                       the percentage beside it — الشكل 50's three-part cell. -->
+                  <ng-template epmCell="receipt" let-r>
+                    <span class="sup-recv">
+                      <span class="d-mini-bar">
+                        <span class="t"><span [style.width.%]="r.receivedPct"></span></span>
+                        <span class="pc">
+                          <bdi>{{ fmt.qty(r.contractedQty) }} / {{ fmt.qty(r.receivedQty) }}</bdi>
+                        </span>
+                      </span>
+                      <b class="mono"><bdi>{{ fmt.pct(r.receivedPct, 0) }}</bdi></b>
+                    </span>
+                  </ng-template>
+
+                  <ng-template epmCell="status" let-r>
+                    <epm-status-pill kind="supply-status" [code]="r.status" />
+                  </ng-template>
+                </epm-data-table>
+        }
+
+        <!-- ══ الشكل 55 — سجل الاستلامات ═════════════════════════════════
+             THIS is the screen with a section heading: «عنوان القسم سجل
+             الاستلام المخزني مع عدّاد وزر طيّ». The title follows the kind
+             switch, because the plate titles it for the side being shown. -->
+        @if (view() === 'receipts') {
+          <epm-data-table
+            [title]="recLogTitle()"
+            [sub]="shownReceipts().length + ' ' + lang.t('sup_recv_word')"
+            frameId="sup-receipts"
+            [columns]="receiptColumns()" [rows]="shownReceipts()"
+            rowKey="no"
+            emptyIcon="inventory_2"
+            [emptyTitle]="lang.t('sup_rec_empty_t')" [emptyBody]="lang.t('sup_rec_empty_b')">
+
+            <ng-template epmCell="itemCode" let-r>
+              <button type="button" class="lnk" (click)="view.set('items'); open(r.itemCode)">
+                <bdi>{{ r.itemCode }}</bdi>
+              </button>
+            </ng-template>
+          </epm-data-table>
+        }
+
+        <!-- ══ الشكل 56 — استعلام الفقرات ════════════════════════════════ -->
+        @if (view() === 'inquiry') {
+          <div class="d-msgbar info">
+            <epm-icon name="info" [size]="16" />
+            <div>
+              <b>{{ lang.t('sup_inq_t') }}</b>
+              <span>{{ lang.t('sup_inq_b') }}</span>
+            </div>
+          </div>
+
+          <div class="d-form-grid">
+            <label class="d-form-i" style="grid-column: 1 / -1">
+              <span class="k">{{ lang.t('sup_inq_field') }}</span>
+              <input class="d-form-input" [value]="inquiryQ()"
+                     (input)="inquiryQ.set($any($event.target).value)"
+                     (keyup.enter)="runInquiry()" />
+            </label>
+          </div>
+          <button type="button" class="d-btn primary" [disabled]="inquiryBusy()"
+                  (click)="runInquiry()">
+            <epm-icon name="search" [size]="15" />{{ lang.t('sup_inq_go') }}
+          </button>
+
+          @if (inquiryHits(); as hits) {
+            @if (hits.length === 0) {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="search" [size]="30" /></span>
+                <b>{{ lang.t('sup_inq_none_t') }}</b>
+                <span>{{ lang.t('sup_inq_none_b') }}</span>
+              </div>
+            } @else {
+              @for (i of hits; track i.code) {
+                <!-- الشكل 56's «بطاقة نتيجة» — the whole item card, not a row. -->
+                <div class="d-sec">
+                  <div class="d-sec-h">
+                    <span class="n"><bdi>{{ i.code }}</bdi> — {{ i.device }}</span>
+                    <epm-status-pill kind="supply-status" [code]="i.status" />
+                  </div>
+                  <div class="d-sec-b">
+                    <div class="d-form-grid">
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_manufacturer') }}</span>
+                        <span class="v"><bdi>{{ i.manufacturer }}</bdi> · <bdi>{{ i.model }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_country') }}</span>
+                        <span class="v">{{ i.country }}</span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_warranty') }}</span>
+                        <span class="v"><bdi>{{ i.warrantyMonths }}</bdi> {{ lang.t('sup_months') }}
+                          @if (i.warrantyExpiry) { · <bdi>{{ fmt.date(i.warrantyExpiry) }}</bdi> }
+                        </span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_serials') }}</span>
+                        <span class="v mono"><bdi>{{ i.serialFrom }}</bdi> ← <bdi>{{ i.serialTo }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_contracted') }}</span>
+                        <span class="v num"><bdi>{{ fmt.qty(i.contractedQty) }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_supplied') }}</span>
+                        <span class="v num"><bdi>{{ fmt.qty(i.suppliedQty) }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_received') }}</span>
+                        <span class="v num"><bdi>{{ fmt.qty(i.receivedQty) }}</bdi></span></div>
+                      <div class="d-form-i"><span class="k">{{ lang.t('sup_remaining') }}</span>
+                        <span class="v num"><bdi>{{ fmt.qty(i.remainingQty) }}</bdi></span></div>
+                    </div>
+                    <button type="button" class="d-btn sm" (click)="view.set('items'); open(i.code)">
+                      {{ lang.t('sup_open_item') }}
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          }
+        }
+      </div>
+
+      <!-- ══ Z8 — الشكل 51 · الشكل 52's item panel ═════════════════════════ -->
+      @if (openCode()) {
+        <div class="d-pz8">
+          <div class="d-rpane">
+            @if (detail(); as p) {
+              <div class="d-rpane-h">
+                <div class="tx">
+                  <b>{{ p.item.device }}</b>
+                  <span class="mono"><bdi>{{ p.item.code }}</bdi></span>
+                </div>
+                <button type="button" class="d-icon-btn sm"
+                        [attr.aria-label]="lang.t('boq_card_close')" (click)="closePanel()">
+                  <epm-icon name="close" [size]="18" />
+                </button>
+              </div>
+
+              <div class="d-rpane-b">
+                <dl class="d-meta">
+                  <div class="d-meta-i"><dt>{{ lang.t('boq_col_amount') }}</dt>
+                    <dd class="num"><bdi>{{ fmt.money(p.item.amount) }}</bdi></dd></div>
+                  <div class="d-meta-i"><dt>{{ lang.t('sup_status') }}</dt>
+                    <dd><epm-status-pill kind="supply-status" [code]="p.item.status" /></dd></div>
+                  <div class="d-meta-i"><dt>{{ lang.t('boq_col_weight') }}</dt>
+                    <dd class="num"><bdi>{{ fmt.pct(p.item.weight, 2) }}</bdi></dd></div>
+                </dl>
+
+                <!-- الشكل 51's own warning bar. -->
+                @if (shortfall() > 0) {
+                  <div class="d-msgbar warning">
+                    <epm-icon name="warning" [size]="16" />
+                    <div>
+                      <b>{{ lang.t('sup_short_t') }}</b>
+                      <span>{{ lang.t('sup_short_b') }}
+                        <bdi>{{ fmt.qty(shortfall()) }}</bdi>
+                        {{ lang.t('sup_of') }}
+                        <bdi>{{ fmt.qty(p.item.contractedQty) }}</bdi></span>
+                    </div>
+                  </div>
+                }
+
+                <div class="d-secnav" role="tablist">
+                  @for (t of panelTabs; track t.k) {
+                    <button type="button" role="tab" [class.on]="panelTab() === t.k"
+                            [attr.aria-selected]="panelTab() === t.k" (click)="panelTab.set(t.k)">
+                      {{ lang.t(t.label) }}
+                      @if (t.k === 'dist' && p.beneficiaries.length) {
+                        <span class="n"><bdi>{{ p.beneficiaries.length }}</bdi></span>
+                      }
+                      @if (t.k === 'receipts' && p.receipts.length) {
+                        <span class="n"><bdi>{{ p.receipts.length }}</bdi></span>
+                      }
+                    </button>
+                  }
+                </div>
+
+                <!-- ── عام ─────────────────────────────────────────────── -->
+                @if (panelTab() === 'general') {
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_device') }}</span>
+                      <span class="v">{{ p.item.device }}</span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_model') }}</span>
+                      <span class="v"><bdi>{{ p.item.model }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_manufacturer') }}</span>
+                      <span class="v"><bdi>{{ p.item.manufacturer }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_country') }}</span>
+                      <span class="v">{{ p.item.country }}</span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_serials') }}</span>
+                      <span class="v mono"><bdi>{{ p.item.serialFrom }}</bdi> ← <bdi>{{ p.item.serialTo }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_warranty') }}</span>
+                      <span class="v"><bdi>{{ p.item.warrantyMonths }}</bdi> {{ lang.t('sup_months') }}</span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_contracted') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(p.item.contractedQty) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_supplied') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(p.item.suppliedQty) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_received') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(p.item.receivedQty) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_remaining') }}</span>
+                      <span class="v num"><bdi>{{ fmt.qty(p.item.remainingQty) }}</bdi></span></div>
+                  </div>
+                }
+
+                <!-- ── الشكل 51 · التوزيع على الجهات المستفيدة ─────────── -->
+                @if (panelTab() === 'dist') {
+                  @if (p.beneficiaries.length === 0) {
+                    <div class="d-empty">
+                      <span class="d-empty-ico"><epm-icon name="apartment" [size]="30" /></span>
+                      <b>{{ lang.t('sup_dist_empty_t') }}</b>
+                      <span>{{ lang.t('sup_dist_empty_b') }}</span>
+                    </div>
+                  } @else {
+                    <div class="d-tablewrap"><table class="d-table">
+                      <thead><tr>
+                        <th>{{ lang.t('sup_beneficiary') }}</th>
+                        <th class="r" style="width: 90px">{{ lang.t('sup_allocated') }}</th>
+                        <th class="r" style="width: 90px">{{ lang.t('sup_received') }}</th>
+                      </tr></thead>
+                      <tbody>
+                        @for (b of p.beneficiaries; track b.code) {
+                          <tr>
+                            <td class="d-cell-strong">{{ benName(b) }}</td>
+                            <td class="r mono"><bdi>{{ fmt.qty(b.allocatedQty) }}</bdi></td>
+                            <td class="r mono"><bdi>{{ fmt.qty(b.receivedQty) }}</bdi></td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot><tr>
+                        <td class="d-cell-strong">{{ lang.t('boq_totals') }}</td>
+                        <td class="r mono"><bdi>{{ fmt.qty(p.allocatedQty) }}</bdi></td>
+                        <td class="r mono"><bdi>{{ fmt.qty(p.item.handedOverQty) }}</bdi></td>
+                      </tr></tfoot>
+                    </table></div>
+
+                    @if (p.unallocatedQty > 0) {
+                      <p class="d-cell-sub">{{ lang.t('sup_unallocated') }}
+                        <bdi class="mono">{{ fmt.qty(p.unallocatedQty) }}</bdi></p>
+                    }
+                  }
+                }
+
+                <!-- ── الشكل 52 · الاستلامات وأرشيف الفقرة ─────────────── -->
+                @if (panelTab() === 'receipts') {
+                  <!-- CARDS, because the plate says cards: «بطاقات استلام
+                       مصنفة تحت عنوانين فرعيين … تحمل كل بطاقة رقم الاستلام
+                       والكمية والتاريخ والجهة أو المخزن واللجنة ونتيجة
+                       المطابقة». Six facts per card, and the two kinds under
+                       their own headings with their own counts.
+                       `.d-card-sub` is the copied stylesheet's own card
+                       (desktop.css:990) — no CSS is added for this. -->
+                  @for (kind of ['warehouse', 'preliminary']; track kind) {
+                    <div class="d-drawer-grp">
+                      <span class="lbl">
+                        {{ lang.t(kind === 'warehouse' ? 'sup_kind_warehouse' : 'sup_kind_preliminary') }}
+                        · <bdi>{{ countOf(p.receipts, kind) }}</bdi>
+                      </span>
+
+                      @for (r of p.receipts; track r.id) {
+                        @if (r.kind === kind) {
+                          <div class="d-card-sub sup-card">
+                            <div class="hd">
+                              <b class="mono"><bdi>{{ r.no }}</bdi></b>
+                              <span class="mono"><bdi>{{ fmt.qty(r.qty) }}</bdi> {{ p.item.unit }}</span>
+                              <span class="sp"></span>
+                              <span class="d-cell-sub mono"><bdi>{{ fmt.date(r.date) }}</bdi></span>
+                            </div>
+                            <div class="d-form-grid">
+                              <div class="d-form-i">
+                                <span class="k">{{ kind === 'warehouse' ? lang.t('sup_store') : lang.t('sup_receiver') }}</span>
+                                <span class="v">{{ r.party }}</span>
+                              </div>
+                              <div class="d-form-i">
+                                <span class="k">{{ lang.t('sup_committee') }}</span>
+                                <span class="v">{{ r.committee }}</span>
+                              </div>
+                              <div class="d-form-i">
+                                <span class="k">{{ lang.t('sup_conformity') }}</span>
+                                <span class="v">{{ r.conformity || '—' }}</span>
+                              </div>
+                              @if (r.notes) {
+                                <div class="d-form-i">
+                                  <span class="k">{{ lang.t('pay_w_note') }}</span>
+                                  <span class="v">{{ r.notes }}</span>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
+                      }
+
+                      @if (countOf(p.receipts, kind) === 0) {
+                        <p class="d-cell-sub">{{ lang.t('sup_kind_none') }}</p>
+                      }
+                    </div>
+                  }
+
+                  <!-- «قسم أرشيف الفقرة ·4 يعرض بطاقات مستندات مع أيقونة
+                       معاينة وأيقونة نوع الملف». Document cards, and the
+                       preview control the plate draws — a demo action, because
+                       no bytes are stored anywhere in this prototype. -->
+                  <div class="d-drawer-grp">
+                    <span class="lbl">{{ lang.t('sup_archive') }}
+                      @if (p.documents.length) { · <bdi>{{ p.documents.length }}</bdi> }</span>
+
+                    @if (p.documents.length === 0) {
+                      <p class="d-cell-sub">{{ lang.t('sup_archive_empty') }}</p>
+                    } @else {
+                      @for (doc of p.documents; track $index) {
+                        <div class="d-card-sub sup-card doc">
+                          <div class="hd">
+                            <epm-icon [name]="fileIcon(doc.fileName)" [size]="16" />
+                            <b class="mono"><bdi>{{ doc.fileName }}</bdi></b>
+                            <span class="sp"></span>
+                            <button type="button" class="d-icon-btn sm"
+                                    [attr.aria-label]="lang.t('sup_preview')"
+                                    (click)="preview(doc)">
+                              <epm-icon name="visibility" [size]="15" />
+                            </button>
+                          </div>
+                          <div class="d-form-grid">
+                            <div class="d-form-i">
+                              <span class="k">{{ lang.t('sup_doc_title') }}</span>
+                              <span class="v">{{ lang.pick(doc.titleAr, doc.titleEn) }}</span>
+                            </div>
+                            <div class="d-form-i">
+                              <span class="k">{{ lang.t('pay_w_size') }}</span>
+                              <span class="v mono"><bdi>{{ size(doc.sizeBytes) }}</bdi></span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                }
+
+                <!-- ── الكلفة ──────────────────────────────────────────── -->
+                @if (panelTab() === 'cost') {
+                  <div class="d-form-grid">
+                    <div class="d-form-i"><span class="k">{{ lang.t('sup_unit_rate') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(p.item.rate) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_amount') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(p.item.amount) }}</bdi></span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_weight') }}</span>
+                      <span class="v num"><bdi>{{ fmt.pct(p.item.weight, 2) }}</bdi></span>
+                      <span class="d-cell-sub">{{ lang.t('sup_weight_note') }}</span></div>
+                    <div class="d-form-i"><span class="k">{{ lang.t('boq_col_earned') }}</span>
+                      <span class="v num"><bdi>{{ fmt.money(p.item.rate * p.item.receivedQty) }}</bdi></span>
+                      <span class="d-cell-sub">{{ lang.t('sup_earned_note') }}</span></div>
+                  </div>
+                }
+
+                <!-- ── السجل ───────────────────────────────────────────── -->
+                @if (panelTab() === 'log') {
+                  <!-- NAMED, NOT DRAWN (04 §9). Every movement on this item IS
+                       a receipt and they are on the tab beside this one; a
+                       second log would be the same rows under another heading
+                       until an item-level event table exists. -->
+                  <p class="d-cell-sub">{{ lang.t('sup_log_needs') }}</p>
+                }
+              </div>
+
+              <!-- الشكل 51's action bar: استلام مخزني · استلام أولي. -->
+              <div class="d-rpane-f">
+                @if (d.canRecord) {
+                  <button type="button" class="d-btn sm primary"
+                          [disabled]="p.remainingWarehouse <= 0"
+                          (click)="startReceipt('warehouse')">
+                    {{ lang.t('sup_kind_warehouse') }}
+                  </button>
+                  <button type="button" class="d-btn sm"
+                          [disabled]="p.remainingPreliminary <= 0"
+                          (click)="startReceipt('preliminary')">
+                    {{ lang.t('sup_kind_preliminary') }}
+                  </button>
+                } @else {
+                  <span class="d-cell-sub">{{ lang.t('sup_no_capacity') }}</span>
+                }
+              </div>
+            } @else {
+              <div class="d-rpane-b">
+                <epm-table-skeleton [cols]="2" [rows]="4" [loadingLabel]="lang.t('loading')" />
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ══ Z10 ═════════════════════════════════════════════════════════════ -->
+    <div class="d-pz10">
+      <span><b>{{ lang.t('sup_items') }}</b>
+        <bdi>{{ filtered().length }}</bdi> / <bdi>{{ d.totals.itemCount }}</bdi></span>
+      <span><b>{{ lang.t('sup_contracted') }}</b><bdi>{{ fmt.qty(d.totals.contractedQty) }}</bdi></span>
+      <span><b>{{ lang.t('sup_received') }}</b>
+        <bdi>{{ fmt.qty(d.totals.receivedQty) }}</bdi>
+        · <bdi>{{ fmt.pct(d.totals.receivedPct, 0) }}</bdi></span>
+      <span><b>{{ lang.t('sup_value') }}</b><bdi>{{ fmt.money(d.totals.amount) }}</bdi></span>
+      <span class="sp"></span>
+      <span class="d-cell-sub">{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.asOf) }}</bdi></span>
+    </div>
+    }
+  }
+</div>
+
+<!-- ══ الشكل 53 · الشكل 54 — the two receipt drawers ═══════════════════════
+     One component, two kinds: the fields differ by exactly what the plates say
+     they do — a store and a committee on the warehouse receipt, a receiving
+     beneficiary and a conformity finding on the preliminary one. -->
+@if (receiptForm(); as kind) {
+  @if (detail(); as p) {
+    <epm-drawer
+      [title]="lang.t(kind === 'warehouse' ? 'sup_new_warehouse' : 'sup_new_preliminary')"
+      [sub]="p.item.code" [hasFooter]="true" [closeLabel]="lang.t('boq_cancel')"
+      (closed)="closeReceipt()">
+
+      @if (rError()) {
+        <div class="d-inline-err">
+          <epm-icon name="error" [size]="15" /><span>{{ rError() }}</span>
+        </div>
+      }
+
+      <div class="d-drawer-grp">
+        <span class="lbl">{{ lang.t('sup_receipt_data') }}</span>
+        <div class="d-form-grid">
+          <div class="d-form-i">
+            <!-- «رقم الاستلام غير قابل للتحرير» — generated by the server, and
+                 there is no field for it here at all. -->
+            <span class="k">{{ lang.t('sup_receipt_no') }}</span>
+            <span class="v d-cell-sub">{{ lang.t('sup_no_auto') }}</span>
+          </div>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('prg_updates_at') }}</span>
+            <input class="d-form-input" type="date" [value]="rDate()"
+                   (input)="rDate.set($any($event.target).value)" />
+          </label>
+          <label class="d-form-i">
+            <span class="k">{{ lang.t('sup_qty') }} *</span>
+            <input class="d-form-input num" inputmode="decimal" [value]="rQty()"
+                   (input)="setQty($any($event.target).value, $any($event.target))" />
+            <!-- 05 §6 — the cap, explained where it applies. -->
+            <span class="d-cell-sub">{{ lang.t('sup_cap') }}
+              <bdi class="mono">{{ fmt.qty(cap()) }}</bdi> {{ p.item.unit }}</span>
+          </label>
+
+          @if (kind === 'warehouse') {
+            <label class="d-form-i">
+              <span class="k">{{ lang.t('sup_store') }} *</span>
+              <input class="d-form-input" [value]="rStore()"
+                     (input)="rStore.set($any($event.target).value)" />
+            </label>
+          } @else {
+            <label class="d-form-i">
+              <span class="k">{{ lang.t('sup_receiver') }} *</span>
+              <select class="epm-select" [value]="rBeneficiary()"
+                      (change)="rBeneficiary.set($any($event.target).value)">
+                @for (b of p.beneficiaries; track b.code) {
+                  <option [value]="b.code">{{ benName(b) }}</option>
+                }
+              </select>
+            </label>
+            <label class="d-form-i">
+              <span class="k">{{ lang.t('sup_conformity') }}</span>
+              <select class="epm-select" [value]="rConformity()"
+                      (change)="rConformity.set($any($event.target).value)">
+                <option [value]="lang.t('sup_conform_yes')">{{ lang.t('sup_conform_yes') }}</option>
+                <option [value]="lang.t('sup_conform_no')">{{ lang.t('sup_conform_no') }}</option>
+              </select>
+            </label>
+          }
+
+          <!-- الشكل 53 lists «لجنة الاستلام» among the warehouse drawer's own
+               fields; الشكل 54 does NOT list it at all. A محضر of ARRIVAL is
+               signed by the receiving committee, and a hand-over to a
+               university is witnessed by المطابقة instead — so the field
+               follows the plate that draws it rather than appearing on both. -->
+          @if (kind === 'warehouse') {
+            <label class="d-form-i">
+              <span class="k">{{ lang.t('sup_committee') }}</span>
+              <input class="d-form-input" [value]="rCommittee()"
+                     (input)="rCommittee.set($any($event.target).value)" />
+            </label>
+          }
+          <label class="d-form-i" style="grid-column: 1 / -1">
+            <span class="k">{{ lang.t('pay_w_note') }}</span>
+            <input class="d-form-input" [value]="rNotes()"
+                   (input)="rNotes.set($any($event.target).value)" />
+          </label>
+        </div>
+      </div>
+
+      <div class="d-drawer-grp">
+        <span class="lbl">{{ lang.t('sup_receipt_docs') }}</span>
+        <p class="d-cell-sub">{{ lang.t('sup_receipt_docs_b') }}</p>
+        <label class="d-btn sm">
+          <epm-icon name="upload" [size]="15" />{{ lang.t('pay_w_attach') }}
+          <input type="file" multiple hidden (change)="onFiles($event)" />
+        </label>
+        @for (f of rFiles(); track $index) {
+          <div class="d-amd-step">
+            <span class="fig mono"><bdi>{{ f.fileName }}</bdi></span>
+            <span class="sec d-cell-sub"><bdi>{{ size(f.sizeBytes) }}</bdi></span>
+            <button type="button" class="d-icon-btn sm"
+                    [attr.aria-label]="lang.t('boq_delete')" (click)="removeFile($index)">
+              <epm-icon name="delete" [size]="15" />
+            </button>
+          </div>
+        }
+      </div>
+
+      <ng-container footer>
+        <button type="button" class="d-btn primary"
+                [disabled]="!receiptValid() || saving()" (click)="saveReceipt()">
+          {{ saving() ? lang.t('saving') : lang.t('sup_record') }}
+        </button>
+        <button type="button" class="d-btn" (click)="closeReceipt()">{{ lang.t('boq_cancel') }}</button>
+      </ng-container>
+    </epm-drawer>
+  }
+}

@@ -129,6 +129,122 @@ public record ProgressContractDto(
     int Activities,
     int BoqLines);
 
+// ── الشكل 26 — «الإنجاز حسب هيكل التجزئة» ────────────────────────────────
+
+/// <summary>
+/// One WBS node's rollup. The plate's own standing note is the contract this
+/// record keeps: «محسوب صعودًا من الأنشطة، لا يُدخل يدويًا» — there is no write
+/// path to any figure here, and there is no `ProgressPct` on a WBS node in the
+/// schema to write to.
+/// </summary>
+/// <param name="Progress">
+/// `Domain/ProgressReflection.Rollup` over the activities beneath it, weighted
+/// by cost — the plate's «محسوبة صعودًا من الأنشطة المرجّحة بالكلفة».
+/// </param>
+/// <param name="Gap">
+/// Progress − planned, SIGNED. Negative is behind. Never coloured by its sign
+/// (CLAUDE.md §6) — the sign carries it.
+/// </param>
+/// <param name="IsComplete">
+/// Everything beneath it is at 100. Counted into الشكل 26's «مستويات مكتملة
+/// N من M», which is why it is sent rather than compared in the browser.
+/// </param>
+public record ProgressWbsDto(
+    string Path,
+    string NameAr,
+    string NameEn,
+    int Level,
+    string ContractId,
+    decimal Progress,
+    decimal Planned,
+    decimal Gap,
+    decimal Weight,
+    int Activities,
+    bool IsComplete);
+
+// ── الشكل 27 — «الأثر والكلفة» ───────────────────────────────────────────
+
+/// <summary>
+/// الشكل 27's six cards. Every figure here already exists elsewhere in this
+/// response or in `Domain/`; the tab is a READING of them, and nothing on it is
+/// computed twice.
+/// </summary>
+/// <param name="DelayCostImpact">
+/// `Domain/ScheduleImpact` over the activities that slipped — the same estimate
+/// الشكل 23 draws. The plate is explicit that it is «تقدير غير تعاقدي لا
+/// يُطالَب به», and the card says so.
+/// </param>
+/// <param name="ApprovedOrders">
+/// Σ APPLIED amendment deltas — what is already inside `RevisedCost`.
+/// </param>
+/// <param name="PendingOrders">
+/// Σ approved-but-unapplied. The plate's governing note: «المعتمد وحده يدخل
+/// الكلفة المعدلة؛ وما هو قيد الاعتماد لا يُرحَّل» (02 §9).
+/// </param>
+public record ProgressCostImpactDto(
+    decimal Disbursed,
+    decimal RevisedCost,
+    decimal DisbursedPct,
+    decimal? Eac,
+    decimal? Vac,
+    int DelayDays,
+    decimal DelayCostImpact,
+    decimal ApprovedOrders,
+    int ApprovedOrderCount,
+    decimal PendingOrders,
+    int PendingOrderCount);
+
+// ── الشكل 28 — «مخاطر الجدول» ────────────────────────────────────────────
+
+/// <param name="SlipDays">Forecast − baseline. Only activities OVER the threshold are listed.</param>
+public record ProgressAtRiskDto(
+    string ActivityId,
+    string NameAr,
+    string NameEn,
+    string ContractId,
+    string Status,
+    bool IsCritical,
+    decimal TotalFloat,
+    int SlipDays,
+    string? BaselineFinish,
+    string? ForecastFinish);
+
+/// <param name="AtRiskThresholdDays">
+/// الشكل 28 prints «الحد: أكثر من 10 أيام» on the card itself. Sent rather than
+/// hard-coded in the template so the card states the threshold the list was
+/// actually filtered by.
+/// </param>
+/// <param name="NegativeFloat">
+/// Activities that cannot be finished on time without acceleration — the
+/// plate's own words for what a negative total float means.
+/// </param>
+public record ProgressScheduleRiskDto(
+    int DelayDays,
+    int CriticalCount,
+    int ActivityCount,
+    int NegativeFloat,
+    int AtRiskCount,
+    int AtRiskThresholdDays,
+    IReadOnlyList<ProgressAtRiskDto> AtRisk);
+
+// ── الشكل 25 — «تحديثات الإنجاز (واردة من الأقسام)» ──────────────────────
+
+/// <summary>
+/// One recorded progress update. `ContractActivityEvents` with
+/// `Action = "progress"` — the same rows `Domain/ProgressSeries` draws SCR-W1's
+/// actual line from, so the table and the curve cannot disagree.
+///
+/// The plate's own note is the rule: «كل سطر معتمد من قسم مصدره — لا يُحرَّر
+/// هنا». There is no write path to this list on this screen.
+/// </summary>
+public record ProgressUpdateDto(
+    string At,
+    string ContractId,
+    decimal? Before,
+    decimal After,
+    string ActorName,
+    string ActorParty);
+
 public record ProgressResponse(
     string ProjectId,
     string ProjectNameAr,
@@ -138,7 +254,11 @@ public record ProgressResponse(
     ProgressEvm Evm,
     IReadOnlyList<ProgressContractDto> Contracts,
     IReadOnlyList<ProgressActivityDto> Activities,
-    IReadOnlyList<ProgressBoqDto> BoqLines);
+    IReadOnlyList<ProgressBoqDto> BoqLines,
+    IReadOnlyList<ProgressWbsDto> Wbs,
+    ProgressCostImpactDto CostImpact,
+    ProgressScheduleRiskDto ScheduleRisk,
+    IReadOnlyList<ProgressUpdateDto> Updates);
 
 /// <param name="ProgressPct">0…100. Anything outside it is refused, not clamped (04 §9).</param>
 public record UpdateProgressRequest(decimal ProgressPct);
