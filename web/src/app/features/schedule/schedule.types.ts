@@ -65,6 +65,12 @@ export interface ScheduleRow {
    * this activity. Always null on a WBS node: an order extends an ACTIVITY.
    */
   amendment: ScheduleAmendmentMark | null;
+  /** ملحق الشكل 21 — BR-04's achieved amount on this activity. */
+  earnedValue: number;
+  /** «المتبقي المالي» — cost less earned. */
+  remainingValue: number;
+  /** «الأثر المالي» — D-15 on this activity; null unless it has slipped. */
+  delayCost: number | null;
 }
 
 export interface ScheduleAmendmentSource {
@@ -133,6 +139,14 @@ export interface ScheduleSummary {
   averageProgress: number;
   basis: string;
   manHoursAvailable: boolean;
+  /** ملحق الشكل 21's headline — «الإنجاز المخطط (خط الأساس)». */
+  baselineFinish: string | null;
+  /** «الإنجاز المتوقع». */
+  forecastFinish: string | null;
+  /** «التأخر», SIGNED — ahead of baseline is negative. */
+  delayDays: number | null;
+  /** «أدنى عوم كلي» — Z10's third stat. */
+  minFloat: number | null;
 }
 
 export interface ScheduleResponse {
@@ -186,6 +200,8 @@ export interface ScheduleImpactSummary {
   totalCostImpact: number;
   /** D-15 — sent so the explainer states the rule the figures came from. */
   overheadPct: number;
+  /** ملحق الشكل 23's «مضافة» — activities the baseline does not contain. */
+  addedCount: number;
 }
 
 export interface ScheduleBaselineOption {

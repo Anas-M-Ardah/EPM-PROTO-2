@@ -11,11 +11,13 @@ import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ScheduleApi } from './schedule.api';
+import { ProgressApi } from '../progress/progress.api';
 import { ScheduleImportApi } from './schedule-import.api';
 import { ScheduleImportWizard } from './schedule-import.wizard';
 import { ScheduleImportVersion } from './schedule-import.types';
 import { PersonaService } from '../../core/persona';
 import { AmendmentMarkComponent } from '../../shared/amendment-mark.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 import {
   AmendmentFactView, AmendmentPanelComponent, AmendmentStepView,
 } from '../../shared/amendment-panel.component';
@@ -58,12 +60,19 @@ interface MonthCol { label: string; year: string; }
   selector: 'epm-schedule-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard],
+    AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './schedule.page.html',
 })
 export class SchedulePage {
   private api = inject(ScheduleApi);
+  /**
+   * ملحق الشكل 21 updates progress from the GANTT, and `EP-PRG-02` is already
+   * the one route that moves `Activities.ProgressPct`. This page borrows SCR-W6's
+   * client rather than writing a second one, so `grep EP-PRG-02` still finds a
+   * single call site and the two screens cannot drift apart (P-192).
+   */
+  private progressApi = inject(ProgressApi);
   private importApi = inject(ScheduleImportApi);
   private persona = inject(PersonaService);
   private route = inject(ActivatedRoute);
@@ -225,13 +234,40 @@ export class SchedulePage {
   /** The baseline in force — the one every figure on the screen is measured from. */
   currentBaseline = computed(() => this.baselines().find(b => b.isCurrent) ?? null);
 
+  // ── Z6's four dropdowns, as <epm-select> options (P-197) ───────────────
+  //
+  // The lists are built HERE rather than in the template because `<epm-select>`
+  // takes `{code,label}` and a label is a translated string — building it in the
+  // template would put `lang.t()` inside an @for on every change detection pass
+  // for no gain. Nothing here computes: it is projection, which §3.1 allows.
+
+  baselineOptions = computed<SelectOption[]>(() => this.baselines().map(b => ({
+    code: b.id,
+    label: `${this.lang.pick(b.labelAr, b.labelEn)} · ${b.takenAt}`,
+  })));
+
+  levelOptions = computed<SelectOption[]>(() =>
+    [1, 2, 3, 4].map(l => ({ code: String(l), label: String(l) })));
+
+  basisOptions = computed<SelectOption[]>(() => [
+    { code: 'cost', label: this.lang.t('scd_cost') },
+    { code: 'mh', label: this.lang.t('scd_mh') },
+  ]);
+
+  contractOptions = computed<SelectOption[]>(() => this.contracts().map(c => ({
+    code: c.id,
+    label: `${c.id} — ${this.lang.pick(c.nameAr, c.nameEn)}`,
+  })));
+
   /**
    * The three views, in the plate's order. The count rides on المقارنة والأثر
    * because that tab is empty on a schedule that has not slipped, and a tab you
    * can open to find nothing is worse than one that says so first.
    */
   viewTabs = computed(() => [
-    { id: 'gantt' as const, key: 'scd_tab_gantt' as StrKey, icon: 'calendar_month', n: null as number | null },
+    // `DModSchedule`'s VTABS icons. `table_rows` is not in this build's set —
+    // Phase 7's sweep substituted it — so الجدول keeps `list_alt`.
+    { id: 'gantt' as const, key: 'scd_tab_gantt' as StrKey, icon: 'calendar_view_week', n: null as number | null },
     { id: 'table' as const, key: 'scd_tab_table' as StrKey, icon: 'list_alt', n: null as number | null },
     {
       id: 'compare' as const, key: 'scd_tab_compare' as StrKey, icon: 'difference',
@@ -245,9 +281,10 @@ export class SchedulePage {
     return s ? fmt.pct(s.overheadPct * 100, 0) : '';
   });
 
-  /** The single worst slip — the row a reader should open first. */
-  worstSlip = computed(() =>
-    this.impact().reduce((m, i) => Math.max(m, i.slipDays), 0));
+  // REMOVED with P-193: `worstSlip`. ملحق الشكل 23's four figures are
+  // متأثرة · مضافة · أصبحت حرجة · أثر الكلفة, and the worst slip was ours in
+  // «مضافة»'s place — a figure the sorted list beneath already opens with,
+  // standing where the plate asks for one nothing else on the screen states.
 
   // ── ملحق الشكل 24 — «استيراد الجدول الزمني» ────────────────────────────
 
@@ -309,6 +346,51 @@ export class SchedulePage {
    * الشكل 23's «تصدير تحليل الأثر». CSV, built from the rows already on screen
    * — the export and the table cannot disagree because there is one source.
    */
+  /**
+   * «تصدير» — ملحق الشكل 21 and الشكل 22 both list it among their actions, and
+   * `DModSchedule`'s `exportSchedule` writes exactly these ten columns. It was
+   * the only one of the plate's four toolbar actions this page never carried
+   * (P-196): استيراد P6 · تصدير · المسار الحرج · المستوى.
+   *
+   * ACTIVITIES ONLY. A WBS node is a roll-up of the rows beneath it, so
+   * exporting both would double every figure in the file.
+   */
+  exportSchedule() {
+    const rows = this.rows().filter(r => r.kind === 'act');
+    if (rows.length === 0) { this.toast.show(this.lang.t('scd_empty_t')); return; }
+
+    const head = [
+      'activityId', 'name', 'status', 'baselineStart', 'baselineFinish',
+      'actualStart', 'actualFinish', 'totalFloat', 'progressPct', 'cost',
+    ];
+    const body = rows.map(r => [
+      r.id, this.name(r), this.statusLabel(r.status),
+      r.baselineStart ?? '', r.baselineFinish ?? '',
+      r.actualStart ?? '', r.actualFinish ?? '',
+      r.isMilestone ? '' : r.totalFloat, r.progress, r.budgetedCost,
+    ]);
+
+    this.downloadCsv(head, body, `schedule-${this.effectiveContractId()}.csv`);
+    this.toast.show(this.lang.t('scd_exported'));
+  }
+
+  /**
+   * The BOM matters: the file is opened in Excel on an Arabic Windows and
+   * without one every activity name arrives as mojibake.
+   */
+  private downloadCsv(head: string[], body: (string | number | null)[][], filename: string) {
+    const csv = '﻿' + [head, ...body]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   exportImpact() {
     const rows = this.impact();
     if (rows.length === 0) { this.toast.show(this.lang.t('scd_imp_none_t')); return; }
@@ -327,18 +409,7 @@ export class SchedulePage {
       r.slipDays, r.cost, r.dailyRate, r.dailyOverhead, r.costImpact,
     ]);
 
-    // A BOM, because the file is opened in Excel on an Arabic Windows and
-    // without one the activity names arrive as mojibake.
-    const csv = '\uFEFF' + [head, ...body]
-      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `impact-${this.effectiveContractId()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    this.downloadCsv(head, body, `impact-${this.effectiveContractId()}.csv`);
     this.toast.show(this.lang.t('scd_imp_exported'));
   }
 
@@ -400,6 +471,9 @@ export class SchedulePage {
 
   select(r: ScheduleRow) {
     if (r.kind !== 'act') return;
+    // An unsaved draft belongs to the activity it was typed against; carrying
+    // it to the next one would show a percentage nobody set for THAT activity.
+    this.draftPct.set(null);
     this.selected.set(this.selected() === r.id ? '' : r.id);
   }
 
@@ -534,6 +608,66 @@ export class SchedulePage {
     };
     narrow.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => narrow.removeEventListener('change', onChange));
+  }
+
+  // ── ملحق الشكل 21 — «لوحة تحديث إنجاز النشاط» ─────────────────────────
+  //
+  // The plate is NAMED for this panel — «جانت مع لوحة تحديث إنجاز النشاط» —
+  // and lists «تحديث نسبة إنجاز النشاط بشريط التمرير وحفظ التحديث» among its
+  // actions. This page used to refuse the edit and point at SCR-W6 (P-55);
+  // P-192 reverses that on the plate's own words and on المسار 6.
+  //
+  // The draft is LOCAL until «حفظ التحديث», which is the point the annex makes
+  // about it: «يرى المستخدم قبل الحفظ أثر التسليم … لا مجرد رقم يُدخله». So the
+  // slider moves a draft, the panel restates the consequence beside it, and
+  // only the button writes.
+
+  /** The activity id being edited, and the percentage the slider is holding. */
+  draftPct = signal<number | null>(null);
+  savingPct = signal(false);
+
+  /** The slider's value: the draft when there is one, else the stored figure. */
+  pctOf(a: ScheduleRow): number {
+    return this.draftPct() ?? a.progress;
+  }
+
+  dirty(a: ScheduleRow): boolean {
+    const d = this.draftPct();
+    return d !== null && d !== a.progress;
+  }
+
+  setDraft(v: string | number) {
+    this.draftPct.set(typeof v === 'number' ? v : parseInt(v, 10));
+  }
+
+  /**
+   * `PlannedProgress.RemainingDuration`'s own rule, mirrored for the DRAFT only
+   * — the stored figure always comes from the server. A milestone has none.
+   */
+  draftRemaining(a: ScheduleRow): number {
+    return a.isMilestone ? 0 : Math.round(a.originalDuration * (1 - this.pctOf(a) / 100));
+  }
+
+  saveProgress(a: ScheduleRow) {
+    const pct = this.draftPct();
+    if (pct === null || this.savingPct()) return;
+
+    this.savingPct.set(true);
+    this.progressApi.saveProgress(this.projectId(), a.id, pct).subscribe({
+      next: () => {
+        this.savingPct.set(false);
+        this.draftPct.set(null);
+        // EP-PRG-02 answers with SCR-W6's model, which is not this screen's.
+        // Re-read the schedule so the roll-up, the strip and Z10 all move.
+        this.fetch(this.effectiveContractId());
+        this.toast.show(`${a.id} — ${this.lang.t('scd_prog_saved')}`);
+      },
+      error: e => {
+        this.savingPct.set(false);
+        this.toast.show(e?.error?.messageAr && this.lang.isAr()
+          ? e.error.messageAr : (e?.error?.message ?? this.lang.t('error_t')));
+      },
+    });
   }
 
   load() {

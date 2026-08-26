@@ -92,7 +92,23 @@ public record ScheduleRowDto(
     /// touched this activity. Always null on a WBS node: an order extends an
     /// ACTIVITY, and a node is the span of what is beneath it.
     /// </summary>
-    ScheduleAmendmentMark? Amendment = null);
+    ScheduleAmendmentMark? Amendment = null,
+    /// <summary>
+    /// ملحق الشكل 21's panel — «القيمة المكتسبة» on the ACTIVITY: BR-04's
+    /// achieved amount, its budgeted cost at its own progress. Computed here
+    /// and not in the template, because `CLAUDE.md §3.1` gives Angular no
+    /// arithmetic and this is the same figure SCR-W6 rolls up.
+    /// </summary>
+    decimal EarnedValue = 0m,
+    /// <summary>«المتبقي المالي» — cost less earned.</summary>
+    decimal RemainingValue = 0m,
+    /// <summary>
+    /// «الأثر المالي» — `Domain/ScheduleImpact` on THIS activity, so the panel
+    /// and الشكل 23's own table cannot report two different numbers for one
+    /// slip. Null on a milestone (no duration, so no daily rate — the same
+    /// exclusion الشكل 23 makes) and on anything that has not slipped.
+    /// </summary>
+    decimal? DelayCost = null);
 
 public record ScheduleAmendmentSource(string No, bool IsApplied);
 
@@ -172,6 +188,21 @@ public record ScheduleTimeline(
 /// The contract's progress, weight-rolled-up — the same figure the root WBS
 /// node carries, not the arithmetic mean of the activity percentages.
 /// </param>
+/// <param name="BaselineFinish">
+/// «الإنجاز المخطط (خط الأساس)» — the latest baseline finish on the contract.
+/// </param>
+/// <param name="ForecastFinish">«الإنجاز المتوقع» — the latest forecast finish.</param>
+/// <param name="DelayDays">
+/// «التأخر» — forecast minus baseline, in days, and SIGNED: ahead of the
+/// baseline is a negative number and the plate prints it. Not
+/// `Domain/Penalty.DelayDays`, which floors at zero because a contract cannot
+/// be paid for finishing early — this is the schedule's own arithmetic.
+/// </param>
+/// <param name="MinFloat">
+/// «أدنى عوم كلي» — the smallest total float on any non-milestone activity,
+/// which is the number that says how much slack the whole programme has left.
+/// Null when the contract has no activity that carries one.
+/// </param>
 public record ScheduleSummary(
     int Activities,
     int Milestones,
@@ -179,7 +210,11 @@ public record ScheduleSummary(
     int Delayed,
     decimal AverageProgress,
     string Basis,
-    bool ManHoursAvailable);
+    bool ManHoursAvailable,
+    string? BaselineFinish,
+    string? ForecastFinish,
+    int? DelayDays,
+    int? MinFloat);
 
 /// <summary>
 /// الشكل 23 — one affected activity, baseline beside current.
@@ -221,11 +256,20 @@ public record ScheduleImpactRow(
 /// D-15, sent rather than hard-coded in the template so the explainer card can
 /// state the rule the figures were actually produced by.
 /// </param>
+/// <param name="AddedCount">
+/// «مضافة» — ملحق الشكل 23's second figure: activities the CURRENT programme
+/// has and the baseline does not. Here that is an activity carrying no
+/// baseline dates at all, which is the only way this build can hold one —
+/// `EP-SCD-06` is the sole route that writes `Activities.Baseline*`, so
+/// anything imported after it stands outside the baseline until the next
+/// approval folds it in.
+/// </param>
 public record ScheduleImpactSummary(
     int AffectedCount,
     int NowCriticalCount,
     decimal TotalCostImpact,
-    decimal OverheadPct);
+    decimal OverheadPct,
+    int AddedCount);
 
 public record ScheduleResponse(
     string ProjectId,

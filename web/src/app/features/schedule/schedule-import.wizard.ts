@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { IconComponent } from '../../core/icon.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 import { LangService, StrKey } from '../../core/lang';
 import * as fmt from '../../core/format';
 import { ScheduleImportApi } from './schedule-import.api';
@@ -30,7 +31,7 @@ import {
   selector: 'epm-schedule-import-wizard',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [IconComponent],
+  imports: [IconComponent, SelectComponent],
   templateUrl: './schedule-import.wizard.html',
 })
 export class ScheduleImportWizard {
@@ -60,6 +61,23 @@ export class ScheduleImportWizard {
   format = signal<'xer' | 'p6xml' | 'excel'>('xer');
   /** BR-02's basis. `02 §2` puts the choice HERE, and nothing stored it before. */
   basis = signal<'cost' | 'manhours'>('cost');
+
+  /**
+   * ملحق الشكل 24's three formats, for `<epm-select>` (P-197). A plain field —
+   * the names are product names and are not translated, so nothing here reads
+   * the language.
+   */
+  readonly formatOptions: SelectOption[] = [
+    { code: 'xer', label: 'Primavera XER' },
+    { code: 'p6xml', label: 'P6 XML' },
+    { code: 'excel', label: 'Excel' },
+  ];
+
+  /** The two weight bases; these ARE translated, so they follow the language. */
+  basisOptions = computed<SelectOption[]>(() => [
+    { code: 'cost', label: this.lang.t('scd_imp_basis_cost') },
+    { code: 'manhours', label: this.lang.t('scd_imp_basis_mh') },
+  ]);
 
   fileName = signal('');
   fileSize = signal(0);

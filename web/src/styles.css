@@ -444,6 +444,30 @@ epm-change-orders-page { display: contents; }
 .d-gantt-namegrip:focus-visible { background: color-mix(in srgb, var(--primary) 35%, transparent); }
 .d-gantt .d-gantt-cellname { position: sticky; }
 
+/* ── THE PINNED NAME COLUMN HAD NOTHING BEHIND IT (P-195) ────────────────
+   `.d-gantt-cellname` is `position: sticky` with `background: inherit`
+   (desktop.css:615), and `.d-gantt-row` sets a background only for `:hover`,
+   `.on`, `.wbs` and `.head`. On a plain ACTIVITY row `inherit` therefore
+   resolves to transparent, and the bars scroll straight under the pinned
+   column and read as text with a coloured bar drawn through it.
+
+   The reference's own «20b» made `.d-gantt-cellinfo` static (desktop.css:1604)
+   so the track would fit below 1024px. Until then the info block sat pinned
+   beside the name on an OPAQUE `--surface-container-lowest` and hid everything
+   sliding underneath; once it joined the scrolling region the name column was
+   the only pinned thing left, with nothing behind it. The bug arrived with
+   that fix and is in the reference too.
+
+   Fixed by giving the ROW the opaque base `background: inherit` was written to
+   find, rather than hard-setting a colour on the cell — that keeps `:hover`,
+   `.wbs` and `.head` doing exactly what they already do, and keeps the name
+   column tinting with its row. `.on` moves with it: the reference already
+   mixes the selected tint over `--surface-container-lowest` for the info
+   block, and over `transparent` for the row was the same oversight one
+   declaration earlier. */
+.d-gantt-row { background: var(--surface-container-lowest); }
+.d-gantt-row.on { background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)); }
+
 /* ══ SCR-W6 Progress (Phase 4.4) ═════════════════════════════════════════
    Two classes the copied `desktop.css` has no equivalent of. `.d-cellinput`
    exists but only inside `.d-editgrid`, which is the BOQ register's own grid
@@ -776,6 +800,29 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
   background: var(--surface-container); color: var(--on-surface-variant); }
 /* The value truncates; the chevron never does. */
 .epm-select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── `bare` — the trigger inside a control that already has a frame ──────
+   `.d-ctxsel` is Z6's toolbar pill: it draws the border, the radius and the
+   plane, and holds a label beside its control. A `.d-form-input` inside one is
+   a box in a box (§6). `bare` drops the frame and the fixed height and keeps
+   everything that matters — the popup, the roving focus, the type-ahead — so
+   the toolbar reads exactly as the reference's native `<select>` did while its
+   list stops being the operating system's (P-197).
+
+   It matches `.d-ctxsel select`'s own type (desktop.css/boq.css:405): the
+   medium weight and `--fs-200` are that rule's, not new values. */
+.epm-select.bare {
+  height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; color: var(--on-surface);
+  font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-medium);
+  max-width: 260px;
+}
+.epm-select.bare:hover { border: 0; background: transparent; }
+/* The frame belongs to `.d-ctxsel`, so the ring goes there too — a focus ring
+   drawn tight around bare text inside a pill reads as a second control. */
+.epm-select.bare:focus-visible { outline: none; box-shadow: none; }
+.d-ctxsel:has(> .epm-select.bare:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.epm-select.bare:disabled { background: transparent; color: var(--on-surface-variant); }
 .epm-select-v.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
 .epm-select-chev { flex: none; color: var(--on-surface-variant); transition: transform var(--dur-fast); }
 .epm-select.on .epm-select-chev { transform: rotate(180deg); }
@@ -1261,6 +1308,13 @@ button.d-file > .fm { align-items: flex-start; }
    passes inline and §3.7 keeps out of the template. */
 .d-sheet th.freeze { min-width: 230px; }
 
+/* ملحق الشكل 22's activity table — eleven columns, and `DSchedTable` declares
+   the same floor as an inline `minWidth: 1180` over an inline `overflowX` div.
+   Both move here for the same reason `wide-fin` did before it: the reference
+   authors geometry inside the component and CLAUDE.md §3.7 does not, and
+   `.d-vow-tw` is already the scroll wrapper its own comment asks for. */
+.d-vow-tw.wide-sched > .d-table { min-width: 1180px; }
+
 /* ── ملحق الشكل 14's «الفرق» — the one toned column on the sheet ─────────
    `DModFinancialNew`'s own `N()` helper passes `tone: true` for this column
    and for no other, colouring negative `--error` and non-negative
@@ -1279,6 +1333,44 @@ button.d-file > .fm { align-items: flex-start; }
    client validated it. */
 .d-sheet td.fin-var.neg { color: var(--error); }
 .d-sheet td.fin-var.pos { color: var(--status-completed-tx); }
+
+
+/* ── ملحق الشكل 21's «لوحة تحديث إنجاز النشاط» (P-192) ────────────────────
+   `DModSchedule` writes this panel with inline styles — it is the one place in
+   the reference that does — so there is no class to copy and these are ours.
+   The shell is `.d-card-sub`, which already carries the plane, the hairline and
+   the radius; everything below is the padding and the three rows inside it. */
+.scd-prog { padding: var(--space-12); }
+.scd-prog > .hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-block-end: var(--space-10);
+}
+.scd-prog > .hd > b { font-size: 12px; }
+/* The live percentage, which is the figure the slider is FOR — 18px is the
+   scale step above the panel's own 12px (§6); the reference's 16px is not on
+   the scale at all. */
+.scd-prog > .hd > .pc {
+  font-family: var(--font-mono); font-size: 18px;
+  font-weight: var(--fw-x); color: var(--azure-600);
+}
+.scd-prog > input[type="range"] { width: 100%; accent-color: var(--primary); }
+.scd-prog > input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.scd-prog > .ft {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-8); margin-block-start: var(--space-10);
+}
+.scd-prog > .ft > .sp { flex: 1; }
+.scd-prog > .note {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-block-start: var(--space-8);
+}
+
+/* «أثر التسليم» on a LATE activity that is also on the critical path — the
+   only branch this class is ever rendered in, so it asserts no threshold: §6
+   reserves `--error` for genuine exceptions, and a critical activity running
+   past its baseline is the exception the whole screen exists to surface. The
+   figure carries its own «+N يوم», so the colour restates and never encodes. */
+.scd-late { color: var(--error); }
 
 
 /* ── Z6's tab row (epm-module-bar) ──────────────────────────────────────
