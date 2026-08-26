@@ -88,7 +88,7 @@
              It becomes a select when الشكل 24's re-import creates a second. -->
         @if (currentBaseline(); as bl) {
           @if (baselines().length > 1) {
-            <label class="boq-ctxsel">
+            <label class="d-ctxsel">
               <span>{{ lang.t('scd_baseline') }}</span>
               <select [attr.aria-label]="lang.t('scd_baseline')">
                 @for (b of baselines(); track b.id) {
@@ -99,7 +99,7 @@
               </select>
             </label>
           } @else {
-            <span class="boq-ctxsel">
+            <span class="d-ctxsel">
               <span>{{ lang.t('scd_baseline') }}</span>
               <b class="d-cell-strong">{{ lang.pick(bl.labelAr, bl.labelEn) }}</b>
               <span class="d-cell-sub mono"><bdi>{{ bl.takenAt }}</bdi></span>
@@ -117,8 +117,12 @@
           </button>
         }
 
-        @if (view() === 'gantt') {
-          <label class="boq-ctxsel">
+        <!-- The level applies to BOTH reading views, as `DModSchedule` gates it
+             (`view !== 'compare'`): الشكل 22's table draws the same tree the
+             chart does, so a level that collapsed one and not the other would
+             have the two views disagreeing about what the WBS is. -->
+        @if (view() !== 'compare') {
+          <label class="d-ctxsel">
             <span>{{ lang.t('scd_level') }}</span>
             <select [attr.aria-label]="lang.t('scd_level')"
                     (change)="setLevel(+$any($event.target).value)">
@@ -129,19 +133,34 @@
           </label>
         }
 
-        <!-- 02 §2 — the basis is chosen at import; the toggle only appears
-             when every activity actually carries man-hours to divide by. -->
-        @if (d.summary.manHoursAvailable) {
-          <span class="boq-basis">
-            <span class="lbl">{{ lang.t('scd_basis') }}</span>
-            <span class="seg">
-              <button type="button" [class.on]="basis() === 'cost'"
-                      (click)="setBasis('cost')">{{ lang.t('scd_cost') }}</button>
-              <button type="button" [class.on]="basis() === 'mh'"
-                      (click)="setBasis('mh')">{{ lang.t('scd_mh') }}</button>
-            </span>
-          </span>
-        }
+        <!-- «أساس الوزن», and the plate names it on all three views — §13-1
+             requires the basis in force to be DECLARED wherever weights are
+             shown, and المقارنة والأثر is weighted too.
+
+             It renders as a `.d-ctxsel` select like its neighbours rather than
+             the segmented `.boq-basis` it used to be: `DModSchedule` writes it
+             that way, and three controls in one band reading as one control
+             vocabulary is the point of the band.
+
+             ALWAYS PRESENT, and disabled when the file carried no man-hours.
+             Hiding it made the declared basis invisible on exactly the imports
+             that had no choice to make — and §13-1 wants it declared, not
+             merely offered (P-193). -->
+        <label class="d-ctxsel">
+          <span>{{ lang.t('scd_basis') }}</span>
+          <!-- `[value]` on the SELECT, not `[selected]` on the options: the
+               option property is written once and the element's own value does
+               not follow it when the signal changes, so a basis switched from
+               anywhere else would leave the control showing the old answer. -->
+          <select [attr.aria-label]="lang.t('scd_basis')"
+                  [value]="basis()"
+                  [disabled]="!d.summary.manHoursAvailable"
+                  [title]="d.summary.manHoursAvailable ? '' : lang.t('scd_basis_locked')"
+                  (change)="setBasis($any($event.target).value)">
+            <option value="cost">{{ lang.t('scd_cost') }}</option>
+            <option value="mh">{{ lang.t('scd_mh') }}</option>
+          </select>
+        </label>
 
         <!-- ملحق الشكل 24 — «استيراد الجدول الزمني». Not gated by capacity:
              SUBMITTING a version is open, and it changes nothing. The capacity
@@ -161,7 +180,7 @@
         }
 
         @if (!singleContract()) {
-          <label class="boq-ctxsel">
+          <label class="d-ctxsel">
             <span>{{ lang.t('boq_contract') }}</span>
             <select [attr.aria-label]="lang.t('boq_contract')"
                     (change)="chooseContract($any($event.target).value)">
@@ -228,7 +247,51 @@
               <span>{{ lang.t('scd_empty_b') }}</span>
             </div>
           } @else {
-            <epm-summary-strip [stats]="summaryStats()" />
+            <!-- ══ ملحق الشكل 21's HEADLINE ════════════════════════════════
+                 «إنجاز المشروع التجميعي · الإنجاز المخطط · المتوقع · التأخر» —
+                 the plate's own four figures, and `DModSchedule` frames them in
+                 `.d-fsheet-recon`: the baseline-versus-forecast comparison is
+                 what the whole page exists to make, so it PINS and stays in
+                 view while the grid scrolls under it.
+
+                 This was a five-tile `epm-summary-strip` — the same substitution
+                 P-186 found on SCR-W7, and the same class: copied into
+                 `desktop.css` at Phase 1.5 and called by one page. A strip of
+                 equal tiles says these are five unrelated counts; the plate says
+                 خط الأساس → المتوقع = التأخر, which is a sentence. The two
+                 counts that were only ever counts — الأنشطة and المعالم — are
+                 Z10's, below, with أدنى عوم كلي. -->
+            <div class="d-fsheet-recon">
+              <span class="tm">
+                <em>{{ lang.t('scd_roll_pct') }}</em>
+                <b class="num"><bdi>{{ fmt.pct(d.summary.averageProgress, 0) }}</bdi></b>
+              </span>
+              <span class="op" aria-hidden="true">·</span>
+
+              <span class="tm">
+                <em>{{ lang.t('scd_baseline_finish') }}</em>
+                <b class="num"><bdi>{{ d.summary.baselineFinish ?? '—' }}</bdi></b>
+              </span>
+              <span class="op" aria-hidden="true">→</span>
+
+              <span class="tm strong">
+                <em>{{ lang.t('scd_forecast_finish') }}</em>
+                <b class="num"><bdi>{{ d.summary.forecastFinish ?? '—' }}</bdi></b>
+              </span>
+              <span class="op" aria-hidden="true">=</span>
+
+              <!-- The delay is the one term that carries a tone, and it is the
+                   reference's own: `bad` when the programme is late, `good`
+                   when it is not. A signed duration, like الفرق on الشكل 14. -->
+              <span class="tm" [class.bad]="(d.summary.delayDays ?? 0) > 0"
+                    [class.good]="(d.summary.delayDays ?? 0) <= 0">
+                <em>{{ lang.t('scd_delay') }}</em>
+                <b class="num">
+                  <bdi>{{ d.summary.delayDays === null ? '—'
+                          : fmt.delta(d.summary.delayDays) + ' ' + lang.t('amd_days') }}</bdi>
+                </b>
+              </span>
+            </div>
 
             @if (visible().length === 0) {
               <div class="d-empty">
@@ -427,13 +490,18 @@
                     <div class="k">{{ lang.t('scd_imp_affected') }}</div>
                     <div class="v"><bdi>{{ s.affectedCount }}</bdi></div>
                   </div>
+                  <!-- «مضافة» — ملحق الشكل 23's own second figure, and one this
+                       screen had replaced with «الأسوأ انزياحاً». The worst slip
+                       is already the first row of the list below, sorted; what
+                       the plate asks for is how many activities the baseline
+                       does not contain at all, which nothing else states. -->
+                  <div class="d-fig">
+                    <div class="k">{{ lang.t('scd_imp_added') }}</div>
+                    <div class="v"><bdi>{{ s.addedCount }}</bdi></div>
+                  </div>
                   <div class="d-fig">
                     <div class="k">{{ lang.t('scd_imp_critical') }}</div>
                     <div class="v"><bdi>{{ s.nowCriticalCount }}</bdi></div>
-                  </div>
-                  <div class="d-fig">
-                    <div class="k">{{ lang.t('scd_imp_worst') }}</div>
-                    <div class="v"><bdi>{{ worstSlip() }}</bdi> {{ lang.t('amd_days') }}</div>
                   </div>
                   <div class="d-fig">
                     <!-- «تقديري» is on the LABEL, not in a footnote: the figure
@@ -532,8 +600,14 @@
             } @else {
               <!-- ══ THE TABLE ═══════════════════════════════════════════ -->
               <div class="d-tablewrap">
-                <div class="d-vow-tw">
-                  <table class="d-table" style="min-width: 1180px">
+                <!-- ملحق الشكل 22's eleven columns do not compress, so the
+                     table scrolls on a declared floor. `DSchedTable` writes the
+                     same 1180 as an inline style over an inline `overflowX`
+                     div; both move here, because §3.7 keeps geometry out of a
+                     template and `.d-vow-tw` is already the scroll wrapper the
+                     reference's own comment asks for (P-191's rule, again). -->
+                <div class="d-vow-tw wide-sched">
+                  <table class="d-table">
                     <thead>
                       <tr>
                         <th>{{ lang.t('scd_col_id') }}</th>
@@ -702,20 +776,129 @@
                 </div>
               }
 
-              <!-- Progress is NOT edited here. `02 §4` makes it reflect straight
-                   onto the BOQ, and the screen that does that — with the BOQ
-                   lines visible while you drag — is SCR-W6 (Phase 4.4). An
-                   editor here would move a number whose consequence is off
-                   screen. -->
-              <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('scd_progress_ro') }}</span></div>
+              <!-- ══ ملحق الشكل 21 — «لوحة تحديث إنجاز النشاط» ═════════════
+                   The plate is NAMED for this panel and lists «تحديث نسبة إنجاز
+                   النشاط بشريط التمرير وحفظ التحديث» among its actions; المسار 6
+                   is the path it belongs to. This screen used to refuse the edit
+                   and point at SCR-W6 (P-55) — reversed by P-192.
+
+                   A MILESTONE HAS NO SLIDER. `EP-PRG-02` refuses anything but
+                   0 or 100 on one, and a control that offers 47 only to have it
+                   rejected is the "prevent invalid input" rule (§6) inverted. -->
+              @if (!a.isMilestone) {
+                <div class="d-card-sub scd-prog">
+                  <div class="hd">
+                    <b>{{ lang.t('scd_prog_update') }}</b>
+                    <span class="pc num"><bdi>{{ pctOf(a) }}%</bdi></span>
+                  </div>
+
+                  <input type="range" min="0" max="100" step="1"
+                         [attr.aria-label]="lang.t('scd_prog_update')"
+                         [value]="pctOf(a)"
+                         (input)="setDraft($any($event.target).value)" />
+
+                  <div class="ft">
+                    <span class="d-cell-sub">{{ lang.t('scd_prog_remaining') }}
+                      <b class="num"><bdi>{{ draftRemaining(a) }}</bdi>
+                        {{ lang.t('scd_days') }}</b></span>
+                    <span class="sp"></span>
+                    @if (dirty(a)) {
+                      <button type="button" class="d-btn sm" [disabled]="savingPct()"
+                              (click)="draftPct.set(null)">{{ lang.t('cancel') }}</button>
+                    }
+                    <button type="button" class="d-btn sm primary"
+                            [disabled]="!dirty(a) || savingPct()" (click)="saveProgress(a)">
+                      <epm-icon name="check" [size]="14" />
+                      {{ savingPct() ? lang.t('saving') : lang.t('scd_prog_save') }}
+                    </button>
+                  </div>
+
+                  <!-- الشكل 21's own sentence, and it is the reason the panel is
+                       here rather than on a form: «يُرحّل إلى تجميع كل مستويات
+                       هيكل التجزئة والمشروع تلقائيًا». -->
+                  <div class="d-cell-sub note">
+                    <epm-icon name="functions" [size]="12" />
+                    <span>{{ lang.t('scd_prog_rollup') }}</span>
+                  </div>
+                </div>
+              }
+
+              <!-- «أثر التسليم على إنجاز المشروع» and «الأثر المالي» — the two
+                   the annex prints beside the slider, and both only mean
+                   something on an activity that is late and on the critical
+                   path: float absorbs a slip that is not. -->
+              @if (a.isCritical && !a.isMilestone && (a.slipDays ?? 0) > 0) {
+                <div class="d-form-grid">
+                  <div class="d-form-i"><span class="k">{{ lang.t('scd_prog_delivery') }}</span>
+                    <span class="v num scd-late"><bdi>{{ fmt.delta(a.slipDays) }}
+                      {{ lang.t('scd_days') }}</bdi></span></div>
+                  <div class="d-form-i"><span class="k">{{ lang.t('scd_prog_fin') }}</span>
+                    <span class="v num"><bdi>{{ a.delayCost === null ? '—'
+                        : fmt.money(a.delayCost) }}</bdi></span></div>
+                </div>
+              }
+
+              <!-- كلفة النشاط · القيمة المكتسبة · المتبقي المالي, all three
+                   server-side: BR-04 on one activity is still BR-04. -->
+              <table class="d-line-table">
+                <thead><tr>
+                  <th>{{ lang.t('scd_prog_measure') }}</th>
+                  <th class="r">{{ lang.t('fin_pay_amount') }}
+                    <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
+                </tr></thead>
+                <tbody>
+                  <tr><td>{{ lang.t('scd_prog_cost') }}</td>
+                    <td class="r num"><bdi>{{ fmt.money(a.budgetedCost) }}</bdi></td></tr>
+                  <tr><td>{{ lang.t('scd_prog_earned') }}</td>
+                    <td class="r num"><bdi>{{ fmt.money(a.earnedValue) }}</bdi></td></tr>
+                  <tr><td>{{ lang.t('scd_prog_rem_val') }}</td>
+                    <td class="r num"><bdi>{{ fmt.money(a.remainingValue) }}</bdi></td></tr>
+                </tbody>
+              </table>
+
+              <!-- الشكل 21's own link row — `.d-recl`, copied and uncalled. -->
+              <div class="d-recl">
+                <button type="button" class="d-btn sm ghost"
+                        (click)="toast.demo('بنود الكميات المرتبطة بالنشاط ' + a.id,
+                                            'BOQ items linked to ' + a.id)">
+                  <epm-icon name="list_alt" [size]="14" />{{ lang.t('mod_boq') }}
+                </button>
+                <button type="button" class="d-btn sm ghost"
+                        (click)="toast.demo('عناصر النموذج المرتبطة بالنشاط ' + a.id,
+                                            'Model objects linked to ' + a.id)">
+                  <epm-icon name="deployed_code" [size]="14" />{{ lang.t('mod_model') }}
+                </button>
+                <button type="button" class="d-btn sm ghost"
+                        (click)="toast.demo('وثائق النشاط ' + a.id, 'Documents for ' + a.id)">
+                  <epm-icon name="folder_open" [size]="14" />{{ lang.t('mod_documents') }}
+                </button>
               </div>
             </div>
           </div>
         </div>
       }
     </div>
+
+    <!-- ══ Z10 — `DModSchedule`'s own status bar ═══════════════════════════
+         «الأنشطة · على المسار الحرج · أدنى عوم كلي», then the data date. The
+         three the reference passes `DZ10`, and none of them is on the headline
+         above: those are the programme's DATES, these are its counts. أدنى عوم
+         كلي is the one figure that says how much slack the whole schedule has
+         left, and nothing in this build had ever printed it. -->
+    @if (data(); as d) {
+      <div class="d-pz10">
+        <span class="st">{{ lang.t('scd_stat_activities') }}
+          <b><bdi>{{ d.summary.activities }}</bdi></b></span>
+        <span class="st">{{ lang.t('scd_stat_critical') }}
+          <b><bdi>{{ d.summary.critical }}</bdi></b></span>
+        <span class="st">{{ lang.t('scd_min_float') }}
+          <b><bdi>{{ d.summary.minFloat === null ? '—'
+                     : d.summary.minFloat + ' ' + lang.t('amd_days') }}</bdi></b></span>
+        <span class="sp"></span>
+        <span class="asof">{{ lang.t('prg_asof') }}
+          <bdi>{{ fmt.date(d.timeline.dataDate) }}</bdi></span>
+      </div>
+    }
   }
 </div>
 

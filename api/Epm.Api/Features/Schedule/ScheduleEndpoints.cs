@@ -125,6 +125,18 @@ public static class ScheduleEndpoints
             var acts = activities.Where(a => !a.IsMilestone).ToList();
             var achieved = acts.Sum(a => Basis(a) * a.ProgressPct / 100m);
 
+            // ── ملحق الشكل 21's headline: خط الأساس → المتوقع = التأخر ──────
+            // The programme's own dates, which are the LATEST finish on either
+            // side rather than the contract's recorded ones: a schedule ends
+            // when its last activity does. `Slip` is signed here on purpose —
+            // see the DTO note; a programme running ahead prints a negative.
+            var blFinish = activities.Where(a => a.BaselineFinish is not null)
+                .Select(a => a.BaselineFinish!.Value).DefaultIfEmpty().Max();
+            var fcFinish = activities.Where(a => a.ForecastFinish is not null)
+                .Select(a => a.ForecastFinish!.Value).DefaultIfEmpty().Max();
+
+            var floats = activities.Where(a => !a.IsMilestone).Select(a => a.TotalFloat).ToList();
+
             var summary = new ScheduleSummary(
                 acts.Count,
                 activities.Count(a => a.IsMilestone),
@@ -132,7 +144,11 @@ public static class ScheduleEndpoints
                 activities.Count(a => a.Status == "delayed"),
                 Q(ProgressReflection.Rollup(contractTotal, achieved)),
                 useMh ? "mh" : "cost",
-                manHoursAvailable);
+                manHoursAvailable,
+                blFinish == default ? null : Iso(blFinish),
+                fcFinish == default ? null : Iso(fcFinish),
+                blFinish == default || fcFinish == default ? null : Slip(blFinish, fcFinish),
+                floats.Count > 0 ? (int)Math.Round(floats.Min()) : null);
 
             var countByStatus = activities
                 .GroupBy(a => a.Status)
@@ -161,11 +177,38 @@ public static class ScheduleEndpoints
                 })
                 .ToList();
 
+            // ── «أصبحت حرجة», WHICH IS NOT «منها على المسار الحرج» ──────────
+            // The label was the second and the plate asks for the first: which
+            // activities the slip PUT on the critical path, not which of the
+            // affected rows happen to be on it — the register prints that one
+            // row by row already.
+            //
+            // The test is the plate's own arithmetic. ملحق الشكل 23 works A2 at
+            // «الأساس … عوم 7 · الحالي … عوم 2» over a 5-day slip, which is
+            // `ScheduleImpact.FloatBefore` exactly: before = after + slip. So an
+            // activity critical now that carried float before is one the slip
+            // moved onto the path.
+            //
+            // ── AND ITS LIMIT, STATED (P-194) ──────────────────────────────
+            // Under that model an activity that was ALREADY critical also reads
+            // as newly critical, because floor-zero float plus a slip is still
+            // a positive "before". Separating the two needs the baseline's own
+            // float RECORDED at «تثبيت خط الأساس» (المسار 4 step 8), and
+            // `EP-SCD-06` deliberately does not write float — its comment says
+            // criticality belongs to the schedule in force. So this figure means
+            // «critical and slipped» until that column exists; the plate's own
+            // model cannot say more, and the reference only can because its
+            // comparison is fixture data rather than a derivation.
+            var nowCritical = impact.Count(i => i.IsCritical && i.FloatBefore > 0m);
+
             var impactSummary = new ScheduleImpactSummary(
                 impact.Count,
-                impact.Count(i => i.IsCritical),
+                nowCritical,
                 M(impact.Sum(i => i.CostImpact)),
-                ScheduleImpact.OverheadPct);
+                ScheduleImpact.OverheadPct,
+                // «مضافة» — outside the baseline, not merely late. An activity
+                // with no baseline dates is one no approved baseline contains.
+                activities.Count(a => a.BaselineStart is null && a.BaselineFinish is null));
 
             return Results.Ok(new ScheduleResponse(
                 p.Id, p.NameAr, p.NameEn,
@@ -350,6 +393,17 @@ public static class ScheduleEndpoints
     {
         var w = ScheduleWeights.For(basis(a), contractTotal, parentTotal);
 
+        // ملحق الشكل 21's panel — the three money figures it prints beside the
+        // slider. `earned` is BR-04 on one activity; the delay cost is D-15's,
+        // through the SAME function الشكل 23 calls, and only where that plate
+        // would count it: a milestone has no duration and so no daily rate.
+        var slip = Slip(a.BaselineFinish, a.ForecastFinish);
+        var earned = M(a.BudgetedCost * a.ProgressPct / 100m);
+
+        decimal? delayCost = a.IsMilestone || slip is null or <= 0
+            ? null
+            : M(ScheduleImpact.For(a.BudgetedCost, a.OriginalDuration, slip.Value).CostImpact);
+
         return new ScheduleRowDto(
             "act", a.ActivityId, a.NameAr, a.NameEn, a.WbsPath, level,
             a.Status, Q(a.ProgressPct),
@@ -360,8 +414,9 @@ public static class ScheduleEndpoints
             a.IsCritical, a.IsMilestone,
             Q(w.Relative), Q(w.Absolute),
             M(a.BudgetedCost), a.Calendar, a.Predecessors,
-            Slip(a.BaselineFinish, a.ForecastFinish),
-            mark);
+            slip,
+            mark,
+            earned, M(a.BudgetedCost) - earned, delayCost);
     }
 
     // ── ROADMAP 4.5 · 04 §6 — which orders touched which activity ────────

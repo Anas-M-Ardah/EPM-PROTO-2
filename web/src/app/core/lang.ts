@@ -1488,7 +1488,7 @@ const STR = {
                      en: 'You chose the man-hours basis and the file does not carry them for every assignable activity — either complete them in the file or choose the cost basis.' },
   scd_imp_blocked: { ar: 'صحّح المخالفات أعلاه قبل المتابعة.', en: 'Fix the violations above before continuing.' },
   scd_imp_checking:{ ar: 'جارٍ التحقق…',                     en: 'Validating…' },
-  scd_imp_added:   { ar: 'أنشطة مضافة',                     en: 'Added' },
+  scd_imp_added:   { ar: 'مضافة',                           en: 'Added' },
   scd_imp_moved:   { ar: 'أنشطة تحرّك خط أساسها',            en: 'Baseline moved' },
   scd_imp_removed: { ar: 'أنشطة غائبة عن الملف',            en: 'Absent from the file' },
   scd_imp_unchanged:{ ar: 'بلا تغيير',                       en: 'Unchanged' },
@@ -1529,8 +1529,12 @@ const STR = {
   scd_baseline:    { ar: 'خط الأساس',                       en: 'Baseline' },
   scd_imp_title:   { ar: 'تحليل الأثر — الأساس ↔ الحالي',   en: 'Impact analysis — baseline ↔ current' },
   scd_imp_affected:{ ar: 'أنشطة متأثرة',                    en: 'Affected activities' },
-  scd_imp_critical:{ ar: 'منها على المسار الحرج',           en: 'On the critical path' },
-  scd_imp_worst:   { ar: 'أكبر انزياح',                     en: 'Worst slip' },
+  // ملحق الشكل 23's four figures are أنشطة متأثرة · مضافة · أصبحت حرجة · أثر
+  // الكلفة. Two of these were wrong, and «أصبحت حرجة» was wrong in SUBSTANCE
+  // rather than in wording: «منها على المسار الحرج» counts the affected rows
+  // that are critical TODAY, which the register already shows row by row, while
+  // the plate asks which activities the slip PUT there. See P-193.
+  scd_imp_critical:{ ar: 'أصبحت حرجة',                      en: 'Now critical' },
   scd_imp_cost:    { ar: 'أثر الكلفة (تقديري)',             en: 'Cost impact (estimated)' },
   scd_imp_how_t:   { ar: 'طريقة احتساب أثر الكلفة',         en: 'How the cost impact is computed' },
   scd_imp_how_b:   { ar: 'المعدل اليومي = كلفة النشاط ÷ المدة الأصلية · العبء اليومي = المعدل × ١٥٪ · أثر الكلفة = العبء اليومي × أيام الانزياح. رقم تخطيطي تقديري، لا يدخل في قيمة العقد ولا في أي دفعة.',
@@ -1548,8 +1552,9 @@ const STR = {
   scd_imp_approve: { ar: 'اعتماد الأثر',                    en: 'Approve impact' },
   scd_imp_approve_needs:{ ar: 'اعتماد تحليل الأثر يحتاج مساراً باسم ومرحلة وتاريخ — والمسار الوحيد المُنمذَج هنا هو مسار الأمر التغييري (03 §3).',
                      en: 'Approving an impact analysis needs a track with an owner, a stage and a date — and the only track modelled here is the change order’s (03 §3).' },
-  scd_progress_ro: { ar: 'تحديث الإنجاز يتم من شاشة الإنجاز (المرحلة 4.4)، حيث ينعكس مباشرةً على بنود الكميات.',
-                     en: 'Progress is updated on the Progress screen (Phase 4.4), where it reflects straight onto the BOQ.' },
+  // REMOVED with P-192: `scd_progress_ro`, the sentence that sent a reader to
+  // SCR-W6 instead of updating progress here. ملحق الشكل 21 is named for the
+  // panel that now stands in its place.
 
   // the legend — every mark on the chart, named
   scd_legend_bl:   { ar: 'خط الأساس',                      en: 'Baseline' },
@@ -1565,6 +1570,34 @@ const STR = {
   scd_nocrit_t:    { ar: 'لا أنشطة على المسار الحرج',      en: 'No activities on the critical path' },
   scd_nocrit_b:    { ar: 'ألغِ مرشّح المسار الحرج لعرض الجدول كاملاً.',
                      en: 'Clear the critical-path filter to see the whole schedule.' },
+
+  // ملحق الشكل 21's headline strip and Z10 — `DModSchedule`'s own labels.
+  // «الأنشطة» and «حرجة» are shared with the old summary strip; the plate reads
+  // the second as «على المسار الحرج» in the status bar, which is the longer
+  // form that fits there and is kept separate for it.
+  scd_roll_pct:       { ar: 'إنجاز المشروع (تجميعي)',      en: 'Project rollup' },
+  scd_baseline_finish:{ ar: 'الإنجاز المخطط (خط الأساس)',  en: 'Baseline finish' },
+  scd_forecast_finish:{ ar: 'الإنجاز المتوقع',             en: 'Forecast finish' },
+  scd_delay:          { ar: 'التأخر',                      en: 'Delay' },
+  scd_min_float:      { ar: 'أدنى عوم كلي',                en: 'Min total float' },
+
+  // ملحق الشكل 21's «لوحة تحديث إنجاز النشاط» (P-192).
+  scd_prog_update:    { ar: 'تحديث الإنجاز',               en: 'Update progress' },
+  scd_prog_save:      { ar: 'حفظ التحديث',                 en: 'Save update' },
+  scd_prog_remaining: { ar: 'المتبقي:',                    en: 'Remaining:' },
+  scd_prog_saved:     { ar: 'حُدِّث الإنجاز — أُعيد حساب التجميع',
+                        en: 'Progress saved — rollup recalculated' },
+  scd_prog_rollup:    { ar: 'يُرحَّل إلى تجميع كل مستويات هيكل التجزئة والمشروع تلقائياً.',
+                        en: 'Rolls up through every WBS level to the project automatically.' },
+  scd_prog_delivery:  { ar: 'أثر التسليم على إنجاز المشروع',
+                        en: 'Delivery impact on project finish' },
+  scd_prog_fin:       { ar: 'الأثر المالي',                en: 'Financial impact' },
+  scd_prog_measure:   { ar: 'البند',                       en: 'Measure' },
+  scd_prog_cost:      { ar: 'كلفة النشاط',                 en: 'Activity cost' },
+  scd_prog_earned:    { ar: 'القيمة المكتسبة',             en: 'Earned value' },
+  scd_prog_rem_val:   { ar: 'المتبقي المالي',              en: 'Remaining value' },
+  scd_basis_locked:   { ar: 'الملف المستورد لا يحمل ساعات عمل لكل نشاط، فالأساس هو الكلفة.',
+                        en: 'The imported file carries no man-hours per activity, so the basis is cost.' },
 
   // summary strip — the client module spec's own five figures
   scd_stat_activities:{ ar: 'الأنشطة',                     en: 'Activities' },

@@ -11,6 +11,7 @@ import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ScheduleApi } from './schedule.api';
+import { ProgressApi } from '../progress/progress.api';
 import { ScheduleImportApi } from './schedule-import.api';
 import { ScheduleImportWizard } from './schedule-import.wizard';
 import { ScheduleImportVersion } from './schedule-import.types';
@@ -64,6 +65,13 @@ interface MonthCol { label: string; year: string; }
 })
 export class SchedulePage {
   private api = inject(ScheduleApi);
+  /**
+   * ملحق الشكل 21 updates progress from the GANTT, and `EP-PRG-02` is already
+   * the one route that moves `Activities.ProgressPct`. This page borrows SCR-W6's
+   * client rather than writing a second one, so `grep EP-PRG-02` still finds a
+   * single call site and the two screens cannot drift apart (P-192).
+   */
+  private progressApi = inject(ProgressApi);
   private importApi = inject(ScheduleImportApi);
   private persona = inject(PersonaService);
   private route = inject(ActivatedRoute);
@@ -245,9 +253,10 @@ export class SchedulePage {
     return s ? fmt.pct(s.overheadPct * 100, 0) : '';
   });
 
-  /** The single worst slip — the row a reader should open first. */
-  worstSlip = computed(() =>
-    this.impact().reduce((m, i) => Math.max(m, i.slipDays), 0));
+  // REMOVED with P-193: `worstSlip`. ملحق الشكل 23's four figures are
+  // متأثرة · مضافة · أصبحت حرجة · أثر الكلفة, and the worst slip was ours in
+  // «مضافة»'s place — a figure the sorted list beneath already opens with,
+  // standing where the plate asks for one nothing else on the screen states.
 
   // ── ملحق الشكل 24 — «استيراد الجدول الزمني» ────────────────────────────
 
@@ -400,6 +409,9 @@ export class SchedulePage {
 
   select(r: ScheduleRow) {
     if (r.kind !== 'act') return;
+    // An unsaved draft belongs to the activity it was typed against; carrying
+    // it to the next one would show a percentage nobody set for THAT activity.
+    this.draftPct.set(null);
     this.selected.set(this.selected() === r.id ? '' : r.id);
   }
 
@@ -534,6 +546,66 @@ export class SchedulePage {
     };
     narrow.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => narrow.removeEventListener('change', onChange));
+  }
+
+  // ── ملحق الشكل 21 — «لوحة تحديث إنجاز النشاط» ─────────────────────────
+  //
+  // The plate is NAMED for this panel — «جانت مع لوحة تحديث إنجاز النشاط» —
+  // and lists «تحديث نسبة إنجاز النشاط بشريط التمرير وحفظ التحديث» among its
+  // actions. This page used to refuse the edit and point at SCR-W6 (P-55);
+  // P-192 reverses that on the plate's own words and on المسار 6.
+  //
+  // The draft is LOCAL until «حفظ التحديث», which is the point the annex makes
+  // about it: «يرى المستخدم قبل الحفظ أثر التسليم … لا مجرد رقم يُدخله». So the
+  // slider moves a draft, the panel restates the consequence beside it, and
+  // only the button writes.
+
+  /** The activity id being edited, and the percentage the slider is holding. */
+  draftPct = signal<number | null>(null);
+  savingPct = signal(false);
+
+  /** The slider's value: the draft when there is one, else the stored figure. */
+  pctOf(a: ScheduleRow): number {
+    return this.draftPct() ?? a.progress;
+  }
+
+  dirty(a: ScheduleRow): boolean {
+    const d = this.draftPct();
+    return d !== null && d !== a.progress;
+  }
+
+  setDraft(v: string | number) {
+    this.draftPct.set(typeof v === 'number' ? v : parseInt(v, 10));
+  }
+
+  /**
+   * `PlannedProgress.RemainingDuration`'s own rule, mirrored for the DRAFT only
+   * — the stored figure always comes from the server. A milestone has none.
+   */
+  draftRemaining(a: ScheduleRow): number {
+    return a.isMilestone ? 0 : Math.round(a.originalDuration * (1 - this.pctOf(a) / 100));
+  }
+
+  saveProgress(a: ScheduleRow) {
+    const pct = this.draftPct();
+    if (pct === null || this.savingPct()) return;
+
+    this.savingPct.set(true);
+    this.progressApi.saveProgress(this.projectId(), a.id, pct).subscribe({
+      next: () => {
+        this.savingPct.set(false);
+        this.draftPct.set(null);
+        // EP-PRG-02 answers with SCR-W6's model, which is not this screen's.
+        // Re-read the schedule so the roll-up, the strip and Z10 all move.
+        this.fetch(this.effectiveContractId());
+        this.toast.show(`${a.id} — ${this.lang.t('scd_prog_saved')}`);
+      },
+      error: e => {
+        this.savingPct.set(false);
+        this.toast.show(e?.error?.messageAr && this.lang.isAr()
+          ? e.error.messageAr : (e?.error?.message ?? this.lang.t('error_t')));
+      },
+    });
   }
 
   load() {

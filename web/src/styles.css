@@ -1261,6 +1261,13 @@ button.d-file > .fm { align-items: flex-start; }
    passes inline and §3.7 keeps out of the template. */
 .d-sheet th.freeze { min-width: 230px; }
 
+/* ملحق الشكل 22's activity table — eleven columns, and `DSchedTable` declares
+   the same floor as an inline `minWidth: 1180` over an inline `overflowX` div.
+   Both move here for the same reason `wide-fin` did before it: the reference
+   authors geometry inside the component and CLAUDE.md §3.7 does not, and
+   `.d-vow-tw` is already the scroll wrapper its own comment asks for. */
+.d-vow-tw.wide-sched > .d-table { min-width: 1180px; }
+
 /* ── ملحق الشكل 14's «الفرق» — the one toned column on the sheet ─────────
    `DModFinancialNew`'s own `N()` helper passes `tone: true` for this column
    and for no other, colouring negative `--error` and non-negative
@@ -1279,6 +1286,44 @@ button.d-file > .fm { align-items: flex-start; }
    client validated it. */
 .d-sheet td.fin-var.neg { color: var(--error); }
 .d-sheet td.fin-var.pos { color: var(--status-completed-tx); }
+
+
+/* ── ملحق الشكل 21's «لوحة تحديث إنجاز النشاط» (P-192) ────────────────────
+   `DModSchedule` writes this panel with inline styles — it is the one place in
+   the reference that does — so there is no class to copy and these are ours.
+   The shell is `.d-card-sub`, which already carries the plane, the hairline and
+   the radius; everything below is the padding and the three rows inside it. */
+.scd-prog { padding: var(--space-12); }
+.scd-prog > .hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-block-end: var(--space-10);
+}
+.scd-prog > .hd > b { font-size: 12px; }
+/* The live percentage, which is the figure the slider is FOR — 18px is the
+   scale step above the panel's own 12px (§6); the reference's 16px is not on
+   the scale at all. */
+.scd-prog > .hd > .pc {
+  font-family: var(--font-mono); font-size: 18px;
+  font-weight: var(--fw-x); color: var(--azure-600);
+}
+.scd-prog > input[type="range"] { width: 100%; accent-color: var(--primary); }
+.scd-prog > input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.scd-prog > .ft {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-8); margin-block-start: var(--space-10);
+}
+.scd-prog > .ft > .sp { flex: 1; }
+.scd-prog > .note {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-block-start: var(--space-8);
+}
+
+/* «أثر التسليم» on a LATE activity that is also on the critical path — the
+   only branch this class is ever rendered in, so it asserts no threshold: §6
+   reserves `--error` for genuine exceptions, and a critical activity running
+   past its baseline is the exception the whole screen exists to surface. The
+   figure carries its own «+N يوم», so the colour restates and never encodes. */
+.scd-late { color: var(--error); }
 
 
 /* ── Z6's tab row (epm-module-bar) ──────────────────────────────────────
