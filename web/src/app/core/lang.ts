@@ -114,7 +114,7 @@ const STR = {
   ws_no_results:   { ar: 'لا توجد مساحات عمل مطابقة',      en: 'No matching workspaces' },
   ws_no_results_b: { ar: 'جرّب اسماً أو رمزاً أو نوعاً آخر', en: 'Try another name, code or type' },
   empty_entities_t:{ ar: 'لا توجد مساحات عمل بعد',         en: 'No workspaces yet' },
-  empty_entities_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+  empty_entities_b:{ ar: 'التشكيل هو أعلى مستوى في النظام، ويُعرَّف قبل أي مشروع أو عقد.', en: 'A formation is the top of the hierarchy, and is defined before any project or contract.' },
   /** BR-15 — assigned to nothing is a real state, not an empty database. */
   empty_ws_assigned_t:{ ar: 'لا توجد مساحات عمل مسندة إليك', en: 'No workspaces assigned to you' },
   empty_ws_assigned_b:{ ar: 'نطاق رؤيتك هو اتحاد تكليفاتك. راجع مدير النظام لإسنادك إلى مساحة عمل.', en: 'Your visibility is the union of your assignments. Ask an administrator to assign you a workspace.' },
@@ -229,7 +229,7 @@ const STR = {
   prt_filtered_b:  { ar: 'المحفظة ليست فارغة — المرشّحات هي التي استبعدت كل شيء.',
                      en: 'The portfolio is not empty; the filters excluded everything.' },
   empty_portfolio_t:{ ar: 'لا توجد بيانات بعد',             en: 'No data yet' },
-  empty_portfolio_b:{ ar: 'حمّل بيانات العرض من شاشة المشاريع.', en: 'Load the demo fixture from the Projects screen.' },
+  empty_portfolio_b:{ ar: 'النظرة العامة تجميع لما في المشاريع، ولا مشروع بعد. تبدأ البيانات من شاشة المشاريع.', en: 'The overview rolls up what the projects hold, and there are none yet. Data starts at the Projects screen.' },
 
   // alerts center — ported from DAlertsCenter (v1.1, enterprise-areas.jsx:106).
   // The severity, kind and status LABELS are not here: they are stored codes and
@@ -878,7 +878,12 @@ const STR = {
 
   // states (04 §9 — every screen needs these)
   empty_projects_t:{ ar: 'لا توجد مشاريع بعد',             en: 'No projects yet' },
-  empty_projects_b:{ ar: 'قاعدة البيانات فارغة. حمّل بيانات العرض للبدء.', en: 'The database is empty. Load the demo fixture to begin.' },
+  empty_projects_b:{ ar: 'لم يُسجَّل مشروع بعد. سجّل أول مشروع، أو حمّل بيانات العرض للاطلاع.', en: 'No project registered yet. Register the first one, or load the demo fixture to explore.' },
+  empty_needs_ws_t:{ ar: 'لا توجد مساحة عمل بعد',           en: 'No workspace yet' },
+  empty_needs_ws_b:{ ar: 'المشروع يُسجَّل داخل تشكيل، ولا يوجد تشكيل بعد. تُعرَّف مساحات العمل أولاً.', en: 'A project is registered inside a formation, and none exists yet. Workspaces are defined first.' },
+  go_workspaces:   { ar: 'الذهاب إلى مساحات العمل',         en: 'Go to workspaces' },
+  go_projects:     { ar: 'الذهاب إلى المشاريع',             en: 'Go to projects' },
+  empty_ws_admin_b:{ ar: 'تعريف التشكيلات من صلاحية المستوى الوزاري. بدّل الصفة من بطاقة المستخدم لتعريف أول مساحة عمل.', en: 'Defining formations is a ministry-level capacity. Switch persona from the user card to define the first workspace.' },
   empty_filter_t:  { ar: 'لا نتائج مطابقة',                en: 'No matching projects' },
   empty_filter_b:  { ar: 'جرّب مصطلحاً آخر أو امسح المرشّحات.', en: 'Try another term or clear the filters.' },
   clear_filters:   { ar: 'مسح المرشّحات',                  en: 'Clear filters' },
@@ -996,13 +1001,12 @@ const STR = {
   boq_view_del:    { ar: 'حذف',                            en: 'Delete' },
   boq_view_saved:  { ar: 'حُفظ العرض',                     en: 'View saved' },
   boq_view_gone:   { ar: 'حُذف العرض',                     en: 'View deleted' },
-  // «الجهات المستفيدة» — the master list drawer (ملحق الشكل 12 · contract-context.jsx:182)
-  boq_ben_sub:     { ar: 'القائمة الرئيسية وربطها بالمشروع',
-                     en: 'Master list and project assignment' },
+  // «الجهات المستفيدة» — the workspaces drawer (ملحق الشكل 12 · contract-context.jsx:182)
+  boq_ben_sub:     { ar: 'مساحات العمل وربطها بالمشروع',
+                     en: 'Workspaces, and which this project serves' },
   boq_ben_code:    { ar: 'الكود',                          en: 'Code' },
   boq_ben_name:    { ar: 'الاسم',                          en: 'Name' },
-  boq_ben_type:    { ar: 'النوع',                          en: 'Type' },
-  boq_ben_parent:  { ar: 'الجهة الأم',                     en: 'Parent organization' },
+  boq_ben_type:    { ar: 'النوع',                          en: 'Kind' },
   boq_ben_state:   { ar: 'الحالة',                         en: 'Status' },
   boq_ben_on:      { ar: 'نشطة',                           en: 'Active' },
   boq_ben_off:     { ar: 'موقوفة',                         en: 'Inactive' },
@@ -1011,8 +1015,8 @@ const STR = {
   boq_ben_locked:  { ar: 'جهة موقوفة — لا تقبل كميات جديدة (01 §2.1).',
                      en: 'Inactive — cannot receive new quantity (01 §2.1).' },
   boq_ben_saved:   { ar: 'حُفظت الجهات المستفيدة',         en: 'Beneficiaries saved' },
-  boq_ben_empty:   { ar: 'لا جهات مستفيدة في القائمة الرئيسية.',
-                     en: 'The master beneficiary list is empty.' },
+  boq_ben_empty:   { ar: 'لا مساحات عمل معرَّفة.',
+                     en: 'No workspaces are defined.' },
   boq_ben_close:   { ar: 'إغلاق اللوحة',                   en: 'Close panel' },
   boq_items:       { ar: 'بند',                            en: 'items' },
   boq_totals:      { ar: 'الإجمالي',                       en: 'Totals' },
@@ -1744,11 +1748,39 @@ const STR = {
   fin_tab_sla:     { ar: 'مهل التدقيق',                     en: 'Audit lead times' },
   fin_tab_records: { ar: 'البيانات المسجّلة',                en: 'Recorded data' },
   fin_tab_changes: { ar: 'سجل التغييرات',                   en: 'Change log' },
-  /** Each unbuilt tab names its own figure, so the gap is legible (04 §9). */
-  fin_tab_alloc_needs:{ ar: 'الشكل 15 — يتطلب جدول التخصيصات السنوية للوزارة، ولا يسجّله هذا النموذج بعد.', en: 'الشكل 15 — needs the ministry’s yearly allocation table, which this data model does not record yet.' },
-  fin_tab_sla_needs:{ ar: 'الشكل 17 — يتطلب تواريخ مراحل تدقيق المستخلص، ولا تسجّلها جداول الدفعات بعد.', en: 'الشكل 17 — needs the per-stage audit dates of a certificate, which the payment tables do not record yet.' },
-  fin_tab_records_needs:{ ar: 'الشكل 18 — يعرض البيانات المالية المسجّلة يدويًا، ولم تُبنَ شاشتها بعد.', en: 'الشكل 18 — shows the manually recorded financial data; its screen is not built yet.' },
-  fin_tab_changes_needs:{ ar: 'الشكل 19 — سجل التغييرات المالية، ولم يُبنَ جدول أحداثه بعد.', en: 'الشكل 19 — the financial change log; its event table is not built yet.' },
+
+  // ── الشكل 18 — البيانات المالية المسجّلة ───────────────────────────────
+  fin_rec_card:    { ar: 'قيم معتمدة من الدائرة المالية',   en: 'Values approved by the finance department' },
+  fin_rec_sub:     { ar: 'المصدر الرسمي للأرقام المالية للمشروع',
+                     en: 'The official source of the project’s financial figures' },
+  fin_rec_approved:{ ar: 'كلفة المشروع المقررة',            en: 'Approved project cost' },
+  fin_rec_revised: { ar: 'الكلفة المعدلة',                  en: 'Revised cost' },
+  fin_rec_alloc:   { ar: 'التخصيص السنوي',                  en: 'Annual allocation' },
+  fin_rec_spent_year:{ ar: 'المصروف السنوي',                en: 'Spent this year' },
+  fin_rec_spent_todate:{ ar: 'المصروف التراكمي',            en: 'Spent to date' },
+  fin_rec_retention:{ ar: 'مبلغ الأمانات',                  en: 'Retention held' },
+  fin_rec_transfer:{ ar: 'حالة المناقلة',                   en: 'Transfer state' },
+  fin_rec_planned: { ar: 'نسبة الإنجاز المخطط',             en: 'Planned progress' },
+  fin_rec_proposed_hint:{ ar: 'قيمة مشتقّة لم تُعتمد بعد من الدائرة المالية.',
+                     en: 'A derived value the finance department has not yet confirmed.' },
+  fin_rec_note:    { ar: 'أربع من هذه القيم مسجَّلة وتُحرَّر هنا؛ والمصروف والأمانات ونسبة الإنجاز المخطط مشتقّة من الدفعات ومن الجدول الزمني ولا تُكتب يدويًا.',
+                     en: 'Four of these values are recorded and edited here. Spend, retention and planned progress are derived from the payments and the programme, and are never typed.' },
+  fin_rec_denied:  { ar: 'تحرير البيانات المالية المسجّلة يخصّ الدائرة المالية وحدها (§7).',
+                     en: 'Editing the recorded financial data belongs to the finance department alone (§7).' },
+  fin_rec_locked_t:{ ar: 'تخصيص هذه السنة سجلّ مقفل',       en: 'This year’s allocation is a closed record' },
+  fin_rec_locked_b:{ ar: 'السنوات السابقة لا تُغيَّر بالتحرير المباشر — يغيّرها إجراء مناقلة معتمد.',
+                     en: 'Earlier years do not change by direct editing — an approved transfer changes them.' },
+  fin_rec_saved:   { ar: 'حُفظت البيانات المالية وسُجِّل التغيير',
+                     en: 'Financial data saved, and the change recorded' },
+  fin_rec_unchanged:{ ar: 'لم تتغيّر أي قيمة',              en: 'No value changed' },
+
+  // ── الشكل 19 — سجل التغييرات المالية ───────────────────────────────────
+  fin_chg_card:    { ar: 'سجل التغييرات المالية',           en: 'Financial change log' },
+  fin_chg_events:  { ar: 'حدث',                             en: 'events' },
+  fin_chg_no_actor:{ ar: 'المنفّذ غير مسجَّل',               en: 'Actor not recorded' },
+  fin_chg_empty_t: { ar: 'لا تغييرات مالية مسجَّلة',        en: 'No financial changes recorded' },
+  fin_chg_empty_b: { ar: 'يظهر هنا كل ما حرّك مالًا: دفعة مصروفة، أو ملحق عقد مطبَّق، أو تخصيص سنوي.',
+                     en: 'Everything that moved money appears here: a released payment, an applied contract amendment, or an annual allocation.' },
 
   // ── الشكل 15 — التخصيص السنوي ──────────────────────────────────────────
   // ── الشكل 16 — سجل الدفعات وتفاصيل الدفعة ──────────────────────────────
@@ -1767,7 +1799,17 @@ const STR = {
   fin_sla_in:      { ar: 'خلال',                            en: 'in' },
   fin_sla_past:    { ar: 'مضى على الموعد',                  en: 'past due by' },
   fin_sla_none_t:  { ar: 'لا سلفة جارية على هذا المشروع',    en: 'No certificate in flight on this project' },
-  fin_sla_none_b:  { ar: 'تُتابَع المهل للمستخلص المصادق عليه الذي لم يُصرف بعد.', en: 'Lead times are tracked for a certificate that has been certified and not yet paid.' },
+  fin_sla_none_b:  { ar: 'تُتابَع المهل للمستخلص الذي ما زال لدى إحدى جهات التدقيق ولم يُصرف بعد.', en: 'Lead times are tracked for a certificate still at one of the audit desks and not yet paid.' },
+  /** المسار 8 steps 5–9 — «إطلاق المعاملة» and what it produced. */
+  fin_sla_release: { ar: 'إطلاق المعاملة',                  en: 'Release' },
+  fin_sla_denied:  { ar: 'إطلاق المعاملة من المرحلة الحالية يخصّ',
+                     en: 'Releasing the current stage belongs to' },
+  fin_sla_released:{ ar: 'أُطلقت المعاملة إلى الجهة التالية', en: 'Released to the next desk' },
+  fin_sla_certified:{ ar: 'صودق على المستخلص — بانتظار الصرف', en: 'Certificate certified — awaiting disbursement' },
+  fin_sla_disbursed:{ ar: 'صُرفت الدفعة وحُدِّث المصروف التراكمي', en: 'Payment disbursed, and the cumulative spend updated' },
+  fin_sla_esc_t:   { ar: 'صُعّدت المعاملة إلى المستوى الإداري الأعلى', en: 'Escalated to senior management' },
+  fin_sla_esc_b:   { ar: 'تجاوزت إحدى المراحل سقفها الزمني، فتفعّلت قاعدة التنبيه R12 تلقائيًا.',
+                     en: 'A stage passed its own cap, so alert rule R12 fired automatically.' },
   fin_pay_register:{ ar: 'سجل الدفعات',                     en: 'Payments register' },
   fin_pay_count:   { ar: 'دفعة',                            en: 'payments' },
   fin_pay_letter:  { ar: 'كتاب التمويل',                    en: 'Funding letter' },
@@ -1775,13 +1817,13 @@ const STR = {
   fin_pay_contracts:{ ar: 'العقود',                         en: 'Contracts' },
   fin_pay_amount:  { ar: 'المبلغ',                          en: 'Amount' },
   fin_pay_split:   { ar: 'توزيع الدفعة على العقود',          en: 'Distribution across contracts' },
-  /** الشكل 16 names who registered the payment; nothing records that yet. */
-  fin_pay_recorder_na:{ ar: 'لا يُسجَّل منفّذ قيد الدفعة بعد — تلتقطه شاشة «تسجيل دفعة» (الشكل 20) ولم تُبنَ بعد.', en: 'Who registered the payment is not recorded yet — the «تسجيل دفعة» screen (الشكل 20) captures it and is not built.' },
+  /** الشكل 16 — «سجّلتها محللة موازنة في قسم الحسابات». */
+  fin_pay_recorder:{ ar: 'سجّلتها',                          en: 'Recorded by' },
+  fin_pay_status:  { ar: 'حالة المستخلص',                   en: 'Certificate status' },
   fin_no_pay_t:    { ar: 'لا دفعات مسجَّلة على هذا المشروع',  en: 'No payments recorded on this project' },
   fin_no_pay_b:    { ar: 'تُسجَّل الدفعة عند صدور كتاب التمويل ومصادقة الذرعة.', en: 'A payment is recorded when the funding letter is issued and the measurement certified.' },
   fin_alloc_card:  { ar: 'التخصيص السنوي',                  en: 'Annual allocation' },
   fin_alloc_current:{ ar: 'السنة الحالية',                  en: 'current year' },
-  fin_alloc_all:   { ar: 'كل السنوات المسجّلة',              en: 'all recorded years' },
   fin_alloc_pct:   { ar: 'نسبة الاستهلاك',                  en: 'Consumption' },
   fin_alloc_amount:{ ar: 'التخصيص',                         en: 'Allocated' },
   fin_alloc_spent: { ar: 'المصروف',                         en: 'Spent' },
@@ -1797,10 +1839,10 @@ const STR = {
   fin_alloc_none_b:{ ar: 'يُسجَّل التخصيص لكل سنة مالية في تبويب «البيانات المسجّلة».', en: 'An allocation is recorded per fiscal year in the «البيانات المسجّلة» tab.' },
 
   fin_year:        { ar: 'السنة',                           en: 'Year' },
+  fin_year_group:  { ar: 'السنة المالية',                    en: 'Fiscal year' },
   fin_all_years:   { ar: 'كل السنوات',                      en: 'All years' },
 
   /** The plate’s three column groups. */
-  fin_evm_sub:     { ar: 'مؤشرات تشخيصية — لا تُقرأ منفردة (02 §11)', en: 'Diagnostic indices — never read alone (02 §11)' },
   fin_grp_budget:  { ar: 'الموازنة',                        en: 'Budget' },
   fin_grp_actual:  { ar: 'الفعلي',                          en: 'Actual' },
   fin_grp_forecast:{ ar: 'التنبؤ',                          en: 'Forecast' },
@@ -1817,55 +1859,44 @@ const STR = {
   fin_basis_over:  { ar: 'أي أن الالتزامات تتجاوز الموازنة وتستوجب تعديل الكلفة أو مناقلة.', en: 'The commitments exceed the budget and need a cost revision or a transfer.' },
   fin_basis_under: { ar: 'أي أن الموازنة تغطي الالتزامات التعاقدية.', en: 'The budget covers the contracted commitments.' },
   fin_basis_none:  { ar: 'لا موازنة معتمدة مسجّلة لهذا المشروع، فلا يمكن قياس الالتزامات التعاقدية عليها.', en: 'No approved budget is recorded for this project, so the commitments cannot be measured against one.' },
+  /** Named on the strip ONLY when the recorded budget is absent — the exception, not the norm. */
+  fin_basis_fallback:{ ar: 'من إجمالي العقود',              en: 'from contracts total' },
 
   fin_tab_sheet:   { ar: 'جدول الكلف',                      en: 'Cost sheet' },
   fin_tab_payments: { ar: 'الدفعات',                        en: 'Payments' },
-  fin_tab_evm:     { ar: 'المؤشرات',                        en: 'Indices' },
 
   fin_approved:    { ar: 'الكلفة المقررة',                  en: 'Approved cost' },
   fin_approved_changes: { ar: 'تغييرات معتمدة ومنفَّذة',     en: 'Applied changes' },
+
+  // ملحق الشكل 14's COLUMN headings, which are shorter than the same figures'
+  // names elsewhere on the page: the group row above already says الموازنة, so
+  // repeating «الكلفة» in three of its four columns is the word that does not
+  // fit rather than the one that informs. The long forms stay — Z10, the
+  // equation strip and الشكل 18 all read them, where there is no group heading
+  // to carry the noun. `fin_col_spend` is the all-years variant of مصروف
+  // السنة, which stops the column claiming a year the filter is not showing.
+  fin_col_approved: { ar: 'المقررة',                        en: 'Approved' },
+  fin_col_changes: { ar: 'تغييرات معتمدة',                  en: 'Approved changes' },
+  fin_col_revised: { ar: 'المعدلة',                         en: 'Revised' },
+  fin_col_spend:   { ar: 'مصروف',                           en: 'Spend' },
+  fin_sheet_title: { ar: 'جدول الكلف حسب العقود ومكوّناتها', en: 'Cost sheet by contract and component' },
   fin_applied_only: { ar: 'المنفَّذة وحدها تدخل الكلفة',     en: 'applied orders only' },
   fin_revised:     { ar: 'الكلفة المعدلة',                  en: 'Revised cost' },
   fin_disbursed:   { ar: 'المصروف',                         en: 'Disbursed' },
+  fin_spend_pct:   { ar: 'نسبة الصرف',                      en: 'Spend rate' },
+  /** الشكل 14's strip says التراكمي — the equation spans the project's life, not the year. */
+  fin_disbursed_cum:{ ar: 'المصروف التراكمي',               en: 'Cumulative spend' },
   fin_certified_unpaid: { ar: 'مصادق ولم يُصرَف',            en: 'Certified, unpaid' },
   fin_retention:   { ar: 'الضمانات المحتجزة',               en: 'Retention held' },
-  fin_advance_out: { ar: 'رصيد السلف',                      en: 'Advance outstanding' },
   fin_balance:     { ar: 'المتبقي',                         en: 'Balance' },
   fin_cost_item:   { ar: 'بند الكلفة',                      en: 'Cost item' },
   fin_total_contracts: { ar: 'إجمالي العقود',               en: 'Total — contracts' },
-  fin_total_paid:  { ar: 'الإجمالي المصروف',                en: 'Total disbursed' },
-  fin_positions:   { ar: 'المراكز المالية القائمة',          en: 'Outstanding positions' },
-  fin_positions_note: { ar: 'الضمانات المحتجزة التزام على الوزارة، ورصيد السلف التزام على المقاول. لا يدخل أيٌّ منهما في «المتبقي»، وكلاهما يُحتسب من الدفعات المصروفة فقط.',
-                        en: 'Retention held is owed BY the ministry; the advance balance is owed TO it. Neither is in the balance, and both count paid certificates only.' },
 
   fin_pending_t:   { ar: 'أوامر معتمدة لم تُنفَّذ بعد',       en: 'Approved orders not yet applied' },
   fin_pending_b:   { ar: 'الاعتماد لا يغيّر شيئاً — هذه القيمة ليست في أي من المجاميع أعلاه:',
                      en: 'Approving changes nothing — this figure is in none of the totals above:' },
 
-  fin_col_no:      { ar: 'المستخلص',                        en: 'Cert.' },
-  fin_col_kind:    { ar: 'النوع',                           en: 'Kind' },
-  fin_col_letter:  { ar: 'كتاب التمويل',                    en: 'Finance letter' },
-  fin_col_gross:   { ar: 'المصادق عليه',                    en: 'Gross' },
-  fin_col_retention: { ar: 'الضمان',                        en: 'Retention' },
-  fin_col_recovery: { ar: 'استرداد السلفة',                 en: 'Advance recovery' },
-  fin_col_net:     { ar: 'الصافي',                          en: 'Net' },
-  fin_col_certified: { ar: 'تاريخ المصادقة',                en: 'Certified' },
-  fin_col_paid:    { ar: 'تاريخ الصرف',                     en: 'Paid' },
-  fin_unpaid:      { ar: 'لم يُصرَف',                        en: 'not paid' },
-  fin_unpaid_t:    { ar: 'مصادق عليه ولم يُصرَف',            en: 'Certified and not yet paid' },
-  fin_unpaid_b:    { ar: 'المبلغ مستحق ولم يغادر الخزينة، فلا يدخل المصروف ولا يُحتسب منه ضمان ولا استرداد سلفة.',
-                     en: 'The amount is owed and has not left the treasury, so it enters neither the disbursed total nor the retention and advance balances.' },
-  fin_note:        { ar: 'ملاحظة',                          en: 'Note' },
-  fin_net_note:    { ar: 'الصافي = المصادق عليه − الضمان − استرداد السلفة.',
-                     en: 'Net = gross − retention − advance recovery.' },
-  fin_evm_note:    { ar: 'الكلفة الفعلية هنا هي المصروف — المدفوع فعلاً، لا المصادق عليه.',
-                     en: 'Actual cost here is the disbursed figure — what was paid, not what was certified.' },
 
-  fin_expense_items: { ar: 'بنود الصرف التعاقدية',           en: 'Contract expense items' },
-  fin_expense_items_sub: { ar: 'إلى جانب قيمة العقد، لا ضمنها',
-                           en: 'beside the contract value, not inside it' },
-  fin_expense_items_note: { ar: 'قيمة العقد هي مبلغ الإحالة نفسه (01 §2.3)، فالاحتياط والإشراف مخصصان إضافيان لا جزءان منها — ولذلك لا تُجمَع هذه البنود مع صف العقد. الأمر التغييري المنفَّذ يحرّك الإحالة وحدها.',
-                            en: 'The contract value IS the award amount (01 §2.3), so the reserve and the supervision allowance sit beside it rather than inside it — which is why these do not add up to the contract row. An applied change order moves the award alone.' },
   // ── SCR-W8 Change orders — the register (Phase 5.1) ────────────────────
   chg_grp_all:     { ar: 'الكل',                            en: 'All' },
   chg_grp_draft:   { ar: 'مسودة',                           en: 'Draft' },
@@ -2632,7 +2663,6 @@ const STR = {
                      en: 'Try another folder or issue status, or clear the search.' },
 
   fin_alloc_t:     { ar: 'التخصيص السنوي غير متوفر',         en: 'The annual allocation is unavailable' },
-  fin_sla_t:       { ar: 'مهل التدقيق غير متوفرة',           en: 'The audit SLA is unavailable' },
 } as const;
 
 export type StrKey = keyof typeof STR;

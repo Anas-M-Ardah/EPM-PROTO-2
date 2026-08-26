@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ViewEncapsulation } from '@angular/core';
+import { Component, inject, signal, computed, ViewEncapsulation, effect, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -12,6 +12,7 @@ import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { PersonaService, canDefineProjects } from '../../core/persona';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { ProjectsApi } from '../projects/projects.api';
 import { ProjectRow } from '../projects/projects.types';
 import * as fmt from '../../core/format';
@@ -40,7 +41,7 @@ import { ContractRow } from './contracts.types';
   standalone: true,
   imports: [
     IconComponent, StatusPillComponent, TableSkeletonComponent,
-    PageHeadComponent, PagerComponent, DrawerComponent,
+    PageHeadComponent, PagerComponent, DrawerComponent, PersonaSwitcherComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contracts.page.html',
@@ -188,6 +189,22 @@ export class ContractsPage {
     this.route.queryParamMap.subscribe(p => {
       this.workspace.set(p.get('ws') ?? '');
       this.load();
+    });
+
+    // SWITCHING صفة IS A RE-READ. `EP-CNT-01` is workspace-guarded (BR-15) and
+    // the scope is resolved on the SERVER from the persona, so rows fetched for
+    // one capacity are the wrong set for the next. Without this the register
+    // kept another صفة's contracts on screen while the header claimed the new
+    // one. Same shape as projects.page.ts, for the same reason.
+    //
+    // `untracked` keeps `load()`'s own signal writes out of the dependency set,
+    // which would otherwise re-enter this effect.
+    let first = true;
+    effect(() => {
+      this.persona.currentId();
+      // The queryParamMap subscription above already fires the initial load.
+      if (first) { first = false; return; }
+      untracked(() => this.load());
     });
   }
 

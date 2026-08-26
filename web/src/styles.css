@@ -746,7 +746,16 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    never colour alone (05 §7.6), which is why the message is always rendered
    with the border. */
 .d-form-input.epm-invalid { border-color: var(--error); }
-.epm-ws-f > small.epm-f-err { color: var(--error); }
+
+/* The message was scoped `.epm-ws-f > small.epm-f-err`, which is the create
+   drawer alone. `shared/field-grid.component.ts` emits the same <small> inside
+   `.d-form-i` — SCR-W2's معلومات المشروع, SCR-W3's contract card and SCR-W7's
+   ملحق الشكل 18 — where it inherited body colour and the browser's own 0.83em:
+   a refusal that read as a hint, at 10.83px against the 11px floor (05 §7 ·
+   CLAUDE.md §6). Scoped to the ELEMENT rather than to one host, so every field
+   grid in the app states a refusal the same way. The control still carries
+   `.epm-invalid`, so this is never colour alone. */
+small.epm-f-err { font-size: 11px; color: var(--error); }
 
 /* ══ <epm-select> — THE APP'S ONE DROPDOWN ════════════════════════════════
    The trigger IS `.d-form-input` (same height, border, radius, focus ring), so
@@ -992,6 +1001,17 @@ button.d-file > .fm { align-items: flex-start; }
   margin-block: 0 var(--space-12); font-size: 12px;
 }
 
+/* ملحق الشكل 18's «تعديل · تسجيل دفعة» — the buttons a CARD carries, as
+   against Z6's, which belong to the module. `.d-fgroup > .gh` has no actions
+   area and widening a shared component for one page would be the larger
+   change, so the pair sits at the start of the row under the grid it acts on.
+   Wraps rather than overflowing: two Arabic button labels are wider than a
+   narrow card. */
+.epm-form-actions {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
 /* REMOVED: .epm-ws-swatches / .epm-ws-swatch. The create drawer no longer asks
    for an emblem colour — it derives one from the entity's code. The preview
    below is the only thing that shows it. */
@@ -1229,3 +1249,51 @@ button.d-file > .fm { align-items: flex-start; }
 .d-fgroup > .gb.flush > .d-tablewrap {
   margin: 0; border-inline: 0; border-bottom: 0; border-top: 0; border-radius: 0;
 }
+
+/* ── ملحق الشكل 14's cost sheet ──────────────────────────────────────────
+   P-189 gave this table a `.d-vow-tw.wide-fin` floor to stop `.d-tablewrap`'s
+   `overflow: hidden` clipping its last three columns. That fixed the symptom
+   with a rule of our own while `desktop.css` already held the reference's
+   answer — `.d-vow-tw.wide-sheet` + `.d-line-table.d-sheet`, with the column
+   groups, the frozen identity column, both header tiers pinned and a sticky
+   totals row (P-191). `wide-fin` is gone with the markup that used it; the
+   only thing left to say is the freeze column's width, which the reference
+   passes inline and §3.7 keeps out of the template. */
+.d-sheet th.freeze { min-width: 230px; }
+
+/* ── ملحق الشكل 14's «الفرق» — the one toned column on the sheet ─────────
+   `DModFinancialNew`'s own `N()` helper passes `tone: true` for this column
+   and for no other, colouring negative `--error` and non-negative
+   `--status-completed-tx`. Ported as a class rather than the reference's
+   inline style (§3.7).
+
+   ── WHY THIS IS NOT THE §6 BREACH IT LOOKS LIKE ───────────────────────
+   «Never colour a magnitude by threshold» — `cpi < 1 ? error : success` —
+   still holds, and `Domain/EarnedValue`'s own doc comment repeats it. This is
+   not a threshold: الفرق is a SIGNED quantity and the colour states its sign,
+   which the parentheses already state in text. Nothing is encoded in colour
+   alone, no cut-off is being asserted, and the neighbouring magnitudes
+   (المقررة · المعدلة · عند الإنجاز) stay `--on-surface`, which is the rule the
+   §6 line exists to protect. A budget variance printed red-for-over and
+   green-for-under is the accounting convention the plate is drawn in, and the
+   client validated it. */
+.d-sheet td.fin-var.neg { color: var(--error); }
+.d-sheet td.fin-var.pos { color: var(--status-completed-tx); }
+
+
+/* ── Z6's tab row (epm-module-bar) ──────────────────────────────────────
+   الشكل 12 puts «السجل · الربط بالأنشطة» on their own line under the module
+   title bar, as UNDERLINE tabs. `.d-tabs`/`.d-tab` (desktop.css:885) is
+   already that control — v1.1 §9's 2px accent underline — but it is written
+   to sit in page content: it opens with `margin-top: 16px` and carries no
+   plane of its own. In Z6 it is a BAND, so it takes the bar's own surface and
+   inline padding and loses the content margin. Only the last line of the pair
+   closes, or the two hairlines a row apart read as an empty box. */
+.d-tabs.z6-tabs { margin-top: 0; padding-inline: var(--space-20);
+  background: var(--surface-container-lowest); border-bottom-color: var(--stroke-subtle); }
+.d-pz6:has(+ .d-tabs.z6-tabs) { border-bottom: 0; }
+
+/* The count a tab carries — «السجل ٤». `.d-fchip .n` (desktop.css:387) styles
+   the same badge for filter chips; a tab had no rule because until now no tab
+   in this build carried one. Same treatment, so the two agree on screen. */
+.d-tab .n { font-size: var(--fs-100); opacity: .8; font-variant-numeric: tabular-nums; }

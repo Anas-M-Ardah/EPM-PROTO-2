@@ -236,12 +236,20 @@ public static class ProgressEndpoints
         // BR-00 over BR-09 — the project value is Σ EFFECTIVE contract values.
         var projectTotal = ProjectValue.Total(effectiveValues);
 
+        // ── THE MONEY DIVIDES BY THE BUDGET, NOT BY THE COMMITMENTS ──────
+        // العرض الفني §23-1: الإنجاز المالي is «المصروف التراكمي نسبةً إلى
+        // الكلفة المعدلة». SCR-W7 prints the same percentage from the same
+        // function, and a second derivation here is how two screens come to
+        // disagree about one number (P-54). Falls back to commitments, exactly
+        // as SCR-W7 does, on a project with no recorded budget.
+        var budget = BudgetBasis.For(p.PlannedCost, p.RevisedCost, projectTotal);
+
         // P-26's rule: disbursed counts PAID only, never merely certified.
         var disbursed = payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount);
 
         var billedTotal = boqRows.Sum(b => b.Amount);
         var physical = ProgressReflection.Rollup(billedTotal, projectExecuted);
-        var financial = ProgressReflection.Rollup(projectTotal, disbursed);
+        var financial = ProgressReflection.Rollup(budget.Revised, disbursed);
         var planned = ProgressReflection.Rollup(plannedBasis, plannedWeighted);
 
         // BR-10, through the same function SCR-E5 uses, so the two screens can
@@ -249,7 +257,7 @@ public static class ProgressEndpoints
         var worst = WorstDelay(contracts, amendments);
 
         // BR-11 — progress is a FRACTION here, matching Domain/EarnedValue.
-        var evm = EarnedValue.For(projectTotal, planned / 100m, physical / 100m, disbursed);
+        var evm = EarnedValue.For(budget.Revised, planned / 100m, physical / 100m, disbursed);
 
         // ── الشكل 26 — حسب هيكل التجزئة ──────────────────────────────────
         // The tree is materialised from `Activities.WbsPath`/`WbsNames` exactly
@@ -325,8 +333,13 @@ public static class ProgressEndpoints
                 a.ForecastFinish!.Value.DayNumber - a.BaselineFinish!.Value.DayNumber).CostImpact);
 
         var costImpact = new ProgressCostImpactDto(
-            M(disbursed), M(projectTotal),
-            Q(ProgressReflection.Rollup(projectTotal, disbursed)),
+            // الشكل 27's «الكلفة المعدلة» is the RECORDED budget — the plate
+            // prints 1,500,000,000 against its own contracts' 2,156,653,454 —
+            // and «نسبة الصرف» divides by it (§23-1). Reading Σ commitments
+            // here made this tab the one place that disagreed with the headline
+            // above it and with SCR-W7 (P-180 · P-54).
+            M(disbursed), M(budget.Revised),
+            Q(ProgressReflection.Rollup(budget.Revised, disbursed)),
             Money(evm.Eac), Money(evm.Vac),
             worst.Days ?? 0, M(delayCost),
             M(appliedOrders.Sum(a => a.DeltaValue)), appliedOrders.Count,
@@ -391,7 +404,11 @@ public static class ProgressEndpoints
                 Q(physical), Q(financial), Q(planned),
                 worst.Days, worst.Baseline, worst.Forecast),
             new ProgressEvm(
-                M(projectTotal), M(evm.Pv), M(evm.Ev), M(evm.Ac),
+                // The BUDGET the indices were computed on, not Σ commitments —
+                // the two differ wherever الشكل 18 records a revised cost, and
+                // printing one beside indices derived from the other leaves a
+                // reader unable to check either.
+                M(budget.Revised), M(evm.Pv), M(evm.Ev), M(evm.Ac),
                 R(evm.Cpi), R(evm.Spi), Money(evm.Eac), Money(evm.Vac)),
             contractRows, activityRows, boqRows,
             wbsRows, costImpact, scheduleRisk, updateRows);

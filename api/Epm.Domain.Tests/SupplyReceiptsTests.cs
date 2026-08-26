@@ -41,11 +41,11 @@ public class SupplyReceiptsTests
     public void A_beneficiary_cannot_take_delivery_of_what_never_reached_the_store()
     {
         // 95 arrived, 76 already handed over → 19 available to hand on.
-        var receipts = new SupplyReceipts.Receipt[] { W(95m), P(76m, "BEN-UOB") };
+        var receipts = new SupplyReceipts.Receipt[] { W(95m), P(76m, "ub") };
 
         Assert.Equal(19m, SupplyReceipts.Remaining(SupplyReceipts.Preliminary, 111m, receipts));
-        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Preliminary, 19m, "BEN-UOB", 111m, receipts));
-        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 20m, "BEN-UOB", 111m, receipts));
+        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Preliminary, 19m, "ub", 111m, receipts));
+        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 20m, "ub", 111m, receipts));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class SupplyReceiptsTests
 
         Assert.Equal(111m, SupplyReceipts.Remaining(SupplyReceipts.Warehouse, 111m, none));
         Assert.Equal(0m, SupplyReceipts.Remaining(SupplyReceipts.Preliminary, 111m, none));
-        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 1m, "BEN-UOB", 111m, none));
+        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 1m, "ub", 111m, none));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class SupplyReceiptsTests
 
         Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 10m, null, 111m, receipts));
         Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Preliminary, 10m, "  ", 111m, receipts));
-        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Preliminary, 10m, "BEN-UOB", 111m, receipts));
+        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Preliminary, 10m, "ub", 111m, receipts));
     }
 
     [Fact]
@@ -85,12 +85,12 @@ public class SupplyReceiptsTests
         // الشكل 51's «المستلم» column: البصرة 34, الموصل 61.
         var receipts = new SupplyReceipts.Receipt[]
         {
-            W(95m), P(34m, "BEN-BAS"), P(61m, "BEN-MOS"),
+            W(95m), P(34m, "ub"), P(61m, "nu"),
         };
 
-        Assert.Equal(34m, SupplyReceipts.HandedOverTo(receipts, "BEN-BAS"));
-        Assert.Equal(61m, SupplyReceipts.HandedOverTo(receipts, "BEN-MOS"));
-        Assert.Equal(0m, SupplyReceipts.HandedOverTo(receipts, "BEN-KUF"));
+        Assert.Equal(34m, SupplyReceipts.HandedOverTo(receipts, "ub"));
+        Assert.Equal(61m, SupplyReceipts.HandedOverTo(receipts, "nu"));
+        Assert.Equal(0m, SupplyReceipts.HandedOverTo(receipts, "tu"));
         Assert.Equal(95m, SupplyReceipts.HandedOver(receipts));
     }
 

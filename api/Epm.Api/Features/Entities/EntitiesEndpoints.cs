@@ -8,11 +8,18 @@ namespace Epm.Api.Features.Entities;
 /// <summary>
 /// SCR-E4 — the WORKSPACE REGISTER (`04 §2`, ملحق الشاشات الشكل 1).
 ///
-/// PORTED from DSpaces (v1.1), desktop-views.jsx:375 — which is the
-/// **workspaces** register: the universities and ministry units that own
-/// projects. It is NOT the beneficiary master list; beneficiaries are the
-/// targets of BOQ quantity distribution (01 §2.1) and arrive with the BOQ page
-/// that needs them (Phase 4.2). See P-24.
+/// PORTED from DSpaces (v1.1), desktop-views.jsx:375 — the **workspaces**
+/// register: the universities and ministry units that own projects.
+///
+/// It is ALSO the beneficiary master list (P-174, closing P-24). «جهة مستفيدة»
+/// is a ROLE a workspace plays on one project — it receives distributed BOQ
+/// quantity (01 §2.1) — not a second register. What this screen shows and what
+/// the BOQ drawer ticks are rows of one table, `Workspaces`.
+///
+/// The two screens differ in SCOPE, not in subject: this one is filtered to the
+/// persona's assignments (BR-15), because it is «مساحات العمل المتاحة لك». The
+/// beneficiary drawer is not, because a project may serve a university nobody
+/// on it administers.
 ///
 /// ── THIS IS THE ONE LIST OF "MY WORKSPACES" (BR-15) ───────────────────────
 /// The register and the sidebar switcher are the same request. الشكل 1 gives

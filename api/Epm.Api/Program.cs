@@ -74,6 +74,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<EpmDb>();
     db.Database.EnsureCreated();
+
+    // A database with a schema and no vocabulary cannot be typed into: every
+    // lookup-backed select renders empty. Idempotent — it writes only when the
+    // table is empty, so an existing database is untouched.
+    LookupCatalog.EnsureSeededAsync(db).GetAwaiter().GetResult();
 }
 
 // ── Feature endpoints. APPEND ONE LINE PER PAGE. ─────────────────────────

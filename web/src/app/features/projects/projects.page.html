@@ -21,6 +21,15 @@
   [crumbs]="crumbs()"
   [title]="workspace() ? lang.t('nav_projects') : lang.t('nav_projects_all')"
   [sub]="workspace() ? scopeName() : lang.t('projects_sub')">
+  <!-- «العرض بصفة» — here for the same reason it is on the workspace register,
+       and the capacities are INVERSE. Defining a تشكيل is ministry-level (§24);
+       defining a مشروع belongs to «المستخدم المختص» (§23). So setting the system
+       up genuinely requires moving between two صفات, and the control that does
+       it has to be on both screens rather than on neither. This is not P-126's
+       filter-on-a-change-order-screen use — it is the switch the setup path
+       depends on. -->
+  <epm-persona-switcher actions />
+
   <!-- Z4 action cluster, verbatim from DProjectsAll (v1.1 :253). Demo stubs
        in the reference and here. -->
   <button actions type="button" class="d-btn" (click)="toast.demo('تصدير', 'Export')">
@@ -61,10 +70,23 @@
       <b>{{ lang.t('empty_ws_projects_t') }}</b>
       <span>{{ lang.t('empty_ws_projects_b') }}</span>
       <button type="button" class="d-btn" (click)="backToWorkspace()">{{ lang.t('ws_overview') }}</button>
+    } @else if (noWorkspaces()) {
+      <!-- A project is registered INSIDE a تشكيل (`workspaceCode` is enforced by
+           ProjectDefinition), so on a database with no workspaces «مشروع جديد»
+           would open a form whose required field has nothing to pick. Name the
+           actual first step instead of offering a dead end. -->
+      <b>{{ lang.t('empty_needs_ws_t') }}</b>
+      <span>{{ lang.t('empty_needs_ws_b') }}</span>
+      <a class="d-btn primary" routerLink="/entities">{{ lang.t('go_workspaces') }}</a>
+      <button type="button" class="d-btn" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
     } @else {
       <b>{{ lang.t('empty_projects_t') }}</b>
       <span>{{ lang.t('empty_projects_b') }}</span>
-      <button type="button" class="d-btn primary" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
+      <!-- REAL DATA FIRST, the fixture second. This screen's only exit used to
+           be «حمّل بيانات العرض», which is a dev affordance — the wrong
+           instruction for someone setting the system up. -->
+      <a class="d-btn primary" routerLink="/projects/new">{{ lang.t('new_project') }}</a>
+      <button type="button" class="d-btn" (click)="loadFixture()">{{ lang.t('load_fixture') }}</button>
     }
   </div>
 } @else {

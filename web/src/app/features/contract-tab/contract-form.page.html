@@ -259,10 +259,20 @@
                   }
                 </label>
 
+                <!-- REQUIRED, and it was the one field in ContractDefinition's
+                     required set that the form did not say so about: no star, no
+                     invalid state, no message. The save refused «الجهة المنفذة
+                     مطلوبة» after everything else had been filled in — precisely
+                     the "fill twenty fields to be refused at the end" this form
+                     avoids everywhere else. -->
                 <label class="epm-ws-f">
-                  <span>{{ lang.t('con_executing_party') }}</span>
-                  <input class="d-form-input" [value]="form().executingParty ?? ''"
+                  <span>{{ lang.t('con_executing_party') }}<i>*</i></span>
+                  <input class="d-form-input" [class.epm-invalid]="errorFor('executingParty')"
+                         [value]="form().executingParty ?? ''"
                          (input)="setText('executingParty', $any($event.target).value)" />
+                  @if (errorFor('executingParty')) {
+                    <small class="epm-f-err">{{ errorFor('executingParty') }}</small>
+                  }
                 </label>
               </div>
 

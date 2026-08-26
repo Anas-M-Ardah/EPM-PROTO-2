@@ -1,4 +1,6 @@
+using Epm.Api.Data;
 using Epm.Api.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Lookups;
 
@@ -140,25 +142,15 @@ public static class LookupCatalog
         yield return L("funding-type", "carry-over-allocation",   "تخصيص مُدوَّر",         "Carry-over allocation");
         yield return L("funding-type", "other",                   "أخرى",                 "Other");
 
-        // ── 06 §6 — beneficiary types (6) ─────────────────────────────────
-        sort = 0;
-        yield return L("beneficiary-type", "university", "جامعة",       "University");
-        yield return L("beneficiary-type", "department", "دائرة",       "Department");
-        yield return L("beneficiary-type", "campus",     "حرم جامعي",   "Campus");
-        yield return L("beneficiary-type", "site",       "موقع",        "Site");
-        yield return L("beneficiary-type", "facility",   "منشأة",       "Facility");
-        yield return L("beneficiary-type", "other",      "أخرى",        "Other");
-
         // ── WORKSPACE KINDS (4) — ملحق الشاشات، الشكل 1 ────────────────────
         // The four filter chips the workspace register shows, verbatim from the
         // addendum: «جامعة حكومية · جامعة تقنية · وحدة مركزية · مديرية تجهيز».
         //
-        // A workspace kind is NOT a beneficiary type. The register used to label
-        // itself from `beneficiary-type`, which shares the word "university" and
-        // nothing else — a directorate rendered as the raw code `directorate`
-        // because that list has no such entry. Two different vocabularies for
-        // two different things (01 §2.1: beneficiaries RECEIVE quantity;
-        // workspaces OWN projects — see P-24).
+        // THIS IS ALSO THE BENEFICIARY VOCABULARY (P-174). `06 §6`'s separate
+        // six-value `beneficiary-type` list is GONE with the table it described:
+        // a beneficiary is a workspace playing a role on a project, so it is
+        // labelled from the one list that names the ministry's units. The BOQ
+        // drawer, the overview card and الشكل 5 all read `workspace-kind`.
         sort = 0;
         yield return L("workspace-kind", "state-university",     "جامعة حكومية",  "State university");
         yield return L("workspace-kind", "technical-university", "جامعة تقنية",   "Technical university");
@@ -447,14 +439,49 @@ public static class LookupCatalog
         yield return L("payment-kind", "retention-release", "إطلاق الضمان",       "Retention release");
 
         sort = 0;
-        // الشكل 17 — the desks a certificate passes on its way to payment.
+        // الشكل 17 — the desks a certificate passes on its way to payment, and
+        // exactly the three `Domain/AuditRoute.Shape` builds. «التدقيق الداخلي»
+        // was a fourth code no route ever used: `EP-FIN-02` invented that desk
+        // where the plate draws two audits and a disbursement, so the code went
+        // with it. A vocabulary lists what exists.
         yield return L("audit-stage", "resident-engineer", "تدقيق المهندس المقيم", "Resident engineer review");
         yield return L("audit-stage", "finance", "تدقيق الدائرة المالية", "Finance department review");
-        yield return L("audit-stage", "audit", "التدقيق الداخلي", "Internal audit");
         yield return L("audit-stage", "disbursement", "الصرف", "Disbursement");
 
         yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
         yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
         yield return L("payment-status", "paid",      "مصروف",       "Paid");
+
+        sort = 0;
+        // حالة المناقلة — ملحق الشكل 18's third «مقترح» field. `approved` is
+        // the value الشكل 15's locked-ledger rule reads: «السنوات السابقة سجل
+        // مقفل لا يُغيَّر إلا بإجراء مناقلة معتمد».
+        yield return L("transfer-state", "none",        "لا يوجد",        "None");
+        yield return L("transfer-state", "in-progress", "قيد المناقلة",   "Transfer in progress");
+        yield return L("transfer-state", "approved",    "مناقلة معتمدة",  "Transfer approved");
+    }
+
+    /// <summary>
+    /// Writes the vocabulary into an empty `Lookups` table; does nothing when
+    /// it already has rows.
+    ///
+    /// ── THIS IS NOT SEEDING DEMO DATA ────────────────────────────────────
+    /// CLAUDE.md §4's «nothing is seeded automatically» is about the `06 §12`
+    /// SCENARIO — the projects, contracts and figures that are «illustrative,
+    /// not ministry data». These rows are neither: they are the system's own
+    /// vocabulary, defined in this file in code, and every enum column in the
+    /// app resolves its label through them.
+    ///
+    /// Leaving them to `load-fixture` made `POST /api/dev/reset` produce a
+    /// database the app cannot be USED on — «نوع التشكيل» and every other
+    /// lookup-backed select rendered empty, so the first تشكيل could not be
+    /// created and nothing downstream of it could either. A schema that exists
+    /// but cannot be typed into is not a working empty state (04 §9).
+    /// </summary>
+    public static async Task EnsureSeededAsync(EpmDb db)
+    {
+        if (await db.Lookups.AnyAsync()) return;
+        db.Lookups.AddRange(Rows());
+        await db.SaveChangesAsync();
     }
 }

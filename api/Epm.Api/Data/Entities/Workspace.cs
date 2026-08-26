@@ -35,8 +35,10 @@ public class Workspace
     /// (ملحق الشاشات، الشكل 1): state-university · technical-university ·
     /// central-unit · supply-directorate.
     ///
-    /// NOT a `beneficiary-type`. A beneficiary receives distributed quantity
-    /// (01 §2.1); a workspace owns projects. See P-24.
+    /// This is the ONLY kind vocabulary. `beneficiary-type` was deleted with
+    /// the `Beneficiaries` table (P-174): a workspace OWNS projects, and the
+    /// same workspace is a «جهة مستفيدة» on any project that distributes
+    /// quantity to it (01 §2.1). One row, two roles, one list.
     /// </summary>
     public string Kind { get; set; } = "state-university";
 

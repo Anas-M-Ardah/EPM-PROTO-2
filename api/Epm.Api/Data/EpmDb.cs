@@ -74,6 +74,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // stop a payment in October (P-92).
     public DbSet<ProjectAllocation> ProjectAllocations => Set<ProjectAllocation>();
 
+    // ── الشكل 19 — سجل التغييرات المالية ──────────────────────────────────
+    // The «قبل ← بعد» pair. The other three event kinds on that timeline are
+    // derived from records that already exist; a cost or allocation edit had
+    // nowhere to leave its previous value, so it has a table (P-179).
+    public DbSet<FinancialEdit> FinancialEdits => Set<FinancialEdit>();
+
     // ── SCR-W9 سجل المخاطر (ملحق الشكل 43) ───────────────────────────────
     // Severity is NOT here: the screen prints «الخطورة = الاحتمالية × التأثير»
     // beside its own title, so it is derived by Domain/RiskSeverity (01 §3).
@@ -118,11 +124,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<ModelVersion> ModelVersions => Set<ModelVersion>();
 
     // ── PHASE 3 Project workspace — SCR-W1 Overview ──────────────────────
-    // Projects.BeneficiaryCodes is a CSV of these codes (01 §2.1). The overview
-    // resolves it to names; nothing else reads the table yet, so its columns
-    // are pruned to what that list shows plus the tree link that gives a
-    // faculty its university.
-    public DbSet<Beneficiary> Beneficiaries => Set<Beneficiary>();
+    // There is NO separate beneficiaries table (P-174). A beneficiary IS a
+    // workspace: `Projects.BeneficiaryCodes` is a CSV of `Workspaces.Code`, and
+    // every screen that resolves a beneficiary code to a name reads the
+    // `Workspaces` set declared above.
 
     // ── PHASE 4.1 Contract tab — SCR-W3 ──────────────────────────────────
     // What has actually been paid against a contract. Nothing in the system
@@ -225,13 +230,14 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         b.Entity<ProjectActivityEvent>().HasKey(x => x.Id);
         b.Entity<ContractActivityEvent>().HasKey(x => x.Id);
 
-        // The code IS the identity — it is what Projects.BeneficiaryCodes stores.
-        b.Entity<Beneficiary>().HasKey(x => x.Code);
-
         // (ContractId, No) is the real identity and is checked in the endpoint,
         // not here (P-01 — invariants live where they can be read).
         b.Entity<Payment>().HasKey(x => x.Id);
         b.Entity<PaymentAttachment>().HasKey(x => x.Id);
+
+        // Append-only, and one row per changed field — so there is no natural
+        // identity beyond the order the edits happened in.
+        b.Entity<FinancialEdit>().HasKey(x => x.Id);
 
         // The five BOQ tables all carry surrogate keys. Their real identities —
         // (ContractId, Code) on an item, (BoqItemId, BeneficiaryCode) on a

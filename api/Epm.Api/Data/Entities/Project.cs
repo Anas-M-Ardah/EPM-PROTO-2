@@ -84,6 +84,35 @@ public class Project
     /// </summary>
     public decimal? PlannedCost { get; set; }
 
+    /// <summary>
+    /// كلفة المشروع المعدلة — the RECORDED revised budget (ملحق الشكل 18).
+    ///
+    /// The second half of the pair الشكل 14's header equation runs on, and the
+    /// denominator of الإنجاز المالي: العرض الفني §23-1 defines it as «المصروف
+    /// التراكمي نسبةً إلى الكلفة المعدلة» (P-44). NOT Σ contract effective
+    /// values — الشكل 14 prints that separately as إجمالي العقود, and «أساسا
+    /// القياس» exists to raise the gap between the two.
+    ///
+    /// STORED, not derived: الشكل 19 shows it edited 1,477,500,000 →
+    /// 1,500,000,000, and its «تغييرات معتمدة» does not equal the contracts'
+    /// applied deltas. Written only by `EP-FIN-04` — ملحق الشكل 18 is «مدخل
+    /// التحرير الوحيد للبيانات المالية للمشروع». Null until the finance
+    /// directorate records one, and `Domain/BudgetBasis` falls back to
+    /// commitments and says so.
+    /// </summary>
+    public decimal? RevisedCost { get; set; }
+
+    /// <summary>
+    /// حالة المناقلة — ملحق الشكل 18, → `Lookup` group `transfer-state`
+    /// (none · in-progress · approved).
+    ///
+    /// Load-bearing, not decorative: الشكل 15 locks earlier years as «سجل مقفل
+    /// لا يُغيَّر إلا بإجراء مناقلة معتمد», and `approved` is the one value that
+    /// lets `EP-FIN-04` reopen one. Null means none has been recorded, which is
+    /// not the same statement as «لا يوجد» (P-179).
+    /// </summary>
+    public string? TransferState { get; set; }
+
     /// <summary>الفئة الإنفاقية — the third value المسار 1 step 4 derives, e.g. "صيانة".</summary>
     public string ExpenditureCategory { get; set; } = "";
 
@@ -104,7 +133,7 @@ public class Project
 
     /// <summary>
     /// Spec 01 §2.2 — the beneficiaries assigned to this project, as a
-    /// comma-separated list of Beneficiary.Code. ONLY these may receive quantity.
+    /// comma-separated list of Workspace.Code (P-174). ONLY these may receive quantity.
     /// A CSV column instead of a join table: it is a list of codes and nothing more.
     /// Split on ',' when you need them.
     /// </summary>

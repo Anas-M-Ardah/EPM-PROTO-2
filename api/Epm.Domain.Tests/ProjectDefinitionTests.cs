@@ -29,7 +29,7 @@ public class ProjectDefinitionTests
         FundingType: "federal-budget",
         WorkspaceCode: "ub",
         PlannedCost: 340_000_000m,
-        BeneficiaryCodes: "BEN-UOB",
+        BeneficiaryCodes: "ub",
         Status: "ongoing",
         Formation: "وزارة التعليم العالي والبحث العلمي",
         OrgStructure: "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
@@ -147,12 +147,15 @@ public class ProjectDefinitionTests
         Assert.DoesNotContain(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");
     }
 
+    // The client's range is 1900 … the data-date year. A year that has not
+    // begun is refused — the old «next year's plan» ceiling was our own
+    // inference, and it is gone.
     [Fact]
-    public void Registration_year_may_be_one_year_ahead_for_next_years_plan()
+    public void Registration_year_one_year_ahead_is_refused()
     {
         var c = Valid() with { RegistrationYear = DataDateYear + 1 };
 
-        Assert.DoesNotContain(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");
+        Assert.Contains(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");
     }
 
     [Fact]
@@ -164,8 +167,25 @@ public class ProjectDefinitionTests
     }
 
     [Fact]
+    public void The_floor_is_1900_and_it_is_accepted()
+    {
+        var c = Valid() with { RegistrationYear = 1900 };
+
+        Assert.DoesNotContain(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");
+    }
+
+    [Fact]
+    public void A_year_below_the_floor_is_refused()
+    {
+        var c = Valid() with { RegistrationYear = 1899 };
+
+        Assert.Contains(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");
+    }
+
+    [Fact]
     public void A_mistyped_century_is_refused()
     {
+        // 1026 is below the 1900 floor, which is what catches it.
         var c = Valid() with { RegistrationYear = 1026 };
 
         Assert.Contains(ProjectDefinition.Validate(c, DataDateYear), x => x.Field == "registrationYear");

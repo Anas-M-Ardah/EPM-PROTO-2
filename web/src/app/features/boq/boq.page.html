@@ -19,13 +19,13 @@
 <div class="d-pframe">
 
   @if (loading()) {
-    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <epm-module-bar [title]="lang.t('mod_boq')" />
     <div class="d-pbody no-aside"><div class="d-pz7">
       <epm-table-skeleton [cols]="colCount" [rows]="6" [loadingLabel]="lang.t('loading')" />
     </div></div>
 
   } @else if (error()) {
-    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <epm-module-bar [title]="lang.t('mod_boq')" />
     <div class="d-pbody no-aside"><div class="d-pz7">
       <div class="d-empty">
         <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
@@ -38,7 +38,7 @@
   } @else if (contracts().length === 0) {
     <!-- A project with no contract has no bill of quantities to show, and that
          is a real state: a project is registered before it is awarded. -->
-    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <epm-module-bar [title]="lang.t('mod_boq')" />
     <div class="d-pbody no-aside"><div class="d-pz7">
       <div class="d-empty">
         <span class="d-empty-ico"><epm-icon name="description" [size]="30" /></span>
@@ -51,7 +51,7 @@
     <!-- ══ THE CONTRACT GATE (04 §4) ═════════════════════════════════════
          Nothing renders until a contract is chosen. Each option carries its
          own item count, so the choice is not blind. -->
-    <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_boq') }}</span></div>
+    <epm-module-bar [title]="lang.t('mod_boq')" />
     <div class="d-pbody no-aside"><div class="d-pz7">
       <div class="boq-editor-empty">
         <div class="tile"><epm-icon name="description" [size]="27" /></div>
@@ -69,35 +69,56 @@
     </div></div>
 
   } @else {
-    <!-- ══ Z6 — title · contract · views ═════════════════════════════════ -->
-    <div class="d-pz6">
-      @if (!singleContract()) {
-        <button type="button" class="d-btn sm ghost" (click)="backToGate()"
-                [attr.aria-label]="lang.t('boq_change_contract')">
-          <epm-icon name="chevron_right" [size]="16" />
-        </button>
-      }
-      <span class="z6-t">
-        {{ lang.t('mod_boq') }}
-        <em><bdi>{{ contract()?.id }}</bdi> · {{ contractLabel() }}</em>
-      </span>
+    <!-- ══ Z6 — title · contract · views ═════════════════════════════════
+         الشكل 12's two-line bar, via the shared `epm-module-bar`: the module
+         name and the contract in scope on the first line with the actions, and
+         «السجل · الربط بالأنشطة» on their own line beneath (P-178). -->
+    <epm-module-bar
+        [title]="lang.t('mod_boq')"
+        [backLabel]="singleContract() ? '' : lang.t('boq_change_contract')"
+        (back)="backToGate()"
+        [tabs]="true">
 
-      <div class="grp">
-        <button type="button" class="d-fchip" [class.on]="view() === 'register'"
-                (click)="setView('register')">
+      <!-- The ID alone when the selector is beside it — the selector already
+           prints the name, and printing it twice on one line is noise. With one
+           contract there is no selector (P-46), so the name stays here. -->
+      <ng-container sub>
+        <bdi>{{ contract()?.id }}</bdi>@if (singleContract()) { · {{ contractLabel() }} }
+      </ng-container>
+
+      @if (!singleContract()) {
+        <!-- الشكل 12's «العقد CNT-0137 — عقد الأعمال المدنية». It sits against
+             the title because it names what is on screen. P-39: the selection
+             rides on each <option>, never on [value]. -->
+        <label scope class="boq-ctxsel">
+          <span>{{ lang.t('boq_contract') }}</span>
+          <select [attr.aria-label]="lang.t('boq_contract')"
+                  (change)="chooseContract($any($event.target).value)">
+            @for (c of contracts(); track c.id) {
+              <option [value]="c.id" [selected]="c.id === contract()?.id">
+                {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+
+      <ng-container tabs>
+        <button type="button" role="tab" class="d-tab" [class.on]="view() === 'register'"
+                [attr.aria-selected]="view() === 'register'" (click)="setView('register')">
           {{ lang.t('boq_tab_register') }}
           <span class="n"><bdi>{{ reg()?.totals?.itemCount ?? 0 }}</bdi></span>
         </button>
-        <button type="button" class="d-fchip" [class.on]="view() === 'assign'"
-                (click)="setView('assign')">
+        <button type="button" role="tab" class="d-tab" [class.on]="view() === 'assign'"
+                [attr.aria-selected]="view() === 'assign'" (click)="setView('assign')">
           {{ lang.t('boq_tab_assign') }}
           @if (coverageCount('over')) {
             <span class="n"><bdi>{{ coverageCount('over') }}</bdi></span>
           }
         </button>
-      </div>
+      </ng-container>
 
-      <span class="sp"></span>
+      <ng-container actions>
 
       <!-- «الجهات المستفيدة» — the master list, and which of them this project
            uses (contract-context.jsx:182 `DBenDrawer`). A DRAWER because the
@@ -124,10 +145,9 @@
               <thead>
                 <tr>
                   <th style="width: 44px"></th>
-                  <th style="width: 118px">{{ lang.t('boq_ben_code') }}</th>
-                  <th style="min-width: 190px">{{ lang.t('boq_ben_name') }}</th>
-                  <th style="width: 110px">{{ lang.t('boq_ben_type') }}</th>
-                  <th style="min-width: 150px">{{ lang.t('boq_ben_parent') }}</th>
+                  <th style="width: 96px">{{ lang.t('boq_ben_code') }}</th>
+                  <th style="min-width: 220px">{{ lang.t('boq_ben_name') }}</th>
+                  <th style="width: 130px">{{ lang.t('boq_ben_type') }}</th>
                   <th style="width: 92px">{{ lang.t('boq_ben_state') }}</th>
                 </tr>
               </thead>
@@ -142,12 +162,7 @@
                     </td>
                     <td class="mono"><bdi>{{ b.code }}</bdi></td>
                     <td>{{ lang.isAr() ? b.nameAr : b.nameEn }}</td>
-                    <td>{{ benTypeLabel(b.type) }}</td>
-                    <td class="d-cell-sub">
-                      @if (b.parentCode) {
-                        {{ lang.isAr() ? b.parentNameAr : b.parentNameEn }}
-                      } @else { — }
-                    </td>
+                    <td>{{ benTypeLabel(b.kind) }}</td>
                     <td>
                       <span class="d-pill" [class.completed]="b.active">
                         {{ b.active ? lang.t('boq_ben_on') : lang.t('boq_ben_off') }}
@@ -155,7 +170,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="6" class="d-cell-sub">{{ lang.t('boq_ben_empty') }}</td></tr>
+                  <tr><td colspan="5" class="d-cell-sub">{{ lang.t('boq_ben_empty') }}</td></tr>
                 }
               </tbody>
             </table>
@@ -204,23 +219,8 @@
            views is to change صفة. `03 §7` asks for exactly that. -->
       <epm-persona-switcher />
 
-      @if (!singleContract()) {
-        <!-- The selector stays reachable from inside the module, so switching
-             contract is one control and not a trip back through the gate.
-             P-39: the selection rides on each <option>, never on [value]. -->
-        <label class="boq-ctxsel">
-          <span>{{ lang.t('boq_contract') }}</span>
-          <select [attr.aria-label]="lang.t('boq_contract')"
-                  (change)="chooseContract($any($event.target).value)">
-            @for (c of contracts(); track c.id) {
-              <option [value]="c.id" [selected]="c.id === contract()?.id">
-                {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
-              </option>
-            }
-          </select>
-        </label>
-      }
-    </div>
+      </ng-container>
+    </epm-module-bar>
 
     <!-- The aside is الشكل 12's بطاقة البند and nothing else, so the body is
          `no-aside` until a row is opened. -->
@@ -416,12 +416,6 @@
                           {{ lang.t('boq_col_variance') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('variance')" [size]="13" />
                         </th>
                       }
-                      @if (shown('earned')) {
-                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('earned')"
-                            [attr.aria-sort]="ariaSort('earned')" (click)="toggleSort('earned')">
-                          {{ lang.t('boq_col_earned') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('earned')" [size]="13" />
-                        </th>
-                      }
                       @if (shown('weight')) {
                         <th class="r" style="width: 92px" [class.sorted]="!!sortState('weight')"
                             [attr.aria-sort]="ariaSort('weight')" (click)="toggleSort('weight')">
@@ -444,6 +438,19 @@
                         <th style="width: 136px" [class.sorted]="!!sortState('progress')"
                             [attr.aria-sort]="ariaSort('progress')" (click)="toggleSort('progress')">
                           {{ lang.t('boq_col_progress') }}<epm-icon class="srt" [name]="caret('progress')" [size]="13" />
+                        </th>
+                      }
+                      <!-- القيمة المكتسبة sits AFTER التنفيذ and before حالة
+                           التخصيص — الشكل 12 fixes the order: «الرمز · الوصف ·
+                           الوحدة · الكمية · سعر الوحدة · القيمة · الوزن % ·
+                           الأنشطة · الوزن المُخصَّص · التنفيذ · القيمة المكتسبة ·
+                           حالة التخصيص». It reads as the RESULT of the two
+                           columns before it, not as a second money figure
+                           beside القيمة. -->
+                      @if (shown('earned')) {
+                        <th class="r" style="width: 136px" [class.sorted]="!!sortState('earned')"
+                            [attr.aria-sort]="ariaSort('earned')" (click)="toggleSort('earned')">
+                          {{ lang.t('boq_col_earned') }} <span class="cur">({{ lang.t('cur_iqd') }})</span><epm-icon class="srt" [name]="caret('earned')" [size]="13" />
                         </th>
                       }
                       @if (shown('distribution')) {
@@ -499,7 +506,6 @@
                              المكتسب does roll up, and already did. -->
                         @if (shown('origAmount')) { <td class="r d-cell-sub">—</td> }
                         @if (shown('variance')) { <td class="r d-cell-sub">—</td> }
-                        @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(g.division.achievedAmount) }}</bdi></td> }
                         @if (shown('weight')) { <td class="r num"><bdi>{{ g.division.weight.toFixed(2) }}</bdi></td> }
                         @if (shown('links')) { <td class="r num"><bdi>{{ g.division.links || '—' }}</bdi></td> }
                         @if (shown('assignedWeight')) { <td class="r d-cell-sub">—</td> }
@@ -509,6 +515,7 @@
                             <span class="pc"><bdi>{{ fmt.pct(g.division.progress, 0) }}</bdi></span>
                           </span></td>
                         }
+                        @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(g.division.achievedAmount) }}</bdi></td> }
                         @if (shown('distribution')) { <td class="d-cell-sub">—</td> }
                         @if (shown('coverage')) {
                           <td>
@@ -550,7 +557,6 @@
                           @if (shown('variance')) {
                             <td class="r num"><bdi>{{ signed(d.totals.amount - totalOriginalAmount()) }}</bdi></td>
                           }
-                          @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(d.totals.achievedAmount) }}</bdi></td> }
                           <!-- BR-01's whole promise, printed: exactly 100.00. -->
                           @if (shown('weight')) { <td class="r num"><bdi>{{ d.totals.weight.toFixed(2) }}</bdi></td> }
                           @if (shown('links')) { <td class="r num"><bdi>{{ d.totals.links }}</bdi></td> }
@@ -561,6 +567,7 @@
                               <span class="pc"><bdi>{{ fmt.pct(d.totals.progress, 0) }}</bdi></span>
                             </span></td>
                           }
+                          @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(d.totals.achievedAmount) }}</bdi></td> }
                           @if (shown('distribution')) { <td></td> }
                           @if (shown('coverage')) { <td></td> }
                           <td></td>
@@ -1552,7 +1559,6 @@
           @if (r.amendment) { <bdi>{{ signed(r.amendment.deltaAmount) }}</bdi> } @else { <span class="d-cell-sub">—</span> }
         </td>
       }
-      @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(r.achievedAmount) }}</bdi></td> }
       @if (shown('weight')) { <td class="r num"><bdi>{{ r.weight.toFixed(2) }}</bdi></td> }
       @if (shown('links')) { <td class="r num"><bdi>{{ r.links || '—' }}</bdi></td> }
       @if (shown('assignedWeight')) {
@@ -1566,6 +1572,7 @@
           <span class="pc"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></span>
         </span></td>
       }
+      @if (shown('earned')) { <td class="r num"><bdi>{{ fmt.money(r.achievedAmount) }}</bdi></td> }
       @if (shown('distribution')) {
         <td>
           <span class="d-pill" [class]="distributionClass(r.distributionState)">

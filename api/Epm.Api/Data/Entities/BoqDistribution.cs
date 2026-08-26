@@ -18,7 +18,10 @@ public class BoqDistribution
 
     public int BoqItemId { get; set; }
 
-    /// <summary>Must be assigned to the project AND active (02 §8 import gate 2).</summary>
+    /// <summary>
+    /// A `Workspaces.Code` (P-174) — a beneficiary IS a workspace. Must be
+    /// assigned to the project AND active (02 §8 import gate 2).
+    /// </summary>
     public string BeneficiaryCode { get; set; } = "";
 
     /// <summary>Optional. The only place a location legitimately appears.</summary>

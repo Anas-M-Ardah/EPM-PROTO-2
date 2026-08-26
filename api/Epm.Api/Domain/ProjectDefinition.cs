@@ -56,15 +56,20 @@ public static class ProjectDefinition
     /// <summary>
     /// The earliest سنة إدراج this system will accept.
     ///
-    /// ── ASSUMPTION, NOT A DOCUMENTED RULE ────────────────────────────────
-    /// المسار 1 requires «صحة سنة الإدراج» and does not say what makes a year
-    /// valid. A bound is needed for the rule to mean anything, so this is the
-    /// loosest one that still catches the errors the field actually attracts —
-    /// a typo'd century, and a project registered against a plan year that has
-    /// not been drawn up yet. Reported as an assumption; one constant to change
-    /// if the ministry states a real range.
+    /// ── THE CLIENT'S OWN RANGE ───────────────────────────────────────────
+    /// المسار 1 requires «صحة سنة الإدراج» and never says what makes a year
+    /// valid, so this was carried as an assumption (2000 … data-date year + 1)
+    /// with a note that one constant would change when the ministry stated a
+    /// real range. **It has: 1900 to the data-date year.**
+    ///
+    /// TWO THINGS CHANGED, and the second is the one worth naming. The floor
+    /// dropped to 1900, which only widens what is accepted. The CEILING dropped
+    /// from «next year» to «this year» — so a project can no longer be
+    /// registered against a plan year that has not begun. That is a narrowing,
+    /// and it is deliberate: the old ceiling was our inference about next
+    /// year's plan, not the ministry's rule.
     /// </summary>
-    public const int EarliestRegistrationYear = 2000;
+    public const int EarliestRegistrationYear = 1900;
 
     /// <summary>
     /// الشكل 5's «نجمة على الحقول الإلزامية» — the fields that carry the star.
@@ -125,9 +130,9 @@ public static class ProjectDefinition
     /// Empty means the definition may be saved.
     /// </summary>
     /// <param name="dataDateYear">
-    /// The project data date's year — «now» (D-06), never DateTime.Now. A
-    /// project may be registered against next year's plan, so the ceiling is
-    /// one year ahead of it.
+    /// The project data date's year — «now» (D-06), never DateTime.Now, and the
+    /// CEILING of the accepted range: a project is registered against a plan
+    /// year that has begun.
     /// </param>
     public static IReadOnlyList<Violation> Validate(Candidate c, int dataDateYear)
     {
@@ -168,10 +173,10 @@ public static class ProjectDefinition
         // ── 2. صحة سنة الإدراج ────────────────────────────────────────────
         if (c.RegistrationYear is null)
             v.Add(new("registrationYear", "سنة الإدراج مطلوبة.", "Registration year is required."));
-        else if (c.RegistrationYear < EarliestRegistrationYear || c.RegistrationYear > dataDateYear + 1)
+        else if (c.RegistrationYear < EarliestRegistrationYear || c.RegistrationYear > dataDateYear)
             v.Add(new("registrationYear",
-                $"سنة الإدراج يجب أن تقع بين {EarliestRegistrationYear} و{dataDateYear + 1}.",
-                $"Registration year must be between {EarliestRegistrationYear} and {dataDateYear + 1}."));
+                $"سنة الإدراج يجب أن تقع بين {EarliestRegistrationYear} و{dataDateYear}.",
+                $"Registration year must be between {EarliestRegistrationYear} and {dataDateYear}."));
 
         // ── 3. الكلفة المقررة أكبر من صفر ─────────────────────────────────
         // Stated as an inequality in the documents, so it is checked as one:

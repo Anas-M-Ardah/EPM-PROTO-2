@@ -13,7 +13,7 @@ as events, and the six plates that read them.
 | Screens | الشكل 50 register · 51 item detail · 52 receipts tab · 53/54 the two drawers · 55 receipts register · 56 inquiry |
 | Endpoints | `EP-SUP-01` … `EP-SUP-04` |
 | Rules | `Domain/SupplyStatus` · `Domain/SupplyReceipts` · BR-01 · BR-08 |
-| Tables | `BoqItems` · `SupplyItemDetails` · `SupplyReceipts` · `SupplyReceiptAttachments` · `BoqDistributions` · `Beneficiaries` |
+| Tables | `BoqItems` · `SupplyItemDetails` · `SupplyReceipts` · `SupplyReceiptAttachments` · `BoqDistributions` · `Workspaces` |
 
 ---
 

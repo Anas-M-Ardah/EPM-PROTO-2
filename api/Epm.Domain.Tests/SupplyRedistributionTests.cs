@@ -8,8 +8,8 @@ public class SupplyRedistributionTests
     /// <summary>الشكل 51's own allocation for ITM-002: البصرة 40 · الموصل 71.</summary>
     private static Dictionary<string, decimal> Itm002() => new()
     {
-        ["BEN-BAS"] = 40m,
-        ["BEN-MOS"] = 71m,
+        ["ub"] = 40m,
+        ["nu"] = 71m,
     };
 
     private static SupplyRedistribution.Transfer T(string from, string to, decimal qty)
@@ -20,19 +20,19 @@ public class SupplyRedistributionTests
     {
         // الشكل 58: من البصرة 12 · من الموصل 10 → تلعفر. صافي التغيير:
         // البصرة −12 · تلعفر +22 · الموصل −10.
-        var transfers = new[] { T("BEN-BAS", "BEN-TAL", 12m), T("BEN-MOS", "BEN-TAL", 10m) };
+        var transfers = new[] { T("ub", "cu", 12m), T("nu", "cu", 10m) };
         var nets = SupplyRedistribution.Nets(Itm002(), transfers);
 
         Assert.Null(SupplyRedistribution.Check(Itm002(), transfers));
-        Assert.Equal(22m, nets.Single(n => n.Code == "BEN-TAL").Delta);
-        Assert.Equal(-12m, nets.Single(n => n.Code == "BEN-BAS").Delta);
-        Assert.Equal(-10m, nets.Single(n => n.Code == "BEN-MOS").Delta);
+        Assert.Equal(22m, nets.Single(n => n.Code == "cu").Delta);
+        Assert.Equal(-12m, nets.Single(n => n.Code == "ub").Delta);
+        Assert.Equal(-10m, nets.Single(n => n.Code == "nu").Delta);
     }
 
     [Fact]
     public void The_item_total_is_unchanged_which_is_the_point()
     {
-        var transfers = new[] { T("BEN-BAS", "BEN-TAL", 12m), T("BEN-MOS", "BEN-TAL", 10m) };
+        var transfers = new[] { T("ub", "cu", 12m), T("nu", "cu", 10m) };
         var nets = SupplyRedistribution.Nets(Itm002(), transfers);
 
         Assert.Equal(111m, nets.Sum(n => n.Before));
@@ -45,7 +45,7 @@ public class SupplyRedistributionTests
     {
         // الشكل 59: «قيمة العقد الحالية 416,160,000 مقابل 0 و416,160,000».
         Assert.Equal(0m, SupplyRedistribution.Impact(
-            [T("BEN-BAS", "BEN-TAL", 12m), T("BEN-MOS", "BEN-TAL", 10m)]));
+            [T("ub", "cu", 12m), T("nu", "cu", 10m)]));
     }
 
     [Fact]
@@ -53,8 +53,8 @@ public class SupplyRedistributionTests
     {
         // جامعة تلعفر's case: it holds none of this item, and the order exists
         // precisely so that it should.
-        var nets = SupplyRedistribution.Nets(Itm002(), [T("BEN-BAS", "BEN-TAL", 12m)]);
-        var tal = nets.Single(n => n.Code == "BEN-TAL");
+        var nets = SupplyRedistribution.Nets(Itm002(), [T("ub", "cu", 12m)]);
+        var tal = nets.Single(n => n.Code == "cu");
 
         Assert.Equal(0m, tal.Before);
         Assert.Equal(12m, tal.After);
@@ -63,7 +63,7 @@ public class SupplyRedistributionTests
     [Fact]
     public void A_source_cannot_give_more_than_it_holds()
     {
-        var refusal = SupplyRedistribution.Check(Itm002(), [T("BEN-BAS", "BEN-TAL", 41m)]);
+        var refusal = SupplyRedistribution.Check(Itm002(), [T("ub", "cu", 41m)]);
 
         Assert.NotNull(refusal);
         Assert.Contains("40", refusal!.MessageAr);
@@ -74,7 +74,7 @@ public class SupplyRedistributionTests
     {
         // Each is under 40; together they are 60. Checking row by row would let
         // this through.
-        var transfers = new[] { T("BEN-BAS", "BEN-TAL", 30m), T("BEN-BAS", "BEN-KUF", 30m) };
+        var transfers = new[] { T("ub", "cu", 30m), T("ub", "tu", 30m) };
 
         Assert.Null(SupplyRedistribution.Check(Itm002(), [transfers[0]]));
         Assert.NotNull(SupplyRedistribution.Check(Itm002(), transfers));
@@ -87,29 +87,29 @@ public class SupplyRedistributionTests
         // account for the rows already above it.
         var alloc = Itm002();
 
-        Assert.Equal(40m, SupplyRedistribution.Available("BEN-BAS", alloc, []));
-        Assert.Equal(28m, SupplyRedistribution.Available("BEN-BAS", alloc, [T("BEN-BAS", "BEN-TAL", 12m)]));
-        Assert.Equal(0m, SupplyRedistribution.Available("BEN-BAS", alloc, [T("BEN-BAS", "BEN-TAL", 40m)]));
+        Assert.Equal(40m, SupplyRedistribution.Available("ub", alloc, []));
+        Assert.Equal(28m, SupplyRedistribution.Available("ub", alloc, [T("ub", "cu", 12m)]));
+        Assert.Equal(0m, SupplyRedistribution.Available("ub", alloc, [T("ub", "cu", 40m)]));
         // Never negative, whatever legacy data says.
-        Assert.Equal(0m, SupplyRedistribution.Available("BEN-BAS", alloc, [T("BEN-BAS", "BEN-TAL", 99m)]));
+        Assert.Equal(0m, SupplyRedistribution.Available("ub", alloc, [T("ub", "cu", 99m)]));
     }
 
     [Fact]
     public void A_transfer_to_its_own_source_is_refused()
     {
         // It moves nothing and hides a typo behind a no-op.
-        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("BEN-BAS", "BEN-BAS", 5m)]));
+        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("ub", "ub", 5m)]));
     }
 
     [Fact]
     public void A_transfer_needs_both_ends_and_a_positive_quantity()
     {
-        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("", "BEN-TAL", 5m)]));
-        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("BEN-BAS", "", 5m)]));
-        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("BEN-BAS", "BEN-TAL", 0m)]));
+        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("", "cu", 5m)]));
+        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("ub", "", 5m)]));
+        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("ub", "cu", 0m)]));
         // A negative transfer is the opposite transfer entered backwards, and
         // the form has a from/to pair for that.
-        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("BEN-BAS", "BEN-TAL", -5m)]));
+        Assert.NotNull(SupplyRedistribution.Check(Itm002(), [T("ub", "cu", -5m)]));
     }
 
     [Fact]
@@ -123,9 +123,9 @@ public class SupplyRedistributionTests
     {
         var alloc = new Dictionary<string, decimal>
         {
-            ["BEN-BAS"] = 40m, ["BEN-MOS"] = 71m, ["BEN-KUF"] = 65m,
+            ["ub"] = 40m, ["nu"] = 71m, ["tu"] = 65m,
         };
-        var nets = SupplyRedistribution.Nets(alloc, [T("BEN-BAS", "BEN-TAL", 12m)]);
+        var nets = SupplyRedistribution.Nets(alloc, [T("ub", "cu", 12m)]);
 
         // تلعفر +12 and البصرة −12 tie at 12 and sort by code; الكوفة and
         // الموصل moved nothing and come last.

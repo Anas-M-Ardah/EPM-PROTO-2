@@ -175,7 +175,15 @@
 
           <label class="epm-ws-f">
             <span>{{ lang.t('inf_registrationYear') }}<i>*</i></span>
-            <input class="d-form-input mono" dir="ltr" type="number"
+            <!-- The FLOOR is a constant and mirrors
+                 `ProjectDefinition.EarliestRegistrationYear`, so the mistyped
+                 century the field attracts is prevented rather than flagged
+                 after (CLAUDE.md §6). The CEILING is the project DATA DATE's
+                 year, which this form has no source for; hardcoding it would
+                 put a rotting copy of a domain rule in a template. The server
+                 names the full range in its refusal and `errorFor` prints it
+                 under the field. -->
+            <input class="d-form-input mono" dir="ltr" type="number" min="1900"
                    [class.epm-invalid]="errorFor('registrationYear')"
                    [value]="form().registrationYear ?? ''"
                    (input)="setNumber('registrationYear', $any($event.target).value)" />
@@ -334,7 +342,7 @@
             <input class="d-form-input" [class.epm-invalid]="errorFor('beneficiaryCodes')"
                    [value]="form().beneficiaryCodes ?? ''"
                    (input)="setText('beneficiaryCodes', $any($event.target).value)"
-                   placeholder="BEN-UOB" />
+                   placeholder="ub" />
             @if (errorFor('beneficiaryCodes')) {
               <small class="epm-f-err">{{ errorFor('beneficiaryCodes') }}</small>
             }

@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, effect, untracked, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
@@ -12,6 +12,7 @@ import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { WorkspacesService } from '../../core/workspaces';
 import { PersonaService, canDefineProjects } from '../../core/persona';
+import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ProjectsApi } from './projects.api';
@@ -37,7 +38,7 @@ import { ProjectRow } from './projects.types';
 @Component({
   selector: 'epm-projects-page',
   standalone: true,
-  imports: [
+  imports: [RouterLink, PersonaSwitcherComponent, 
     IconComponent, StatusPillComponent, TableSkeletonComponent,
     PageHeadComponent, PagerComponent,
   ],
@@ -143,6 +144,15 @@ export class ProjectsPage {
 
   /** True only when the database itself is empty, not when a filter excluded everything. */
   isUnfiltered = computed(() => !this.q() && !this.status());
+
+  /**
+   * True when the register is empty BECAUSE no تشكيل exists yet, which is a
+   * different dead end from «no projects». `ProjectDefinition` enforces
+   * `workspaceCode`, so «مشروع جديد» on a workspace-less database opens a form
+   * whose required field has nothing to offer. Only trusted once the workspace
+   * list has actually loaded — before that, zero means «not yet known».
+   */
+  noWorkspaces = computed(() => this.workspaces.loaded() && this.workspaces.count() === 0);
 
   /**
    * Z2 breadcrumb. The last crumb is the current page and is never a link.

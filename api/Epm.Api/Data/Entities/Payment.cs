@@ -68,5 +68,17 @@ public class Payment
     /// <summary>certified · paid · pending</summary>
     public string Status { get; set; } = "pending";
 
+    // ── سجّلتها — الشكل 16's own attribution ─────────────────────────────
+    // «سجّلتها محللة موازنة في قسم الحسابات». §7 asks that every record name
+    // «منفّذها وصفته وجهته», and until `EP-FIN-02` wrote these the payment
+    // panel printed a "not recorded" note and الشكل 19's payment events carried
+    // three empty strings.
+    //
+    // COPIED, not joined, exactly as ProjectActivityEvent does it: a persona
+    // list can change and the record may not.
+    public string RecordedByName { get; set; } = "";
+    public string RecordedByRole { get; set; } = "";
+    public string RecordedByParty { get; set; } = "";
+
     public string Note { get; set; } = "";
 }

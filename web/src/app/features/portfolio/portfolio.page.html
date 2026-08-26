@@ -55,7 +55,14 @@
   <!--
     The toolbar renders BEFORE the empty branch on purpose: when a filter has
     excluded everything, the control that did it has to still be reachable.
+
+    BUT NOT WHEN THERE IS NOTHING AT ALL. On an empty database `statusCodes()`
+    is empty too, so the strip collapsed to a bordered box around a single dead
+    «الكل» chip — chrome for filtering a set with no members, above a message
+    saying there are none. The reason above is about the FILTERED empty, and
+    that is exactly what the condition keeps.
   -->
+  @if (d.projectCount > 0 || filtered()) {
   <div class="d-toolbar">
     <div class="grp">
       <button type="button" class="d-fchip" [class.on]="status() === ''"
@@ -82,6 +89,7 @@
       </button>
     }
   </div>
+  }
 
   <!--
     A SCREEN-LEVEL empty state is not a hidden panel: there is nowhere else to
@@ -95,6 +103,12 @@
       <span>{{ lang.t(filtered() ? 'prt_filtered_b' : 'empty_portfolio_b') }}</span>
       @if (filtered()) {
         <button type="button" class="d-btn primary" (click)="clearFilters()">{{ lang.t('clear') }}</button>
+      } @else {
+        <!-- A screen-level empty state «has to have a way out» (04 §9), and the
+             portfolio's had prose only: it named the projects screen without
+             going there. It is a READ-ONLY roll-up — nothing is created here —
+             so the way out is the screen that does create. -->
+        <a class="d-btn primary" routerLink="/projects">{{ lang.t('go_projects') }}</a>
       }
     </div>
   } @else {

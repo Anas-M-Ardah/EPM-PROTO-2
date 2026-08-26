@@ -154,25 +154,27 @@ public record ProjectPermissions(bool Edit);
 // ── EP-PRJ-05 / 06 · «الجهات المستفيدة» (ملحق الشكل 12) ───────────────────
 
 /// <summary>
-/// One row of the master beneficiary list, with this project's use of it.
+/// One WORKSPACE, with this project's use of it as a beneficiary (P-174).
 ///
-/// `Assigned` is the tick. `Active` is the ministry's own state for the
-/// beneficiary and is INDEPENDENT of it: an inactive beneficiary may still be
-/// assigned (it can hold quantity distributed before it was stood down), which
-/// is why the drawer disables the checkbox rather than hiding the row.
+/// There is no second master list: the ministry maintains ONE register of
+/// universities and units — `Workspaces` — and «الجهة المستفيدة» is a ROLE a
+/// workspace plays on a project, recorded as its code in
+/// `Projects.BeneficiaryCodes`.
 ///
-/// The parent's NAME travels beside its code so the drawer can print «الجهة
-/// الأم» without a second request — the reference reads it off one in-memory
-/// master list and this is the same list, resolved server-side.
+/// `Assigned` is the tick. `Active` is the workspace's own state and is
+/// INDEPENDENT of it: an inactive workspace may still be assigned (it can hold
+/// quantity distributed before it was stood down), which is why the drawer
+/// disables the checkbox rather than hiding the row.
+///
+/// `Kind` is the `workspace-kind` lookup (P-68) — جامعة حكومية · جامعة تقنية ·
+/// وحدة مركزية · مديرية تجهيز. It is NOT `beneficiary-type`, which no longer
+/// exists.
 /// </summary>
 public record ProjectBeneficiaryRow(
     string Code,
     string NameAr,
     string NameEn,
-    string Type,
-    string? ParentCode,
-    string? ParentNameAr,
-    string? ParentNameEn,
+    string Kind,
     bool Active,
     bool Assigned);
 

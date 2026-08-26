@@ -1,16 +1,23 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { FinancialsResponse, PaymentRegisterInput, PaymentRegisterResult } from './financials.types';
+import {
+  FinancialRecordsInput, FinancialRecordsResult,
+  FinancialsResponse,
+  PaymentRegisterInput, PaymentRegisterResult,
+  PaymentReleaseInput, PaymentReleaseResult,
+} from './financials.types';
 
 /**
- * Every call SCR-W7 makes.
+ * Every call SCR-W7 makes — one read and three writes.
  *
- * REGISTERING A PAYMENT IS NOW A WRITE (ملحق الشكل 20 · P-96, closed). This
- * file used to say the wizard needed a measurement source the model did not
- * have; it does not — the plate makes the ذرعة an ATTACHMENT, and requiring one
- * is what «يجعل الصرف مستنداً إلى إنجاز موثّق» means. What the wizard registers
- * is a `pending` certificate and its audit route; certifying and disbursing it
- * are المسار 8 steps 2–4 and belong to no screen yet.
+ * THE WHOLE OF المسار 8 IS HERE. `registerPayment` is steps 1–4 (ملحق الشكل 20),
+ * `releaseDesk` is steps 5–9 (ملحق الشكل 17), and `saveRecords` is ملحق الشكل 18's
+ * «مدخل التحرير الوحيد للبيانات المالية للمشروع».
+ *
+ * EVERY WRITE RETURNS AN IDENTITY, NOT THE MODEL, and the page re-reads. The
+ * reason is in `FinancialsEndpoints.cs`: `EP-FIN-01` is a long inline
+ * projection over ten tables, and extracting it to be re-run by three writers
+ * would be a refactor of the read path in service of the writes.
  */
 @Injectable({ providedIn: 'root' })
 export class FinancialsApi {
@@ -29,12 +36,30 @@ export class FinancialsApi {
   }
 
   // [EP-FIN-02] POST /api/projects/{id}/financials/payments → same file
-  /**
-   * الشكل 20. Returns the new certificate's IDENTITY rather than the whole
-   * model — the endpoint's own comment says why — so the caller re-reads.
-   */
+  /** ملحق الشكل 20 — المسار 8 steps 1–4. Registers a `pending` certificate. */
   registerPayment(projectId: string, body: PaymentRegisterInput) {
     return this.api.post<PaymentRegisterResult>(
       `/api/projects/${encodeURIComponent(projectId)}/financials/payments`, body);
+  }
+
+  // [EP-FIN-03] POST /api/projects/{id}/financials/payments/{paymentId}/release → same file
+  /**
+   * ملحق الشكل 17 — المسار 8 steps 5–9. The desk holding the file releases it;
+   * whether that certifies the works or moves the money is the server's answer.
+   */
+  releaseDesk(projectId: string, paymentId: number, body: PaymentReleaseInput) {
+    return this.api.post<PaymentReleaseResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/financials/payments/${paymentId}/release`, body);
+  }
+
+  // [EP-FIN-04] PUT /api/projects/{id}/financials/records → same file
+  /**
+   * ملحق الشكل 18. Sends only the fields that MOVED — an omitted key is
+   * untouched and a present-but-null key clears the figure, which the change
+   * log records differently.
+   */
+  saveRecords(projectId: string, body: FinancialRecordsInput) {
+    return this.api.put<FinancialRecordsResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/financials/records`, body);
   }
 }
