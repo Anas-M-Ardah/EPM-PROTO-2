@@ -800,6 +800,29 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
   background: var(--surface-container); color: var(--on-surface-variant); }
 /* The value truncates; the chevron never does. */
 .epm-select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── `bare` — the trigger inside a control that already has a frame ──────
+   `.d-ctxsel` is Z6's toolbar pill: it draws the border, the radius and the
+   plane, and holds a label beside its control. A `.d-form-input` inside one is
+   a box in a box (§6). `bare` drops the frame and the fixed height and keeps
+   everything that matters — the popup, the roving focus, the type-ahead — so
+   the toolbar reads exactly as the reference's native `<select>` did while its
+   list stops being the operating system's (P-197).
+
+   It matches `.d-ctxsel select`'s own type (desktop.css/boq.css:405): the
+   medium weight and `--fs-200` are that rule's, not new values. */
+.epm-select.bare {
+  height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; color: var(--on-surface);
+  font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-medium);
+  max-width: 260px;
+}
+.epm-select.bare:hover { border: 0; background: transparent; }
+/* The frame belongs to `.d-ctxsel`, so the ring goes there too — a focus ring
+   drawn tight around bare text inside a pill reads as a second control. */
+.epm-select.bare:focus-visible { outline: none; box-shadow: none; }
+.d-ctxsel:has(> .epm-select.bare:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.epm-select.bare:disabled { background: transparent; color: var(--on-surface-variant); }
 .epm-select-v.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
 .epm-select-chev { flex: none; color: var(--on-surface-variant); transition: transform var(--dur-fast); }
 .epm-select.on .epm-select-chev { transform: rotate(180deg); }

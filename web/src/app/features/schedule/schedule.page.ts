@@ -17,6 +17,7 @@ import { ScheduleImportWizard } from './schedule-import.wizard';
 import { ScheduleImportVersion } from './schedule-import.types';
 import { PersonaService } from '../../core/persona';
 import { AmendmentMarkComponent } from '../../shared/amendment-mark.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 import {
   AmendmentFactView, AmendmentPanelComponent, AmendmentStepView,
 } from '../../shared/amendment-panel.component';
@@ -59,7 +60,7 @@ interface MonthCol { label: string; year: string; }
   selector: 'epm-schedule-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard],
+    AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './schedule.page.html',
 })
@@ -232,6 +233,31 @@ export class SchedulePage {
 
   /** The baseline in force — the one every figure on the screen is measured from. */
   currentBaseline = computed(() => this.baselines().find(b => b.isCurrent) ?? null);
+
+  // ── Z6's four dropdowns, as <epm-select> options (P-197) ───────────────
+  //
+  // The lists are built HERE rather than in the template because `<epm-select>`
+  // takes `{code,label}` and a label is a translated string — building it in the
+  // template would put `lang.t()` inside an @for on every change detection pass
+  // for no gain. Nothing here computes: it is projection, which §3.1 allows.
+
+  baselineOptions = computed<SelectOption[]>(() => this.baselines().map(b => ({
+    code: b.id,
+    label: `${this.lang.pick(b.labelAr, b.labelEn)} · ${b.takenAt}`,
+  })));
+
+  levelOptions = computed<SelectOption[]>(() =>
+    [1, 2, 3, 4].map(l => ({ code: String(l), label: String(l) })));
+
+  basisOptions = computed<SelectOption[]>(() => [
+    { code: 'cost', label: this.lang.t('scd_cost') },
+    { code: 'mh', label: this.lang.t('scd_mh') },
+  ]);
+
+  contractOptions = computed<SelectOption[]>(() => this.contracts().map(c => ({
+    code: c.id,
+    label: `${c.id} — ${this.lang.pick(c.nameAr, c.nameEn)}`,
+  })));
 
   /**
    * The three views, in the plate's order. The count rides on المقارنة والأثر

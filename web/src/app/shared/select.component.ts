@@ -1,6 +1,6 @@
 import {
   Component, ElementRef, EventEmitter, Input, Output, ViewChild,
-  ViewEncapsulation, signal,
+  ViewEncapsulation, booleanAttribute, signal,
 } from '@angular/core';
 import { IconComponent } from '../core/icon.component';
 import { PopoverComponent } from './popover.component';
@@ -46,7 +46,9 @@ export interface SelectOption {
   imports: [IconComponent, PopoverComponent],
   template: `
     <button #trigger type="button"
-            class="d-form-input epm-select"
+            class="epm-select"
+            [class.d-form-input]="!bare"
+            [class.bare]="bare"
             [class.epm-invalid]="invalid"
             [class.on]="open()"
             [disabled]="disabled"
@@ -112,6 +114,16 @@ export class SelectComponent {
   @Input() disabled = false;
   /** Offers the placeholder as a real option — how a value is cleared. */
   @Input() allowEmpty = true;
+
+  /**
+   * Drops the trigger's own border, height and plane so it can sit INSIDE a
+   * control that already has them — `.d-ctxsel`, the toolbar pill SCR-W5 uses
+   * for its four Z6 dropdowns, where a `.d-form-input` would be a box in a box
+   * (§6: «sections are label + space, never nested boxes»). The POPUP is
+   * unchanged; this is the trigger only, which is the whole reason to reach for
+   * it here — the list stops being the operating system's. See P-197.
+   */
+  @Input({ transform: booleanAttribute }) bare = false;
 
   @Output() changed = new EventEmitter<string>();
 

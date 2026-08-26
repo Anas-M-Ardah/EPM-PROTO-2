@@ -88,16 +88,11 @@
              It becomes a select when الشكل 24's re-import creates a second. -->
         @if (currentBaseline(); as bl) {
           @if (baselines().length > 1) {
-            <label class="d-ctxsel">
+            <span class="d-ctxsel">
               <span>{{ lang.t('scd_baseline') }}</span>
-              <select [attr.aria-label]="lang.t('scd_baseline')">
-                @for (b of baselines(); track b.id) {
-                  <option [value]="b.id" [selected]="b.isCurrent">
-                    {{ lang.pick(b.labelAr, b.labelEn) }} · {{ b.takenAt }}
-                  </option>
-                }
-              </select>
-            </label>
+              <epm-select bare [options]="baselineOptions()" [value]="bl.id"
+                          [label]="lang.t('scd_baseline')" [allowEmpty]="false" />
+            </span>
           } @else {
             <span class="d-ctxsel">
               <span>{{ lang.t('scd_baseline') }}</span>
@@ -122,15 +117,12 @@
              chart does, so a level that collapsed one and not the other would
              have the two views disagreeing about what the WBS is. -->
         @if (view() !== 'compare') {
-          <label class="d-ctxsel">
+          <span class="d-ctxsel">
             <span>{{ lang.t('scd_level') }}</span>
-            <select [attr.aria-label]="lang.t('scd_level')"
-                    (change)="setLevel(+$any($event.target).value)">
-              @for (l of [1, 2, 3, 4]; track l) {
-                <option [value]="l" [selected]="l === wbsLevel()">{{ l }}</option>
-              }
-            </select>
-          </label>
+            <epm-select bare [options]="levelOptions()" [value]="wbsLevel() + ''"
+                        [label]="lang.t('scd_level')" [allowEmpty]="false"
+                        (changed)="setLevel(+$event)" />
+          </span>
         }
 
         <!-- «أساس الوزن», and the plate names it on all three views — §13-1
@@ -146,21 +138,14 @@
              Hiding it made the declared basis invisible on exactly the imports
              that had no choice to make — and §13-1 wants it declared, not
              merely offered (P-193). -->
-        <label class="d-ctxsel">
+        <span class="d-ctxsel"
+              [title]="d.summary.manHoursAvailable ? '' : lang.t('scd_basis_locked')">
           <span>{{ lang.t('scd_basis') }}</span>
-          <!-- `[value]` on the SELECT, not `[selected]` on the options: the
-               option property is written once and the element's own value does
-               not follow it when the signal changes, so a basis switched from
-               anywhere else would leave the control showing the old answer. -->
-          <select [attr.aria-label]="lang.t('scd_basis')"
-                  [value]="basis()"
-                  [disabled]="!d.summary.manHoursAvailable"
-                  [title]="d.summary.manHoursAvailable ? '' : lang.t('scd_basis_locked')"
-                  (change)="setBasis($any($event.target).value)">
-            <option value="cost">{{ lang.t('scd_cost') }}</option>
-            <option value="mh">{{ lang.t('scd_mh') }}</option>
-          </select>
-        </label>
+          <epm-select bare [options]="basisOptions()" [value]="basis()"
+                      [label]="lang.t('scd_basis')" [allowEmpty]="false"
+                      [disabled]="!d.summary.manHoursAvailable"
+                      (changed)="setBasis($any($event))" />
+        </span>
 
         <!-- ملحق الشكل 21 lists «تصدير واستيراد P6» as one pair, and this page
              carried only the second half. `DModSchedule` exports the activity
@@ -187,17 +172,12 @@
         }
 
         @if (!singleContract()) {
-          <label class="d-ctxsel">
+          <span class="d-ctxsel">
             <span>{{ lang.t('boq_contract') }}</span>
-            <select [attr.aria-label]="lang.t('boq_contract')"
-                    (change)="chooseContract($any($event.target).value)">
-              @for (c of contracts(); track c.id) {
-                <option [value]="c.id" [selected]="c.id === contract()?.id">
-                  {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
-                </option>
-              }
-            </select>
-          </label>
+            <epm-select bare [options]="contractOptions()" [value]="contract()?.id ?? ''"
+                        [label]="lang.t('boq_contract')" [allowEmpty]="false"
+                        (changed)="chooseContract($event)" />
+          </span>
         }
       }
     </div>

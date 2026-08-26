@@ -44,25 +44,25 @@
       <!-- ══ 1 — الصيغة والملف ════════════════════════════════════════════ -->
       @if (step() === 1) {
         <div class="d-form-grid">
-          <label class="d-form-i">
+          <!-- Both were native `<select class="epm-select">` — wearing the
+               shared control's class while opening the OPERATING SYSTEM's list
+               (P-197). ملحق الشكل 24 is a modal over an Arabic RTL form, which
+               is the worst place for a grey system popup, and the class made it
+               look deliberate. -->
+          <div class="d-form-i">
             <span class="k">{{ lang.t('scd_imp_format') }}</span>
-            <select class="epm-select" [value]="format()"
-                    (change)="format.set($any($event.target).value)">
-              <option value="xer">Primavera XER</option>
-              <option value="p6xml">P6 XML</option>
-              <option value="excel">Excel</option>
-            </select>
-          </label>
-          <label class="d-form-i">
+            <epm-select [options]="formatOptions" [value]="format()"
+                        [label]="lang.t('scd_imp_format')" [allowEmpty]="false"
+                        (changed)="format.set($any($event))" />
+          </div>
+          <div class="d-form-i">
             <!-- 02 §2 — the basis is chosen HERE, at import, and this build
                  had nowhere to record it until now (P-48). -->
             <span class="k">{{ lang.t('scd_imp_basis') }}</span>
-            <select class="epm-select" [value]="basis()"
-                    (change)="basis.set($any($event.target).value)">
-              <option value="cost">{{ lang.t('scd_imp_basis_cost') }}</option>
-              <option value="manhours">{{ lang.t('scd_imp_basis_mh') }}</option>
-            </select>
-          </label>
+            <epm-select [options]="basisOptions()" [value]="basis()"
+                        [label]="lang.t('scd_imp_basis')" [allowEmpty]="false"
+                        (changed)="basis.set($any($event))" />
+          </div>
         </div>
 
         <!-- «منطقة سحب وإفلات» — the plate's own control. -->
