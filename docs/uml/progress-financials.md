@@ -4,7 +4,8 @@
 the BOQ. **SCR-W7** — the project's money: approved, revised, disbursed, and the
 two balances neither of those contains.
 
-Endpoints **`EP-PRG-01`**, **`EP-PRG-02`** and **`EP-FIN-01`**.
+Endpoints **`EP-PRG-01`**, **`EP-PRG-02`**, **`EP-FIN-01`**, **`EP-FIN-02`**,
+**`EP-FIN-03`** and **`EP-FIN-04`**.
 
 Reference components: **`DModProgress`** `app/project-modules.jsx:1391` ·
 **`DModFinancialNew`** `:907` — the v1.1 branch, `../epm@design/system-revamp`.
@@ -41,6 +42,9 @@ graph RL
     EV["Domain/EarnedValue.cs<br/><b>BR-11 — CPI · SPI · EAC · VAC</b>"]
     PP["Domain/PlannedProgress.cs<br/><b>P-53 — planned % · remaining days</b>"]
     AM["Domain/Amendments.cs<br/><b>BR-09 — effective · projection</b>"]
+    PC["Domain/PaymentCertificate.cs<br/><b>§15-2 — net · paid-only · ceilings</b>"]
+    AR["Domain/AuditRoute.cs<br/><b>مسار 8 §5–9 — desks · release</b>"]
+    BB["Domain/BudgetBasis.cs<br/><b>P-44 — الكلفة المعدلة</b>"]
     PV["Domain/ProjectValue.cs<br/><b>BR-00</b>"]
     PEN["Domain/Penalty.cs<br/><b>BR-10 — DelayDays</b>"]
     DB["Data/EpmDb.cs"]
@@ -53,6 +57,9 @@ graph RL
     T4[("Activities")]
     T5[("BoqItems")]
     T6[("Payments")]
+    T7[("PaymentAuditStages")]
+    T8[("ProjectAllocations")]
+    T9[("FinancialEdits")]
   end
 
   PGP --> PGA
@@ -79,6 +86,10 @@ graph RL
   EPF --> PP
   EPF --> AM
   EPF --> PV
+  EPF --> PC
+  EPF --> AR
+  EPF --> BB
+  EPP --> BB
   DRV --> DB
   EPP --> DB
   EPF --> DB
@@ -88,6 +99,9 @@ graph RL
   DB --> T4
   DB --> T5
   DB --> T6
+  DB --> T7
+  DB --> T8
+  DB --> T9
 ```
 
 ---
@@ -178,9 +192,14 @@ erDiagram
 ```
 
 **Written by these screens:** `Activities.ProgressPct` and
-`Activities.RemainingDuration`, by `EP-PRG-02`. Nothing else. SCR-W7 does not
-write at all — a certificate is raised against works measured on site, and the
-reference's `DPaymentWizard` needs a measurement source this model lacks.
+`Activities.RemainingDuration`, by `EP-PRG-02`. And by SCR-W7, which writes
+three tables now: `EP-FIN-02` registers a certificate, its attachments and its
+audit route (ملحق الشكل 20); `EP-FIN-03` walks that route — المسار 8 steps 5–9 —
+writing `PaymentAuditStages.FinishedAt` and, through `Domain/AuditRoute` alone,
+`Payment.Status`/`CertifiedDate`/`PaidDate`; and `EP-FIN-04` is ملحق الشكل 18,
+«مدخل التحرير الوحيد للبيانات المالية للمشروع», writing `Projects.PlannedCost`,
+`Projects.RevisedCost`, `Projects.TransferState`, `ProjectAllocations` and one
+`FinancialEdits` row per changed field.
 
 **Derived, never stored:** physical %, financial %, planned %, every BOQ line's
 progress / achieved quantity / achieved amount / remaining value, contract
@@ -224,9 +243,30 @@ stateDiagram-v2
   state Sheet {
     [*] --> Reconciliation
     Reconciliation --> Payments : «الدفعات»
-    Payments --> Certificate : a row is picked
+    Payments --> Certificate : a letter is picked
     Certificate --> Payments : closed
     Reconciliation --> Indices : «المؤشرات»
+    Reconciliation --> Route : «مهل التدقيق»
+    Reconciliation --> Records : «البيانات المسجّلة»
+  }
+
+  state Route {
+    [*] --> Pending : registered — desk 1 holds it
+    Pending --> Certified : المهندس المقيم releases (step 5)
+    Certified --> Certified : الدائرة المالية releases (step 8)
+    Certified --> Paid : قسم الحسابات releases (step 9)
+    Pending --> Escalated : a desk passes its own cap
+    Certified --> Escalated : same
+    Escalated --> Certified : released anyway
+    Paid --> [*] : no lead time left to watch
+  }
+
+  state Records {
+    [*] --> Reading
+    Reading --> Editing : «تعديل» — الدائرة المالية only
+    Editing --> Refused : below the spend, or a closed year
+    Refused --> Editing : corrected
+    Editing --> Reading : saved (one FinancialEdits row per field) / cancelled
   }
 ```
 
@@ -240,24 +280,32 @@ stateDiagram-v2
 | what "planned" means, or the remaining-duration formula | `Domain/PlannedProgress.cs` |
 | any EVM index | `Domain/EarnedValue.cs` |
 | what a progress write refuses | `Features/Progress/ProgressEndpoints.cs` — and the mirror check in `progress.page.ts`'s `draftError` |
-| what counts as disbursed, retained or recovered | `Features/Financials/FinancialsEndpoints.cs` |
+| what counts as disbursed, retained or recovered | `Domain/PaymentCertificate.cs` |
+| either of §15-2's two spend ceilings | `Domain/PaymentCertificate.Ceilings` |
+| the audit route's desks, their caps, or what releasing one means | `Domain/AuditRoute.cs` |
+| which figure «الكلفة المعدلة» names, on ALL THREE screens | `Domain/BudgetBasis.cs` |
+| who may release a desk, or edit the recorded figures | `Features/Dev/Personas.cs` |
 | an index's rendering (a ratio, never a percentage) | `core/format.ts` `index()` |
 | a KPI tile's decimals | `Stat.dp` in `shared/summary-strip.component.ts` |
 | a column heading, a button, an empty state | `core/lang.ts` (`prg_*`, `fin_*`) |
+| SCR-W7 chrome — the pinned equation, the year selector, the status bar | `.d-fsheet-recon` · `.d-yearsel` · `.d-pz10` in `styles/desktop.css`, all copied from the reference — grep before writing a rule (P-186 · P-187) |
 | a payment **kind or status label** | `Features/Lookups/LookupCatalog.cs` — never `lang.ts` |
 
 ---
 
 ## 6. Known gaps
 
-- **No payment wizard.** SCR-W7 reads. `DPaymentWizard` raises a certificate
-  against measured works, and nothing records a measurement yet.
-- **No annual allocation and no audit SLA** (P-56). Two of the reference's six
-  tabs have no source in this data model; both say so with their reason rather
-  than being invented from a payment date.
-- **Disbursement is not split across cost components.** A payment cites a
-  finance letter, not an award line, so splitting it per component would be an
-  allocation nobody performed.
+- **A component has no forecast of its own** (P-90). BR-11 forecasts from a CPI
+  and an expense item has no earned value to form one; apportioning the
+  contract's EAC across three lines would be an allocation rule no document
+  states, so the column prints an em dash on those rows.
+- **No official payment code** (P-79). «دفعة N» is the sequential number on the
+  contract; الشكل 9's `PAY-100` is fixture data and no scheme is invented.
+- **The 90% alerts do not fire from live figures.** R2 and R9 warn at 90% of the
+  allocation and of the revised cost; `Alerts` rows are seeded, and only the
+  100% CEILINGS are enforced, by `EP-FIN-02` and `EP-FIN-03` (P-182).
+- **No multi-currency** (P-185). العرض الفني §16 puts USD in Phase 1; «د.ع» is
+  hard-coded, and the change belongs to the contract, not to this screen.
 - **Progress does not move an activity's STATUS.** `ProgressPct` and `Status`
   are separate columns (`06 §9`), and a status is set by the section that owns
   the work. An activity can therefore read 100% and «متأخر» at once — which is
@@ -287,3 +335,13 @@ defines `original_value` as "the awarded value" and `award_amount` is that same
 money, so award + reserve + supervision exceeds every contract by exactly the
 two allowances. They live in their own table with their own heading; rendered as
 an indented sub-tree they would out-total the row above them.
+
+**«الكلفة المعدلة» is TWO different figures and الشكل 14 prints both** (P-180).
+The reconciliation strip runs on the RECORDED budget — الشكل 18's pair, stored
+on the project — and the sheet's footer totals the contracts' commitments. On
+the plate those are 1,500,000,000 and 2,156,653,454, and «أساسا القياس» is the
+box that exists to raise the difference. Everything that divides by «المعدلة»
+divides by the budget: العرض الفني §23-1 defines الإنجاز المالي as «المصروف
+التراكمي نسبةً إلى الكلفة المعدلة», which is the denominator P-44 could not fix.
+`Domain/BudgetBasis` holds it and all three screens call it, so changing the
+basis is one function and never three.

@@ -4,18 +4,19 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
-import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { SectionComponent } from '../../shared/section.component';
+import { ModuleBarComponent } from '../../shared/module-bar.component';
 import { FieldGroupComponent } from '../../shared/field-group.component';
+import { FieldGridComponent, Field } from '../../shared/field-grid.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { PersonaService } from '../../core/persona';
 import { PaymentWizard } from './payment.wizard';
-import { LangService } from '../../core/lang';
+import { LangService } from '../../core/lang';
 import { ToastService } from '../../shared/toast.service';
 import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
 import { FinancialsApi } from './financials.api';
-import { FinancialsAuditStage, FinancialsPayment, FinancialsResponse } from './financials.types';
+import { FinancialRecordsInput, FinancialsAuditStage, FinancialsResponse } from './financials.types';
 
 /**
  * SCR-W7 — the project workspace Financials module (`04 §3`).
@@ -34,11 +35,18 @@ import { FinancialsAuditStage, FinancialsPayment, FinancialsResponse } from './f
  * counted from PAID certificates only, because a recovery happens when money
  * moves and not when works are certified.
  *
- * ── TWO REFERENCE TABS ARE MISSING, ON PURPOSE (P-56) ─────────────────────
- * The annual-allocation tab and the audit-SLA tab have no source in this data
- * model. They render "unavailable + reason" rather than being invented from a
- * payment date — the treatment SCR-E1 gives physical % and SCR-E5 gave the
- * critical path (P-09).
+ * ── TWO BASES, AND الشكل 14 USES BOTH ─────────────────────────────────────
+ * The reconciliation strip reads the RECORDED budget — الشكل 18's pair — and
+ * the sheet's footer totals the CONTRACTS' commitments. «أساسا القياس» exists
+ * to set the two against each other. Where no budget is recorded the strip
+ * falls back to commitments and SAYS which basis it is on.
+ *
+ * ── THREE WRITES, EACH GATED ON A DIFFERENT PARTY ─────────────────────────
+ * «تسجيل دفعة» belongs to دائرة المهندس المقيم or مدير المشروع (P-96);
+ * «إطلاق المعاملة» belongs to the party that owns the DESK holding the file;
+ * «تعديل» on الشكل 18 belongs to الدائرة المالية alone (§7). Every one of the
+ * three checks is the server's — these only decide whether a control is drawn,
+ * and what is drawn instead is the reason.
  *
  * ── WHAT THIS COMPONENT COMPUTES ──────────────────────────────────────────
  * Nothing but display formatting. Every figure arrives derived.
@@ -46,8 +54,8 @@ import { FinancialsAuditStage, FinancialsPayment, FinancialsResponse } from './f
 @Component({
   selector: 'epm-financials-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    SectionComponent, FieldGroupComponent, PaymentWizard],
+  imports: [IconComponent, StatusPillComponent, TableSkeletonComponent,
+    SectionComponent, ModuleBarComponent, FieldGroupComponent, FieldGridComponent, PaymentWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './financials.page.html',
 })
@@ -66,26 +74,204 @@ export class FinancialsPage {
   loading = signal(true);
   error = signal<string | null>(null);
 
-  /** sheet · payments · diagnostics */
-  /**
-   * الشكل 14 — «ستة تبويبات». Four are figures of their own that are not built
-   * (الأشكال 15 · 17 · 18 · 19); they render a named empty state rather than
-   * being left off a strip the document draws.
-   */
+  /** الشكل 14 — «ستة تبويبات», الأشكال 14 · 15 · 16 · 17 · 18 · 19 in order. */
   readonly tabs = [
-    { k: 'sheet', label: 'fin_tab_sheet', needs: '' },
-    { k: 'allocation', label: 'fin_tab_alloc', needs: '' },
-    { k: 'payments', label: 'fin_tab_payments', needs: '' },
-    { k: 'sla', label: 'fin_tab_sla', needs: '' },
-    { k: 'records', label: 'fin_tab_records', needs: 'fin_tab_records_needs' },
-    { k: 'changes', label: 'fin_tab_changes', needs: 'fin_tab_changes_needs' },
+    { k: 'sheet', label: 'fin_tab_sheet' },
+    { k: 'allocation', label: 'fin_tab_alloc' },
+    { k: 'payments', label: 'fin_tab_payments' },
+    { k: 'sla', label: 'fin_tab_sla' },
+    { k: 'records', label: 'fin_tab_records' },
+    { k: 'changes', label: 'fin_tab_changes' },
   ] as const;
 
   view = signal<string>('sheet');
 
-  /** The tab in view when it is one of the four with nothing behind it yet. */
-  unbuiltTab = computed(() =>
-    this.tabs.find(t => t.k === this.view() && t.needs !== '') ?? null);
+  // ── الشكل 18 — «البيانات المالية المسجّلة» ────────────────────────────
+
+  /**
+   * The card's eight values, as `epm-field-grid` fields. GATHERED, not
+   * computed: every figure arrives from the server, and this method chooses a
+   * label and a flag for each — which is display formatting, the only thing
+   * Angular is allowed to do here (CLAUDE.md §3.1).
+   *
+   * The three the figure tags «مقترح» come from `records.suggested`, so the
+   * server owns which fields wear the tag and the card cannot drift from it.
+   */
+  recordFields = computed<Field[]>(() => {
+    const r = this.data()?.records;
+    if (!r) return [];
+    const sug = (k: string) => r.suggested.includes(k);
+
+    // A field is editable only if the SERVER lists it, and the annual
+    // allocation loses that even for الدائرة المالية when its year is closed —
+    // «السنوات السابقة سجل مقفل» (الشكل 15). A control the save would refuse is
+    // worse than no control.
+    const locked = (key: string) =>
+      !r.editable.includes(key) || (key === 'annualAllocation' && r.yearLocked);
+
+    const draft = this.draft();
+
+    const money = (key: string, label: string, v: number | null): Field => ({
+      key, label,
+      value: v === null ? null : fmt.money(v),
+      // The RAW stored value while editing — digits, never thousands
+      // separators, as `field-grid.component.ts` requires.
+      raw: key in draft ? draft[key] : (v === null ? '' : String(v)),
+      numeric: true, unit: this.lang.t('cur_iqd'),
+      proposed: sug(key), readonly: locked(key),
+      error: this.fieldError()?.field === key ? this.fieldError()!.message : null,
+    });
+
+    return [
+      // «نجمة على الحقل الإلزامي» — المعدلة is the figure every other screen
+      // reads against, so it is the one the card marks required.
+      { ...money('approvedCost', this.lang.t('fin_rec_approved'), r.approvedCost) },
+      { ...money('revisedCost', this.lang.t('fin_rec_revised'), r.revisedCost), required: true },
+      money('annualAllocation', this.lang.t('fin_rec_alloc'), r.annualAllocation),
+      money('spentYear', this.lang.t('fin_rec_spent_year'), r.spentYear),
+      money('spentToDate', this.lang.t('fin_rec_spent_todate'), r.spentToDate),
+      money('retentionHeld', this.lang.t('fin_rec_retention'), r.retentionHeld),
+      {
+        key: 'transferState', label: this.lang.t('fin_rec_transfer'),
+        // Null prints «غير متاح» — «لا يوجد» is a RECORDED value and stating it
+        // where nothing was recorded asserts a fact nobody checked (P-179).
+        value: r.transferState === null ? null : this.lookups.label('transfer-state', r.transferState),
+        raw: 'transferState' in draft ? draft['transferState'] : (r.transferState ?? ''),
+        options: this.lookups.list('transfer-state')
+          .map(o => ({ code: o.code, label: this.lang.pick(o.nameAr, o.nameEn) })),
+        proposed: sug('transferState'), readonly: locked('transferState'),
+      },
+      {
+        key: 'plannedProgressPct', label: this.lang.t('fin_rec_planned'),
+        value: r.plannedProgressPct === null ? null : fmt.pct(r.plannedProgressPct, 0),
+        numeric: true, proposed: sug('plannedProgressPct'), readonly: true,
+      },
+    ];
+  });
+
+  // ── ملحق الشكل 18 — «تعديل» ──────────────────────────────────────────
+
+  editing = signal(false);
+
+  /**
+   * What the person has typed, by field key. Only keys PRESENT here are sent,
+   * which is what makes «omitted» and «cleared» two different requests — the
+   * server logs them differently and one of them clears a recorded figure.
+   */
+  draft = signal<Record<string, string>>({});
+
+  /** A 422 from `EP-FIN-04`, shown in the cell that caused it. */
+  fieldError = signal<{ field: string; message: string } | null>(null);
+
+  saving = signal(false);
+
+  /**
+   * §7's capacity, mirrored. The server refuses the call regardless; this
+   * decides whether «تعديل» is drawn, and the reason is printed where it
+   * would be (the P-96 treatment `canRegister` already uses).
+   */
+  canEditRecords = computed(() => this.data()?.records.canEdit === true);
+
+  beginEdit() {
+    this.draft.set({});
+    this.fieldError.set(null);
+    this.editing.set(true);
+  }
+
+  cancelEdit() {
+    this.draft.set({});
+    this.fieldError.set(null);
+    this.editing.set(false);
+  }
+
+  setField(e: { key: string; value: string }) {
+    this.draft.update(d => ({ ...d, [e.key]: e.value }));
+    if (this.fieldError()?.field === e.key) this.fieldError.set(null);
+  }
+
+  saveRecords() {
+    const r = this.data()?.records;
+    if (!r || this.saving()) return;
+
+    const d = this.draft();
+    const num = (k: string) => {
+      const raw = (d[k] ?? '').trim();
+      // Emptied means CLEARED, not zero — `{ value: null }` and the log says so.
+      return { value: raw === '' ? null : Number(raw) };
+    };
+
+    const body: FinancialRecordsInput = { year: r.year };
+    if ('approvedCost' in d) body.approvedCost = num('approvedCost');
+    if ('revisedCost' in d) body.revisedCost = num('revisedCost');
+    if ('annualAllocation' in d) body.annualAllocation = num('annualAllocation');
+    if ('transferState' in d) {
+      const raw = (d['transferState'] ?? '').trim();
+      body.transferState = { value: raw === '' ? null : raw };
+    }
+
+    // Nothing typed is not a save. Closing the card is the whole action.
+    if (Object.keys(d).length === 0) { this.cancelEdit(); return; }
+
+    this.saving.set(true);
+    this.api.saveRecords(this.projectId(), body).subscribe({
+      next: res => {
+        this.saving.set(false);
+        this.editing.set(false);
+        this.draft.set({});
+        this.toast.show(res.changed.length
+          ? this.lang.t('fin_rec_saved')
+          : this.lang.t('fin_rec_unchanged'));
+        this.load();
+      },
+      error: e => {
+        this.saving.set(false);
+        const body = e?.error ?? {};
+        const message = this.lang.pick(body.messageAr, body.messageEn)
+          ?? body.message ?? e?.message ?? 'request failed';
+        if (body.field) this.fieldError.set({ field: body.field, message });
+        else this.toast.show(message);
+      },
+    });
+  }
+
+  /** الشكل 19's «أيقونات نوعية» — one per event kind, all four of them. */
+  changeIcon(kind: string): string {
+    return kind === 'payment' ? 'payments'
+      : kind === 'amendment' ? 'swap_horiz'
+      : kind === 'record' ? 'edit'
+      : 'account_balance';
+  }
+
+  /**
+   * A `record` event's before → after, as text. Money comes back as a number
+   * pair and a lookup as a code pair, so this picks the one that is populated
+   * — the field decides, never the value's spelling.
+   */
+  changeFrom(c: { before: number | null; beforeText: string | null }): string {
+    if (c.beforeText !== null) return this.lookups.label('transfer-state', c.beforeText);
+    return c.before === null ? this.lang.t('unavailable') : fmt.money(c.before);
+  }
+
+  changeTo(c: { after: number | null; afterText: string | null }): string {
+    if (c.afterText !== null) return this.lookups.label('transfer-state', c.afterText);
+    return c.after === null ? this.lang.t('unavailable') : fmt.money(c.after);
+  }
+
+  /**
+   * What the timeline prints as the event's reference. `ref` is a CODE for
+   * three of the four kinds — a funding letter, an amendment, a fiscal year —
+   * but a recorded edit's is the FIELD KEY, an English identifier the title
+   * beside it already states in Arabic. So an edit shows the year it moved, or
+   * nothing at all.
+   */
+  changeRef(c: { kind: string; ref: string }): string {
+    if (c.kind !== 'record') return c.ref;
+    const [, year] = c.ref.split('·');
+    return year?.trim() ?? '';
+  }
+
+  /** «تمييز المبالغ الموجبة» — the sign is carried in the text, not by colour. */
+  signed(v: number): string { return (v > 0 ? '+' : '') + fmt.money(v); }
 
   // ── الشكل 17 — مهل التدقيق ───────────────────────────────────────────
 
@@ -109,6 +295,40 @@ export class FinancialsPage {
     if (st.state === 'done') return this.lang.t('fin_sla_done');
     if (st.elapsedDays === null) return this.lang.t('fin_sla_waiting');
     return `${st.elapsedDays} ${this.lang.t('fin_sla_elapsed')}`;
+  }
+
+  /** The desk currently holding the file, if the viewer may not release it. */
+  heldDesk = computed(() =>
+    (this.data()?.auditSla?.stages ?? []).find(s => s.state === 'current' || s.state === 'overdue') ?? null);
+
+  releasing = signal(0);
+
+  /**
+   * المسار 8 steps 5–9. What this release MEANS — advance the route, certify
+   * the works, or move the money — is `EP-FIN-03`'s answer, so the toast is
+   * chosen from what came back and not from what was pressed.
+   */
+  release(st: FinancialsAuditStage) {
+    const sla = this.data()?.auditSla;
+    if (!sla || this.releasing()) return;
+
+    this.releasing.set(st.no);
+    this.api.releaseDesk(this.projectId(), sla.paymentId, { stageNo: st.no, note: '' }).subscribe({
+      next: res => {
+        this.releasing.set(0);
+        this.toast.show(
+          res.disbursed ? this.lang.t('fin_sla_disbursed')
+          : res.certified ? this.lang.t('fin_sla_certified')
+          : this.lang.t('fin_sla_released'));
+        this.load();
+      },
+      error: e => {
+        this.releasing.set(0);
+        const body = e?.error ?? {};
+        this.toast.show(this.lang.pick(body.messageAr, body.messageEn)
+          ?? body.message ?? e?.message ?? 'request failed');
+      },
+    });
   }
 
   // ── الشكل 16 — سجل الدفعات ───────────────────────────────────────────
@@ -201,15 +421,10 @@ export class FinancialsPage {
 
   /** Which contract's three cost components are open. */
   open = signal<Record<string, boolean>>({});
-  /** The payment whose detail is docked beside the register. */
-  selected = signal(0);
 
   readonly colCount = 8;
 
   contracts = computed(() => this.data()?.contracts ?? []);
-  payments = computed(() => this.data()?.payments ?? []);
-
-  manyContracts = computed(() => this.contracts().length > 1);
 
   name(r: { nameAr: string; nameEn: string }): string {
     return this.lang.pick(r.nameAr, r.nameEn);
@@ -225,53 +440,20 @@ export class FinancialsPage {
     this.open.update(o => ({ ...o, [id]: !this.isOpen(id) }));
   }
 
-  selectedPayment = computed(() => this.payments().find(p => p.id === this.selected()));
-
-  select(p: FinancialsPayment) {
-    this.selected.update(id => (id === p.id ? 0 : p.id));
-  }
-
-  kindLabel(code: string): string { return this.lookups.label('payment-kind', code); }
+  /** The status pill on a letter's share, and on the الشكل 17 certificate. */
   statusLabel(code: string): string { return this.lookups.label('payment-status', code); }
 
-  /**
-   * The reason a figure cannot be derived, in the viewer's language. Kept on
-   * the SERVER beside the rule that owns it (P-09), so this only picks.
-   */
-  reason(key: string): string {
-    const u = this.data()?.unavailable.find(x => x.key === key);
-    return u ? this.lang.pick(u.needsAr, u.needsEn) : '';
-  }
-
-  summaryStats = computed<Stat[]>(() => {
-    const t = this.data()?.totals;
-    if (!t) return [];
-    return [
-      { label: this.lang.t('fin_revised'), value: t.revised },
-      { label: this.lang.t('fin_disbursed'), value: t.disbursed, bar: t.spendPct },
-      { label: this.lang.t('fin_certified_unpaid'), value: t.certified },
-      { label: this.lang.t('fin_retention'), value: t.retentionHeld },
-      { label: this.lang.t('fin_balance'), value: t.balance },
-    ];
-  });
-
-  spiNote = computed(() => {
-    const spi = this.data()?.evm.spi;
-    if (spi === null || spi === undefined) return '';
-    return spi < 1 ? this.lang.t('prg_spi_behind') : this.lang.t('prg_spi_on');
-  });
-
-  cpiNote = computed(() => {
-    const cpi = this.data()?.evm.cpi;
-    if (cpi === null || cpi === undefined) return '';
-    return cpi < 1 ? this.lang.t('prg_cpi_over') : this.lang.t('prg_cpi_within');
-  });
+  // The five-tile summary strip is GONE, and Z10 carries what it said.
+  // الشكل 14 leads with the pinned equation and closes with a 28px status bar;
+  // a band of tiles between them printed المعدلة, المصروف and المتبقي a second
+  // time, forty pixels from the first, which asks the reader to check whether
+  // two copies of one figure agree. `summaryStats()` went with it.
 
   constructor() {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');
       this.view.set('sheet');
-      this.selected.set(0);
+      this.cancelEdit();
       this.load();
     });
   }

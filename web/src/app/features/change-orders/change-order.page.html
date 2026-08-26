@@ -96,7 +96,7 @@
     <!-- ══ THE SIX TABS (03 §9) ═══════════════════════════════════════════ -->
     <div class="d-tabs" role="tablist">
       @for (t of tabs; track t.k) {
-        <button type="button" role="tab" [class.on]="tab() === t.k"
+        <button type="button" role="tab" class="d-tab" [class.on]="tab() === t.k"
                 [attr.aria-selected]="tab() === t.k" (click)="tab.set(t.k)">
           <epm-icon [name]="t.icon" [size]="14" />
           {{ lang.t($any(t.label)) }}

@@ -171,10 +171,16 @@ public static class OverviewEndpoints
                 .Where(x => contractIds.Contains(x.ContractId) && x.Status == "paid")
                 .SumAsync(x => x.NetAmount);
 
+            // الإنجاز المالي is «المصروف التراكمي نسبةً إلى الكلفة المعدلة»
+            // (العرض الفني §23-1) — the RECORDED budget where there is one,
+            // Σ commitments where there is not. SCR-W6 and SCR-W7 print the
+            // same percentage from this same function (P-54).
+            var basis = BudgetBasis.For(p.PlannedCost, p.RevisedCost, effectiveTotal);
+
             // NULL, never 0, for a project with no bill and no payments — the
             // tile then keeps saying "unavailable + reason" (P-09).
             decimal? physical = billed > 0m ? ProgressReflection.Rollup(billed, executed) : null;
-            decimal? financial = effectiveTotal > 0m ? ProgressReflection.Rollup(effectiveTotal, paid) : null;
+            decimal? financial = BudgetBasis.SpendPct(basis, paid);
 
             // الشكل 4 prints the planned figure BESIDE the actual one — «31%
             // مقابل مخطط 39%» — so it is a value this endpoint returns and not
@@ -186,7 +192,7 @@ public static class OverviewEndpoints
             decimal? spi = null, cpi = null;
             if (physical is not null && planned is not null)
             {
-                var evm = EarnedValue.For(effectiveTotal, planned.Value / 100m, physical.Value / 100m, paid);
+                var evm = EarnedValue.For(basis.Revised, planned.Value / 100m, physical.Value / 100m, paid);
                 spi = evm.Spi;
                 cpi = evm.Cpi;
             }
@@ -273,14 +279,19 @@ public static class OverviewEndpoints
             // «المقررة … والمعدلة … (▲ الفرق) والمتبقي» and «نسبة الصرف 34%
             // (510 م من 1,500 م)». المتبقي is المعدلة − المصروف, which is the
             // plate's own arithmetic; it is not an uncommitted balance.
+            //
+            // The plate's own numbers are the RECORDED pair — 1,374,210,115 and
+            // 1,500,000,000 are الشكل 18's, the same two الشكل 14's strip runs
+            // its equation on. Σ contract values is a different question and
+            // `OverviewTotals` above is where it is answered (P-180).
             var cost = new OverviewCost(
-                originalTotal,
-                effectiveTotal,
-                effectiveTotal - originalTotal,
+                basis.Approved,
+                basis.Revised,
+                basis.Changes,
                 paid,
-                effectiveTotal - paid,
-                effectiveTotal > 0m
-                    ? Math.Round(paid / effectiveTotal * 100m, 2, MidpointRounding.AwayFromZero)
+                BudgetBasis.Balance(basis, paid),
+                BudgetBasis.SpendPct(basis, paid) is { } p4
+                    ? Math.Round(p4, 2, MidpointRounding.AwayFromZero)
                     : null);
 
             // ── الشكل 4's first chart ─────────────────────────────────────

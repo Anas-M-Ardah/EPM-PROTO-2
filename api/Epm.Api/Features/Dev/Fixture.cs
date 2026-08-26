@@ -64,7 +64,14 @@ public static class Fixture
             {
                 Id = "PRJ-0279", WorkspaceCode = "ub", Code = "PC-0279",
                 NameAr = "مجمع الكليات الطبية", NameEn = "Medical Colleges Complex",
+                // ملحق الشكل 14's header equation, on the RECORDED budget:
+                // 340,000,000 + 10,000,000 = 350,000,000 − 86,700,000 =
+                // 263,300,000. On this project the budget and the contracts'
+                // commitments agree to the fils, so «أساسا القياس» reports no
+                // gap — which is the state a well-governed project is in, and
+                // the one the two other fixture projects are deliberately not.
                 RegistrationYear = 2025, PlannedCost = 340_000_000m,
+                RevisedCost = 350_000_000m, TransferState = "none",
                 ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2501",
                 Coordinates = "33.27,44.36", Formation = "وزارة التعليم العالي والبحث العلمي",
                 OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
@@ -81,7 +88,15 @@ public static class Fixture
             {
                 Id = "PRJ-0148", WorkspaceCode = "ub", Code = "PC-0148",
                 NameAr = "إنشاء مكتبة كلية الهندسة", NameEn = "Engineering Library",
+                // THE OVER-COMMITTED CASE — «الالتزامات تتجاوز الموازنة
+                // وتستوجب تعديل الكلفة أو مناقلة». The budget was revised DOWN
+                // to 62,000,000 while CNT-0148 is already signed at 68,500,000,
+                // so الشكل 14's note box has a real gap to raise and حالة
+                // المناقلة is «قيد المناقلة» rather than a decorative «لا يوجد».
+                // Above the 45,030,000 already disbursed, so it is a governance
+                // problem and not a data error.
                 RegistrationYear = 2025, PlannedCost = 80_000_000m,
+                RevisedCost = 62_000_000m, TransferState = "in-progress",
                 ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2514",
                 Coordinates = "33.28,44.37", Formation = "وزارة التعليم العالي والبحث العلمي",
                 OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
@@ -518,6 +533,17 @@ public static class Fixture
                 Status = "pending", Note = "قيد التدقيق لدى الرقابة المالية" }
         );
 
+        // «سجّلتها محللة موازنة في قسم الحسابات» — الشكل 16 names the person on
+        // the payment panel and الشكل 19 names them again in the timeline. One
+        // recorder across the seeded set, stamped in a loop rather than repeated
+        // on eight rows: it is the same fact eight times, not eight facts.
+        foreach (var pay in db.ChangeTracker.Entries<Payment>().Select(e => e.Entity))
+        {
+            pay.RecordedByName = "ليلى حسن";
+            pay.RecordedByRole = "محللة موازنة";
+            pay.RecordedByParty = "الدائرة المالية";
+        }
+
         // ── PHASE 4.2 · SCR-W4 BOQ tab ───────────────────────────────────
         // Five tables that have to agree, and two worked examples from
         // 02-BUSINESS-RULES.md reproduced EXACTLY so the screen can be checked
@@ -574,6 +600,9 @@ public static class Fixture
 
         // الشكل 17 — مراحل تدقيق السلفة الجارية.
         AuditStages(db);
+
+        // الشكل 19 — «تعديل كلفة أو تخصيص», with its before value.
+        FinancialEdits(db);
 
         // ── next pages append their fixture rows here ────────────────────
 
@@ -2642,6 +2671,46 @@ public static class Fixture
             A("PRJ-0148", 2026, 30_000_000m, closed: false),
 
             A("PRJ-0207", 2026, 12_000_000m, closed: false));
+    }
+
+    /// <summary>
+    /// سجل التغييرات المالية — ملحق الشكل 19's fourth event kind, «تعديل كلفة
+    /// أو تخصيص».
+    ///
+    /// The plate's own timeline shows two of them — «كلفة المشروع المعدلة من
+    /// 1,477,500,000 إلى 1,500,000,000» and «التخصيص السنوي من … إلى …» — and
+    /// they are the only kind that needs a table of its own, because nothing
+    /// else keeps what a column held before it moved (P-179).
+    ///
+    /// Written for real by `EP-FIN-04`. Seeded here so the tab has history on
+    /// first load rather than one row the reader has to create.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void FinancialEdits(EpmDb db)
+    {
+        static FinancialEdit E(string projectId, string field, int? year,
+            string before, string after, DateOnly at) => new()
+        {
+            ProjectId = projectId, Field = field, Year = year,
+            BeforeValue = before, AfterValue = after,
+            ActorId = "user.finance-dept",
+            ActorName = "ليلى حسن", ActorRole = "محللة موازنة", ActorParty = "الدائرة المالية",
+            At = at,
+        };
+
+        db.FinancialEdits.AddRange(
+            // PRJ-0279 — the approved cost was raised at the start of the year,
+            // then the revision that carries the applied change order.
+            E("PRJ-0279", "approvedCost", null, "332000000", "340000000", new DateOnly(2026, 3, 9)),
+            E("PRJ-0279", "revisedCost", null, "345000000", "350000000", new DateOnly(2026, 5, 18)),
+            E("PRJ-0279", "annualAllocation", 2026, "100000000", "120000000", new DateOnly(2026, 5, 18)),
+
+            // PRJ-0148 — the budget cut that put its commitments above it, and
+            // the transfer opened in response. الشكل 14's note box reads off
+            // the first of these.
+            E("PRJ-0148", "revisedCost", null, "80000000", "62000000", new DateOnly(2026, 4, 21)),
+            E("PRJ-0148", "transferState", null, "none", "in-progress", new DateOnly(2026, 4, 21)));
     }
 
     /// <summary>

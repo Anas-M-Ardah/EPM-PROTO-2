@@ -139,6 +139,21 @@ public static class Personas
             "مدير المشروع", "مدير مشروع", "Project manager", false,
             ["ub", "sp"], false),
 
+        // العرض الفني §7 names it at institutional level in as many words:
+        // «الدائرة المالية | البيانات المالية والتخصيصات والدفعات | تدقيق
+        // وتسجيل الدفعات والمصروفات، وتحرير البيانات المالية المسجّلة». Two
+        // capacities depend on it — the second and third desks of المسار 8's
+        // audit route, and ملحق الشكل 18's edit — and neither had an actor
+        // before this. الشكل 19's own event names the role: «محللة موازنة ·
+        // الدائرة المالية».
+        //
+        // MinistryWide, like the two committees below it: the directorate
+        // audits payments across the portfolio and is a مركز department, which
+        // is §7's «اطلاع شامل».
+        new("user.finance-dept", MasterNameAr, MasterNameEn,
+            "الدائرة المالية", "محلل موازنة", "Budget analyst", false,
+            [], true),
+
         new("user.endorsement", MasterNameAr, MasterNameEn,
             "لجنة المراجعة المصادقة", "عضو لجنة المراجعة المصادقة", "Endorsement review committee member", false,
             [], true),
@@ -204,13 +219,54 @@ public static class Personas
     /// contracts, and a party that could both define a contract and raise money
     /// against it would make the two documents one signature.
     ///
-    /// THE PARTIES THAT REVIEW ARE NOT MODELLED AS CAPACITIES, because nothing
-    /// in this build reviews a payment: `EP-FIN-02` records a `pending`
-    /// certificate and its audit route, and moving it to `certified` or `paid`
-    /// belongs to المسار 8 steps 2–4, which no screen asks for yet.
+    /// THE PARTIES THAT REVIEW have their own capacity — see
+    /// <see cref="CanReleaseAuditDesk"/>. Raising a certificate and releasing
+    /// it from a desk are deliberately separate: the first is a claim, the
+    /// second is a decision on it.
     /// </summary>
     public static bool CanRegisterPayment(this Persona p) =>
         p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
+
+    /// <summary>
+    /// المسار 8 steps 5–9 — «تدقيق المهندس المقيم» → «تدقيق الدائرة المالية»
+    /// → «تسجيل الدفعة واعتمادها». `EP-FIN-03`.
+    ///
+    /// THE CAPACITY IS THE DESK'S, NOT THE PAYMENT'S. Each stage of
+    /// `Domain/AuditRoute.Shape` names the party that holds the file, and only
+    /// that party may let it go — which is what makes the route a route rather
+    /// than a set of checkboxes one person ticks. مدير المشروع is NOT accepted
+    /// anywhere on it: it may raise a certificate against its own contract, and
+    /// a party that could raise money and then audit its own claim would make
+    /// the whole route one signature.
+    ///
+    /// The disbursement desk is قسم الحسابات, which §7 places inside الدائرة
+    /// المالية — «تدقيق وتسجيل الدفعات والمصروفات» is one directorate's remit.
+    /// A separate accounts persona would model an internal division the
+    /// documents do not draw.
+    /// </summary>
+    public static bool CanReleaseAuditDesk(this Persona p, string stageKey) => stageKey switch
+    {
+        "resident-engineer" => p.Party == "دائرة المهندس المقيم",
+        "finance" or "disbursement" => p.Party == "الدائرة المالية",
+        _ => false,
+    };
+
+    /// <summary>
+    /// ملحق الشكل 18 — «القيم المالية الرسمية المعتمدة من الدائرة المالية، وهي
+    /// مدخل التحرير الوحيد للبيانات المالية للمشروع». `EP-FIN-04`.
+    ///
+    /// ONE PARTY, and narrower than every other edit capacity in this file.
+    /// §7 gives «تحرير البيانات المالية المسجّلة» to الدائرة المالية alone, and
+    /// the card the figure draws is badged «قيم معتمدة من الدائرة المالية» —
+    /// a value another party could change would not be that.
+    ///
+    /// المستخدم المختص records the project's PLANNED cost at definition
+    /// (المسار 1); what it may not do is revise the budget afterwards. The two
+    /// are different acts on the same column, and this is the separation §7
+    /// asks for between input and approval.
+    /// </summary>
+    public static bool CanEditFinancialRecords(this Persona p) =>
+        p.Party == "الدائرة المالية";
 
     /// <summary>
     /// المسار 11 — «تسجيل استلام مخزني أو أولي» (الشكل 53 · الشكل 54).

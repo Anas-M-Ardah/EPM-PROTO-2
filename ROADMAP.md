@@ -117,7 +117,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | SCR-W4 | BOQ | *(v1.1 moved this module into its own files, sibling repo)* `DBoqWorkspace` — `boq-workspace.jsx:16` · `DBoqRegister` — `boq-register.jsx:435` · `DBoqAssign` — `boq-assign.jsx:11` · `DBoqDistDrawer` — `contract-context.jsx:101` |
 | SCR-W5 | Schedule | `DModSchedule` — `schedule-module.jsx:432` · `DGantt` — `:81` · `DSchedTable` — `:252` |
 | SCR-W6 | Progress | `DModProgress` — `project-modules.jsx:668` |
-| SCR-W7 | Financials | `DModFinancialNew` — `project-modules.jsx:485` · `DPaymentWizard` — `:416` |
+| SCR-W7 | Financials | `DModFinancialNew` — `project-modules.jsx:907` · `DPaymentWizard` — `:825` *(the ROADMAP said :485 / :416 — pre-v1.1 lines, and CLAUDE.md §1 sends every agent to the line this table names)* |
 | SCR-W8 | Change Orders — register | `DModVO` — `project-modules.jsx:1142` |
 | SCR-W8 | Change Orders — record | `DModVO` — `vo-record.jsx:436` · `DVORecordPanel` — `:372` |
 | SCR-W8 | Change Orders — wizard | `DVOCreateWizard` — `vo-wizard.jsx:6` + `vo-wizard-parts.jsx` |
@@ -654,9 +654,13 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 > Both are honoured: the dashboard is the reference's, and the editor sits beneath
 > it with the BOQ lines it moves visible in the same view. Recorded as **P-55**.
 
-> **Two of the reference's six financial tabs have no source here** — the annual
-> allocation and the advance audit SLA. Neither is invented from a payment date;
-> both say so with their reason (**P-56**, the P-09 treatment).
+> **All six of الشكل 14's tabs are built.** The two this phase could not source —
+> the annual allocation and the audit SLA — were closed by **P-92** and **P-97**:
+> `ProjectAllocations` and `PaymentAuditStages` record what they needed, and
+> `EP-FIN-01` has no `unavailable` entries left. الشكل 18 now WRITES (P-179) and
+> المسار 8 steps 5–9 exist as `EP-FIN-03` (P-181). **The reconciliation strip
+> moved to الشكل 14's own basis** — the recorded budget, not the contract sums —
+> which is P-180, and which settles P-44 at the project level.
 
 > **Two defects were found and fixed in shared code**, both surfaced by this being
 > the first screen whose figures change after load: the summary strip's count-up

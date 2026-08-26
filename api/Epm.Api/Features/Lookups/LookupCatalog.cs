@@ -439,15 +439,26 @@ public static class LookupCatalog
         yield return L("payment-kind", "retention-release", "إطلاق الضمان",       "Retention release");
 
         sort = 0;
-        // الشكل 17 — the desks a certificate passes on its way to payment.
+        // الشكل 17 — the desks a certificate passes on its way to payment, and
+        // exactly the three `Domain/AuditRoute.Shape` builds. «التدقيق الداخلي»
+        // was a fourth code no route ever used: `EP-FIN-02` invented that desk
+        // where the plate draws two audits and a disbursement, so the code went
+        // with it. A vocabulary lists what exists.
         yield return L("audit-stage", "resident-engineer", "تدقيق المهندس المقيم", "Resident engineer review");
         yield return L("audit-stage", "finance", "تدقيق الدائرة المالية", "Finance department review");
-        yield return L("audit-stage", "audit", "التدقيق الداخلي", "Internal audit");
         yield return L("audit-stage", "disbursement", "الصرف", "Disbursement");
 
         yield return L("payment-status", "pending",   "قيد التدقيق", "Pending");
         yield return L("payment-status", "certified", "مصادق عليه",  "Certified");
         yield return L("payment-status", "paid",      "مصروف",       "Paid");
+
+        sort = 0;
+        // حالة المناقلة — ملحق الشكل 18's third «مقترح» field. `approved` is
+        // the value الشكل 15's locked-ledger rule reads: «السنوات السابقة سجل
+        // مقفل لا يُغيَّر إلا بإجراء مناقلة معتمد».
+        yield return L("transfer-state", "none",        "لا يوجد",        "None");
+        yield return L("transfer-state", "in-progress", "قيد المناقلة",   "Transfer in progress");
+        yield return L("transfer-state", "approved",    "مناقلة معتمدة",  "Transfer approved");
     }
 
     /// <summary>

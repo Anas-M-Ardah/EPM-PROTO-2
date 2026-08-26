@@ -74,6 +74,12 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // stop a payment in October (P-92).
     public DbSet<ProjectAllocation> ProjectAllocations => Set<ProjectAllocation>();
 
+    // ── الشكل 19 — سجل التغييرات المالية ──────────────────────────────────
+    // The «قبل ← بعد» pair. The other three event kinds on that timeline are
+    // derived from records that already exist; a cost or allocation edit had
+    // nowhere to leave its previous value, so it has a table (P-179).
+    public DbSet<FinancialEdit> FinancialEdits => Set<FinancialEdit>();
+
     // ── SCR-W9 سجل المخاطر (ملحق الشكل 43) ───────────────────────────────
     // Severity is NOT here: the screen prints «الخطورة = الاحتمالية × التأثير»
     // beside its own title, so it is derived by Domain/RiskSeverity (01 §3).
@@ -228,6 +234,10 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         // not here (P-01 — invariants live where they can be read).
         b.Entity<Payment>().HasKey(x => x.Id);
         b.Entity<PaymentAttachment>().HasKey(x => x.Id);
+
+        // Append-only, and one row per changed field — so there is no natural
+        // identity beyond the order the edits happened in.
+        b.Entity<FinancialEdit>().HasKey(x => x.Id);
 
         // The five BOQ tables all carry surrogate keys. Their real identities —
         // (ContractId, Code) on an item, (BoqItemId, BeneficiaryCode) on a
