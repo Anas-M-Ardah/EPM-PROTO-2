@@ -1295,7 +1295,10 @@ const STR = {
   // from the `activity-status` lookup (06 §9), like every other enum.
   scd_gate_t:      { ar: 'اختر عقداً لعرض الجدول الزمني',   en: 'Select a contract to see its schedule' },
   scd_gate_b:      { ar: 'الأنشطة تنتمي إلى عقد واحد.',     en: 'Activities belong to one contract.' },
-  scd_tab_gantt:   { ar: 'المخطط الزمني',                  en: 'Gantt' },
+  // «جانت», not «المخطط الزمني» — `DModSchedule`'s VTABS and ملحق الشكل 21's
+  // own breadcrumb «مساحة المشروع › الجدول الزمني › جانت» both name it that,
+  // and «المخطط الزمني» duplicated the module's own title one line above it.
+  scd_tab_gantt:   { ar: 'جانت',                           en: 'Gantt' },
   scd_tab_table:   { ar: 'الجدول',                         en: 'Table' },
   scd_wbs_activity:{ ar: 'هيكل التجزئة / النشاط',          en: 'WBS / Activity' },
   scd_critical:    { ar: 'المسار الحرج',                   en: 'Critical path' },
@@ -1513,7 +1516,12 @@ const STR = {
   scd_imp_version_b:{ ar: 'خط الأساس هو ما يُقاس عليه الانزياح والعوم والمخطط والغرامة، فلا يتحرّك إلا باعتماد من جهة أخرى. والاعتماد يكتب الخطة وحدها: الإنجاز والتواريخ الفعلية والعوم تبقى للجدول النافذ.',
                      en: 'The baseline is what slip, float, planned progress and the penalty are measured against, so it moves only when a second party approves. And an approval writes the PLAN alone: progress, actual dates and float stay with the schedule in force.' },
   scd_imp_submit:  { ar: 'تقديم للاعتماد',                  en: 'Submit for approval' },
-  scd_imp_open:    { ar: 'استيراد',                         en: 'Import' },
+  // ملحق الشكل 24 is «استيراد جدول Primavera P6» and الشكل 21 lists the action
+  // as «استيراد P6». «استيراد» alone said nothing about what it accepts — the
+  // wizard reads Primavera XER, P6 XML and Excel — so the tool it belongs to
+  // is named on the button (P-196).
+  scd_imp_open:    { ar: 'استيراد P6',                      en: 'Import P6' },
+  scd_exported:    { ar: 'صُدِّر الجدول (CSV)',              en: 'Schedule exported (CSV)' },
   scd_imp_submitted:{ ar: 'قُدِّم الإصدار للاعتماد',           en: 'The version was submitted for approval' },
   scd_imp_approved:{ ar: 'اعتُمد الإصدار — تحرّك خط الأساس',  en: 'The version was approved — the baseline moved' },
   scd_imp_pending_t:{ ar: 'إصدار جدول زمني بانتظار الاعتماد', en: 'A schedule version is awaiting approval' },

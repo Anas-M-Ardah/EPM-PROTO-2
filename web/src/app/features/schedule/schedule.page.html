@@ -162,7 +162,14 @@
           </select>
         </label>
 
-        <!-- ملحق الشكل 24 — «استيراد الجدول الزمني». Not gated by capacity:
+        <!-- ملحق الشكل 21 lists «تصدير واستيراد P6» as one pair, and this page
+             carried only the second half. `DModSchedule` exports the activity
+             rows as CSV; so does this (P-196). -->
+        <button type="button" class="d-btn sm" (click)="exportSchedule()">
+          <epm-icon name="download" [size]="15" />{{ lang.t('export') }}
+        </button>
+
+        <!-- ملحق الشكل 24 — «استيراد جدول Primavera P6». Not gated by capacity:
              SUBMITTING a version is open, and it changes nothing. The capacity
              is on the APPROVAL (EP-SCD-06), which is where the baseline moves. -->
         <button type="button" class="d-btn sm" (click)="importOpen.set(true)">

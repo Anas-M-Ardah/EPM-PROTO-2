@@ -239,7 +239,9 @@ export class SchedulePage {
    * can open to find nothing is worse than one that says so first.
    */
   viewTabs = computed(() => [
-    { id: 'gantt' as const, key: 'scd_tab_gantt' as StrKey, icon: 'calendar_month', n: null as number | null },
+    // `DModSchedule`'s VTABS icons. `table_rows` is not in this build's set —
+    // Phase 7's sweep substituted it — so الجدول keeps `list_alt`.
+    { id: 'gantt' as const, key: 'scd_tab_gantt' as StrKey, icon: 'calendar_view_week', n: null as number | null },
     { id: 'table' as const, key: 'scd_tab_table' as StrKey, icon: 'list_alt', n: null as number | null },
     {
       id: 'compare' as const, key: 'scd_tab_compare' as StrKey, icon: 'difference',
@@ -318,6 +320,51 @@ export class SchedulePage {
    * الشكل 23's «تصدير تحليل الأثر». CSV, built from the rows already on screen
    * — the export and the table cannot disagree because there is one source.
    */
+  /**
+   * «تصدير» — ملحق الشكل 21 and الشكل 22 both list it among their actions, and
+   * `DModSchedule`'s `exportSchedule` writes exactly these ten columns. It was
+   * the only one of the plate's four toolbar actions this page never carried
+   * (P-196): استيراد P6 · تصدير · المسار الحرج · المستوى.
+   *
+   * ACTIVITIES ONLY. A WBS node is a roll-up of the rows beneath it, so
+   * exporting both would double every figure in the file.
+   */
+  exportSchedule() {
+    const rows = this.rows().filter(r => r.kind === 'act');
+    if (rows.length === 0) { this.toast.show(this.lang.t('scd_empty_t')); return; }
+
+    const head = [
+      'activityId', 'name', 'status', 'baselineStart', 'baselineFinish',
+      'actualStart', 'actualFinish', 'totalFloat', 'progressPct', 'cost',
+    ];
+    const body = rows.map(r => [
+      r.id, this.name(r), this.statusLabel(r.status),
+      r.baselineStart ?? '', r.baselineFinish ?? '',
+      r.actualStart ?? '', r.actualFinish ?? '',
+      r.isMilestone ? '' : r.totalFloat, r.progress, r.budgetedCost,
+    ]);
+
+    this.downloadCsv(head, body, `schedule-${this.effectiveContractId()}.csv`);
+    this.toast.show(this.lang.t('scd_exported'));
+  }
+
+  /**
+   * The BOM matters: the file is opened in Excel on an Arabic Windows and
+   * without one every activity name arrives as mojibake.
+   */
+  private downloadCsv(head: string[], body: (string | number | null)[][], filename: string) {
+    const csv = '﻿' + [head, ...body]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   exportImpact() {
     const rows = this.impact();
     if (rows.length === 0) { this.toast.show(this.lang.t('scd_imp_none_t')); return; }
@@ -336,18 +383,7 @@ export class SchedulePage {
       r.slipDays, r.cost, r.dailyRate, r.dailyOverhead, r.costImpact,
     ]);
 
-    // A BOM, because the file is opened in Excel on an Arabic Windows and
-    // without one the activity names arrive as mojibake.
-    const csv = '\uFEFF' + [head, ...body]
-      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `impact-${this.effectiveContractId()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    this.downloadCsv(head, body, `impact-${this.effectiveContractId()}.csv`);
     this.toast.show(this.lang.t('scd_imp_exported'));
   }
 

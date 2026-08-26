@@ -444,6 +444,30 @@ epm-change-orders-page { display: contents; }
 .d-gantt-namegrip:focus-visible { background: color-mix(in srgb, var(--primary) 35%, transparent); }
 .d-gantt .d-gantt-cellname { position: sticky; }
 
+/* ── THE PINNED NAME COLUMN HAD NOTHING BEHIND IT (P-195) ────────────────
+   `.d-gantt-cellname` is `position: sticky` with `background: inherit`
+   (desktop.css:615), and `.d-gantt-row` sets a background only for `:hover`,
+   `.on`, `.wbs` and `.head`. On a plain ACTIVITY row `inherit` therefore
+   resolves to transparent, and the bars scroll straight under the pinned
+   column and read as text with a coloured bar drawn through it.
+
+   The reference's own «20b» made `.d-gantt-cellinfo` static (desktop.css:1604)
+   so the track would fit below 1024px. Until then the info block sat pinned
+   beside the name on an OPAQUE `--surface-container-lowest` and hid everything
+   sliding underneath; once it joined the scrolling region the name column was
+   the only pinned thing left, with nothing behind it. The bug arrived with
+   that fix and is in the reference too.
+
+   Fixed by giving the ROW the opaque base `background: inherit` was written to
+   find, rather than hard-setting a colour on the cell — that keeps `:hover`,
+   `.wbs` and `.head` doing exactly what they already do, and keeps the name
+   column tinting with its row. `.on` moves with it: the reference already
+   mixes the selected tint over `--surface-container-lowest` for the info
+   block, and over `transparent` for the row was the same oversight one
+   declaration earlier. */
+.d-gantt-row { background: var(--surface-container-lowest); }
+.d-gantt-row.on { background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)); }
+
 /* ══ SCR-W6 Progress (Phase 4.4) ═════════════════════════════════════════
    Two classes the copied `desktop.css` has no equivalent of. `.d-cellinput`
    exists but only inside `.d-editgrid`, which is the BOQ register's own grid
