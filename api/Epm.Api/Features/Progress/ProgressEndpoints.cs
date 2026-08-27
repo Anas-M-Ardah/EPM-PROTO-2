@@ -338,7 +338,7 @@ public static class ProgressEndpoints
             // and «نسبة الصرف» divides by it (§23-1). Reading Σ commitments
             // here made this tab the one place that disagreed with the headline
             // above it and with SCR-W7 (P-180 · P-54).
-            M(disbursed), M(budget.Revised),
+            M(disbursed), M(budget.Revised), M(budget.Approved),
             Q(ProgressReflection.Rollup(budget.Revised, disbursed)),
             Money(evm.Eac), Money(evm.Vac),
             worst.Days ?? 0, M(delayCost),
@@ -398,6 +398,100 @@ public static class ProgressEndpoints
                 e.ActorName, e.ActorParty))
             .ToList();
 
+        // ── الشكل 25 — «مرجع المقارنة» ───────────────────────────────────
+        // ONE SERIES PER FIGURE, read at two dates. `Domain/ComparisonPeriod`
+        // explains why that matters; here is where the two series are built.
+        //
+        // The physical reading is `Domain/ProgressSeries.ActualAt` — the same
+        // function SCR-W1's actual curve is drawn from, so the tile's delta and
+        // that curve's slope are the same statement made twice.
+        //
+        // The financial reading is Σ NET of certificates PAID on or before the
+        // date ÷ the revised cost: character for character the derivation
+        // `financial` above uses, with `asOf` replaced by the reading's date.
+        var seriesUpdates = updateRows
+            .Select(u => new ProgressSeries.Update(
+                u.ContractId, DateOnly.Parse(u.At), u.After))
+            .ToList();
+
+        var seriesContracts = contracts
+            .Select((c, i) => new ProgressSeries.Contract(
+                c.Id, effectiveValues[i],
+                // The value a contract stood at before anybody moved it. Never
+                // zero — that would read as "no work had been done" rather than
+                // "nothing was recorded yet" (ProgressSeries' own rule).
+                seriesUpdates.Where(u => u.ContractId == c.Id)
+                    .OrderBy(u => u.At).Select(u => u.Pct).FirstOrDefault()))
+            .ToList();
+
+        var readings = seriesUpdates
+            .Select(u => u.At)
+            .Where(at => at <= asOf)
+            .Distinct()
+            .OrderBy(at => at)
+            .Select(at => new ComparisonPeriod.Reading(
+                at,
+                Q(ProgressSeries.ActualAt(seriesUpdates, seriesContracts, at)),
+                Q(ProgressReflection.Rollup(
+                    budget.Revised,
+                    payments.Where(x => x.Status == "paid"
+                                     && x.PaidDate is not null && x.PaidDate <= at)
+                            .Sum(x => x.NetAmount)))))
+            .ToList();
+
+        // ── «منحنى الإنجاز — المخطط مقابل الفعلي» ────────────────────────
+        // `DModProgress` :1590 draws a span-6 `DSCurve` on الملخص. ملحق الشكل
+        // 25 does NOT show one — its screenshot predates the tile — and the two
+        // sources disagree only here; the LIVE prototype draws it, and this
+        // build was diffed against the live file before a line was written.
+        // Recorded as P-200.
+        //
+        // It costs one call and no new derivation: `ProgressSeries.Monthly` is
+        // the function SCR-W1's own curve comes from, over the series the
+        // comparison periods above already built. Two screens, one curve.
+        var plannedAtCache = new Dictionary<DateOnly, decimal?>();
+        decimal? PlannedAt(DateOnly at)
+        {
+            if (plannedAtCache.TryGetValue(at, out var cached)) return cached;
+            if (plannedBasis <= 0m) return plannedAtCache[at] = null;
+
+            var w = allActivities.Where(a => !a.IsMilestone).Sum(a => a.BudgetedCost
+                * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, at) / 100m);
+            return plannedAtCache[at] = ProgressReflection.Rollup(plannedBasis, w);
+        }
+
+        var curveFrom = allActivities.Any(a => a.BaselineStart is not null)
+            ? allActivities.Where(a => a.BaselineStart is not null).Min(a => a.BaselineStart!.Value)
+            : contracts.Count > 0 ? contracts.Min(c => c.Start) : asOf;
+
+        var months = ProgressSeries.Monthly(
+            seriesUpdates, seriesContracts, curveFrom, asOf, PlannedAt, physical,
+            _ => string.Empty);          // the CLIENT labels the periods
+
+        // An undrawable series comes back EMPTY and the tile does not render —
+        // the client's own answer to a chart with no data (P-144), and the same
+        // test SCR-W1, SCR-E1 and SCR-E8 apply.
+        var curve = ProgressSeries.Drawable(months)
+            ? months.Select(r => new ProgressCurvePeriodDto(
+                // The month END, not a label. `fmt.month` names the periods in
+                // the browser, exactly as SCR-W1's curve does — a label is
+                // display formatting and belongs there.
+                r.At.ToString("yyyy-MM-dd"), Q(r.PlanCum), r.ActCum is null ? null : Q(r.ActCum.Value),
+                Q(r.PlanPeriod), Q(r.ActPeriod))).ToList()
+            : [];
+
+        // The span carries WHY it is unavailable; the result carries the
+        // figures. They are joined on the id so the disabled option can print
+        // its own reason instead of going quiet.
+        var spans = ComparisonPeriod.All(readings.Count).ToDictionary(s => s.Id);
+
+        var periods = ComparisonPeriod.Resolve(readings, physical, financial)
+            .Select(r => new ProgressPeriodDto(
+                r.Id, r.Available, spans[r.Id].WhyAr, spans[r.Id].WhyEn,
+                r.PriorAt, Q(r.PriorPhysical), Q(r.PriorFinancial),
+                Q(r.PhysicalDelta), Q(r.FinancialDelta)))
+            .ToList();
+
         return new ProgressResponse(
             p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
             new ProgressHeadline(
@@ -411,7 +505,32 @@ public static class ProgressEndpoints
                 M(budget.Revised), M(evm.Pv), M(evm.Ev), M(evm.Ac),
                 R(evm.Cpi), R(evm.Spi), Money(evm.Eac), Money(evm.Vac)),
             contractRows, activityRows, boqRows,
-            wbsRows, costImpact, scheduleRisk, updateRows);
+            wbsRows, costImpact, scheduleRisk, updateRows,
+            periods, ComparisonPeriod.DefaultFor(readings.Count),
+            // Z10's «آخر تحديث للإنجاز» — the newest reading, which is the LAST
+            // of an ascending list. `events` is ordered newest-first for the
+            // table; this reads off `readings` so the bar and the comparison
+            // control can never name different dates.
+            readings.Count > 0 ? readings[^1].At.ToString("yyyy-MM-dd") : null,
+            // ── الأشكال 25–28's tile bands ───────────────────────────────
+            // `Domain/TileThreshold`, so «five points behind plan» lives with
+            // the other named thresholds rather than inside a template.
+            new ProgressTileStates(
+                TileThreshold.AgainstPlan(physical, planned),
+                TileThreshold.SpendAgainstDelivery(financial, physical),
+                TileThreshold.Delay(worst.Days),
+                TileThreshold.Indices(evm.Spi),
+                // الشكل 26's rollup and its gap band on ONE rule, so a node
+                // total and the gap it produces can never disagree.
+                TileThreshold.AgainstPlan(physical, planned),
+                TileThreshold.AgainstPlan(physical, planned),
+                TileThreshold.Eac(evm.Eac, budget.Revised),
+                TileThreshold.Vac(evm.Vac),
+                TileThreshold.PendingOrders(pendingOrders.Sum(a => a.DeltaValue)),
+                TileThreshold.DelayCost(delayCost),
+                TileThreshold.NegativeFloat(scheduleRisk.NegativeFloat),
+                TileThreshold.AtRisk(atRisk.Count)),
+            curve);
     }
 
     /// <summary>The WBS path separator, and the one `01 §2.5` fixes.</summary>

@@ -54,6 +54,14 @@
    flex parent, its host needs this. */
 epm-app-footer { display: contents; }
 
+/* `.d-l04` is a TWELVE-COLUMN grid and `.d-tile` carries its own `span 3 / 6 /
+   12` — including every reflow breakpoint, which is how الأشكال 25–28 go from
+   four across to two to one. With the host in between, each `<epm-tile>` took
+   ONE of the twelve columns and every one of those rules addressed an element
+   that was no longer a grid item: four tiles rendered as four ~50px slivers
+   and nothing reflowed at any width. Measured, on SCR-W6. */
+epm-tile { display: contents; }
+
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
    flex child of `.d-detail-main`, so that `.d-pz7` inside it is the ONE
@@ -862,6 +870,20 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
 .epm-select-tick { flex: none; margin-inline-start: auto; color: var(--primary); }
 .epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
+/* An option the record cannot support: offered, refused, and saying why
+   (SelectOption.disabled). Muted rather than hidden — the vocabulary must not
+   change with the data, or a reader cannot tell what the system can do from
+   what this project happens to allow. No hover, because nothing will happen. */
+.epm-select-opt:disabled { cursor: default; flex-wrap: wrap; align-items: flex-start;
+  height: auto; padding-block: var(--space-6); }
+.epm-select-opt:disabled .epm-select-opt-l { color: var(--fg-subtle, var(--on-surface-variant)); }
+.epm-select-opt:disabled:hover { background: none; }
+/* Its OWN LINE, and wrapping. Beside the label it pushed the label out of a
+   200px popup and left the list scrolling sideways — and a reason nobody can
+   read without scrolling is no better than the tooltip it replaced. */
+.epm-select-opt-why { flex: 0 0 100%; font-size: 11px; line-height: var(--lh-200);
+  white-space: normal; text-align: start;
+  color: var(--fg-subtle, var(--on-surface-variant)); }
 
 /* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
    The stage card is  — the same two-row card الشكل 6 uses

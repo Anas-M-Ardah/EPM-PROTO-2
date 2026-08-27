@@ -110,6 +110,8 @@ export interface ProgressWbs {
 export interface ProgressCostImpact {
   disbursed: number;
   revisedCost: number;
+  /** «الكلفة المقررة» — الشكل 27 prints it as the revised card's comparison. */
+  approvedCost: number;
   disbursedPct: number;
   eac: number | null;
   vac: number | null;
@@ -158,6 +160,54 @@ export interface ProgressUpdate {
   actorParty: string;
 }
 
+/**
+ * الشكل 25's «مرجع المقارنة», resolved server-side by
+ * `api/Epm.Api/Domain/ComparisonPeriod.cs` — one earlier READING that every
+ * tile's delta is measured from, not a baseline picker (P-198).
+ *
+ * The deltas arrive computed. Subtracting two readings in the browser would be
+ * arithmetic, and `CLAUDE.md §3.1` gives Angular none.
+ */
+export interface ProgressPeriod {
+  /** previous · quarter · start */
+  id: string;
+  /** False when the record cannot support the span. Still rendered, disabled. */
+  available: boolean;
+  whyAr: string | null;
+  whyEn: string | null;
+  /** The reading compared against. Null for بداية المشروع, which uses zero. */
+  priorAt: string | null;
+  priorPhysical: number;
+  priorFinancial: number;
+  /** Points, signed. */
+  physicalDelta: number;
+  financialDelta: number;
+}
+
+/**
+ * The threshold band on each of الأشكال 25–28's KPI cards, resolved by
+ * `api/Epm.Api/Domain/TileThreshold.cs`. One member per tile that HAS a band —
+ * revised cost, cumulative spend, critical count and levels-complete are
+ * magnitudes and have none (P-199).
+ *
+ * `'ok' | 'warn' | 'bad' | 'none'`, typed loosely here for the same reason
+ * every other code column is: the vocabulary is the server's.
+ */
+export interface ProgressTileStates {
+  physical: string;
+  financial: string;
+  delay: string;
+  indices: string;
+  wbsRollup: string;
+  wbsGap: string;
+  eac: string;
+  vac: string;
+  pendingOrders: string;
+  delayCost: string;
+  negativeFloat: string;
+  atRisk: string;
+}
+
 export interface ProgressResponse {
   projectId: string;
   projectNameAr: string;
@@ -172,4 +222,27 @@ export interface ProgressResponse {
   costImpact: ProgressCostImpact;
   scheduleRisk: ProgressScheduleRisk;
   updates: ProgressUpdate[];
+  periods: ProgressPeriod[];
+  defaultPeriod: string;
+  /** Z10's «آخر تحديث للإنجاز» — the newest reading, not the data date. */
+  lastUpdateAt: string | null;
+  tileStates: ProgressTileStates;
+  /**
+   * الملخص's «منحنى الإنجاز». Month ends from `Domain/ProgressSeries.Monthly`,
+   * the same function SCR-W1's curve is drawn from. **EMPTY when the series is
+   * not drawable** — the tile is then not rendered (P-144).
+   *
+   * Shaped to `CurvePeriod` in `shared/scurve.component.ts`, member for member.
+   */
+  curve: ProgressCurvePeriod[];
+}
+
+export interface ProgressCurvePeriod {
+  /** The month end. The CLIENT labels it — `fmt.month`, as SCR-W1 does. */
+  at: string;
+  planCum: number;
+  /** Null before the first RECORDED update — the line starts where the log does. */
+  actCum: number | null;
+  planPeriod: number;
+  actPeriod: number;
 }

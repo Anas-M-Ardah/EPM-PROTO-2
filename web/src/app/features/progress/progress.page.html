@@ -1,15 +1,24 @@
 <!--
-  SCR-W6 Progress — v1.1 module skeleton.
-  Ported from the v1.1 progress module: ../epm@design/system-revamp
-  app/project-modules.jsx — DModProgress :1391.
+  SCR-W6 Progress — archetype L04.
+  Ported from app/project-modules.jsx — DModProgress :1391, diffed against the
+  LIVE prototype before this pass and found byte-identical.
 
-  Z6 carries the title and the three views. Z7 scrolls.
+  Z6 carries the title, its three-figure sub-line and «المقارنة مع». Z7 scrolls.
+  Z10 is pinned and holds the four figures plus the data date.
 
-  THE READING ORDER, and it is the argument the screen makes:
-    headline    physical vs planned vs financial, and the gap between them
-    diagnostics SPI · CPI · EAC · VAC — 13px, muted, NEVER coloured (05 §7.9)
-    activities  where progress is ENTERED, each row naming the BOQ lines it moves
-    boq         where it LANDS — BR-04's reflection, with the arithmetic shown
+  THE FOUR TABS ARE الأشكال 25–28, AND EACH LEADS WITH A `.d-l04` TILE GRID:
+    summary  4 tiles + the progress curve + the endorsed updates  (الشكل 25)
+    wbs      3 tiles + the level rollup                            (الشكل 26)
+    cost     6 tiles + what moves the cost                         (الشكل 27)
+    risk     4 tiles + the at-risk list                            (الشكل 28)
+
+  Every tile carries a comparison, a delta against the selected period, a note
+  and a «التفصيل في…» drill-through — the four things a summary strip has
+  nowhere to put, which is why this screen no longer uses one (P-199).
+
+  BENEATH the tabs, and reached by a button rather than being one of them:
+    editor   where progress is ENTERED, each row naming the BOQ lines it moves
+    boq      where it LANDS — BR-04's reflection, with the arithmetic shown
 
   Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
 -->
@@ -46,17 +55,41 @@
     @if (data(); as d) {
     <!-- ══ Z6 ══════════════════════════════════════════════════════════════ -->
     <div class="d-pz6">
+      <!-- الشكل 25's own sub-line: «المادي 35% مقابل مخطط 31% · المالي 38%».
+           The three figures the whole screen argues about, in the title, so
+           they survive a tab change. The DATA DATE moved to Z10, which is
+           where the plate carries it («البيانات حتى …»). -->
       <span class="z6-t">
         {{ lang.t('mod_progress') }}
-        <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
+        <em>{{ lang.t('prg_physical') }} <bdi>{{ fmt.pct(d.headline.physical, 0) }}</bdi>
+          {{ lang.t('prg_vs') }} <bdi>{{ fmt.pct(d.headline.planned, 0) }}</bdi>
+          · {{ lang.t('prg_financial') }} <bdi>{{ fmt.pct(d.headline.financial, 0) }}</bdi></em>
       </span>
+
+      <!-- «المقارنة مع» — الشكل 25's own control, and a VIEW control, so it
+           sits with the view controls rather than in the actions cluster that
+           acts on the module (`DModProgress` :1508). It picks which earlier
+           READING every tile's delta is measured from; it is not a baseline
+           picker, which is what this screen had read it as (P-198).
+
+           `.d-ctxsel` + `<epm-select bare>`, the same three-part control
+           SCR-W5's four Z6 dropdowns are, so one toolbar reads as one control
+           vocabulary.
+
+           Hidden while the EDITOR is open, for the same reason the tab strip
+           below is: it governs the tiles, the editor has none, and a control
+           that changes nothing visible reads as a broken one. -->
+      @if (!editing_mode()) {
+        <span class="d-ctxsel">
+          <span>{{ lang.t('prg_period') }}</span>
+          <epm-select bare [options]="periodOptions()" [value]="period()"
+                      [label]="lang.t('prg_period')" [allowEmpty]="false"
+                      (changed)="period.set($event)" />
+        </span>
+      }
 
       <span class="sp"></span>
 
-      <!-- الشكل 25's own three controls. «مرشح مرجع المقارنة» is deliberately
-           absent and says so through «كيف تُحتسب»: there is ONE baseline in
-           this build (see EP-SCD-02's own note), so a picker would offer
-           comparisons that cannot be made. -->
       <button type="button" class="d-btn sm" (click)="howOpen.set(true)">
         <epm-icon name="functions" [size]="15" />{{ lang.t('prg_how') }}
       </button>
@@ -92,39 +125,84 @@
     <div class="d-pbody no-aside">
       <div class="d-pz7">
 
-        <epm-summary-strip [stats]="summaryStats()" />
-
         @if (!editing_mode() && view() === 'summary') {
-          <!-- ══ THE RECONCILIATION ═══════════════════════════════════════
-               Planned − physical = the gap, with the middle term visible.
-               The same shape SCR-W3 uses for contract value, and for the same
-               reason: a total whose parts are hidden cannot be checked. -->
-          <section class="d-recon">
-            <div class="tm">
-              <span class="k">{{ lang.t('prg_planned') }}</span>
-              <b class="num"><bdi>{{ fmt.pct(d.headline.planned, 1) }}</bdi></b>
-              <span class="n">{{ lang.t('prg_planned_note') }}</span>
-            </div>
-            <span class="op" aria-hidden="true">−</span>
-            <div class="tm">
-              <span class="k">{{ lang.t('prg_physical') }}</span>
-              <b class="num"><bdi>{{ fmt.pct(d.headline.physical, 1) }}</bdi></b>
-              <span class="n">{{ lang.t('prg_physical_note') }}</span>
-            </div>
-            <span class="op" aria-hidden="true">=</span>
-            <!-- NOT `bad`/`good`: a gap is a magnitude, and the neutral branch
-                 is --on-surface (CLAUDE.md §6). The sign carries it. -->
-            <div class="tm strong">
-              <span class="k">{{ lang.t('prg_gap') }}</span>
-              <b class="num"><bdi>{{ fmt.delta(gap()) }}</bdi> {{ lang.t('prg_pts') }}</b>
-              <span class="n">{{ lang.t('prg_gap_note') }}</span>
-            </div>
-          </section>
+          <!-- ══ الشكل 25 — الملخص ════════════════════════════════════════
+               THE L04 TILE GRID (P-199). Four cards, the plate's own reading
+               order — headline → money → time → indices — each carrying its
+               comparison, its delta against the selected period, its note and
+               its drill-through. -->
+          <div class="d-l04">
+
+            <epm-tile [label]="lang.t('prg_physical')"
+                      [value]="fmt.pctBare(d.headline.physical, 0)" unit="%"
+                      [state]="st('physical')"
+                      [delta]="physDelta()" [dir]="physDir()"
+                      [cmpLabel]="lang.t('prg_planned')"
+                      [cmpValue]="fmt.pct(d.headline.planned, 0)"
+                      [note]="periodNote()"
+                      [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+            <epm-tile [label]="lang.t('prg_financial')"
+                      [value]="fmt.pctBare(d.headline.financial, 0)" unit="%"
+                      [state]="st('financial')"
+                      [delta]="finDelta()" [dir]="finDir()"
+                      [cmpLabel]="lang.t('prg_physical')"
+                      [cmpValue]="fmt.pct(d.headline.physical, 0)"
+                      [note]="spentNote()"
+                      [toLabel]="lang.t('mod_financials')" [toLink]="['../financial']" />
+
+            <!-- SIGNED, so a project running EARLY can say so — the plate's
+                 own «التأخر عن خط الأساس». -->
+            <epm-tile [label]="lang.t('prg_t_delay_bl')"
+                      [value]="fmt.delta(d.headline.delayDays ?? 0)"
+                      [unit]="lang.t('scd_days')"
+                      [state]="st('delay')"
+                      [cmpLabel]="lang.t('prg_t_contract_finish')"
+                      [cmpValue]="fmt.date(d.headline.baselineFinish)"
+                      [note]="lang.t('prg_t_forecast') + ' ' + fmt.date(d.headline.forecastFinish)"
+                      [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+            <!-- The one drill-through that stays on this screen: «الأثر
+                 والكلفة» is a TAB here, not another module. -->
+            <epm-tile label="SPI / CPI"
+                      [value]="indicesValue()"
+                      [state]="st('indices')"
+                      [cmpLabel]="lang.t('prg_t_target')" cmpValue="1.00"
+                      [note]="indicesNote()"
+                      [toLabel]="lang.t('prg_tab_cost')"
+                      (toClick)="view.set('cost')" />
+
+            <!-- «منحنى الإنجاز — المخطط مقابل الفعلي (تراكمي)», the span-6
+                 tile `DModProgress` :1590 draws. ملحق الشكل 25's screenshot
+                 predates it and shows none; the LIVE prototype draws it, and
+                 the two sources disagree only here (P-200).
+
+                 `flush`, so the chart meets the card's edges — and only when
+                 the series is drawable, because a flat line along an axis
+                 reads as "no progress was made" when the truth is "nothing was
+                 recorded" (P-144). -->
+            @if (curve().length) {
+              <epm-tile span="6" flush
+                        [label]="lang.t('prg_curve')"
+                        [note]="lang.t('prg_asof') + ' ' + fmt.date(d.dataDate)"
+                        [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']">
+                <div style="padding: var(--space-12)">
+                  <epm-scurve [data]="curve()" color="var(--viz-1)"
+                              [caption]="lang.t('prg_curve')" />
+                </div>
+              </epm-tile>
+            }
+          </div>
 
           <!-- ══ THE DIAGNOSTICS (02 §11 · 05 §7.9) ═════════════════════════
-               13px, --on-surface-variant, and NEVER coloured by threshold.
-               Each index carries a WORD instead, which is what lets the colour
-               channel stay out of it. -->
+               BR-11's four indices are now on tiles, so what stays here is the
+               WORKING behind them — PV, EV, AC and the budget they divide. The
+               plate puts none of this on الملخص, and neither would this build
+               if the four tiles were the whole story; they are not, because
+               `05 §7.9` wants an index checkable and an index nobody can
+               reproduce is an assertion.
+
+               13px, --on-surface-variant, and NEVER coloured by threshold. -->
           <div class="d-sec">
             <div class="d-sec-h">
               <span class="n">{{ lang.t('prg_evm') }}</span>
@@ -132,28 +210,9 @@
             </div>
             <div class="d-sec-b">
               <div class="d-form-grid">
-                <div class="d-form-i">
-                  <span class="k">SPI</span>
-                  <span class="v num">
-                    <bdi>{{ fmt.index(d.evm.spi) }}</bdi>
-                    <span class="d-cell-sub">{{ spiNote() }}</span>
-                  </span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">CPI</span>
-                  <span class="v num">
-                    <bdi>{{ fmt.index(d.evm.cpi) }}</bdi>
-                    <span class="d-cell-sub">{{ cpiNote() }}</span>
-                  </span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">EAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ d.evm.eac === null ? '—' : fmt.money(d.evm.eac) }}</bdi></span>
-                </div>
-                <div class="d-form-i">
-                  <span class="k">VAC <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
-                  <span class="v num"><bdi>{{ d.evm.vac === null ? '—' : fmt.money(d.evm.vac) }}</bdi></span>
-                </div>
+                <!-- SPI and CPI are on the tile above and EAC/VAC on الأثر
+                     والكلفة. What is left here is the WORKING: the three
+                     amounts every one of those four is a ratio of. -->
                 <div class="d-form-i">
                   <span class="k">PV <span class="cur">({{ lang.t('cur_iqd') }})</span></span>
                   <span class="v num"><bdi>{{ fmt.money(d.evm.pv) }}</bdi></span>
@@ -173,8 +232,8 @@
               </div>
 
               <div class="d-msgbar info">
-                <epm-icon name="functions" [size]="16" />
-                <div><span>{{ lang.t('prg_evm_note') }}</span></div>
+                <epm-icon name="functions" [size]="16" class="mgi" />
+                <div class="mtx"><span class="mbody">{{ lang.t('prg_evm_note') }}</span></div>
               </div>
             </div>
           </div>
@@ -230,11 +289,11 @@
                sentence, and the reason this table has no controls: it is the
                separation of entry from approval, printed. These are the SAME
                rows Domain/ProgressSeries draws SCR-W1's actual line from. -->
-          <div class="d-sec">
-            <div class="d-sec-h">
-              <span class="n">{{ lang.t('prg_updates') }}</span>
-              <span class="d-cell-sub">{{ lang.t('prg_updates_sub') }}</span>
-            </div>
+          <!-- COLLAPSIBLE, which is الشكل 25's own «جدول تحديثات قابل للطي»,
+               and the chevron the plate draws at the head of this section.
+               `<epm-field-group>` is `DFGroup` — the card the reference wraps
+               it in — not `.d-sec`, which is a register heading. -->
+          <epm-field-group [title]="lang.t('prg_updates')" [sub]="lang.t('prg_updates_sub')" flush>
             <div class="d-sec-b">
               @if (updates().length === 0) {
                 <div class="d-empty">
@@ -269,8 +328,17 @@
                   </tbody>
                 </table></div>
               }
+
+              <!-- الشكل 25's own footer link. The reading is HERE; who moved
+                   it, when and against what letter is the audit log's, and the
+                   plate sends a reader there rather than widening this table. -->
+              <div class="gf">
+                <a class="d-linkbtn" [routerLink]="['../audit']">
+                  {{ lang.t('prg_updates_audit') }}<epm-icon name="chevron_right" [size]="14" />
+                </a>
+              </div>
             </div>
-          </div>
+          </epm-field-group>
 
         } @else if (editing_mode()) {
           <!-- ══ THE EDITOR ════════════════════════════════════════════════
@@ -278,10 +346,10 @@
                Each row names the lines it feeds BEFORE it is touched, so the
                consequence is known in advance rather than discovered. -->
           <div class="d-msgbar info">
-            <epm-icon name="functions" [size]="16" />
-            <div>
-              <b>{{ lang.t('prg_edit_t') }}</b>
-              <span>{{ lang.t('prg_edit_b') }}</span>
+            <epm-icon name="functions" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('prg_edit_t') }}</b>
+              <span class="mbody">{{ lang.t('prg_edit_b') }}</span>
             </div>
           </div>
 
@@ -385,10 +453,10 @@
                had to go and look for. -->
           @if (unlinked() > 0) {
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ unlinkedTitle() }}</b>
-                <span>{{ lang.t('prg_unlinked_b') }}</span>
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ unlinkedTitle() }}</b>
+                <span class="mbody">{{ lang.t('prg_unlinked_b') }}</span>
               </div>
             </div>
           }
@@ -482,28 +550,38 @@
                «محسوب صعودًا من الأنشطة، لا يُدخل يدويًا». There is no input on
                this tab and no endpoint that would accept one: a WBS node has no
                progress column to write to. -->
-          <section class="d-recon">
-            <div class="tm">
-              <span class="k">{{ lang.t('prg_wbs_rollup') }}</span>
-              <b class="num"><bdi>{{ fmt.pct(d.headline.physical, 1) }}</bdi></b>
-              <span class="n">{{ lang.t('prg_wbs_rollup_note') }}</span>
-            </div>
-            <span class="op" aria-hidden="true">·</span>
-            <div class="tm">
-              <span class="k">{{ lang.t('prg_planned') }}</span>
-              <b class="num"><bdi>{{ fmt.pct(d.headline.planned, 1) }}</bdi></b>
-            </div>
-            <span class="op" aria-hidden="true">·</span>
-            <div class="tm">
-              <span class="k">{{ lang.t('prg_wbs_done') }}</span>
-              <b class="num"><bdi>{{ wbsComplete() }}</bdi> / <bdi>{{ wbs().length }}</bdi></b>
-            </div>
-            <span class="op" aria-hidden="true">=</span>
-            <div class="tm strong">
-              <span class="k">{{ lang.t('prg_gap') }}</span>
-              <b class="num"><bdi>{{ fmt.delta(wbsGap()) }}</bdi> {{ lang.t('prg_pts') }}</b>
-            </div>
-          </section>
+          <div class="d-l04">
+            <epm-tile [label]="lang.t('prg_wbs_rollup')"
+                      [value]="fmt.pctBare(d.headline.physical, 0)" unit="%"
+                      [state]="st('wbsRollup')"
+                      [cmpLabel]="lang.t('prg_planned')"
+                      [cmpValue]="fmt.pct(d.headline.planned, 0)"
+                      [note]="lang.t('prg_wbs_rollup_note')"
+                      [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+            <!-- «0 / 6» — a COUNT against a count, so the denominator is the
+                 unit rather than a second figure. state="none": how many
+                 levels are finished is a magnitude, and there is no count at
+                 which it becomes bad. -->
+            <epm-tile [label]="lang.t('prg_wbs_done')"
+                      [value]="wbsComplete() + ''" [unit]="'/' + wbs().length"
+                      state="none"
+                      [cmpLabel]="lang.t('prg_t_wbs_lowest')"
+                      [cmpValue]="fmt.pct(wbsLowest(), 0)"
+                      [note]="lang.t('prg_t_wbs_level2')"
+                      [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+            <!-- The gap is SIGNED and the sign carries it. The tile's edge
+                 bands it — the FIGURE keeps --on-surface, because colouring a
+                 magnitude by threshold is the defect CLAUDE.md §6 names. -->
+            <epm-tile [label]="lang.t('prg_t_gap_plan')"
+                      [value]="fmt.delta(wbsGap())" [unit]="lang.t('prg_pts')"
+                      [state]="st('wbsGap')"
+                      [cmpLabel]="lang.t('prg_planned')"
+                      [cmpValue]="fmt.pct(d.headline.planned, 0)"
+                      [note]="lang.t('prg_t_gap_note')"
+                      [toLabel]="lang.t('mod_boq')" [toLink]="['../boq']" />
+          </div>
 
           <div class="d-sec">
             <div class="d-sec-h">
@@ -564,14 +642,76 @@
         } @else if (view() === 'cost') {
           <!-- ══ الشكل 27 — الأثر والكلفة ══════════════════════════════════ -->
           @if (costImpact(); as ci) {
-            <epm-summary-strip [stats]="costStats()" />
+            <!-- الشكل 27's six cards, in the plate's own order: the two
+                 FORECASTS first, because the tab exists to answer «هل سنتجاوز
+                 الموازنة؟ وبكم؟», then the two positions they are derived
+                 from, then the two things that move them. -->
+            <div class="d-l04">
+              <epm-tile label="EAC"
+                        [value]="ci.eac === null ? '—' : fmt.money(ci.eac)"
+                        [unit]="lang.t('cur_iqd')"
+                        [state]="st('eac')"
+                        [cmpLabel]="lang.t('prg_cost_revised')"
+                        [cmpValue]="fmt.money(ci.revisedCost)"
+                        [note]="lang.t('prg_t_eac_note')"
+                        [toLabel]="lang.t('mod_financials')" [toLink]="['../financial']" />
+
+              <epm-tile label="VAC"
+                        [value]="ci.vac === null ? '—' : fmt.delta(ci.vac)"
+                        [unit]="lang.t('cur_iqd')"
+                        [state]="st('vac')"
+                        [cmpLabel]="lang.t('prg_t_target')"
+                        [cmpValue]="lang.t('prg_t_vac_target')"
+                        [note]="st('vac') === 'bad' ? lang.t('prg_t_vac_over') : lang.t('prg_t_vac_within')"
+                        [toLabel]="lang.t('mod_financials')" [toLink]="['../financial']" />
+
+              <!-- A magnitude: there is no revised cost at which a contract
+                   becomes «bad». state="none", and the comparison is the cost
+                   it started at — the only place on this screen the two can be
+                   seen to differ. -->
+              <epm-tile [label]="lang.t('prg_cost_revised')"
+                        [value]="fmt.money(ci.revisedCost)" [unit]="lang.t('cur_iqd')"
+                        state="none"
+                        [cmpLabel]="lang.t('prg_t_orig_cost')"
+                        [cmpValue]="fmt.money(ci.approvedCost)"
+                        [note]="lang.t('prg_t_eff_cost')"
+                        [toLabel]="lang.t('mod_contract')" [toLink]="['../contract']" />
+
+              <epm-tile [label]="lang.t('prg_cost_disbursed')"
+                        [value]="fmt.money(ci.disbursed)" [unit]="lang.t('cur_iqd')"
+                        state="none"
+                        [cmpLabel]="lang.t('prg_t_of_revised')"
+                        [cmpValue]="fmt.pct(ci.disbursedPct, 0)"
+                        [note]="lang.t('prg_t_at_datadate')"
+                        [toLabel]="lang.t('mod_financials')" [toLink]="['../financial']" />
+
+              <!-- The AMBER is earned by what is PENDING, not by what is
+                   approved: approved money is already inside the revised cost,
+                   and pending money is not (02 §9). The comparison row appears
+                   only when there is something waiting. -->
+              <epm-tile [label]="lang.t('prg_t_orders')"
+                        [value]="fmt.delta(ci.approvedOrders)" [unit]="lang.t('cur_iqd')"
+                        [state]="st('pendingOrders')"
+                        [cmpLabel]="ci.pendingOrders ? lang.t('prg_t_orders_pending') : ''"
+                        [cmpValue]="ci.pendingOrders ? fmt.money(ci.pendingOrders) : ''"
+                        [note]="lang.t('prg_t_orders_note')"
+                        [toLabel]="lang.t('mod_changeorders')" [toLink]="['../changeorders']" />
+
+              <epm-tile [label]="lang.t('prg_cost_delay')"
+                        [value]="fmt.money(ci.delayCostImpact)" [unit]="lang.t('cur_iqd')"
+                        [state]="st('delayCost')"
+                        [cmpLabel]="lang.t('prg_t_delay_days')"
+                        [cmpValue]="fmt.days(ci.delayDays)"
+                        [note]="lang.t('prg_t_delay_note')"
+                        [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+            </div>
 
             <!-- The plate's governing note, and 02 §9's rule in one line. -->
             <div class="d-msgbar info">
-              <epm-icon name="info" [size]="16" />
-              <div>
-                <b>{{ lang.t('prg_cost_rule_t') }}</b>
-                <span>{{ lang.t('prg_cost_rule_b') }}</span>
+              <epm-icon name="info" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('prg_cost_rule_t') }}</b>
+                <span class="mbody">{{ lang.t('prg_cost_rule_b') }}</span>
               </div>
             </div>
 
@@ -618,7 +758,42 @@
         } @else if (view() === 'risk') {
           <!-- ══ الشكل 28 — مخاطر الجدول ═══════════════════════════════════ -->
           @if (scheduleRisk(); as risk) {
-            <epm-summary-strip [stats]="riskStats()" />
+            <div class="d-l04">
+              <epm-tile [label]="lang.t('prg_delay')"
+                        [value]="fmt.delta(risk.delayDays)" [unit]="lang.t('scd_days')"
+                        [state]="st('delay')"
+                        [cmpLabel]="lang.t('prg_t_target')" cmpValue="0"
+                        [note]="lang.t('prg_t_vs_baseline')"
+                        [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+              <!-- How many activities are critical is a magnitude — a dense
+                   critical path is a fact about the programme, not a fault. -->
+              <epm-tile [label]="lang.t('prg_risk_critical')"
+                        [value]="risk.criticalCount + ''"
+                        state="none"
+                        [cmpLabel]="lang.t('prg_t_of_acts')"
+                        [cmpValue]="risk.activityCount + ''"
+                        [note]="lang.t('prg_t_crit_note')"
+                        [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+              <epm-tile [label]="lang.t('prg_risk_negfloat')"
+                        [value]="risk.negativeFloat + ''"
+                        [state]="st('negativeFloat')"
+                        [cmpLabel]="lang.t('prg_t_target')" cmpValue="0"
+                        [note]="lang.t('prg_t_negfloat_note')"
+                        [toLabel]="lang.t('mod_schedule')" [toLink]="['../schedule']" />
+
+              <!-- The threshold is on the CARD, filled from the figure the
+                   list was actually filtered by rather than repeated as a
+                   literal — a stated limit that can drift is worse than none. -->
+              <epm-tile [label]="lang.t('prg_risk_count')"
+                        [value]="risk.atRiskCount + ''"
+                        [state]="st('atRisk')"
+                        [cmpLabel]="lang.t('prg_t_atrisk_limit')"
+                        [cmpValue]="atRiskOver()"
+                        [note]="lang.t('prg_t_atrisk_note')"
+                        [toLabel]="lang.t('mod_risk')" [toLink]="['../risk']" />
+            </div>
 
             <div class="d-sec">
               <div class="d-sec-h">
@@ -678,6 +853,30 @@
         }
       </div>
     </div>
+
+    <!-- ══ Z10 ═════════════════════════════════════════════════════════════
+         الشكل 25's own status bar: المادي · المالي · SPI/CPI · آخر تحديث
+         للإنجاز, then «البيانات حتى …». It is pinned, so the four figures the
+         whole screen argues about stay in view while a tab scrolls — and it is
+         where the DATA DATE belongs, which is why the Z6 title no longer
+         carries it.
+
+         «آخر تحديث للإنجاز» is NOT the data date beside it. The data date is
+         when the figures were read; this is when a section last endorsed a
+         reading, and the distance between the two is a fact about the project
+         that no percentage on this screen can state. -->
+    <div class="d-pz10">
+      <span class="st">{{ lang.t('prg_physical') }}
+        <b><bdi>{{ fmt.pct(d.headline.physical, 0) }}</bdi></b></span>
+      <span class="st">{{ lang.t('prg_financial') }}
+        <b><bdi>{{ fmt.pct(d.headline.financial, 0) }}</bdi></b></span>
+      <span class="st">SPI / CPI
+        <b><bdi>{{ indicesValue() }}</bdi></b></span>
+      <span class="st">{{ lang.t('prg_last_update') }}
+        <b><bdi>{{ d.lastUpdateAt ? fmt.date(d.lastUpdateAt) : '—' }}</bdi></b></span>
+      <span class="sp"></span>
+      <span class="asof">{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></span>
+    </div>
     }
   }
 </div>
@@ -709,9 +908,14 @@
       <span class="lbl">{{ lang.t('prg_how_risk_t') }}</span>
       <p class="d-cell-sub">{{ lang.t('prg_how_risk_b') }}</p>
     </div>
-    <!-- الشكل 25 names «مرشح مرجع المقارنة» and this build has none. The
-         reason is a rule, not an omission, so it is stated here rather than
-         left as a missing control. -->
+    <!-- «مرجع المقارنة» — what the Z6 control actually selects, and why both
+         ends of every delta come from one series. -->
+    <div class="d-drawer-grp">
+      <span class="lbl">{{ lang.t('prg_how_period_t') }}</span>
+      <p class="d-cell-sub">{{ lang.t('prg_how_period_b') }}</p>
+    </div>
+    <!-- The baseline is a SEPARATE question, and the one this screen used to
+         confuse the control above with. Kept, because it is still true. -->
     <div class="d-drawer-grp">
       <span class="lbl">{{ lang.t('prg_how_base_t') }}</span>
       <p class="d-cell-sub">{{ lang.t('prg_how_base_b') }}</p>

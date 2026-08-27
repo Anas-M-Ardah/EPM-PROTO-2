@@ -1,12 +1,15 @@
 import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
-import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { DrawerComponent } from '../../shared/drawer.component';
+import { TileComponent, TileDir, TileState } from '../../shared/tile.component';
+import { FieldGroupComponent } from '../../shared/field-group.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
+import { SCurveComponent, CurvePeriod } from '../../shared/scurve.component';
 import { LangService, StrKey } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -41,12 +44,26 @@ import { ProgressActivity, ProgressBoq, ProgressResponse } from './progress.type
  * error : success` is the defect the design system names explicitly, so the
  * indices carry a WORD — "behind plan", "over cost" — and the colour channel
  * stays out of it.
+ *
+ * ── THE SCREEN IS ARCHETYPE L04, AND WAS NOT (P-199) ──────────────────────
+ * الأشكال 25–28 are built out of `.d-tile` KPI cards over a `.d-l04` twelve
+ * column grid, and nothing else: four, three, six and four of them. This build
+ * had reached for `<epm-summary-strip>` and `.d-recon` instead, which have
+ * nowhere to put the four things the plates give every card — a comparison, a
+ * delta against the selected period, a governing note, and a «التفصيل في…»
+ * drill-through. The last of those is a FUNCTION, not a decoration: all four
+ * plates list «الانتقال إلى الوحدة المصدر لكل مؤشر» among their user actions,
+ * and this screen offered no way off itself.
+ *
+ * The whole vocabulary had been in `styles/desktop.css:3395` since Phase 1 and
+ * no screen in the build had ever used it. Same substitution P-186 found on
+ * SCR-W7, and no CSS was added.
  */
 @Component({
   selector: 'epm-progress-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    DrawerComponent],
+  imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, DrawerComponent,
+    TileComponent, FieldGroupComponent, SelectComponent, SCurveComponent, RouterLink],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './progress.page.html',
 })
@@ -165,50 +182,178 @@ export class ProgressPage {
     return h ? h.physical - h.planned : 0;
   });
 
-  summaryStats = computed<Stat[]>(() => {
+  // ── الشكل 25 — «مرجع المقارنة» (P-198) ─────────────────────────────────
+
+  /**
+   * The selected span. NOT a baseline picker: it chooses which earlier READING
+   * every tile's delta is measured from — `DModProgress` :1416's own «one
+   * global period selector in Z6 governs every tile».
+   *
+   * `''` until the model arrives, then `defaultPeriod`. Kept across a save so
+   * reporting a percentage does not silently reset the comparison the reader
+   * had chosen.
+   */
+  period = signal('');
+
+  /**
+   * All three, always. A span the record cannot support arrives `available:
+   * false` and is rendered DISABLED carrying its reason, never dropped —
+   * CLAUDE.md §6 asks that a cap be explained, and a vocabulary that shrinks
+   * with the data leaves a reader unable to tell what the system can do from
+   * what this project happens to allow. Same call SCR-W5 makes about the
+   * weight basis.
+   */
+  periodOptions = computed<SelectOption[]>(() =>
+    (this.data()?.periods ?? []).map(p => ({
+      code: p.id,
+      label: this.lang.t(('prg_period_' + p.id) as StrKey),
+      disabled: !p.available,
+      why: p.available ? undefined : this.lang.pick(p.whyAr ?? '', p.whyEn ?? ''),
+    })));
+
+  activePeriod = computed(() =>
+    this.data()?.periods.find(p => p.id === this.period()) ?? null);
+
+  /**
+   * «مقارنة مع القراءة السابقة» — and, when the span resolved to a real
+   * reading, the DATE of it. "Compared with the previous reading" is only
+   * checkable if the reader can see which reading that was.
+   */
+  periodNote = computed(() => {
+    const p = this.activePeriod();
+    if (!p) return '';
+    if (!p.available) return this.lang.t('prg_period_none');
+
+    const label = this.lang.t(('prg_period_' + p.id) as StrKey);
+    const vs = `${this.lang.t('prg_period_vs')} ${label}`;
+    return p.priorAt ? `${vs} · ${fmt.date(p.priorAt)}` : vs;
+  });
+
+  /**
+   * A delta is FORMATTED here and computed nowhere: it arrives from
+   * `Domain/ComparisonPeriod` already subtracted. `fmt.delta` signs it.
+   */
+  physDelta = computed(() => this.deltaText(this.activePeriod()?.physicalDelta));
+  finDelta = computed(() => this.deltaText(this.activePeriod()?.financialDelta));
+
+  physDir = computed<TileDir>(() => this.dirOf(this.activePeriod()?.physicalDelta));
+  finDir = computed<TileDir>(() => this.dirOf(this.activePeriod()?.financialDelta));
+
+  private deltaText(v: number | undefined): string {
+    const p = this.activePeriod();
+    if (!p?.available || v === undefined) return '';
+
+    // A ZERO MOVEMENT IS A READING, NOT A BLANK. `fmt.delta` renders 0 as an
+    // em-dash — right for a table cell where "no change" and "not recorded"
+    // look alike and neither is worth a row — but wrong here: "— نقطة" beside
+    // a flat arrow says nothing, while "0 نقطة" says the figure has not moved
+    // since that reading, which is the tile's whole job. The arrow already
+    // carries the direction, so only the number is needed.
+    const n = v === 0 ? '0' : fmt.delta(v);
+    return `${n} ${this.lang.t('prg_pts')}`;
+  }
+
+  /**
+   * Flat is its own direction and draws a dash, not an arrow. A zero movement
+   * shown as "up" would be a claim the figure does not make.
+   */
+  private dirOf(v: number | undefined): TileDir {
+    if (v === undefined || v === 0) return 'flat';
+    return v > 0 ? 'up' : 'down';
+  }
+
+  // ── الأشكال 25–28's tiles ──────────────────────────────────────────────
+
+  /**
+   * The band on a tile, from `Domain/TileThreshold`. Never computed here:
+   * "five points behind plan" is a judgement about ministry projects, not
+   * display formatting (P-199).
+   */
+  st(k: keyof NonNullable<ProgressResponse['tileStates']>): TileState {
+    return (this.data()?.tileStates?.[k] ?? 'none') as TileState;
+  }
+
+  /**
+   * الشكل 25's financial tile has TWO notes and the plate's own rule picks
+   * between them: money running more than twenty points ahead of delivery is a
+   * finding, and the tile says so instead of printing the amounts.
+   */
+  spentNote = computed(() => {
     const d = this.data();
-    if (!d) return [];
-    const h = d.headline;
-    return [
-      { label: this.lang.t('prg_physical'), value: h.physical, suffix: '%' },
-      { label: this.lang.t('prg_planned'), value: h.planned, suffix: '%' },
-      { label: this.lang.t('prg_financial'), value: h.financial, suffix: '%' },
-      // The leading space is deliberate and is what SCR-E5 does: a unit word
-      // butted against its figure reads as one token in both scripts.
-      { label: this.lang.t('prg_gap'), value: this.gap(), suffix: ' ' + this.lang.t('prg_pts') },
-      {
-        label: this.lang.t('prg_delay'),
-        value: h.delayDays ?? 0,
-        suffix: ' ' + this.lang.t('scd_days'),
-      },
-    ];
+    if (!d) return '';
+
+    const lead = d.headline.financial - d.headline.physical;
+    if (this.st('financial') === 'bad')
+      return this.lang.t('prg_t_fin_ahead').replace('{n}', fmt.pct(lead, 0));
+
+    return this.lang.t('prg_t_spent_of')
+      .replace('{a}', fmt.money(d.costImpact.disbursed))
+      .replace('{b}', fmt.money(d.costImpact.revisedCost));
   });
 
-  /** الشكل 27's six cards, as the strip every other tab header uses (05 §8). */
-  costStats = computed<Stat[]>(() => {
-    const ci = this.costImpact();
-    if (!ci) return [];
-    return [
-      { label: this.lang.t('prg_cost_disbursed'), value: ci.disbursed },
-      { label: this.lang.t('prg_cost_revised'), value: ci.revisedCost },
-      { label: this.lang.t('prg_cost_spend_pct'), value: ci.disbursedPct, suffix: '%' },
-      { label: this.lang.t('prg_cost_eac'), value: ci.eac ?? 0 },
-      { label: this.lang.t('prg_cost_vac'), value: ci.vac ?? 0 },
-      { label: this.lang.t('prg_cost_delay'), value: ci.delayCostImpact },
-    ];
+  /** «SPI / CPI» in one figure, as the plate prints it. */
+  indicesValue = computed(() => {
+    const e = this.data()?.evm;
+    if (!e) return '';
+    return `${fmt.index(e.spi)} / ${fmt.index(e.cpi)}`;
   });
 
-  /** الشكل 28's four cards. */
-  riskStats = computed<Stat[]>(() => {
-    const r = this.scheduleRisk();
-    if (!r) return [];
-    return [
-      { label: this.lang.t('prg_delay'), value: r.delayDays, suffix: ' ' + this.lang.t('scd_days') },
-      { label: this.lang.t('prg_risk_critical'), value: r.criticalCount },
-      { label: this.lang.t('prg_risk_negfloat'), value: r.negativeFloat },
-      { label: this.lang.t('prg_risk_count'), value: r.atRiskCount },
-    ];
+  /**
+   * Both halves, always. Earned value can keep pace while the critical path
+   * slips, and saying only one of those beside a +61-day delay reads as a
+   * contradiction — `DModProgress` :1560 states the reasoning and the tile
+   * states both.
+   */
+  indicesNote = computed(() => {
+    const d = this.data();
+    if (!d) return '';
+    const { spi, cpi } = d.evm;
+
+    const time = spi === null ? ''
+      : spi < 1 ? this.lang.t('prg_t_ev_below')
+      : (d.headline.delayDays ?? 0) > 0 ? this.lang.t('prg_t_ev_on_crit')
+      : this.lang.t('prg_t_ev_on');
+
+    const cost = cpi === null ? ''
+      : cpi < 1 ? this.lang.t('prg_cpi_over')
+      : this.lang.t('prg_cpi_within');
+
+    return [time, cost].filter(Boolean).join(' · ');
   });
+
+  /**
+   * الشكل 26's «الأدنى 0%». A minimum SELECTS one of the percentages already
+   * sent; it derives nothing, which is why it can be read here rather than
+   * added to the payload.
+   */
+  wbsLowest = computed(() => {
+    const rows = this.wbs();
+    return rows.length ? Math.min(...rows.map(w => w.progress)) : 0;
+  });
+
+  /**
+   * الملخص's «منحنى الإنجاز». The rows arrive as month ends and are LABELLED
+   * here — `fmt.month` prints the year only when it changes, which is the same
+   * helper SCR-W1's curve uses, so the two read identically.
+   *
+   * Empty when the server judged the series undrawable, and the tile is then
+   * not rendered at all (P-144).
+   */
+  curve = computed<CurvePeriod[]>(() => {
+    const rows = this.data()?.curve ?? [];
+    return rows.map((r, i) => ({
+      label: fmt.month(r.at, i === 0 ? null : rows[i - 1].at),
+      planCum: r.planCum,
+      actCum: r.actCum,
+      planPeriod: r.planPeriod,
+      actPeriod: r.actPeriod,
+    }));
+  });
+
+  /** «الحد: أكثر من 10 أيام» — the threshold the list was actually filtered by. */
+  atRiskOver = computed(() =>
+    this.lang.t('prg_t_atrisk_over')
+      .replace('{n}', String(this.scheduleRisk()?.atRiskThresholdDays ?? 0)));
 
   /**
    * The word beside each index. `02 §11` gives the readings; saying them in
@@ -312,6 +457,9 @@ export class ProgressPage {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');
       this.view.set('summary');
+      // A new project has its own readings, so it starts at its own default
+      // span rather than inheriting the last project's choice.
+      this.period.set('');
       this.cancelEdit();
       this.load();
     });
@@ -326,6 +474,11 @@ export class ProgressPage {
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.get(pid) }).subscribe({
       next: ({ model }) => {
         this.data.set(model);
+        // The span الشكل 25 draws selected. Only when none is held: the
+        // constructor clears it when the PROJECT changes, and `save()` sets
+        // `data` directly without coming through here — so reporting a
+        // percentage never resets the comparison a reader had chosen.
+        if (!this.period()) this.period.set(model.defaultPeriod);
         this.loading.set(false);
       },
       error: e => {

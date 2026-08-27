@@ -25,6 +25,19 @@ export function pct(v: number | null | undefined, dp = 2): string {
   return v.toFixed(dp) + '%';
 }
 
+/**
+ * The same figure WITHOUT its sign, for a place that renders the sign itself.
+ *
+ * `<epm-tile>` draws its unit as a separate element at a smaller size — الشكل
+ * 25's «51» with a small «%» beside it — so passing `pct()` there printed
+ * "51%" and then a second "%". Callers that own the unit take this; everything
+ * else takes `pct`.
+ */
+export function pctBare(v: number | null | undefined, dp = 2): string {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(dp);
+}
+
 /** Quantities carry up to three decimals; trailing zeros are dropped. */
 export function qty(v: number | null | undefined): string {
   if (v === null || v === undefined) return '—';
