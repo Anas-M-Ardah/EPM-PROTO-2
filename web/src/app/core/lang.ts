@@ -1620,6 +1620,14 @@ const STR = {
   scd_crit_note:   { ar: 'العوم صفر — أي تأخير في هذا النشاط يؤخّر إنجاز العقد بالكامل. يُعرَض بإطار لا بلون؛ اللون محجوز للحالة.',
                      en: 'Zero float — any delay here delays the whole contract. Shown as a ring, not a colour; the colour channel belongs to status.' },
 
+  /* ── <epm-tile> — the L04 KPI card's own chrome (P-199) ─────────────────
+     `tile_detail_in` is every plate's «التفصيل في…»; the three thresholds are
+     the screen-reader half of the 2px edge, which cannot be heard (04 §5). */
+  tile_detail_in:  { ar: 'التفصيل في',                      en: 'Detail in' },
+  tile_within:     { ar: 'ضمن الحد',                        en: 'within threshold' },
+  tile_near:       { ar: 'قرب الحد',                        en: 'near threshold' },
+  tile_past:       { ar: 'تجاوز الحد',                      en: 'past threshold' },
+
   // ── SCR-W6 Progress (Phase 4.4) ────────────────────────────────────────
   prg_asof:        { ar: 'حتى',                            en: 'as at' },
   prg_tab_summary: { ar: 'الملخص',                         en: 'Summary' },
@@ -1648,12 +1656,14 @@ const STR = {
                      en: 'No department has recorded a progress reading against this project’s contracts yet.' },
 
   /* الشكل 26 — حسب هيكل التجزئة */
-  prg_wbs_rollup:  { ar: 'الإنجاز التجميعي',                en: 'Rolled-up progress' },
-  prg_wbs_rollup_note:{ ar: 'محسوب صعودًا من الأنشطة، لا يُدخل يدويًا',
+  /* الشكل 26 names the card «الإنجاز التجميعي للجدول» — «للجدول» is what
+     distinguishes the SCHEDULE rollup from the BOQ-derived headline above. */
+  prg_wbs_rollup:  { ar: 'الإنجاز التجميعي للجدول',          en: 'Schedule rollup' },
+  prg_wbs_rollup_note:{ ar: 'محسوب صعوداً من الأنشطة، لا يُدخَل يدوياً',
                      en: 'Rolled up from the activities; never entered by hand' },
   prg_wbs_done:    { ar: 'مستويات مكتملة',                  en: 'Levels complete' },
   prg_wbs_levels:  { ar: 'الإنجاز حسب مستويات هيكل التجزئة', en: 'Progress by WBS level' },
-  prg_wbs_levels_sub:{ ar: 'محسوبة صعودًا من الأنشطة المرجّحة بالكلفة',
+  prg_wbs_levels_sub:{ ar: 'محسوبة صعوداً من الأنشطة المرجّحة بالكلفة',
                      en: 'Rolled up from the activities, weighted by cost' },
   prg_wbs_path:    { ar: 'المسار',                          en: 'Path' },
   prg_wbs_node:    { ar: 'المستوى',                         en: 'Level' },
@@ -1690,12 +1700,14 @@ const STR = {
   prg_risk_critical:{ ar: 'أنشطة حرجة',                     en: 'Critical activities' },
   prg_risk_negfloat:{ ar: 'عوم سالب',                       en: 'Negative float' },
   prg_risk_count:  { ar: 'أنشطة معرّضة للخطر',              en: 'Activities at risk' },
-  prg_risk_atrisk: { ar: 'الأنشطة المعرّضة للخطر · مرتبة بحسب الانزياح',
-                     en: 'Activities at risk · ordered by slip' },
-  prg_risk_atrisk_sub:{ ar: 'الحد: انزياح أكثر من',          en: 'Threshold: a slip greater than' },
-  prg_risk_none_t: { ar: 'لا نشاط تجاوز الحد',              en: 'No activity is over the threshold' },
-  prg_risk_none_b: { ar: 'لا نشاط تجاوز انزياحه الحد عند تاريخ البيانات.',
-                     en: 'No activity’s slip is over the threshold at the data date.' },
+  /* الشكل 28: the TITLE is the list, the SUB is its ordering. The threshold
+     is on the card above and does not belong in a second place. */
+  prg_risk_atrisk: { ar: 'الأنشطة المعرّضة للخطر',
+                     en: 'At-risk activities' },
+  prg_risk_atrisk_sub:{ ar: 'مرتّبة بحسب الانزياح',           en: 'ordered by slip' },
+  prg_risk_none_t: { ar: 'لا أنشطة معرّضة للخطر',            en: 'No at-risk activities' },
+  prg_risk_none_b: { ar: 'لا نشاط تجاوز انزياحه الحد، ولا انزياح على المسار الحرج، عند تاريخ البيانات.',
+                     en: 'No activity has slipped past the threshold and nothing on the critical path has slipped, as at the data date.' },
 
   /* «كيف تُحتسب» — every rule behind the four tabs, in one place */
   prg_how_title:   { ar: 'كيف تُحتسب أرقام هذه الشاشة',      en: 'How this screen’s figures are computed' },
@@ -1714,9 +1726,49 @@ const STR = {
   prg_how_risk_t:  { ar: 'مخاطر الجدول',                    en: 'Schedule risk' },
   prg_how_risk_b:  { ar: 'التأخر هو أسوأ عقد في المشروع مقاسًا على النهاية النافذة (BR-10). العوم السالب يعني نشاطًا لا يمكن إنجازه في موعده دون تسريع. والمعرّض للخطر هو ما تجاوز انزياحه الحد المعلن على البطاقة.',
                      en: 'The delay is the project’s worst contract, measured against the finish in force (BR-10). Negative float means an activity that cannot be finished on time without acceleration. At risk is anything whose slip is over the threshold printed on the card.' },
-  prg_how_base_t:  { ar: 'مرجع المقارنة',                   en: 'Comparison baseline' },
-  prg_how_base_b:  { ar: 'خط أساس واحد فقط: لا شيء في هذا النظام يحرّك تواريخ خط الأساس بعد الاستيراد — الأمر التغييري المطبَّق يحرّك التوقّع والنهاية التعاقدية ويترك الأساس مكانه، وهو ما يجعل عمود الانزياح ذا معنى. لذلك لا يوجد مرشح مرجع مقارنة: لن يكون خلفه ما يُقارَن.',
-                     en: 'There is exactly one baseline: nothing in this system moves the baseline dates after import — an applied change order moves the forecast and the contractual finish and leaves the baseline where it is, which is what makes the slip column mean anything. So there is no comparison-baseline picker: there would be nothing behind it to compare.' },
+  /* Renamed: «مرجع المقارنة» is now the PERIOD control's own section, and
+     this one is about the baseline — the separate question it was conflated
+     with (P-198). */
+  prg_how_base_t:  { ar: 'خط الأساس',                       en: 'The baseline' },
+  prg_how_base_b:  { ar: 'خط أساس واحد فقط: لا شيء في هذا النظام يحرّك تواريخ خط الأساس بعد الاستيراد — الأمر التغييري المطبَّق يحرّك التوقّع والنهاية التعاقدية ويترك الأساس مكانه، وهو ما يجعل عمود الانزياح ذا معنى. أما «المقارنة مع» في أعلى الشاشة فليست مرشِّح خط أساس: إنها تختار قراءةً سابقة من سجلّ التحديثات، وهو ما يُشرَح أدناه.',
+                     en: 'There is exactly one baseline: nothing in this system moves the baseline dates after import — an applied change order moves the forecast and the contractual finish and leaves the baseline where it is, which is what makes the slip column mean anything. «Compare with» at the top of the screen is not a baseline picker: it selects an earlier READING from the update log, which is explained below.' },
+
+  /* ── الشكل 25 — «مرجع المقارنة» (P-198) ─────────────────────────────── */
+  /* ── THE SHORT FORMS ────────────────────────────────────────────────────
+     الشكل 25 writes «المادي 35% مقابل مخطط 31% · المالي 38%» in its Z6
+     sub-line, its Z10 bar and its tile comparisons — three places where the
+     label sits BESIDE its figure and the long form («الإنجاز المادي») restates
+     a word the reader already has. The long forms stay on table headers and
+     tile titles, where they stand alone. */
+  prg_phys_short:  { ar: 'المادي',                          en: 'Physical' },
+  prg_fin_short:   { ar: 'المالي',                          en: 'Financial' },
+  prg_planned_short: { ar: 'مخطط',                          en: 'planned' },
+  /* الشكل 25's Z6 sub-line: «المادي 35% مقابل مخطط 31% · المالي 38%». */
+  prg_vs:          { ar: 'مقابل مخطط',                      en: 'vs planned' },
+  /* Z10's own «البيانات حتى …», which is not the Z6 «حتى». */
+  prg_asof_data:   { ar: 'البيانات حتى',                    en: 'Data as of' },
+  prg_period:      { ar: 'المقارنة مع',                     en: 'Compare with' },
+  prg_period_previous: { ar: 'القراءة السابقة',             en: 'the previous reading' },
+  prg_period_quarter:  { ar: 'الربع الماضي',                en: 'last quarter' },
+  prg_period_start:    { ar: 'بداية المشروع',               en: 'project start' },
+  /* «مقارنة مع القراءة السابقة» — the plate's own note under each figure. */
+  prg_period_vs:   { ar: 'مقارنة مع',                       en: 'vs' },
+  prg_period_none: { ar: 'لا قراءة سابقة تصلح للمقارنة',    en: 'no earlier reading to compare against' },
+  prg_last_update: { ar: 'آخر تحديث للإنجاز',               en: 'Last progress update' },
+  /* الشكل 25's own footer link off the updates section, and الشكل 26/28's. */
+  prg_updates_audit: { ar: 'التفصيل في سجل التدقيق',        en: 'Detail in the audit log' },
+  prg_wbs_detail:  { ar: 'التفصيل في الجدول الزمني',        en: 'Detail in the schedule' },
+  /* الشكل 25's table: التاريخ · المادي · المالي · المصدر · المستخدم. */
+  prg_updates_source: { ar: 'المصدر',                       en: 'Source' },
+  prg_wbs_progress:{ ar: 'الإنجاز',                         en: 'Progress' },
+  /* «التفصيل في إدارة المخاطر» — the plate's own wording for the module. */
+  prg_t_risk_register: { ar: 'إدارة المخاطر',               en: 'the risk register' },
+  prg_curve:       { ar: 'منحنى الإنجاز — المخطط مقابل الفعلي (تراكمي)',
+                     en: 'Progress curve — plan vs actual (cumulative)' },
+
+  prg_how_period_t:{ ar: 'مرجع المقارنة',                   en: 'The comparison reference' },
+  prg_how_period_b:{ ar: 'يختار «المقارنة مع» قراءةً سابقة من «تحديثات الإنجاز» أدناه، فتُقاس عندها الحركة في كل بطاقة. طرفا الطرح يُقرآن من سلسلة واحدة: المادي من القراءات المسجّلة نفسها التي يُرسم منها منحنى نظرة عامة، والمالي من الشهادات المدفوعة حتى ذلك التاريخ منسوبةً إلى الكلفة المعدلة — أي الاشتقاق نفسه في الأعلى، مقروءاً عند تاريخين. و«بداية المشروع» تُقارن بالصفر لا بقراءة. والفترة التي لا يسندها السجل تبقى معروضة معطَّلة مع سببها.',
+                     en: 'Compare with selects an earlier reading from Progress updates below, and every tile measures its movement from there. Both ends of the subtraction come from one series: physical from the same recorded readings the Overview curve is drawn from, and financial from the certificates PAID up to that date over the revised cost — the identical derivation used above, read at two dates. Project start compares against zero rather than against a reading. A span the record cannot support stays visible, disabled, with its reason.' },
 
   prg_physical:    { ar: 'الإنجاز المادي',                  en: 'Physical' },
   prg_planned:     { ar: 'المخطط',                          en: 'Planned' },
@@ -1730,6 +1782,62 @@ const STR = {
   prg_boq_lines:   { ar: 'بنود الكميات',                    en: 'BOQ lines' },
   prg_reported:    { ar: 'الإنجاز المُبلَّغ',                en: 'Reported' },
   prg_actions:     { ar: 'إجراءات',                         en: 'Actions' },
+
+  /* ── الأشكال 25–28's tiles — the notes and comparisons each one carries ─
+     Every string below is read off a plate. Where a note has two branches,
+     the plate's own governing sentence is the first of them. */
+  prg_t_delay_bl:  { ar: 'التأخر عن خط الأساس',             en: 'Delay against baseline' },
+  prg_t_target:    { ar: 'الهدف',                           en: 'target' },
+  prg_t_contract_finish: { ar: 'النهاية التعاقدية',         en: 'contractual finish' },
+  prg_t_forecast:  { ar: 'النهاية المتوقعة',                en: 'forecast finish' },
+  prg_t_vs_baseline: { ar: 'مقابل خط الأساس المعتمد',       en: 'against the approved baseline' },
+  /* «مصروف 510,305,195 د.ع من 1,500,000,000 د.ع» — the plate carries the
+     currency on BOTH amounts, because the note is a sentence and a bare
+     figure in a sentence has no unit. */
+  prg_t_spent_of:  { ar: 'مصروف {a} د.ع من {b} د.ع',        en: 'spent {a} IQD of {b} IQD' },
+  /* The one note the reference makes CONDITIONAL: money running ahead of
+     delivery by more than twenty points is a finding, not a figure. */
+  prg_t_fin_ahead: { ar: 'الصرف يسبق الإنجاز بـ {n} نقطة — يستوجب مراجعة',
+                     en: 'Disbursement leads delivery by {n} points — needs review' },
+  /* SPI and CPI in one tile, so a +27-day delay beside an on-plan earned
+     value does not read as a contradiction (`DModProgress` :1560). */
+  prg_t_ev_on_crit:{ ar: 'القيمة المكتسبة على الخطة، والتأخر محصور في المسار الحرج',
+                     en: 'earned value on plan; the delay sits on the critical path' },
+  prg_t_ev_below:  { ar: 'القيمة المكتسبة دون الخطة',       en: 'earned value below plan' },
+  prg_t_ev_on:     { ar: 'القيمة المكتسبة على الخطة',       en: 'earned value on plan' },
+
+  prg_t_wbs_lowest:{ ar: 'الأدنى',                          en: 'lowest' },
+  prg_t_wbs_level2:{ ar: 'مستوى ثانٍ فأعلى من هيكل التجزئة', en: 'WBS level 2 and above' },
+  prg_t_gap_plan:  { ar: 'الفجوة عن المخطط',                en: 'Gap against plan' },
+  prg_t_gap_note:  { ar: 'الفجوة موزّعة على المستويات في الجدول أدناه',
+                     en: 'the gap is distributed across the levels below' },
+
+  prg_t_orig_cost: { ar: 'الكلفة المقررة',                  en: 'original cost' },
+  prg_t_eff_cost:  { ar: 'الكلفة النافذة بعد الملاحق',      en: 'the effective cost after addenda' },
+  prg_t_of_revised:{ ar: 'من المعدلة',                      en: 'of revised' },
+  prg_t_at_datadate: { ar: 'كما في تاريخ البيانات',         en: 'as at the data date' },
+  prg_t_eac_note:  { ar: 'الكلفة المتوقعة عند الإنجاز = الموازنة ÷ CPI',
+                     en: 'estimate at completion = budget ÷ CPI' },
+  prg_t_vac_target:{ ar: 'لا يقل عن صفر',                   en: 'not below zero' },
+  prg_t_vac_over:  { ar: 'تجاوز متوقع للموازنة',            en: 'forecast overrun' },
+  prg_t_vac_within:{ ar: 'ضمن الموازنة',                    en: 'within budget' },
+  prg_t_orders:    { ar: 'أوامر تغييرية معتمدة',            en: 'Approved change orders' },
+  prg_t_orders_pending: { ar: 'قيد الاعتماد',               en: 'pending' },
+  prg_t_orders_note: { ar: 'المعتمد وحده يدخل الكلفة المعدلة؛ ما هو قيد الاعتماد لا يُرحَّل.',
+                       en: 'only approved orders enter the revised cost; pending ones do not post.' },
+  prg_t_delay_days:{ ar: 'أيام التأخر',                     en: 'delay days' },
+  prg_t_delay_note:{ ar: 'تقدير غير تعاقدي — لا يدخل الكلفة المعدلة ولا يُطالَب به.',
+                     en: 'a non-contractual estimate — it does not enter the revised cost and is not claimed.' },
+
+  prg_t_of_acts:   { ar: 'من الأنشطة',                      en: 'of activities' },
+  prg_t_crit_note: { ar: 'عوم كلي صفر — أي انزياح يمس النهاية',
+                     en: 'zero total float — any slip moves the finish' },
+  prg_t_negfloat_note: { ar: 'لا يمكن إنجازها في موعدها دون تسريع',
+                         en: 'cannot meet their dates without acceleration' },
+  prg_t_atrisk_limit: { ar: 'الحد',                         en: 'threshold' },
+  prg_t_atrisk_over:  { ar: 'أكثر من {n} أيام',             en: 'over {n} days' },
+  prg_t_atrisk_note:  { ar: 'انزياح يتجاوز الحد، أو أي انزياح على مسار حرج',
+                        en: 'slip past the threshold, or any slip on a critical path' },
 
   prg_planned_note: { ar: 'ما يفرضه خط الأساس عند تاريخ البيانات',
                       en: 'what the baseline requires at the data date' },

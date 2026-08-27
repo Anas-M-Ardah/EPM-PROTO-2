@@ -116,7 +116,7 @@ Every screen, and the file that defines it. Paths are under `docs/spec/reference
 | SCR-W3 | Contract | `DModContractNew` — `project-modules.jsx:194` · `DContractAmendments` — `contract-amendments.jsx:301` |
 | SCR-W4 | BOQ | *(v1.1 moved this module into its own files, sibling repo)* `DBoqWorkspace` — `boq-workspace.jsx:16` · `DBoqRegister` — `boq-register.jsx:435` · `DBoqAssign` — `boq-assign.jsx:11` · `DBoqDistDrawer` — `contract-context.jsx:101` |
 | SCR-W5 | Schedule | `DModSchedule` — `schedule-module.jsx:432` · `DGantt` — `:81` · `DSchedTable` — `:252` |
-| SCR-W6 | Progress | `DModProgress` — `project-modules.jsx:668` |
+| SCR-W6 | Progress | `DModProgress` — `project-modules.jsx:1391`. **Verified byte-identical to the live prototype** (P-200), unlike `DModOverview` — the checked-in copy can be worked from directly |
 | SCR-W7 | Financials | `DModFinancialNew` — `project-modules.jsx:907` · `DPaymentWizard` — `:825` *(the ROADMAP said :485 / :416 — pre-v1.1 lines, and CLAUDE.md §1 sends every agent to the line this table names)* |
 | SCR-W8 | Change Orders — register | `DModVO` — `project-modules.jsx:1142` |
 | SCR-W8 | Change Orders — record | `DModVO` — `vo-record.jsx:436` · `DVORecordPanel` — `:372` |
@@ -681,6 +681,83 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 
 **Exit:** report A5 at 100% → `BQ-003` progress reads **52.73%**, achieved amount
 **14,094,000**.
+
+> **Matched to `DModProgress` and to الأشكال 25–28** (P-198 · P-199 · P-200). The
+> checked-in reference was diffed against the live prototype first:
+> `DModProgress` is **byte-identical**, so this module could be worked from the
+> file rather than the DOM — TODO.md's staleness warning does not reach it.
+>
+> 1. **The screen is archetype L04, and was not.** الأشكال 25–28 are `.d-tile`
+>    cards over a `.d-l04` grid — four, three, six and four — and this build used
+>    a summary strip, a `.d-recon` row and an eight-item field grid. The whole
+>    vocabulary had been in `styles/desktop.css:3395` since Phase 1, **used by no
+>    screen**. The missing part was a FUNCTION, not styling: every plate lists
+>    «الانتقال إلى الوحدة المصدر لكل مؤشر» among its user actions, and the screen
+>    offered no way off itself. `<epm-tile>`, and one host rule
+>    (`display: contents`) because the host was taking the grid column.
+>
+> 2. **«مرجع المقارنة» is a period selector, not a baseline picker.** All four
+>    plates name it; the drawer explained its ABSENCE with a true rule about the
+>    wrong control. `DModProgress` :1416 says what it does — it picks which
+>    earlier READING each tile compares against — and this build already had the
+>    readings. `Domain/ComparisonPeriod` resolves three spans; a span the record
+>    cannot support is offered DISABLED with its reason, and the default falls
+>    back to one that resolves.
+>
+> 3. **Both ends of every delta come from one series.** The reference cannot do
+>    this — its two series are independent, so :1432 SCALES the financial delta,
+>    and the hack is visible in الشكل 25 itself (its own history gives 9; the
+>    plate prints +13). Physical reads `ProgressSeries.ActualAt`, financial reads
+>    Σ paid ÷ revised at the same two dates.
+>
+> 4. **Z10, and the thresholds moved to `Domain/`.** المادي · المالي · SPI/CPI ·
+>    آخر تحديث للإنجاز, and the data date left the Z6 title for the bar the plate
+>    puts it in. `Domain/TileThreshold` holds the sixteen bands `DModProgress`
+>    computes inline, as named constants with 21 worked examples off the plates —
+>    the call `ExecutiveSignal` already made (P-136).
+>
+> 5. **الشكل 25's curve** is drawn from `ProgressSeries.Monthly` — SCR-W1's own
+>    function, so two screens cannot draw different lines for one project — and
+>    hidden when the series is not `Drawable`. The reference draws it; the annex
+>    plate's screenshot predates it, and that is the ONE place the two sources
+>    for this screen disagree (P-200).
+>
+> 6. **Matched against the live prototype screen, not only the plate** (P-201).
+>    Driving `PRJ-0170` — the project ملحق الشكل 25 was captured from — beside
+>    this build turned up nine differences the archetype pass had left: the
+>    sections sat outside the tile grid; «تحديثات الإنجاز» printed one row per
+>    contract EVENT where the plate prints one per project READING; the labels
+>    beside figures were long forms; «حسب هيكل التجزئة» carried a count badge;
+>    the spend note dropped its currency; and الأثر والكلفة repeated its own six
+>    cards in a bar and a table. All nine matched. **`display: contents` fixed
+>    the tiles and not the sections** (P-202) — it removes a box, never a
+>    selector, and `.d-tile`'s span is unscoped while `.d-fgroup`'s is not.
+>
+> 7. **الشكل 26 and الشكل 28, checked the same way** (P-203). Five strings were
+>    wrong, all wording: «الإنجاز التجميعي» was missing **«للجدول»**, the word
+>    that separates the schedule rollup from the BOQ-derived headline one tab
+>    away; the at-risk section's title carried its own ordering and its subtitle
+>    carried the threshold, which the card above already states; and its empty
+>    state answered a narrower question than the list asks.
+>
+> 8. **A WCAG 2.2 AA pass** with the rule set the client named (P-204). Two real
+>    defects: the `bare` select trigger was a **94×20** pointer target against
+>    2.5.8's 24×24 CSS px, and `.d-fgroup > .gh` — a `role="button"` with
+>    `tabindex="0"` on four screens — had **no focus indicator at all**. Already
+>    sound and left alone: `aria-hidden` on icons, `prefers-reduced-motion`, an
+>    `.sr` phrase on every tile state, and a Z10 that sits in its own flex row
+>    rather than over the scroll box. **`--fg-subtle` measures 3.07:1 in light**
+>    against 12px text — one token, 114 references, the whole caption layer — so
+>    it is in `TODO.md` with two candidate values rather than changed here.
+>
+> **Verified live** at 1440 and 800, AR and EN, light and dark: `PRJ-0279` reads
+> المادي **51%** against مخطط **76%** with **+8 نقطة** since the 2026-07-20
+> reading, four bands `bad·warn·bad·warn` each carrying its screen-reader phrase,
+> and four drill-throughs resolving to real sibling routes; الأثر والكلفة prints
+> الكلفة المقررة **340,000,000** under الكلفة المعدلة **350,000,000**, the figure
+> the payload had never carried; `PRJ-0148` opens on **بداية المشروع** with the
+> other two spans disabled and their reasons wrapped under them. `dotnet test`
+> **519/519**, `ng build` clean, no console errors.
 
 > The roadmap's original figures — 52.6% and 14,059,980 — are `02 §4`'s, and come
 > from the rounded share the spec prints rather than the one its own rule produces.

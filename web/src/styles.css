@@ -54,6 +54,44 @@
    flex parent, its host needs this. */
 epm-app-footer { display: contents; }
 
+/* `.d-l04` is a TWELVE-COLUMN grid and `.d-tile` carries its own `span 3 / 6 /
+   12` — including every reflow breakpoint, which is how الأشكال 25–28 go from
+   four across to two to one. With the host in between, each `<epm-tile>` took
+   ONE of the twelve columns and every one of those rules addressed an element
+   that was no longer a grid item: four tiles rendered as four ~50px slivers
+   and nothing reflowed at any width. Measured, on SCR-W6. */
+epm-tile,
+/* `.d-l04 > .d-fgroup { grid-column: span 12 }` addresses the CARD, so a
+   section inside the tile grid needs its host out of the way for the same
+   reason a tile does. Both are children of `.d-l04` on الأشكال 25 · 26 · 28. */
+epm-field-group { display: contents; }
+
+/* …and `display: contents` removes the host's BOX, not the host from the
+   SELECTOR tree. `.d-l04 > .d-fgroup { grid-column: span 12 }` still fails to
+   match through a component host, so the section took one of twelve columns
+   and stretched to 1178px. The tiles are unaffected because `.d-tile` carries
+   its span as an unscoped base rule; the section's is child-scoped, so the
+   host has to be spelled out. Measured, on SCR-W6. */
+.d-l04 > epm-field-group > .d-fgroup { grid-column: span 12; }
+
+/* ── THE CARD HEADER IS A CONTROL AND HAD NO FOCUS RING ──────────────────
+   `.d-fgroup > .gh` is the collapse toggle: `role="button"`, `tabindex="0"`,
+   Enter and Space bound. It is reachable by keyboard on every screen that uses
+   `<epm-field-group>` — الشكل 5's six sections, the contract tab's, the
+   financials tab's and now SCR-W6's — and a keyboard user could not see where
+   they were. WCAG 2.4.7, and CLAUDE.md §6's «:focus-visible on every
+   interactive element».
+
+   INSET, because the header is flush with the card's own corners and an
+   outset ring would sit outside the border it belongs to. `.d-fgroup` is
+   `overflow: hidden`, which would clip it anyway. */
+.d-fgroup > .gh:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: -2px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+/* Closed, the header IS the card, so the ring follows all four corners. */
+.d-fgroup.closed > .gh:focus-visible { border-radius: var(--r-lg); }
+
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
    flex child of `.d-detail-main`, so that `.d-pz7` inside it is the ONE
@@ -812,7 +850,12 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
    It matches `.d-ctxsel select`'s own type (desktop.css/boq.css:405): the
    medium weight and `--fs-200` are that rule's, not new values. */
 .epm-select.bare {
-  height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0;
+  /* 24px is the FLOOR, not the look: WCAG 2.2 AA (2.5.8, target size minimum)
+     puts a web pointer target at 24×24 CSS px, and dropping the frame had
+     dropped the hit box to 94×20 — the text's own line box. The pill around it
+     is taller than this, so the target grows inside `.d-ctxsel` and nothing
+     moves. Measured on SCR-W6; SCR-W5's four Z6 dropdowns get it too. */
+  height: auto; min-height: 24px; padding: 0; border: 0; border-radius: 0;
   background: transparent; color: var(--on-surface);
   font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-medium);
   max-width: 260px;
@@ -862,6 +905,20 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
 .epm-select-tick { flex: none; margin-inline-start: auto; color: var(--primary); }
 .epm-select-opt-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .epm-select-opt-l.ph { color: var(--fg-subtle, var(--on-surface-variant)); }
+/* An option the record cannot support: offered, refused, and saying why
+   (SelectOption.disabled). Muted rather than hidden — the vocabulary must not
+   change with the data, or a reader cannot tell what the system can do from
+   what this project happens to allow. No hover, because nothing will happen. */
+.epm-select-opt:disabled { cursor: default; flex-wrap: wrap; align-items: flex-start;
+  height: auto; padding-block: var(--space-6); }
+.epm-select-opt:disabled .epm-select-opt-l { color: var(--fg-subtle, var(--on-surface-variant)); }
+.epm-select-opt:disabled:hover { background: none; }
+/* Its OWN LINE, and wrapping. Beside the label it pushed the label out of a
+   200px popup and left the list scrolling sideways — and a reason nobody can
+   read without scrolling is no better than the tooltip it replaced. */
+.epm-select-opt-why { flex: 0 0 100%; font-size: 11px; line-height: var(--lh-200);
+  white-space: normal; text-align: start;
+  color: var(--fg-subtle, var(--on-surface-variant)); }
 
 /* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
    The stage card is  — the same two-row card الشكل 6 uses

@@ -181,9 +181,16 @@ public record ProgressWbsDto(
 /// Σ approved-but-unapplied. The plate's governing note: «المعتمد وحده يدخل
 /// الكلفة المعدلة؛ وما هو قيد الاعتماد لا يُرحَّل» (02 §9).
 /// </param>
+/// <param name="ApprovedCost">
+/// «الكلفة المقررة» — الشكل 27 prints it UNDER the revised cost as that card's
+/// comparison, which is the only place on this screen the two can be seen to
+/// differ. `BudgetBasis.Approved`, so it is the same recorded pair الشكل 18
+/// writes and SCR-W7 reads.
+/// </param>
 public record ProgressCostImpactDto(
     decimal Disbursed,
     decimal RevisedCost,
+    decimal ApprovedCost,
     decimal DisbursedPct,
     decimal? Eac,
     decimal? Vac,
@@ -230,21 +237,126 @@ public record ProgressScheduleRiskDto(
 // ── الشكل 25 — «تحديثات الإنجاز (واردة من الأقسام)» ──────────────────────
 
 /// <summary>
-/// One recorded progress update. `ContractActivityEvents` with
-/// `Action = "progress"` — the same rows `Domain/ProgressSeries` draws SCR-W1's
-/// actual line from, so the table and the curve cannot disagree.
+/// One READING of the whole project, which is what الشكل 25's table draws:
+/// التاريخ · المادي · المالي · المصدر · المستخدم, one row per date.
+///
+/// ── IT IS PROJECT-LEVEL, NOT PER CONTRACT ────────────────────────────────
+/// This table used to print one row per `ContractActivityEvents` row, with the
+/// contract and a before→after pair. That is the AUDIT's shape, and the plate
+/// sends a reader there for it — «التفصيل في سجل التدقيق» is the section's own
+/// footer. What the plate shows here is the pair of percentages the project
+/// stood at on each date, which is the same series the tiles measure their
+/// deltas against (`Domain/ComparisonPeriod.Reading`) and the same one SCR-W1's
+/// curve is drawn from. One source, read three ways.
 ///
 /// The plate's own note is the rule: «كل سطر معتمد من قسم مصدره — لا يُحرَّر
 /// هنا». There is no write path to this list on this screen.
 /// </summary>
+/// <param name="Source">
+/// The party that endorsed the reading — «الموقف المالي» · «الجدول الزمني» in
+/// the plate. RECORDED, from the event's own `ActorParty`: the reference
+/// alternates the two by row index (`i % 2`), which is a label, not a fact.
+/// Several contracts logging on one date are joined.
+/// </param>
+/// <param name="By">Who recorded it. Joined the same way.</param>
 public record ProgressUpdateDto(
     string At,
-    string ContractId,
-    decimal? Before,
-    decimal After,
-    string ActorName,
-    string ActorParty);
+    decimal Physical,
+    decimal Financial,
+    string Source,
+    string By);
 
+// ── الشكل 25 — «مرشح مرجع المقارنة» ──────────────────────────────────────
+
+/// <summary>
+/// One resolved span of `Domain/ComparisonPeriod` — الشكل 25's «المقارنة مع»,
+/// which all four plates name in their function list and again under
+/// «الإجراءات المتاحة للمستخدم» as «تغيير مرجع المقارنة».
+///
+/// SENT RESOLVED, all three of them, rather than sending the readings and
+/// letting the browser subtract. A delta in points is arithmetic and §3.1
+/// gives Angular none: the page picks an id and renders what came back.
+/// Three rows is the whole vocabulary, so there is nothing to round-trip.
+/// </summary>
+/// <param name="Available">
+/// False when the record cannot support the span — a project logged twice has
+/// no last quarter. The option is still rendered, disabled, carrying
+/// <paramref name="WhyAr"/>: CLAUDE.md §6 asks that a cap be explained, not
+/// hidden, and SCR-W5's weight basis makes the same call.
+/// </param>
+/// <param name="PriorAt">
+/// The reading compared against, so «مقارنة مع القراءة السابقة» is checkable.
+/// Null for بداية المشروع, which compares against zero rather than a reading.
+/// </param>
+public record ProgressPeriodDto(
+    string Id,
+    bool Available,
+    string? WhyAr,
+    string? WhyEn,
+    string? PriorAt,
+    decimal PriorPhysical,
+    decimal PriorFinancial,
+    decimal PhysicalDelta,
+    decimal FinancialDelta);
+
+/// <summary>
+/// One month end on الملخص's «منحنى الإنجاز — المخطط مقابل الفعلي (تراكمي)».
+///
+/// `Domain/ProgressSeries.Monthly`, which is the function SCR-W1's own curve
+/// comes from — the two screens cannot draw different lines for one project.
+/// The reference builds its curve with `f => f * f * (3 - 2 * f)` over eight
+/// invented periods; nothing here is a shape.
+///
+/// EMPTY when the series is not `Drawable` — fewer than two months, or nothing
+/// on them. The tile is then not rendered at all rather than rendered flat
+/// along its axis, which is the client's own call (P-144).
+/// </summary>
+/// <param name="ActCum">
+/// Null before the first RECORDED update: the actual line starts where the log
+/// does, never at a zero nobody wrote.
+/// </param>
+public record ProgressCurvePeriodDto(
+    string At,
+    decimal PlanCum,
+    decimal? ActCum,
+    decimal PlanPeriod,
+    decimal ActPeriod);
+
+/// <summary>
+/// The threshold band on each of الأشكال 25–28's KPI cards, resolved by
+/// `Domain/TileThreshold`. One member per tile that has a band; the tiles that
+/// hold a MAGNITUDE — revised cost, cumulative spend, critical count, levels
+/// complete — have none and are absent from this record entirely.
+///
+/// Sent rather than compared in the browser for the same reason the deltas are:
+/// «more than five points behind plan is bad» is a judgement about ministry
+/// projects, and §3.1 leaves Angular nothing but display formatting.
+/// </summary>
+public record ProgressTileStates(
+    string Physical,
+    string Financial,
+    string Delay,
+    string Indices,
+    string WbsRollup,
+    string WbsGap,
+    string Eac,
+    string Vac,
+    string PendingOrders,
+    string DelayCost,
+    string NegativeFloat,
+    string AtRisk);
+
+/// <param name="Periods">
+/// All three spans, resolved. <paramref name="DefaultPeriod"/> is the one
+/// الشكل 25 draws selected.
+/// </param>
+/// <param name="LastUpdateAt">
+/// «آخر تحديث للإنجاز», the fourth figure الشكل 25's Z10 bar carries. The
+/// newest recorded reading's date — not the data date beside it, which is when
+/// the FIGURES were read, and the gap between the two is the point: a project
+/// whose last endorsed update is three months behind its data date is telling
+/// a reader something the percentages cannot.
+/// </param>
 public record ProgressResponse(
     string ProjectId,
     string ProjectNameAr,
@@ -258,7 +370,12 @@ public record ProgressResponse(
     IReadOnlyList<ProgressWbsDto> Wbs,
     ProgressCostImpactDto CostImpact,
     ProgressScheduleRiskDto ScheduleRisk,
-    IReadOnlyList<ProgressUpdateDto> Updates);
+    IReadOnlyList<ProgressUpdateDto> Updates,
+    IReadOnlyList<ProgressPeriodDto> Periods,
+    string DefaultPeriod,
+    string? LastUpdateAt,
+    ProgressTileStates TileStates,
+    IReadOnlyList<ProgressCurvePeriodDto> Curve);
 
 /// <param name="ProgressPct">0…100. Anything outside it is refused, not clamped (04 §9).</param>
 public record UpdateProgressRequest(decimal ProgressPct);

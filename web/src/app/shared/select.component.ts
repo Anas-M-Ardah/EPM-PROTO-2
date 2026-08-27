@@ -8,6 +8,19 @@ import { PopoverComponent } from './popover.component';
 export interface SelectOption {
   code: string;
   label: string;
+  /**
+   * OFFERED AND REFUSED. An option the data cannot support stays in the list,
+   * greyed and unpickable, carrying <see cref="why"/> as its title — CLAUDE.md
+   * §6 asks that a cap be explained rather than the control be hidden, and a
+   * vocabulary that shrinks with the data leaves a reader unable to tell what
+   * the system can do from what this record happens to allow.
+   *
+   * SCR-W6's «مرجع المقارنة» is the first caller: a project logged twice has
+   * no last quarter (P-198).
+   */
+  disabled?: boolean;
+  /** The reason, shown on the row and as its tooltip. */
+  why?: string;
 }
 
 /**
@@ -87,8 +100,12 @@ export interface SelectOption {
             <button type="button" class="d-pop-row epm-select-opt"
                     role="option"
                     [attr.aria-selected]="o.code === value"
+                    [attr.aria-disabled]="o.disabled ? 'true' : null"
+                    [disabled]="!!o.disabled"
+                    [attr.title]="o.why || null"
                     [class.on]="o.code === value"
                     [class.act]="active() === i"
+                    [class.off]="o.disabled"
                     [attr.id]="id + '-o' + i"
                     (click)="pick(o.code)">
               <!-- LABEL FIRST. The tick is trailing so every option's text
@@ -96,7 +113,13 @@ export interface SelectOption {
                    opening the list must not make the current value appear to
                    jump sideways. -->
               <span class="epm-select-opt-l">{{ o.label }}</span>
+              <!-- BEFORE the reason, so it stays on the label's line when the
+                   row wraps rather than dropping to a line of its own. -->
               @if (o.code === value) { <epm-icon name="check" [size]="14" class="epm-select-tick" /> }
+              <!-- The reason travels WITH the row. A disabled option whose
+                   explanation is only a tooltip is a dead end on a touch
+                   screen and silent to a reader. -->
+              @if (o.disabled && o.why) { <span class="epm-select-opt-why">{{ o.why }}</span> }
             </button>
           }
         </div>
@@ -167,6 +190,10 @@ export class SelectComponent {
   }
 
   pick(code: string) {
+    // Checked here as well as through the `disabled` attribute: the keyboard
+    // path reaches `pick` directly, and a rule enforced only by the DOM is not
+    // enforced (the same reasoning EP-PRG-02 uses about its own range check).
+    if (this.options.find(o => o.code === code)?.disabled) return;
     this.open.set(false);
     this.trigger.nativeElement.focus();
     if (code !== (this.value ?? '')) this.changed.emit(code);
