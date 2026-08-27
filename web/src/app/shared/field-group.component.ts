@@ -44,6 +44,14 @@ import { IconComponent } from '../core/icon.component';
       </header>
       @if (open()) {
         <div class="gb" [class.flush]="flush"><ng-content /></div>
+        <!-- DFGroup's own "foot" — the card's closing band, where a section's
+             drill-through lives. It sits at the same position a tile's own
+             .tt does, so links line up down an L04 page. Opt-in by the same
+             boolean + named-slot pattern epm-drawer already uses, so a card
+             with no footer draws no band. -->
+        @if (hasFoot) {
+          <div class="gf"><ng-content select="[groupFoot]" /></div>
+        }
       }
     </section>
   `,
@@ -63,6 +71,18 @@ export class FieldGroupComponent {
    */
   @Input({ transform: booleanAttribute }) flush = false;
 
+  /**
+   * Draws `DFGroup`'s closing band and projects `[groupFoot]` into it — every
+   * section on الأشكال 25 · 26 · 28 ends with one, carrying «التفصيل في …».
+   */
+  @Input({ transform: booleanAttribute }) hasFoot = false;
+
+  /**
+   * `<epm-field-group>` is a WRAPPER, not the card. Inside `.d-l04` the grid's
+   * children are the grid items, and `.d-l04 > .d-fgroup { grid-column: span
+   * 12 }` addresses the CARD — so with the host in between, a section took one
+   * of twelve columns. Same trap as `<epm-tile>`; same fix, in `styles.css`.
+   */
   open = signal(true);
 
   toggle() { this.open.set(!this.open()); }

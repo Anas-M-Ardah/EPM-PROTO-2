@@ -119,9 +119,18 @@ export class ProgressPage {
     return h ? h.physical - h.planned : 0;
   });
 
+  /**
+   * ONE TAB CARRIES A COUNT, and only when it is not zero — `DModProgress`
+   * :1445 gives `n` to «مخاطر الجدول» alone, as `atRisk.length || undefined`.
+   *
+   * «حسب هيكل التجزئة» had one here, and a badge on a tab means "this many
+   * things need you": six WBS levels is the shape of the programme, not a
+   * count of anything outstanding, so the badge was making a structural fact
+   * look like a queue.
+   */
   viewTabs = computed(() => [
     { id: 'summary' as const, key: 'prg_tab_summary' as StrKey, n: null as number | null },
-    { id: 'wbs' as const, key: 'prg_tab_wbs' as StrKey, n: this.wbs().length || null },
+    { id: 'wbs' as const, key: 'prg_tab_wbs' as StrKey, n: null as number | null },
     { id: 'cost' as const, key: 'prg_tab_cost' as StrKey, n: null as number | null },
     {
       id: 'risk' as const, key: 'prg_tab_risk' as StrKey,
@@ -215,18 +224,16 @@ export class ProgressPage {
     this.data()?.periods.find(p => p.id === this.period()) ?? null);
 
   /**
-   * «مقارنة مع القراءة السابقة» — and, when the span resolved to a real
-   * reading, the DATE of it. "Compared with the previous reading" is only
-   * checkable if the reader can see which reading that was.
+   * «مقارنة مع القراءة السابقة» — the plate's note, and only that. The prior
+   * reading's DATE is deliberately not appended: the reference does not, and
+   * the date is one row down in «تحديثات الإنجاز», where the whole series is.
    */
   periodNote = computed(() => {
     const p = this.activePeriod();
     if (!p) return '';
     if (!p.available) return this.lang.t('prg_period_none');
 
-    const label = this.lang.t(('prg_period_' + p.id) as StrKey);
-    const vs = `${this.lang.t('prg_period_vs')} ${label}`;
-    return p.priorAt ? `${vs} · ${fmt.date(p.priorAt)}` : vs;
+    return `${this.lang.t('prg_period_vs')} ${this.lang.t(('prg_period_' + p.id) as StrKey)}`;
   });
 
   /**

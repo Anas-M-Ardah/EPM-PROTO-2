@@ -722,6 +722,17 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 >    plate's screenshot predates it, and that is the ONE place the two sources
 >    for this screen disagree (P-200).
 >
+> 6. **Matched against the live prototype screen, not only the plate** (P-201).
+>    Driving `PRJ-0170` — the project ملحق الشكل 25 was captured from — beside
+>    this build turned up nine differences the archetype pass had left: the
+>    sections sat outside the tile grid; «تحديثات الإنجاز» printed one row per
+>    contract EVENT where the plate prints one per project READING; the labels
+>    beside figures were long forms; «حسب هيكل التجزئة» carried a count badge;
+>    the spend note dropped its currency; and الأثر والكلفة repeated its own six
+>    cards in a bar and a table. All nine matched. **`display: contents` fixed
+>    the tiles and not the sections** (P-202) — it removes a box, never a
+>    selector, and `.d-tile`'s span is unscoped while `.d-fgroup`'s is not.
+>
 > **Verified live** at 1440 and 800, AR and EN, light and dark: `PRJ-0279` reads
 > المادي **51%** against مخطط **76%** with **+8 نقطة** since the 2026-07-20
 > reading, four bands `bad·warn·bad·warn` each carrying its screen-reader phrase,

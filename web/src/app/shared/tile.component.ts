@@ -61,7 +61,7 @@ export type TileDir = 'up' | 'down' | 'flat';
   imports: [IconComponent, RouterLink],
   template: `
     <section class="d-tile" role="group" [attr.aria-labelledby]="tid"
-             [class.s6]="span === 6" [class.s12]="span === 12"
+             [class.s3]="span === 3" [class.s6]="span === 6" [class.s12]="span === 12"
              [class.ok]="state === 'ok'" [class.warn]="state === 'warn'"
              [class.bad]="state === 'bad'" [class.flush]="flush">
 

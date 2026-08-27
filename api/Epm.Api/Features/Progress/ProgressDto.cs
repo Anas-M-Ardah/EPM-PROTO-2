@@ -237,20 +237,34 @@ public record ProgressScheduleRiskDto(
 // ── الشكل 25 — «تحديثات الإنجاز (واردة من الأقسام)» ──────────────────────
 
 /// <summary>
-/// One recorded progress update. `ContractActivityEvents` with
-/// `Action = "progress"` — the same rows `Domain/ProgressSeries` draws SCR-W1's
-/// actual line from, so the table and the curve cannot disagree.
+/// One READING of the whole project, which is what الشكل 25's table draws:
+/// التاريخ · المادي · المالي · المصدر · المستخدم, one row per date.
+///
+/// ── IT IS PROJECT-LEVEL, NOT PER CONTRACT ────────────────────────────────
+/// This table used to print one row per `ContractActivityEvents` row, with the
+/// contract and a before→after pair. That is the AUDIT's shape, and the plate
+/// sends a reader there for it — «التفصيل في سجل التدقيق» is the section's own
+/// footer. What the plate shows here is the pair of percentages the project
+/// stood at on each date, which is the same series the tiles measure their
+/// deltas against (`Domain/ComparisonPeriod.Reading`) and the same one SCR-W1's
+/// curve is drawn from. One source, read three ways.
 ///
 /// The plate's own note is the rule: «كل سطر معتمد من قسم مصدره — لا يُحرَّر
 /// هنا». There is no write path to this list on this screen.
 /// </summary>
+/// <param name="Source">
+/// The party that endorsed the reading — «الموقف المالي» · «الجدول الزمني» in
+/// the plate. RECORDED, from the event's own `ActorParty`: the reference
+/// alternates the two by row index (`i % 2`), which is a label, not a fact.
+/// Several contracts logging on one date are joined.
+/// </param>
+/// <param name="By">Who recorded it. Joined the same way.</param>
 public record ProgressUpdateDto(
     string At,
-    string ContractId,
-    decimal? Before,
-    decimal After,
-    string ActorName,
-    string ActorParty);
+    decimal Physical,
+    decimal Financial,
+    string Source,
+    string By);
 
 // ── الشكل 25 — «مرشح مرجع المقارنة» ──────────────────────────────────────
 

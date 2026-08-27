@@ -1730,19 +1730,35 @@ const STR = {
                      en: 'There is exactly one baseline: nothing in this system moves the baseline dates after import — an applied change order moves the forecast and the contractual finish and leaves the baseline where it is, which is what makes the slip column mean anything. «Compare with» at the top of the screen is not a baseline picker: it selects an earlier READING from the update log, which is explained below.' },
 
   /* ── الشكل 25 — «مرجع المقارنة» (P-198) ─────────────────────────────── */
+  /* ── THE SHORT FORMS ────────────────────────────────────────────────────
+     الشكل 25 writes «المادي 35% مقابل مخطط 31% · المالي 38%» in its Z6
+     sub-line, its Z10 bar and its tile comparisons — three places where the
+     label sits BESIDE its figure and the long form («الإنجاز المادي») restates
+     a word the reader already has. The long forms stay on table headers and
+     tile titles, where they stand alone. */
+  prg_phys_short:  { ar: 'المادي',                          en: 'Physical' },
+  prg_fin_short:   { ar: 'المالي',                          en: 'Financial' },
+  prg_planned_short: { ar: 'مخطط',                          en: 'planned' },
   /* الشكل 25's Z6 sub-line: «المادي 35% مقابل مخطط 31% · المالي 38%». */
   prg_vs:          { ar: 'مقابل مخطط',                      en: 'vs planned' },
+  /* Z10's own «البيانات حتى …», which is not the Z6 «حتى». */
+  prg_asof_data:   { ar: 'البيانات حتى',                    en: 'Data as of' },
   prg_period:      { ar: 'المقارنة مع',                     en: 'Compare with' },
   prg_period_previous: { ar: 'القراءة السابقة',             en: 'the previous reading' },
   prg_period_quarter:  { ar: 'الربع الماضي',                en: 'last quarter' },
   prg_period_start:    { ar: 'بداية المشروع',               en: 'project start' },
   /* «مقارنة مع القراءة السابقة» — the plate's own note under each figure. */
   prg_period_vs:   { ar: 'مقارنة مع',                       en: 'vs' },
-  prg_period_at:   { ar: 'قراءة',                           en: 'reading of' },
   prg_period_none: { ar: 'لا قراءة سابقة تصلح للمقارنة',    en: 'no earlier reading to compare against' },
   prg_last_update: { ar: 'آخر تحديث للإنجاز',               en: 'Last progress update' },
-  /* الشكل 25's own footer link off the updates section. */
+  /* الشكل 25's own footer link off the updates section, and الشكل 26/28's. */
   prg_updates_audit: { ar: 'التفصيل في سجل التدقيق',        en: 'Detail in the audit log' },
+  prg_wbs_detail:  { ar: 'التفصيل في الجدول الزمني',        en: 'Detail in the schedule' },
+  /* الشكل 25's table: التاريخ · المادي · المالي · المصدر · المستخدم. */
+  prg_updates_source: { ar: 'المصدر',                       en: 'Source' },
+  prg_wbs_progress:{ ar: 'الإنجاز',                         en: 'Progress' },
+  /* «التفصيل في إدارة المخاطر» — the plate's own wording for the module. */
+  prg_t_risk_register: { ar: 'إدارة المخاطر',               en: 'the risk register' },
   prg_curve:       { ar: 'منحنى الإنجاز — المخطط مقابل الفعلي (تراكمي)',
                      en: 'Progress curve — plan vs actual (cumulative)' },
 
@@ -1771,7 +1787,10 @@ const STR = {
   prg_t_contract_finish: { ar: 'النهاية التعاقدية',         en: 'contractual finish' },
   prg_t_forecast:  { ar: 'النهاية المتوقعة',                en: 'forecast finish' },
   prg_t_vs_baseline: { ar: 'مقابل خط الأساس المعتمد',       en: 'against the approved baseline' },
-  prg_t_spent_of:  { ar: 'مصروف {a} من {b}',                en: 'spent {a} of {b}' },
+  /* «مصروف 510,305,195 د.ع من 1,500,000,000 د.ع» — the plate carries the
+     currency on BOTH amounts, because the note is a sentence and a bare
+     figure in a sentence has no unit. */
+  prg_t_spent_of:  { ar: 'مصروف {a} د.ع من {b} د.ع',        en: 'spent {a} IQD of {b} IQD' },
   /* The one note the reference makes CONDITIONAL: money running ahead of
      delivery by more than twenty points is a finding, not a figure. */
   prg_t_fin_ahead: { ar: 'الصرف يسبق الإنجاز بـ {n} نقطة — يستوجب مراجعة',

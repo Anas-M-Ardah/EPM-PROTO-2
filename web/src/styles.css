@@ -60,7 +60,19 @@ epm-app-footer { display: contents; }
    ONE of the twelve columns and every one of those rules addressed an element
    that was no longer a grid item: four tiles rendered as four ~50px slivers
    and nothing reflowed at any width. Measured, on SCR-W6. */
-epm-tile { display: contents; }
+epm-tile,
+/* `.d-l04 > .d-fgroup { grid-column: span 12 }` addresses the CARD, so a
+   section inside the tile grid needs its host out of the way for the same
+   reason a tile does. Both are children of `.d-l04` on الأشكال 25 · 26 · 28. */
+epm-field-group { display: contents; }
+
+/* …and `display: contents` removes the host's BOX, not the host from the
+   SELECTOR tree. `.d-l04 > .d-fgroup { grid-column: span 12 }` still fails to
+   match through a component host, so the section took one of twelve columns
+   and stretched to 1178px. The tiles are unaffected because `.d-tile` carries
+   its span as an unscoped base rule; the section's is child-scoped, so the
+   host has to be spelled out. Measured, on SCR-W6. */
+.d-l04 > epm-field-group > .d-fgroup { grid-column: span 12; }
 
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct

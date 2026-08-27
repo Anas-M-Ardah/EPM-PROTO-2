@@ -150,14 +150,18 @@ export interface ProgressScheduleRisk {
   atRisk: ProgressAtRisk[];
 }
 
-/** الشكل 25 — «كل سطر معتمد من قسم مصدره — لا يُحرَّر هنا». */
-export interface ProgressUpdate {
+/**
+ * One READING of the whole project — الشكل 25's table: التاريخ · المادي ·
+ * المالي · المصدر · المستخدم, one row per date. NOT one row per contract
+ * event; that detail is the audit log's, and the section's footer links there.
+ */
+export interface ProgressUpdateRow {
   at: string;
-  contractId: string;
-  before: number | null;
-  after: number;
-  actorName: string;
-  actorParty: string;
+  physical: number;
+  financial: number;
+  /** The party that endorsed the reading, RECORDED — never a label by row index. */
+  source: string;
+  by: string;
 }
 
 /**
@@ -221,7 +225,7 @@ export interface ProgressResponse {
   wbs: ProgressWbs[];
   costImpact: ProgressCostImpact;
   scheduleRisk: ProgressScheduleRisk;
-  updates: ProgressUpdate[];
+  updates: ProgressUpdateRow[];
   periods: ProgressPeriod[];
   defaultPeriod: string;
   /** Z10's «آخر تحديث للإنجاز» — the newest reading, not the data date. */

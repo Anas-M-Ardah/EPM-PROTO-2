@@ -389,15 +389,6 @@ public static class ProgressEndpoints
             .Select(e => new { e.At, e.ContractId, e.Before, e.After, e.ActorName, e.ActorParty })
             .ToListAsync();
 
-        var updateRows = events
-            .Where(e => decimal.TryParse(e.After, out _))
-            .Select(e => new ProgressUpdateDto(
-                e.At.ToString("yyyy-MM-dd"), e.ContractId,
-                decimal.TryParse(e.Before, out var b) ? Q(b) : null,
-                Q(decimal.Parse(e.After!)),
-                e.ActorName, e.ActorParty))
-            .ToList();
-
         // ── الشكل 25 — «مرجع المقارنة» ───────────────────────────────────
         // ONE SERIES PER FIGURE, read at two dates. `Domain/ComparisonPeriod`
         // explains why that matters; here is where the two series are built.
@@ -409,9 +400,10 @@ public static class ProgressEndpoints
         // The financial reading is Σ NET of certificates PAID on or before the
         // date ÷ the revised cost: character for character the derivation
         // `financial` above uses, with `asOf` replaced by the reading's date.
-        var seriesUpdates = updateRows
-            .Select(u => new ProgressSeries.Update(
-                u.ContractId, DateOnly.Parse(u.At), u.After))
+        var seriesUpdates = events
+            .Where(e => decimal.TryParse(e.After, out _))
+            .Select(e => new ProgressSeries.Update(
+                e.ContractId, e.At, decimal.Parse(e.After!)))
             .ToList();
 
         var seriesContracts = contracts
@@ -437,6 +429,26 @@ public static class ProgressEndpoints
                     payments.Where(x => x.Status == "paid"
                                      && x.PaidDate is not null && x.PaidDate <= at)
                             .Sum(x => x.NetAmount)))))
+            .ToList();
+
+        // الشكل 25's table is these READINGS — التاريخ · المادي · المالي ·
+        // المصدر · المستخدم — newest first, one row per date. The per-contract
+        // before→after detail this used to print is the AUDIT's, and the
+        // section's own footer sends a reader there for it.
+        //
+        // المصدر is the recorded `ActorParty`, not the reference's `i % 2`
+        // alternation between «الجدول الزمني» and «الموقف المالي»: that is a
+        // label chosen by row position, and this build has the real one.
+        var updateRows = readings
+            .OrderByDescending(r => r.At)
+            .Select(r =>
+            {
+                var onDate = events.Where(e => e.At == r.At).ToList();
+                return new ProgressUpdateDto(
+                    r.At.ToString("yyyy-MM-dd"), r.Physical, r.Financial,
+                    Join(onDate.Select(e => e.ActorParty)),
+                    Join(onDate.Select(e => e.ActorName)));
+            })
             .ToList();
 
         // ── «منحنى الإنجاز — المخطط مقابل الفعلي» ────────────────────────
@@ -532,6 +544,15 @@ public static class ProgressEndpoints
                 TileThreshold.AtRisk(atRisk.Count)),
             curve);
     }
+
+    /// <summary>
+    /// Several contracts can be endorsed on one date, and الشكل 25's table has
+    /// one row per date. Distinct, so two contracts signed off by the same
+    /// department read as one name rather than as a repetition; empty entries
+    /// drop out rather than leaving a dangling separator.
+    /// </summary>
+    private static string Join(IEnumerable<string> parts) =>
+        string.Join(" · ", parts.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct());
 
     /// <summary>The WBS path separator, and the one `01 §2.5` fixes.</summary>
     private const char PathSep = '.';
