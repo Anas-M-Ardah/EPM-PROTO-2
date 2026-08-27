@@ -74,6 +74,24 @@ epm-field-group { display: contents; }
    host has to be spelled out. Measured, on SCR-W6. */
 .d-l04 > epm-field-group > .d-fgroup { grid-column: span 12; }
 
+/* ── THE CARD HEADER IS A CONTROL AND HAD NO FOCUS RING ──────────────────
+   `.d-fgroup > .gh` is the collapse toggle: `role="button"`, `tabindex="0"`,
+   Enter and Space bound. It is reachable by keyboard on every screen that uses
+   `<epm-field-group>` — الشكل 5's six sections, the contract tab's, the
+   financials tab's and now SCR-W6's — and a keyboard user could not see where
+   they were. WCAG 2.4.7, and CLAUDE.md §6's «:focus-visible on every
+   interactive element».
+
+   INSET, because the header is flush with the card's own corners and an
+   outset ring would sit outside the border it belongs to. `.d-fgroup` is
+   `overflow: hidden`, which would clip it anyway. */
+.d-fgroup > .gh:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: -2px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+/* Closed, the header IS the card, so the ring follows all four corners. */
+.d-fgroup.closed > .gh:focus-visible { border-radius: var(--r-lg); }
+
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
    flex child of `.d-detail-main`, so that `.d-pz7` inside it is the ONE
@@ -832,7 +850,12 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
    It matches `.d-ctxsel select`'s own type (desktop.css/boq.css:405): the
    medium weight and `--fs-200` are that rule's, not new values. */
 .epm-select.bare {
-  height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0;
+  /* 24px is the FLOOR, not the look: WCAG 2.2 AA (2.5.8, target size minimum)
+     puts a web pointer target at 24×24 CSS px, and dropping the frame had
+     dropped the hit box to 94×20 — the text's own line box. The pill around it
+     is taller than this, so the target grows inside `.d-ctxsel` and nothing
+     moves. Measured on SCR-W6; SCR-W5's four Z6 dropdowns get it too. */
+  height: auto; min-height: 24px; padding: 0; border: 0; border-radius: 0;
   background: transparent; color: var(--on-surface);
   font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-medium);
   max-width: 260px;

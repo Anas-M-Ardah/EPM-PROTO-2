@@ -1656,12 +1656,14 @@ const STR = {
                      en: 'No department has recorded a progress reading against this project’s contracts yet.' },
 
   /* الشكل 26 — حسب هيكل التجزئة */
-  prg_wbs_rollup:  { ar: 'الإنجاز التجميعي',                en: 'Rolled-up progress' },
-  prg_wbs_rollup_note:{ ar: 'محسوب صعودًا من الأنشطة، لا يُدخل يدويًا',
+  /* الشكل 26 names the card «الإنجاز التجميعي للجدول» — «للجدول» is what
+     distinguishes the SCHEDULE rollup from the BOQ-derived headline above. */
+  prg_wbs_rollup:  { ar: 'الإنجاز التجميعي للجدول',          en: 'Schedule rollup' },
+  prg_wbs_rollup_note:{ ar: 'محسوب صعوداً من الأنشطة، لا يُدخَل يدوياً',
                      en: 'Rolled up from the activities; never entered by hand' },
   prg_wbs_done:    { ar: 'مستويات مكتملة',                  en: 'Levels complete' },
   prg_wbs_levels:  { ar: 'الإنجاز حسب مستويات هيكل التجزئة', en: 'Progress by WBS level' },
-  prg_wbs_levels_sub:{ ar: 'محسوبة صعودًا من الأنشطة المرجّحة بالكلفة',
+  prg_wbs_levels_sub:{ ar: 'محسوبة صعوداً من الأنشطة المرجّحة بالكلفة',
                      en: 'Rolled up from the activities, weighted by cost' },
   prg_wbs_path:    { ar: 'المسار',                          en: 'Path' },
   prg_wbs_node:    { ar: 'المستوى',                         en: 'Level' },
@@ -1698,12 +1700,14 @@ const STR = {
   prg_risk_critical:{ ar: 'أنشطة حرجة',                     en: 'Critical activities' },
   prg_risk_negfloat:{ ar: 'عوم سالب',                       en: 'Negative float' },
   prg_risk_count:  { ar: 'أنشطة معرّضة للخطر',              en: 'Activities at risk' },
-  prg_risk_atrisk: { ar: 'الأنشطة المعرّضة للخطر · مرتبة بحسب الانزياح',
-                     en: 'Activities at risk · ordered by slip' },
-  prg_risk_atrisk_sub:{ ar: 'الحد: انزياح أكثر من',          en: 'Threshold: a slip greater than' },
-  prg_risk_none_t: { ar: 'لا نشاط تجاوز الحد',              en: 'No activity is over the threshold' },
-  prg_risk_none_b: { ar: 'لا نشاط تجاوز انزياحه الحد عند تاريخ البيانات.',
-                     en: 'No activity’s slip is over the threshold at the data date.' },
+  /* الشكل 28: the TITLE is the list, the SUB is its ordering. The threshold
+     is on the card above and does not belong in a second place. */
+  prg_risk_atrisk: { ar: 'الأنشطة المعرّضة للخطر',
+                     en: 'At-risk activities' },
+  prg_risk_atrisk_sub:{ ar: 'مرتّبة بحسب الانزياح',           en: 'ordered by slip' },
+  prg_risk_none_t: { ar: 'لا أنشطة معرّضة للخطر',            en: 'No at-risk activities' },
+  prg_risk_none_b: { ar: 'لا نشاط تجاوز انزياحه الحد، ولا انزياح على المسار الحرج، عند تاريخ البيانات.',
+                     en: 'No activity has slipped past the threshold and nothing on the critical path has slipped, as at the data date.' },
 
   /* «كيف تُحتسب» — every rule behind the four tabs, in one place */
   prg_how_title:   { ar: 'كيف تُحتسب أرقام هذه الشاشة',      en: 'How this screen’s figures are computed' },

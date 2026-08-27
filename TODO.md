@@ -244,6 +244,37 @@ dictionary's and `progress.page.ts` reads the same list — so a chip-only rewri
 would split one vocabulary across two screens.
 
 ---
+
+## `--fg-subtle` fails AA in light mode — 114 uses, one token · **needs a call**
+
+Found by the UI/UX pass on SCR-W6, measured in the running app rather than
+reasoned off the palette.
+
+`05 §7` is stated to be «an accessibility contract, not advice», and WCAG AA puts
+normal text at **4.5:1**. `--fg-subtle` is the caption colour on 12px text — tile
+notes, card subtitles, Z10's «البيانات حتى», and every `.d-cell-sub` in every
+register:
+
+| theme | token | on | ratio | AA 4.5:1 |
+|---|---|---|---|---|
+| light | `#8B94A1` | `#FFFFFF` | **3.07** | ✗ fails |
+| dark | `#7D8794` | `#1D2127` | **4.44** | ✗ marginal |
+
+**Why it was not just changed.** It is ONE token in `styles/tokens.css` with
+**114 references** across `desktop.css`, `boq.css` and `styles.css`, and
+`web/src/styles/` is a design contract copied verbatim from the reference
+(CLAUDE.md §3.7). Darkening it repaints the caption layer of every screen in the
+build — which is very likely the right thing to do, and is still a decision about
+the client's own palette rather than one screen's defect.
+
+**What would clear AA** without moving the hue: light `#6B7480` (4.54:1 on
+white), dark `#8A94A2` (4.83:1 on `#1D2127`). Both are two steps along the ramp
+the palette already walks.
+
+**Question for the client:** is the caption colour theirs to keep as drawn, or may
+it move to meet the contract `05 §7` already sets?
+
+---
 ## The checked-in reference is older than the live prototype
 
 Found while rebuilding SCR-W1 against `infinite-azaiton.github.io/epm`.

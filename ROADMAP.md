@@ -733,6 +733,23 @@ A9 slip −9; SCR-E5's critical-activities tile shows 11 instead of "unavailable
 >    the tiles and not the sections** (P-202) — it removes a box, never a
 >    selector, and `.d-tile`'s span is unscoped while `.d-fgroup`'s is not.
 >
+> 7. **الشكل 26 and الشكل 28, checked the same way** (P-203). Five strings were
+>    wrong, all wording: «الإنجاز التجميعي» was missing **«للجدول»**, the word
+>    that separates the schedule rollup from the BOQ-derived headline one tab
+>    away; the at-risk section's title carried its own ordering and its subtitle
+>    carried the threshold, which the card above already states; and its empty
+>    state answered a narrower question than the list asks.
+>
+> 8. **A WCAG 2.2 AA pass** with the rule set the client named (P-204). Two real
+>    defects: the `bare` select trigger was a **94×20** pointer target against
+>    2.5.8's 24×24 CSS px, and `.d-fgroup > .gh` — a `role="button"` with
+>    `tabindex="0"` on four screens — had **no focus indicator at all**. Already
+>    sound and left alone: `aria-hidden` on icons, `prefers-reduced-motion`, an
+>    `.sr` phrase on every tile state, and a Z10 that sits in its own flex row
+>    rather than over the scroll box. **`--fg-subtle` measures 3.07:1 in light**
+>    against 12px text — one token, 114 references, the whole caption layer — so
+>    it is in `TODO.md` with two candidate values rather than changed here.
+>
 > **Verified live** at 1440 and 800, AR and EN, light and dark: `PRJ-0279` reads
 > المادي **51%** against مخطط **76%** with **+8 نقطة** since the 2026-07-20
 > reading, four bands `bad·warn·bad·warn` each carrying its screen-reader phrase,
