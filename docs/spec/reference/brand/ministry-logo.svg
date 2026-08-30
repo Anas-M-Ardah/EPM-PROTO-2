@@ -1,0 +1,17 @@
+<!-- Placeholder institutional crest for the EPM prototype. This is an ORIGINAL
+     mark, not the official Ministry emblem — the real crest is a state emblem and
+     should be dropped in at this exact path to replace it everywhere at once.
+     Drawn for 26px, not for 64: the shell renders it at 26–30 in the sidebar and
+     30 on the landing, so it carries exactly two shapes and one ring. An inner
+     decorative ring and a smaller book were tried first and merged into a smudge. -->
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ministry of Higher Education">
+  <circle cx="32" cy="32" r="30" fill="#fff"/>
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#1d3c6e" stroke-width="2.8"/>
+  <!-- learning: a star over an open book -->
+  <path fill="#e8645a" d="M32 8 L34.59 14.94 L41.99 15.26 L36.18 19.86 L38.17 26.99 L32 22.9 L25.83 26.99 L27.82 19.86 L22.01 15.26 L29.41 14.94 Z"/>
+  <g fill="#1d3c6e">
+    <path d="M31 36.5 C26.5 33.4 19 32.3 12 33 V47 C19 46.3 26.5 47.6 31 50.7 Z"/>
+    <path d="M33 36.5 C37.5 33.4 45 32.3 52 33 V47 C45 46.3 37.5 47.6 33 50.7 Z"/>
+  </g>
+  <path d="M32 35.8 V50.4" stroke="#1d3c6e" stroke-width="2" stroke-linecap="round"/>
+</svg>

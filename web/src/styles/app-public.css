@@ -85,7 +85,7 @@
 .login-secure .mi { color: var(--status-completed-tx); flex: none; margin-top: 1px; }
 
 /* ============================================================
-   ADMIN (lazy module ��� distinct identity)
+   ADMIN (lazy module — distinct identity)
    ============================================================ */
 .admin { min-height: 100vh; display: flex; background: var(--background); }
 .adm-nav { width: 268px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-4) var(--sp-3);
