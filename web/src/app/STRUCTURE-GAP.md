@@ -19,15 +19,22 @@ Three sides, each biased so the gap is never **over**stated: the prototype side 
 `d-*` token appearing in any `.ts`/`.html` string (it over-captures on purpose); the CSS
 side is every `.d-*` selector in the shipped sheets.
 
-## The number, at 2026-08-31
+## The number
 
-| | |
-|---|---|
-| the prototype emits | **411** `d-*` classes |
-| the Angular app emits | **273** |
-| defined in the shipped stylesheets | **530** |
-| **GAP** — defined **and** emitted by the prototype **and** emitted by no template | **148** |
-| **OWN** — emitted by Angular, absent from the prototype | **6** |
+| | at first measure | now |
+|---|---|---|
+| the prototype emits | 411 `d-*` classes | **411** |
+| the Angular app emits | 273 | **285** |
+| defined in the shipped stylesheets | 530 | **530** |
+| **GAP** — defined **and** emitted by the prototype **and** emitted by no template | 148 | **136** |
+| **OWN** — emitted by Angular, absent from the prototype | 6 | **6** |
+
+| cluster | classes | state |
+|---|---|---|
+| A1 · الشكل 6 · 7 contract register + cost breakdown | 12 | **✅ done** — 148 → 136 |
+| A2 … A17 | 103 | 🔨 |
+| B · intended | 27 | — |
+| C · module absent | 6 | — |
 
 The drift is **omission, not invention**: 148 against 6. Nothing here says the port did
 something wrong instead; it says it did less.
@@ -49,17 +56,42 @@ something wrong instead; it says it did less.
 Ordered by how much each changes what you see. Every one is **markup only**: the class
 already exists in the copied sheets, so `CLAUDE.md` §3.7 holds and **no CSS rule is added**.
 
-### A1 · الشكل 6 · 7 — contract register and cost breakdown · SCR-W3 · 12
+### A1 · الشكل 6 · 7 — contract register and cost breakdown · SCR-W3 · 12 · **✅ DONE**
 
-`project-modules.jsx:363` `DModContractNew` (grid at `:490`) → `features/contract-tab/contract.page.html`
+`project-modules.jsx:363` `DModContractNew` (grid at `:490`, cost split at `:731`) →
+`features/contract-tab/contract.page.html`
 
-The prototype draws the project's contracts as **cards in a grid**, each carrying its own
-value equation, paired progress bars, status and addenda badges. The port draws a
-`d-table`. This is the single most visible difference in the app.
+**Not what this file first claimed.** The port did *not* draw a `d-table` — it drew the
+card grid too, out of ~90 lines of bespoke `.epm-*`, on the strength of a comment in
+`styles.css` asserting that `DModContractNew` «renders a seven-column table with none of
+the five figures the card carries». That was never true: the component renders
+`.d-contract-grid` of `.d-contract-card` in the v1.1 branch, in the pre-v1.1 `main`, and in
+**both** checked-in revisions of the reference. The structure was re-derived while an
+identical one sat shipped and unused. The largest instance of §D, and the reason it is
+worth reading this file before rebuilding anything.
+
+Ported: `.d-csum` (+ `> .hd`) for the contractual position, `.d-recon` unchanged (already
+correct), `.d-csum-bars` for the two rails — its `.track > u` is the «العلامة = نسبة الصرف»
+tick — `.d-contract-grid` / `.d-contract-card*` for the cards, `.d-costsplit` for الشكل 7's
+«تفصيل كلفة العقد». Deleted from `styles.css`: `.epm-concard*`, `.epm-conmeta`,
+`.epm-confoot`, `.epm-barpair`, `.epm-track.marked`/`.mk`, `.epm-costgrid`/`.epm-costtile`,
+`.d-pill.count::before`.
 
 `d-contract-grid` `d-contract-card` `d-contract-card-top` `d-contract-card-title`
 `d-contract-card-kv` `d-contract-card-val` `d-contract-card-mtx` `d-contract-card-foot`
 `d-contract-mini` `d-csum` `d-csum-bars` `d-costsplit`
+
+Two things the rebuild turned up, both recorded in P-207 rather than papered over:
+
+- **The card had no focus ring.** `.d-contract-card` is `all: unset` on a `<button>`, which
+  resets `outline` to `none` and **beats** the global `:focus-visible` at `tokens.css:390`
+  — equal specificity, `desktop.css` loads later. The sheet gives the card a `:hover` rule
+  and no focus one. Fixed in `styles.css` with the global rule's own values, exactly the
+  P-204 precedent. The defect is in the reference too.
+- **`.d-costsplit .cf` is `--fs-100` = 10px**, where the deleted `.epm-costtile .sp2` was
+  11.5px. Below the 11px floor, and it is P-33 — one of the four breaches the client chose
+  to keep for fidelity. Adopted rather than overridden, because overriding it would reopen
+  a decision the client has already made.
 
 ### A2 · الشكل 29 · 30 — change-order register and record layout · SCR-W8 · 10
 
@@ -291,22 +323,28 @@ what the port needs of it. Low value — confirm and then move this to §B.
 
 ---
 
-## D · Four widgets were rebuilt instead of reused
+## D · Widgets that were rebuilt instead of reused
 
 The sharpest evidence that the reference was not being opened, and a direct breach of
 `CLAUDE.md` §3.7 — *"grep before you write a rule."* Each pair is the same widget twice:
 the shipped rule, addressing nothing, and a second implementation in
 `web/src/styles.css`.
 
-| widget | shipped, unused | written instead | plate |
-|---|---|---|---|
-| donut legend | `.d-legend` · `.d-legend-i` — `desktop.css:305` | `.epm-legend` — `styles.css:270` | الشكل 2 · 4 |
-| value-by-entity bars | `.d-mlist` · `.d-mlist-row` — `desktop.css:768` | `.epm-bars` — `styles.css:278` | الشكل 2 |
-| audit-stage cards | `.d-slastages .ss/.sh/.dot` — `desktop.css:3042` | `.epm-slastage` — `styles.css:929` | الشكل 17 |
-| share bar | `.d-dist` — `desktop.css:303` | `.epm-track` — `styles.css:427` | الشكل 2 |
+| widget | shipped, unused | written instead | plate | state |
+|---|---|---|---|---|
+| **the whole contract register** | `.d-contract-grid` · `.d-contract-card*` · `.d-csum` · `.d-csum-bars` | `.epm-concard` · `.epm-cardgrid` · `.epm-reghead` · `.epm-barpair` | الشكل 6 | ✅ A1 |
+| cost breakdown tiles | `.d-costsplit` — `desktop.css:2873` | `.epm-costgrid` · `.epm-costtile` | الشكل 7 | ✅ A1 |
+| the spend tick | `.d-csum-bars .track > u` | `.epm-track.marked > .mk` | الشكل 6 · 7 | ✅ A1 |
+| donut legend | `.d-legend` · `.d-legend-i` — `desktop.css:305` | `.epm-legend` — `styles.css` | الشكل 2 · 4 | 🔨 A10 |
+| value-by-entity bars | `.d-mlist` · `.d-mlist-row` — `desktop.css:768` | `.epm-bars` — `styles.css` | الشكل 2 | 🔨 A13 |
+| audit-stage cards | `.d-slastages .ss/.sh/.dot` — `desktop.css:3042` | `.epm-slastage` — `styles.css` | الشكل 17 | 🔨 A7 |
+| share bar | `.d-dist` — `desktop.css:303` | `.epm-track` — `styles.css` | الشكل 2 | 🔨 A10 |
 
-Rebuilding A7, A10 and A13 **deletes** these four blocks from `styles.css`. That is the
-measure of the fix: the file gets shorter, not longer.
+Each rebuild **deletes** its block from `styles.css`. That is the measure of the fix: the
+file gets shorter, not longer. A1 removed **22 selectors and added 3** (net −13 lines; the
+rest of the diff is comments recording why): one `.spend` fill modifier, because the
+reference sets that colour inline at four call sites and `05 §8` names inline-styles-beating-
+the-stylesheet a defect class, and the missing focus ring above.
 
 The rest of `web/src/styles.css` is not implicated — most of it documents genuine Angular
 host-element problems and is described in §E.
