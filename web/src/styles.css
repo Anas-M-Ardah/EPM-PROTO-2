@@ -74,6 +74,31 @@ epm-field-group { display: contents; }
    host has to be spelled out. Measured, on SCR-W6. */
 .d-l04 > epm-field-group > .d-fgroup { grid-column: span 12; }
 
+/* ── THE SAME TRAP AGAIN, AND THIS ONE CRUSHED EVERY SECTION CARD ────────
+   `.d-pz7` is `display: flex; flex-direction: column; overflow-y: auto`, and
+   `desktop.css:2374` already pins its children with `.d-pz7 > * { flex: 0 0
+   auto }` — the rule that stops a column of cards being shrunk to fit instead
+   of scrolling. It never matched. `.d-pz7 > *` selects the `<epm-field-group>`
+   HOST, which `display: contents` has left without a box, so the declaration
+   lands on nothing and the real flex item — `.d-fgroup` — kept the CSS default
+   `flex-shrink: 1`.
+
+   The cards then shrank below their content, and `.d-fgroup` is
+   `overflow: hidden` (desktop.css:2142), so each one clipped its own body to a
+   sliver and the six headers stacked into each other. MEASURED on الشكل 5 in
+   edit mode at 800×620: six cards needing 1204px rendered in 147px, and
+   `.d-pz7` reported `scrollHeight === clientHeight` — it never scrolled,
+   because nothing overflowed it. The same 5/5 on الشكل 8's التفاصيل: 910px of
+   content in 268px.
+
+   It hits every screen that puts a section card in a module pane — الشكل 5,
+   الشكل 8 · 10, الشكل 14 · 18, الشكل 25 — and only once the content outgrows
+   the pane, which is why it reads as "sometimes broken" rather than always.
+
+   `flex: 0 0 auto` is `.d-pz7 > *`'s own declaration, spelled through the host
+   the way the `.d-l04` rule above had to be. See P-209. */
+.d-pz7 > epm-field-group > .d-fgroup { flex: 0 0 auto; }
+
 /* ── THE CARD HEADER IS A CONTROL AND HAD NO FOCUS RING ──────────────────
    `.d-fgroup > .gh` is the collapse toggle: `role="button"`, `tabindex="0"`,
    Enter and Space bound. It is reachable by keyboard on every screen that uses
