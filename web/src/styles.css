@@ -117,6 +117,23 @@ epm-field-group { display: contents; }
 /* Closed, the header IS the card, so the ring follows all four corners. */
 .d-fgroup.closed > .gh:focus-visible { border-radius: var(--r-lg); }
 
+/* ── THE GATE MESSAGES INSIDE الشكل 39's EDITOR NEED THE ROW'S OWN INSET ──
+   `.d-vow-ed > td` is `padding: 0 !important` (desktop.css:1979), because in
+   the reference every child of the editor carries its own — `.d-vow-edh`
+   12/16/10, `.d-vow-props` 14/16, and `.d-vow-note` through the sheet's own
+   `.d-vow-ed .d-vow-note { margin: 0 16px 14px }`.
+
+   This port shows BR-07's validation gates inline at the foot of the editor,
+   which the reference does not, so `.d-msgbar` arrives with no inset and sits
+   flush against the cell edge. One rule, matching the inset the sheet gives
+   its own note, so an addition of ours lines up with the children beside it.
+
+   The sheet writes that note's bottom margin as a literal `14px`, which is not
+   on the spacing scale (2·4·6·8·10·12·16·20·24…). CLAUDE.md §3.7 wants tokens,
+   so this takes `--space-12` — the neighbouring step — rather than copying a
+   literal across. */
+.d-vow-ed > td > .d-msgbar { margin: 0 var(--space-16) var(--space-12); }
+
 /* ── THE CONTRACT CARD IS A BUTTON AND HAD NO FOCUS RING EITHER ──────────
    Same defect, same fix, found the same way — by tabbing to it. الشكل 6's
    card IS the control that opens الشكل 7 (`.d-contract-card` is `all: unset`

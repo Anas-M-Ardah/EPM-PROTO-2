@@ -96,9 +96,19 @@ const isLive = c => [...(proto.get(c) ?? [])].some(fc => {
 /* .ts and .html ONLY. web/src/app/STRUCTURE-GAP.md names 162 of these classes and
    lives inside NG — widen this whitelist and the report reads its own backlog as
    markup, and the gap collapses to nothing. */
+/* COMMENTS ARE STRIPPED FIRST. These templates explain themselves at length,
+   and a comment that NAMES a class it is not using — "`.d-vow-facets` is not
+   here, see A4b" — would otherwise count as markup and quietly retire a row
+   that is still outstanding. Measured: two classes went missing from the gap
+   this way before the strip was added. */
+const strip = s => s
+  .replace(/<!--[\s\S]*?-->/g, ' ')   // html
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')  // /* … */ in .ts and inline styles
+  .replace(/^\s*\/\/.*$/gm, ' ');     // // … line comments in .ts
+
 const angular = new Set();
 for (const f of walk(NG, ['.ts', '.html']))
-  for (const c of readFileSync(f, 'utf8').match(TOKEN) ?? []) angular.add(c);
+  for (const c of strip(readFileSync(f, 'utf8')).match(TOKEN) ?? []) angular.add(c);
 
 const css = new Set();
 for (const f of walk(SHEETS, ['.css']))

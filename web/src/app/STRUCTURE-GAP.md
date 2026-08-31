@@ -24,12 +24,12 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **290** |
+| the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 148 | **131** |
+| missing from the port | 151 | **131** |
 | → **GAP** — and the prototype actually **renders** it | — | **105** |
 | → **DEAD** — its component is never mounted, in the reference either | — | **26** |
-| **OWN** — emitted by Angular, absent from the prototype | 6 | **6** |
+| **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
 | cluster | classes | state |
 |---|---|---|
@@ -37,10 +37,24 @@ side is every `.d-*` selector in the shipped sheets.
 | A2a · الشكل 29 · 33 register table + المسار layout | 5 | **✅ done** |
 | A2b · الشكل 30 focus mode | 5 | ⏸ **not markup** — needs a decision |
 | A3 · الشكل 33 review flow | 5 | ❌ **dead** — `DReviewFlow` is never mounted |
-| A4 … A17, live remainder | 73 | 🔨 |
+| A4a · الشكل 38 · 39 picker bar + editor row | 3 | **✅ done** |
+| A4b · الشكل 38 · 39 facets, chips, caps | 6 | ⏸ **not markup** — needs a decision |
+| A5 … A17, live remainder | 65 | 🔨 |
 | **D · dead in the reference** | **26** | ❌ do not port |
-| B · intended | 26 | — |
+| B · intended | 29 | — |
 | C · module absent | 6 | — |
+
+**The first measure said 148 and it was 151.** Three classes — `d-bulkbar`, `d-nav-grp`,
+`d-three` — were counted as ported because a *comment* in a template named them while
+explaining why they are deliberately absent. `tools/structure-gap.mjs` now strips HTML and
+JS comments before tokenising, and those three moved to §B4 where they belonged. Two more
+would have gone the same way this session: the A4b comment naming `.d-vow-facets` and
+`.d-vow-chip` as *not* built would have retired both rows.
+
+**Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
+A2b is built. It is no longer the single number this file opened with, because three
+clusters in, three different things turned out to be true: a real port, a missing feature,
+and dead code.
 
 **Two corrections have already changed what this file counts.** A2b: the first cluster that
 turned out to be a missing *feature* rather than a structure drawn differently, split out so
@@ -173,17 +187,44 @@ Moved to §D. See P-210.
 
 `d-review-flow` `d-rf-step` `d-rf-dot` `d-rf-l` `d-rf-ret`
 
-### A4 · الأشكال 37–42 — the creation wizard · 9
+### A4a · الشكل 38 · 39 — picker bar and editor row · 3 · **✅ DONE**
 
-`vo-wizard.jsx:6` `DVOCreateWizard` · `vo-wizard-parts.jsx:42` `DVOMultiPick` / `DVOChips`
-→ `features/change-orders/change-order.wizard.ts`
+`vo-wizard-parts.jsx:42` `DVOMultiPick` · `vo-wizard.jsx:425` `DVOCreateWizard`
+→ `features/change-orders/change-order.wizard.html`
 
-Step 2's picker is a **faceted** search over the bill (`d-vow-facets` · `d-vow-filters` ·
-`d-vow-search`), and step 2's item card states the 20% cap and both proposals in its own
-frame (`d-vow-cap` · `d-vow-prov` · `d-vow-f` · `d-vow-ed` · `d-vow-state`).
+The picker's search moved out of `.d-modal-body` into the sheet's own
+`.d-vow-filters > .d-vow-search` bar, which is `flex: none` so it holds still while the
+result table scrolls under it; `.d-field`, the app's generic search box, had been standing
+in. And الشكل 39's expanded item card became `<tr class="d-vow-ed">` — the sheet gives the
+row a `--surface-container-low` plane and a closing border, so the editor reads as a panel
+opened out of the table rather than as more table. `.d-vow-edh` joins the existing
+`.d-vow-tier` on the header rather than replacing it: `edh` supplies the inset and divider
+that `.d-vow-ed`'s `padding: 0` removes, `tier` keeps `.t` and the tone on the 20% note.
 
-`d-vow-facets` `d-vow-filters` `d-vow-search` `d-vow-chip` `d-vow-cap` `d-vow-prov`
-`d-vow-f` `d-vow-ed` `d-vow-state`
+`.d-vow-sub` was this row's only caller and is now unused — one of the six classes the sheet
+ships that the prototype never emits.
+
+`d-vow-filters` `d-vow-search` `d-vow-ed`
+
+### A4b · الشكل 38 · 39 — facets, chips, caps · 6 · ⏸ **NOT MARKUP — needs a decision**
+
+Six classes, four behaviours the port does not have:
+
+- **`d-vow-facets` · `d-vow-chip`** — the picker filters by column (division, WBS, location)
+  with the active filters shown as removable chips. Needs facet definitions per pool and
+  filter state; the port's picker is search-only. The reference also multi-selects with
+  checkboxes and adds in bulk («إضافة المحدد (n)») where the port adds one row at a time —
+  a second behavioural difference in the same dialog.
+- **`d-vow-cap`** — the quantity field states its ceiling («الحد N») and says when it has
+  clamped («حُدَّ بالكمية المتبقية»). This is `CLAUDE.md` §6's *"prevent invalid input — cap
+  the field and explain the cap — rather than flagging it after"*, so it is worth building;
+  the port's inputs carry neither a max nor a hint. Needs clamping state.
+- **`d-vow-prov`** — «جزئي — سعر الزائد غير مُحدَّد» under a proposal priced only in part.
+- **`d-vow-state`** — the per-row state marker with its note list.
+- **`d-vow-f`** — a 6px inline field row. Trivial CSS, but it has no obvious call site in the
+  port's markup; it needs one identified rather than invented.
+
+`d-vow-facets` `d-vow-chip` `d-vow-cap` `d-vow-prov` `d-vow-state` `d-vow-f`
 
 ### A5 · الشكل 12 — BOQ register, item card, activity assignment · SCR-W4 · 14
 
@@ -343,6 +384,20 @@ drawing sheet, the image compare strip and the revision picker are the viewer.
 `d-l18*` is that screen's tree-plus-sheet layout, which only exists to hold the viewer.
 
 `d-viewer` `d-viewerbar` `d-dwg-reg` `d-l18` `d-l18-tree` `d-l18-fall`
+
+### B4 · Deliberately absent, and already argued in the code · 3
+
+Not found by this audit — found when `tools/structure-gap.mjs` stopped counting comments as
+markup. Each is named in a template comment that explains why it is *not* there, which is
+why each looked ported:
+
+- `d-bulkbar` — `entities.page.html:228`: the register has no select column and no bulk bar.
+- `d-nav-grp` — `shell.component.ts:182`: the reference's only `.d-nav-grp` is «الحوكمة»,
+  a group this build does not print.
+- `d-three` — `workspace.page.ts:26` · `shell.component.ts:124`: `DWorkspace` returns
+  `.d-main > .d-three`; this shell makes the split differently.
+
+`d-bulkbar` `d-nav-grp` `d-three`
 
 ### B3 · Module readiness dots — P-09 · 2
 
