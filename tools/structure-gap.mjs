@@ -72,6 +72,27 @@ for (const f of walk(REF, ['.jsx', '.js'])) {
   }
 }
 
+/* ── IS THE COMPONENT ACTUALLY RENDERED? ──────────────────────────────────
+   The reference contains components that are declared and exported to
+   `window` and then never mounted — `DReviewFlow`, `DEditTimeline`,
+   `DActRows`, `DDistribution`, `DMetricList`, `DProjectContext` among them.
+   Their `className=` attributes are in the source, so a naive scan counts
+   their classes as gaps and sends someone off to port markup that draws
+   nothing in the running prototype. Verified against the live site as well as
+   the checked-in copy. See P-210.
+
+   A component counts as mounted if it appears as `<X` or `<window.X` (the
+   prototype crosses files through `window`). A class whose every emitter is
+   unmounted is DEAD in the reference, not missing from the port. */
+const refSrc = walk(REF, ['.jsx', '.js']).map(f => readFileSync(f, 'utf8')).join('\n');
+const mounted = n => new RegExp('<(?:window\\.)?' + n + '[\\s/>]').test(refSrc);
+const liveComponent = new Map();               // component -> boolean
+const isLive = c => [...(proto.get(c) ?? [])].some(fc => {
+  const n = fc.split(':')[1];
+  if (!liveComponent.has(n)) liveComponent.set(n, mounted(n));
+  return liveComponent.get(n);
+});
+
 /* .ts and .html ONLY. web/src/app/STRUCTURE-GAP.md names 162 of these classes and
    lives inside NG — widen this whitelist and the report reads its own backlog as
    markup, and the gap collapses to nothing. */
@@ -83,18 +104,23 @@ const css = new Set();
 for (const f of walk(SHEETS, ['.css']))
   for (const m of readFileSync(f, 'utf8').matchAll(/\.(d-[a-z0-9-]+)/g)) css.add(m[1]);
 
-const gap = [...proto.keys()].filter(c => css.has(c) && !angular.has(c)).sort();
-const own = [...angular].filter(c => css.has(c) && !proto.has(c)).sort();
+const missing = [...proto.keys()].filter(c => css.has(c) && !angular.has(c)).sort();
+const gap  = missing.filter(isLive);     // the prototype really draws these
+const dead = missing.filter(c => !isLive(c));  // declared, exported, never mounted
+const own  = [...angular].filter(c => css.has(c) && !proto.has(c)).sort();
 
 console.log(`prototype emits          ${proto.size}`);
 console.log(`angular emits            ${angular.size}`);
 console.log(`defined in stylesheets   ${css.size}`);
-console.log(`\nGAP  defined + emitted by the prototype + emitted by no template: ${gap.length}`);
-console.log(`OWN  emitted by angular, absent from the prototype:               ${own.length}`);
+console.log(`\nGAP   the prototype RENDERS it, no Angular template emits it:  ${gap.length}`);
+console.log(`DEAD  in the reference too — its component is never mounted:   ${dead.length}`);
+console.log(`OWN   emitted by angular, absent from the prototype:           ${own.length}`);
 
 if (process.argv.includes('--list')) {
   console.log('\n--- GAP ---');
   for (const c of gap) console.log(`${c.padEnd(24)} ${[...proto.get(c)].sort().join(' · ')}`);
+  console.log('\n--- DEAD (do not port: nothing renders these) ---');
+  for (const c of dead) console.log(`${c.padEnd(24)} ${[...proto.get(c)].sort().join(' · ')}`);
   console.log('\n--- OWN ---');
   for (const c of own) console.log(c);
 }

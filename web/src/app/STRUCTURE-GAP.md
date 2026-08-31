@@ -26,22 +26,30 @@ side is every `.d-*` selector in the shipped sheets.
 | the prototype emits | 411 `d-*` classes | **411** |
 | the Angular app emits | 273 | **290** |
 | defined in the shipped stylesheets | 530 | **530** |
-| **GAP** — defined **and** emitted by the prototype **and** emitted by no template | 148 | **131** |
+| missing from the port | 148 | **131** |
+| → **GAP** — and the prototype actually **renders** it | — | **105** |
+| → **DEAD** — its component is never mounted, in the reference either | — | **26** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **6** |
 
 | cluster | classes | state |
 |---|---|---|
-| A1 · الشكل 6 · 7 contract register + cost breakdown | 12 | **✅ done** — 148 → 136 |
-| A2a · الشكل 29 · 33 register table + المسار layout | 5 | **✅ done** — 136 → 131 |
+| A1 · الشكل 6 · 7 contract register + cost breakdown | 12 | **✅ done** |
+| A2a · الشكل 29 · 33 register table + المسار layout | 5 | **✅ done** |
 | A2b · الشكل 30 focus mode | 5 | ⏸ **not markup** — needs a decision |
-| A3 … A17 | 93 | 🔨 |
-| B · intended | 27 | — |
+| A3 · الشكل 33 review flow | 5 | ❌ **dead** — `DReviewFlow` is never mounted |
+| A4 … A17, live remainder | 73 | 🔨 |
+| **D · dead in the reference** | **26** | ❌ do not port |
+| B · intended | 26 | — |
 | C · module absent | 6 | — |
 
-**A2b is why the totals no longer land on 33 by markup alone.** The acceptance figure below
-assumes every A-cluster is a markup port; the first cluster that turned out to be a missing
-*feature* has to be counted separately or the number lies. Anything else that proves to be
-behaviour rather than structure gets split the same way.
+**Two corrections have already changed what this file counts.** A2b: the first cluster that
+turned out to be a missing *feature* rather than a structure drawn differently, split out so
+a cluster is not reported done when half of it is a decision waiting to be taken. And §D:
+the measurement read `className=` out of the reference **source**, which counts components
+that are declared, exported to `window`, and never mounted. `node tools/structure-gap.mjs`
+now checks for `<X` or `<window.X` before calling a class missing, and 26 of the 131 turned
+out to draw nothing in the running prototype. **Acceptance is now a GAP of 32** — the 26
+intended-or-absent that remain live, plus A2b's 5, minus the one B3 class that moved to §D.
 
 The drift is **omission, not invention**: 148 against 6. Nothing here says the port did
 something wrong instead; it says it did less.
@@ -143,13 +151,25 @@ a function, and it is only worth doing alongside the queue it shares the slot wi
 
 `d-vo-queue-b` `d-vo-qitem` `d-vo-qfall` `d-ctxnum` `d-l14-z8fall`
 
-### A3 · الشكل 33 — مسار الاعتماد · 5
+### A3 · ~~الشكل 33 — مسار الاعتماد~~ · 5 · ❌ **DEAD — do not port**
 
-`project-modules.jsx:74` `DReviewFlow` → `features/change-orders/change-order.page.html`
+`project-modules.jsx:74` `DReviewFlow`
 
-The six-stage flow with its return branch (`d-rf-ret` is «إعادة للتعديل» — the arc back).
-`03 §2`'s six stages are the flagship of the whole system and the plate draws them as a
-flow, not a list.
+**This entry was wrong twice over, and checking before building is what caught it.**
+
+First, `DReviewFlow` is not الشكل 33's approval path. It is a generic four-step review strip
+— مسودة · مُقدَّم · قيد المراجعة · معتمد — with a «مُعاد بملاحظات» marker. `03 §2`'s **six**
+stages are drawn by `.d-votrail`, which the port already uses. Putting this on the المسار tab
+would have contradicted the plate it claims to serve.
+
+Second, and decisive: **`DReviewFlow` is never mounted.** It is declared at `:74`, exported
+in the `Object.assign(window, …)` list at `:3020`, and rendered nowhere — no `<DReviewFlow`,
+no `<window.DReviewFlow`, in the checked-in reference or in the live prototype
+(`curl …/app/project-modules.jsx | grep -c '<DReviewFlow'` → 0). The five classes and their
+CSS draw nothing in the running app. Porting them would have meant **inventing a call site
+the reference does not have**.
+
+Moved to §D. See P-210.
 
 `d-review-flow` `d-rf-step` `d-rf-dot` `d-rf-l` `d-rf-ret`
 
@@ -361,7 +381,40 @@ what the port needs of it. Low value — confirm and then move this to §B.
 
 ---
 
-## D · Widgets that were rebuilt instead of reused
+## D-dead · 26 classes nothing renders — in the reference either
+
+`node tools/structure-gap.mjs --list` prints these under `--- DEAD ---`. Each is emitted
+only by a component that is **declared, exported to `window`, and never mounted** — no `<X`
+and no `<window.X` anywhere in the reference. Their CSS ships, their markup exists in the
+source, and the running prototype draws none of it.
+
+**Do not port any of them.** Doing so means inventing a call site the reference does not
+have, which is how a screen ends up with something the plate never asked for. They are not
+counted against any cluster's total; the clusters below carry their live remainder.
+
+| never-mounted component | classes | was in |
+|---|---|---|
+| `DReviewFlow` `project-modules.jsx:74` | `d-review-flow` `d-rf-step` `d-rf-dot` `d-rf-l` `d-rf-ret` | **A3, now entirely dead** |
+| `DEditTimeline` `project-modules.jsx:41` | `d-edit-timeline` `d-edit-item` `d-edit-chips` `d-edit-chip` `d-edit-dot` `d-edit-meta` | **A9, now entirely dead** |
+| `DProjectContext` `desktop-workspace.jsx:279` | `d-ctx` `d-ctx-sec` `d-ctx-act` `d-pane-scroll` | A11 (10 → 6) |
+| `DDistribution` `desktop-views.jsx:7` · `DActivity` | `d-dist` `d-legend` `d-legend-i` `d-actico` | A10 (10 → 6) |
+| `DModBOQ` `project-modules.jsx` / `contract-context.jsx` · `D0count` | `d-add-inline` `d-add-trigger` `d-rate-multi` `d-inp` | A5 (14 → 10) |
+| `DMetricList` `desktop-charts.jsx:68` | `d-mlist` `d-mlist-row` | A13 (6 → 4) |
+| `DReadiness` `project-modules.jsx` | `d-ready` | B3 (2 → 1) |
+
+**A9 and A3 are now empty.** §D also settles P-09 from the other side: the readiness dots
+were "deliberately not ported" — and the reference does not draw them either.
+
+Two of §D's rows change what §D-reuse below says: `d-legend`/`d-legend-i` and
+`d-mlist`/`d-mlist-row` are the shipped halves of two "rebuilt instead of reused" pairs. The
+`.epm-legend` and `.epm-bars` written in their place are therefore **not** duplicates of
+something the prototype renders — they are original work for a widget the prototype only
+ever declared. That makes them a weaker finding than A1's was, and A10/A13 should be
+re-examined against the plates rather than against those components.
+
+---
+
+## D-reuse · Widgets that were rebuilt instead of reused
 
 The sharpest evidence that the reference was not being opened, and a direct breach of
 `CLAUDE.md` §3.7 — *"grep before you write a rule."* Each pair is the same widget twice:
