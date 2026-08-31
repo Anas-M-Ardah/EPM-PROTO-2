@@ -677,8 +677,21 @@
           }
         }
 
-        <!-- ══ TAB 4 — المسار · الشكل 33 ═════════════════════════════════ -->
+        <!-- ══ TAB 4 — المسار · الشكل 33 ═════════════════════════════════
+             L14, the sheet's own layout for this tab (`desktop.css:3255`,
+             `DModVO` vo-record.jsx:1311): Z7 splits **60/40** — the trail
+             inline-start, the decision inline-end — and the decision column is
+             `position: sticky`, so an approver scrolling a six-stage chain
+             keeps القرار and حالة المعاملة in view instead of scrolling back up
+             to act. The port stacked all three sections in one column, which
+             put the decision below the thing it decides about.
+
+             It collapses to one column at 1180px, where `.d-l14-dec` also
+             stops being sticky — both in the copied sheet, neither ported
+             until now. -->
         @if (tab() === 'flow') {
+          <div class="d-l14">
+          <div class="d-l14-trail">
           <epm-section [title]="lang.t('chg_sec_path')" icon="alt_route"
                        [sub]="stageCount().done + ' / ' + stageCount().total + ' ' + lang.t('chg_stages')"
                        [collapsible]="true" [defaultOpen]="true">
@@ -792,6 +805,11 @@
               }
             </ol>
           </epm-section>
+          </div>
+
+          <!-- The decision column. An `<aside>`, as the reference has it: the
+               trail is the record, this is what you do about it. -->
+          <aside class="d-l14-dec">
 
           <!-- الشكل 33's «القرار» panel. 5.4 puts the four decisions here; until
                then the panel states WHOSE decision it is rather than showing a
@@ -897,6 +915,8 @@
                 </span></div>
             </div>
           </epm-section>
+          </aside>
+          </div>
         }
 
         <!-- ══ TAB 5 — المرفقات · الشكل 34 ═══════════════════════════════ -->
@@ -1241,13 +1261,24 @@
                     (input)="recordNote.set($any($event.target).value)"></textarea>
         </div>
 
-        @if (decisionTouched() && letterMissing()) {
-          <span class="d-form-err">{{ lang.t('chg_d_letter_err') }}</span>
-        }
-
         <ng-container footer>
           <button type="button" class="d-btn" (click)="recording.set(null)">{{ lang.t('cancel') }}</button>
-          <span style="flex: 1"></span>
+          <!-- `.d-form-state` — the sheet's own footer state line (`DModVO`
+               vo-record.jsx:975), which is both a `flex: 1` spacer AND the
+               place the refusal is stated, between إلغاء and the submit. It
+               replaces a `<span style="flex: 1">`: an inline style beating the
+               stylesheet is a named defect class (`05 §8`), and the message
+               was floating above the footer rather than beside the button it
+               is about. `.bad` because a missing letter number REFUSES the
+               save — `.dirty` is the other tone and means unsaved, not wrong.
+
+               Still gated on `decisionTouched()`: the reference states the
+               requirement from the start, this port waits until the user has
+               tried, which is «prevent, then explain» rather than shouting at
+               an untouched form (CLAUDE.md §6). -->
+          <span class="d-form-state" [class.bad]="decisionTouched() && letterMissing()">
+            @if (decisionTouched() && letterMissing()) { {{ lang.t('chg_d_letter_err') }} }
+          </span>
           <button type="button" class="d-btn primary" [disabled]="deciding()" (click)="submitRecording()">
             <epm-icon name="check" [size]="15" />{{ lang.t('chg_d_record_save') }}
           </button>

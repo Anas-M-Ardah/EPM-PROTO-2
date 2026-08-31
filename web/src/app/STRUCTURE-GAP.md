@@ -24,17 +24,24 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **285** |
+| the Angular app emits | 273 | **290** |
 | defined in the shipped stylesheets | 530 | **530** |
-| **GAP** — defined **and** emitted by the prototype **and** emitted by no template | 148 | **136** |
+| **GAP** — defined **and** emitted by the prototype **and** emitted by no template | 148 | **131** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **6** |
 
 | cluster | classes | state |
 |---|---|---|
 | A1 · الشكل 6 · 7 contract register + cost breakdown | 12 | **✅ done** — 148 → 136 |
-| A2 … A17 | 103 | 🔨 |
+| A2a · الشكل 29 · 33 register table + المسار layout | 5 | **✅ done** — 136 → 131 |
+| A2b · الشكل 30 focus mode | 5 | ⏸ **not markup** — needs a decision |
+| A3 … A17 | 93 | 🔨 |
 | B · intended | 27 | — |
 | C · module absent | 6 | — |
+
+**A2b is why the totals no longer land on 33 by markup alone.** The acceptance figure below
+assumes every A-cluster is a markup port; the first cluster that turned out to be a missing
+*feature* has to be counted separately or the number lies. Anything else that proves to be
+behaviour rather than structure gets split the same way.
 
 The drift is **omission, not invention**: 148 against 6. Nothing here says the port did
 something wrong instead; it says it did less.
@@ -93,17 +100,48 @@ Two things the rebuild turned up, both recorded in P-207 rather than papered ove
   to keep for fidelity. Adopted rather than overridden, because overriding it would reopen
   a decision the client has already made.
 
-### A2 · الشكل 29 · 30 — change-order register and record layout · SCR-W8 · 10
+### A2a · الشكل 29 · 33 — register table and المسار layout · SCR-W8 · 5 · **✅ DONE**
 
-`vo-record.jsx:454` `DModVO` (register `:721`, record layout `:1311`) →
+`vo-record.jsx:454` `DModVO` (register `:721`, L14 layout `:1311`) →
 `features/change-orders/change-orders.page.html` · `change-order.page.html`
 
-`d-vo-reg` is the register's own shell; `d-l14*` is the record's fourteen-column layout with
-its decision rail and trail. The port renders both through the generic
-`d-toolbar` + `d-table` + `d-pz7` shell every other screen uses.
+The register was `.d-tablewrap` + `.d-table` + an inline `min-width: 1240px`; it is now the
+sheet's `.d-vow-tw.wide-voreg` + `.d-line-table.d-vo-reg`. Three things follow, all of them
+the sheet's own: the min-width stops being a number in the template, the register gains
+`max-height: 62vh` with its own scroll so the filter bar and footer stay in view, and the
+type drops from `.d-table`'s **14px — a size not on the eight-step scale at all** — to
+`--fs-200`. The cell contract came with it (`.code`, `.name.wrap`, `.r.num`), which is
+load-bearing: `.d-line-table tbody td` is `white-space: nowrap`.
 
-`d-vo-reg` `d-vo-qfall` `d-vo-qitem` `d-vo-queue-b` `d-ctxnum` `d-l14` `d-l14-dec`
-`d-l14-trail` `d-l14-z8fall` `d-form-state`
+The المسار tab was three sections stacked in one column, which put the decision *below* the
+thing it decides. It is now `.d-l14` — Z7 split **60/40**, trail inline-start, and a
+`position: sticky` `.d-l14-dec` `<aside>` holding القرار and حالة المعاملة, so an approver
+scrolling a six-stage chain keeps the decision in view. Collapses to one column at 1180px.
+
+`d-form-state` replaced a `<span style="flex: 1">` in the external-decision drawer footer —
+the sheet's own state line, which is both the spacer and the place the refusal is stated.
+
+`d-vo-reg` `d-l14` `d-l14-trail` `d-l14-dec` `d-form-state`
+
+### A2b · الشكل 30 «منتقي الأمر» — focus mode · 5 · ⏸ **NOT MARKUP — needs a decision**
+
+`vo-record.jsx:996` (toolbar prev/next) · `:1022` (Z8 queue) · `:1082` (Z7 fallback)
+
+These five are **a feature the port does not have**, not a structure it draws differently.
+In the reference, when the persona has orders awaiting their action the record enters a
+focus mode: a queue of those orders lives in the Z8 rail (`.d-vo-queue-b` of
+`.d-vo-qitem` buttons), the toolbar grows «السابق / التالي» with a `.d-ctxnum` position
+counter, and `.d-vo-qfall` gives the queue a home in Z7 below 1180px where Z8 is hidden.
+The point is stated in the sheet itself: *"the queue stays beside the record so the user can
+clear it in one pass."*
+
+Building it needs queue state and a per-persona "awaiting me" list on the record route —
+behaviour and data, not classes — so it is **outside step C's markup-only scope** and is not
+counted against A2a. `d-l14-z8fall` sits here too: it duplicates the whole Z8 بطاقة الأمر
+card for widths under 1180px, which in Angular means repeating the block rather than calling
+a function, and it is only worth doing alongside the queue it shares the slot with.
+
+`d-vo-queue-b` `d-vo-qitem` `d-vo-qfall` `d-ctxnum` `d-l14-z8fall`
 
 ### A3 · الشكل 33 — مسار الاعتماد · 5
 
