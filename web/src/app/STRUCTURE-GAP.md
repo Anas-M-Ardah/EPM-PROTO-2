@@ -71,6 +71,55 @@ something wrong instead; it says it did less.
 **115 rebuild · 27 intended · 6 module absent.** Those three totals are the whole of the
 148, and each class below appears in exactly one row.
 
+## Triage — what the remaining 105 actually are
+
+Done after four clusters produced four different outcomes, so the rest is sorted **before**
+anyone starts building rather than one cluster at a time. Every class below has a mounted
+emitter — the DEAD bucket already removed the ones nothing renders. What is left is the
+question the mount check cannot answer: *is this markup, or is it a feature?*
+
+| verdict | classes | what it means |
+|---|---|---|
+| **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
+| **markup** | **57** | the port renders the same content in a different structure. This is the real backlog |
+| **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
+| **superseded** | **1** | the port has a documented better equivalent; porting would be a regression |
+
+### behaviour — 11, all already split out
+
+`d-ctxnum` `d-l14-z8fall` `d-vo-qfall` `d-vo-qitem` `d-vo-queue-b` (A2b · focus mode) ·
+`d-vow-cap` `d-vow-chip` `d-vow-facets` `d-vow-prov` `d-vow-state` `d-vow-f` (A4b)
+
+Of these, **`d-vow-cap` is the one worth building on its own merits** — `CLAUDE.md` §6 wants
+invalid input prevented and the cap explained, and the port's quantity fields carry neither
+a max nor a hint.
+
+### superseded — 1
+
+`d-gantt-resize` is the reference's drag handle on the **info block**; the port has
+`d-gantt-namegrip` on the **name column**, which is what `04 §5` actually asks for and is
+recorded in `styles.css` as a deliberate improvement. Porting it would undo that. Moved to
+§E.
+
+### markup — 57, by cluster, largest first
+
+| cluster | live | evidence checked |
+|---|---|---|
+| A5 · الشكل 12 BOQ + الربط بالأنشطة | 9 | the port HAS the assignment tab (`view() === 'assign'`) with an editable grid, so the data is there; it draws `.d-editgrid`/`.d-cellinput` where the reference draws `.d-openrow` + `.d-alloc*`. A structural rewrite of one tab, like A1. `d-actmenu` is a popover — the port already has `<epm-popover>` |
+| A8 · الشكل 49 reports | 6 | the reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
+| A6 · الأشكال 50–56 supply | 6 | receipts as cards under two subheadings + the item archive; the port lists both as table rows. Content present |
+| A12 · الأشكال 21–24 schedule | 6 | `d-sched-stat` `d-val-row` `d-parse` `d-spin` are plain markup; `d-gantt-ext` is the approved-extension ghost bar and needs the amendment's new finish, which the port already reads; `d-act-amd` wraps content the port draws through `<epm-amd-panel>` — it goes **inside** that component |
+| A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
+| A15 · shared primitives | 6 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
+| A13 · charts | 5 | the port has `<epm-scurve>` but **no** mini-timeline; `.d-tl-mini*` is a compact per-row list. The BOQ tab's `.d-mini-bar` is the nearest thing. Needs its rows fed, so it is markup + a data check |
+| A14 · contract context strip | 3 | the port's contract page has no such strip at all; name and value are already on the page |
+| A7 · الشكل 15 · 17 financials | 2 | `d-slastages` is a straight swap for the port's `.epm-slastage`; `d-yalloc` is the annual-allocation strip |
+| A10 · feed | 5 | `d-feed*` survive only through `DAdmOverview`, which is admin — see the note in §D-dead about A10 needing re-checking against the plate rather than the component |
+| A16 · A17 · misc | 3 | `d-amdstack` `d-alert-sev` `d-dot` — one element each |
+
+**A5 and A8 are the two that change what a user sees most**, and both are the A1 shape: the
+port built a different structure for content it already has. Neither needs new data.
+
 | verdict | meaning |
 |---|---|
 | **rebuild** | the plate demands it, the CSS is shipped, the markup was never written |
@@ -523,7 +572,7 @@ target-size fix in P-204). A15's `d-panel-body` goes **inside** `epm-section`; A
 
 | class | why it exists |
 |---|---|
-| `d-gantt-namegrip` | the resizable **name** column `04 §5` asks for; the prototype resizes the info block instead and pins the name at 320px |
+| `d-gantt-namegrip` | the resizable **name** column `04 §5` asks for; the prototype resizes the info block instead and pins the name at 320px. **This supersedes `d-gantt-resize`** — the reference's handle on the info block. Porting that one would undo the improvement, so it is triaged out rather than left in the backlog |
 | `d-tabs` · `d-tab` | the tab strip as a component rather than repeated inline markup |
 | `d-detail-body` · `d-stat-wm` · `d-hbars` · `d-vow-sub` | small additions, each documented at its declaration |
 
