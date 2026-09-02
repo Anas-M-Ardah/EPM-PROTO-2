@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **311** |
+| the Angular app emits | 273 | **317** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **107** |
-| → **GAP** — and the prototype actually **renders** it | — | **73** |
+| missing from the port | 151 | **101** |
+| → **GAP** — and the prototype actually **renders** it | — | **67** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -53,7 +53,8 @@ side is every `.d-*` selector in the shipped sheets.
 | A10 · feed and share bar | 6 | ⬛ **out of reach** — only admin and profile render it |
 | A16 · الشكل 10 amendment stack | 1 | **✅ done** |
 | A17 · الشكل 47 · 48 alert severity | 1 | **✅ done** |
-| A13 · A5-rest, live remainder | 7 | 🔨 |
+| A13 · charts — mini timeline + line trend | 6 | **✅ done** — and it needed an endpoint field |
+| A5-rest · `d-actmenu` | 1 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -81,7 +82,7 @@ and «33» in §Acceptance — and neither was ever recomputed as clusters withd
 written when the only recorded non-markup verdicts were B and C, so every later withdrawal
 (A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
 into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
-73 that remain are:
+67 that remain are:
 
 | | | |
 |---|---|---|
@@ -94,9 +95,9 @@ into the file's prose and never into its arithmetic. Counted rather than tallied
 | A12b | 1 | `d-val-row` — waiting on the server's gates |
 | `d-switch` | 1 | admin and profile both — same reach as §C |
 | `d-panel-body` | 1 | **withdrawn at the A7 audit** — admin, profile and one dead component are its only emitters. §A15a |
-| **buildable markup left** | **7** | A13 6 · A5-rest 1 |
+| **buildable markup left** | **1** | A5-rest 1 — `d-actmenu` |
 
-29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 7 = 73, so acceptance is 73 − 7 = **66**. Anything else
+29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 1 = 67, so acceptance is 67 − 1 = **66**. Anything else
 needs a row here explaining it — including a later decision to build one of the ⏸ clusters,
 which would lower it again.
 
@@ -116,7 +117,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 7 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 1 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **4** | the port has a documented better equivalent; porting would be a regression |
 
@@ -522,15 +523,61 @@ criticality the ring). Porting a fourth vocabulary would fragment the one thing 
 
 `d-gantt-ext` `d-gantt-resize` `d-act-amd` `d-parse` `d-val-row` `d-sched-stat` `d-spin`
 
-### A13 · Charts — mini timelines, metric lists, line trend · 6
+### A13 · Charts — mini timeline and line trend · SCR-E1 · 6 · **✅ DONE**
 
-`desktop-charts.jsx:116` `DTlMini` (`:122`) · `DMetricList` · `DDualLine` / `DLineTrend` →
-`shared/dual-line.component.ts` · `bar-compare.component.ts`
+`desktop-charts.jsx:84` `DLineTrend` · `:116` `DTlMini`, both mounted in `DDashboard`
+(`desktop-views.jsx:281` · `:285`) → `features/portfolio/portfolio.page.html` ·
+`shared/line-trend.component.ts`
 
-`d-mlist`/`d-mlist-row` is the label + 76px track + value row. **Already reinvented** —
-see §D.
+**The one cluster that needed the server.** Two panels on SCR-E1, and the port had neither
+in the reference's shape:
 
-`d-tl-mini` `d-tl-mini-row` `d-tl-mini-name` `d-mlist` `d-mlist-row` `d-line-chart`
+- **«الصرف السنوي»** is a `.d-line-chart` line trend in the reference; the port drew bars.
+- **«الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً»** did not exist at all. The port's third
+  panel in that column is «القيمة النافذة حسب مساحة العمل», which the reference does not have.
+
+`d-mlist`/`d-mlist-row` were never part of this: `DMetricList` is **dead**, so they sit in §D.
+
+#### The endpoint field, and why it is one field
+
+`band.Projects` already carried name, status, value, physical, `PlannedFinish` and
+`ForecastFinish` — everything the row draws **except the start date**. So
+`PortfolioBand.ProjectRow` gains `Start`, derived where its mirror already is: a project
+starts at its earliest contract start, the way it finishes at its latest contract finish.
+`TimelineRow` is then a projection, and `PortfolioEndpoints` only orders by value and takes
+five — the reference's own `[...portfolio].sort((a,b) => b.cost - a.cost).slice(0,5)`.
+
+Projects with no contract are **excluded rather than drawn with two empty dates**: the panel
+is a timeline, and a row with no span says nothing while still taking one of the five places.
+The fixture has four projects and three qualify.
+
+#### The mark is the reference's; the data is not, and must not be
+
+`DLineTrend`'s series on this screen is `spendWeights = [0.14, 0.17, 0.20, 0.23, 0.26]` times
+the portfolio total, over hard-coded years 2022–2026 (`desktop-views.jsx:64`). That is a
+**shape, not a figure** — the same kind of invented series P-200 records for the curves — and
+`PortfolioEndpoints` had already refused it in as many words: «Real years from real payment
+dates — never a weight table». So the panel draws the port's own `annualSpend` and keeps its
+own sub-line; it is **not** relabelled «تراكمي» the way the reference's is, because that
+series only looks cumulative as its weights ascend, and the real cumulative position is the
+financial curve higher up the same page.
+
+#### Three things the rebuild turned up, all in P-225
+
+- **`.d-tl-mini-row` is `all: unset` on a `<button>` with a click handler** — so it is a tab
+  stop, and it computed `outline-style: none` for the third time in this port. Same defect
+  and same fix as `.d-contract-card` (P-207) and `.d-fgroup > .gh` before it. Verified with a
+  real Tab: `2px solid var(--primary)`, offset 2px.
+- **The dates line is styled INLINE in the reference** (`desktop-charts.jsx:125-127`) — the
+  sheet stops at `.d-tl-mini-fill`. The declarations move to `styles.css` under **scoped
+  child names**, `.d-tl-mini-row .dates` and `.late`, not new `d-*` blocks: that is the
+  sheet's own idiom (`.d-yalloc .ah`, `.d-slastages .sf`, `.d-rcpt .hd`) and it keeps the
+  inventory honest — OWN stayed at 5, where a `d-`-prefixed name would have read as
+  something the design system ships.
+- **The overrun is never colour alone.** The late date is `--error`, and both dates print
+  either way, and the row's `title` names the overrun in words (05 §7.6).
+
+`d-tl-mini` `d-tl-mini-row` `d-tl-mini-name` `d-tl-mini-track` `d-tl-mini-fill` `d-line-chart`
 
 ### A14 · Contract context strip · 3
 

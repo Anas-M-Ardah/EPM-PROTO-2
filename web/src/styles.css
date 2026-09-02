@@ -156,6 +156,37 @@ epm-field-group { display: contents; }
   outline-offset: 2px;
 }
 
+/* ── AND A THIRD TIME, ON THE TIMELINE ROW (A13) ─────────────────────────
+   `.d-tl-mini-row` is `all: unset` on a <button> too (desktop.css:801), and
+   `DTlMini` gives it an `onRowClick` — so it is a tab stop, and it computed
+   `outline-style: none` for the same reason the card did. Same values as the
+   global rule and the card above, so all three focus alike. */
+.d-tl-mini-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* The dates line under each track. The sheet stops at `.d-tl-mini-fill` and
+   `DTlMini` styles this row INLINE — `display: flex; justifyContent:
+   space-between; marginTop: 4`, with the finish coloured
+   `overrun ? var(--error) : var(--on-surface-variant)`
+   (`desktop-charts.jsx:125-127`). 05 §8 names inline styles beating the
+   stylesheet as a defect class, and this port has taken the class every other
+   time it met one, so the declarations move here unchanged.
+
+   Scoped CHILD names — `.dates`, `.late` — not new `d-*` blocks: it is the
+   sheet's own idiom (`.d-yalloc .ah`, `.d-slastages .sf`, `.d-rcpt .hd`), and
+   it keeps the structure inventory honest, since a `d-`-prefixed name here
+   would read as a class the design system ships and it does not.
+
+   THE LATE DATE IS NOT COLOUR-ALONE: both dates are printed either way, and
+   the row's `title` names the overrun in words (05 §7.6). */
+.d-tl-mini-row .dates {
+  display: flex; justify-content: space-between; margin-top: var(--space-4);
+  font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface-variant);
+}
+.d-tl-mini-row .dates > .late { color: var(--error); }
+
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
    flex child of `.d-detail-main`, so that `.d-pz7` inside it is the ONE

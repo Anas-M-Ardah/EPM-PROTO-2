@@ -223,6 +223,12 @@ const STR = {
   prt_cost_spent:  { ar: 'الصرف التراكمي',                  en: 'Cumulative spend' },
   prt_annual_spend:{ ar: 'الصرف السنوي',                    en: 'Annual disbursement' },
   prt_annual_sub:  { ar: 'من تواريخ الدفعات المسجَّلة',      en: 'From recorded payment dates' },
+  // A13 — «الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً» (DTlMini).
+  prt_timeline:     { ar: 'الجدول الزمني للمشاريع',           en: 'Project timeline' },
+  prt_timeline_sub: { ar: 'أعلى 5 مشاريع كلفةً',              en: 'Top 5 by cost' },
+  // The overrun in WORDS, on the row's title — never colour alone (05 §7.6).
+  prt_tl_overrun:   { ar: 'الإنجاز المتوقع بعد التاريخ التعاقدي', en: 'Forecast finish is later than the contractual date' },
+  prt_tl_ontime:    { ar: 'ضمن التاريخ التعاقدي',              en: 'Within the contractual date' },
   prt_milestones:  { ar: 'معالم قادمة',                     en: 'Upcoming milestones' },
   prt_milestones_sub:{ ar: 'أقرب الإنجازات المخططة',        en: 'Nearest planned finishes' },
   prt_filtered_t:  { ar: 'لا مشروع يطابق المرشّحات',        en: 'No project matches the filters' },

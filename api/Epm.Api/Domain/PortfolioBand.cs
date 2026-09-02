@@ -60,12 +60,19 @@ public static class PortfolioBand
     /// <summary>A non-milestone activity, for the planned line.</summary>
     public record Act(decimal BudgetedCost, DateOnly? BaselineStart, DateOnly? BaselineFinish);
 
+    /// <param name="Start">
+    /// The project's own start — the EARLIEST of its contract starts, the
+    /// mirror of <paramref name="PlannedFinish"/>'s latest. Null when the
+    /// project has no contract yet, because a project with nothing awarded has
+    /// not started; it is not therefore starting today.
+    /// </param>
     public record ProjectRow(
         string Id, string NameAr, string NameEn, string Status,
         string WorkspaceCode, string Branch,
         decimal Value, decimal? Physical, decimal Paid,
         int? DelayDays, decimal? Spi, string Signal,
-        DateOnly? ForecastFinish, DateOnly? PlannedFinish);
+        DateOnly? ForecastFinish, DateOnly? PlannedFinish,
+        DateOnly? Start);
 
     public record Period(DateOnly At, decimal PlanCum, decimal? ActCum, decimal PlanPeriod, decimal ActPeriod);
 
@@ -150,7 +157,8 @@ public static class PortfolioBand
                 ExecutiveSignal.For(p.Status, delay,
                     mine.Count == 0 ? null : mine.Max(c => c.OriginalDurationDays), spi),
                 forecast.Count == 0 ? null : forecast.Max(),
-                mine.Count == 0 ? null : mine.Max(c => c.OriginalFinish));
+                mine.Count == 0 ? null : mine.Max(c => c.OriginalFinish),
+                mine.Count == 0 ? null : mine.Min(c => c.Start));
         }).ToList();
 
         // ── the band itself, weighted across the whole scope ────────────────

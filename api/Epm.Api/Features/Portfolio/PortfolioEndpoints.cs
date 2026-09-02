@@ -262,6 +262,28 @@ public static class PortfolioEndpoints
                     x.Physical, x.PlannedFinish!.Value.ToString("yyyy-MM-dd")))
                 .ToList();
 
+            // «الجدول الزمني للمشاريع — أعلى 5 مشاريع كلفةً». The reference
+            // sorts the portfolio by cost and takes five (desktop-views.jsx:66),
+            // and that is all this is: an ordering and a projection over rows
+            // the band already derived. `Start` is the band's too — a project
+            // starts when its earliest contract does, the mirror of the latest
+            // finish beside it.
+            //
+            // Projects with no contract are excluded rather than drawn with two
+            // empty dates: the panel is a TIMELINE, and a row with no span on it
+            // says nothing while still taking one of the five places.
+            var timeline = band.Projects
+                .Where(x => x.Start is not null && x.PlannedFinish is not null)
+                .OrderByDescending(x => x.Value)
+                .Take(5)
+                .Select(x => new TimelineRow(
+                    x.Id, x.NameAr, x.NameEn, x.WorkspaceCode, x.Status,
+                    x.Physical, x.Value,
+                    x.Start?.ToString("yyyy-MM-dd"),
+                    x.PlannedFinish?.ToString("yyyy-MM-dd"),
+                    x.ForecastFinish?.ToString("yyyy-MM-dd")))
+                .ToList();
+
             // Only what genuinely has no input left. A figure that CAN be
             // derived and is reported absent is worse than one that cannot:
             // it teaches a reader to stop looking.
@@ -300,7 +322,7 @@ public static class PortfolioEndpoints
                 band.Physical, band.Planned, band.Financial,
                 band.Spi, band.Cpi, AcceptableIndex,
                 band.EarnedValue, band.ActualCost,
-                progressCurve, costCurve, signals, watchlist, cost, annualSpend, milestones,
+                progressCurve, costCurve, signals, watchlist, cost, annualSpend, milestones, timeline,
 
                 statusDistribution,
                 valueByEntity,

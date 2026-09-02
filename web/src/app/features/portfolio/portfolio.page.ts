@@ -5,6 +5,7 @@ import { IconComponent } from '../../core/icon.component';
 import { PageHeadComponent, Crumb } from '../../shared/page-head.component';
 import { DonutComponent, DonutSegment } from '../../shared/donut.component';
 import { BarCompareComponent, BarItem } from '../../shared/bar-compare.component';
+import { LineTrendComponent, TrendPoint } from '../../shared/line-trend.component';
 import { SCurveComponent, CurvePeriod } from '../../shared/scurve.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { LangService } from '../../core/lang';
@@ -46,7 +47,7 @@ import {
   selector: 'epm-portfolio-page',
   standalone: true,
   imports: [
-    IconComponent, PageHeadComponent, DonutComponent, BarCompareComponent,
+    IconComponent, PageHeadComponent, DonutComponent, BarCompareComponent, LineTrendComponent,
     SCurveComponent, StatusPillComponent, RouterLink,
   ],
   encapsulation: ViewEncapsulation.None,
@@ -260,20 +261,49 @@ export class PortfolioPage {
   });
 
   /**
-   * The prototype draws this as a cumulative line over five weights it made
-   * up (`[0.14, 0.17, 0.20, 0.23, 0.26]`). These are the years that actually
+   * A13 — the MARK is now the reference's `DLineTrend` in `.d-line-chart`, and
+   * the DATA is still ours. The prototype feeds this panel five weights it made
+   * up (`[0.14, 0.17, 0.20, 0.23, 0.26]` × the portfolio total over hard-coded
+   * years 2022–2026, `desktop-views.jsx:64`); these are the years that actually
    * carry a paid payment, and only those — a year with no disbursement is
    * absent rather than drawn at zero.
+   *
+   * One series, so no `--viz-` rotation: the colour identifies the series, and
+   * with only one there is nothing to tell apart (05 §7.9).
    */
-  spendBars = computed<BarItem[]>(() => {
+  spendTrend = computed<TrendPoint[]>(() => {
     const d = this.data();
     if (!d) return [];
-    return d.annualSpend.map((y, i) => ({
-      label: String(y.year),
-      value: y.value,
-      display: fmt.money(y.value),
-      color: `var(--viz-${(i % 6) + 1})`,
-    }));
+    return d.annualSpend.map(y => ({ label: String(y.year), value: y.value }));
+  });
+
+  /**
+   * A13 — «الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً» (`DTlMini`,
+   * `desktop-charts.jsx:116`). The server picks and orders the five; this adds
+   * only what the row DISPLAYS.
+   *
+   * The finish date shown is the one that is actually going to happen: the
+   * forecast when it is later than the contractual date, the contractual date
+   * otherwise. That is the reference's own `overrun` test — and the overrun is
+   * never carried by colour alone, because `.d-tl-mini-row` also states both
+   * dates and the row's `title` names the delay in words (05 §7.6).
+   */
+  timelineRows = computed(() => {
+    const d = this.data();
+    if (!d) return [];
+    return d.timeline.map(t => {
+      const overrun = t.forecastFinish !== null && t.plannedFinish !== null
+        && t.forecastFinish > t.plannedFinish;
+      return {
+        ...t,
+        name: this.lang.pick(t.nameAr, t.nameEn),
+        // A null physical draws an empty bar rather than claiming 0% (P-09).
+        fill: Math.max(0, Math.min(100, t.physical ?? 0)),
+        color: STATUS_VAR[t.status] ?? 'var(--status-cancelled)',
+        overrun,
+        finish: overrun ? t.forecastFinish! : (t.plannedFinish ?? '—'),
+      };
+    });
   });
 
   /** Widest entity bar = 100%. The viz ramp, never status colour (05 §7.5). */

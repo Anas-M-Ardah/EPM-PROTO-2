@@ -72,6 +72,39 @@ public record UpcomingMilestone(
     string WorkspaceNameAr, string WorkspaceNameEn,
     decimal? Physical, string PlannedFinish);
 
+/// <summary>
+/// SCR-E1's «الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً» — DTlMini,
+/// docs/spec/reference/app/desktop-charts.jsx:116, fed at desktop-views.jsx:285.
+///
+/// One row per project: how far it has got, and the two dates that say whether
+/// it will land on time. The reference reads the FORECAST finish when it is
+/// later than the planned one and the planned finish otherwise, so the row
+/// states the date that is actually going to happen — see <paramref
+/// name="ForecastFinish"/>.
+/// </summary>
+/// <param name="Physical">
+/// BR-04's weighted progress, and the bar's fill. Null when the project has no
+/// bill to weigh — the bar then draws empty rather than claiming 0%.
+/// </param>
+/// <param name="Start">Earliest contract start. Null before anything is awarded.</param>
+/// <param name="PlannedFinish">Latest ORIGINAL contract finish — the contractual date.</param>
+/// <param name="ForecastFinish">
+/// Latest forecast finish. Null when no contract carries one. The UI compares
+/// it with <paramref name="PlannedFinish"/> and marks an overrun; the
+/// comparison is a display rule, but both dates it reads are the server's.
+/// </param>
+public record TimelineRow(
+    string ProjectId,
+    string NameAr,
+    string NameEn,
+    string WorkspaceCode,
+    string Status,
+    decimal? Physical,
+    decimal Value,
+    string? Start,
+    string? PlannedFinish,
+    string? ForecastFinish);
+
 public record PortfolioResponse(
     // ---- derivable today ----
     int ProjectCount,
@@ -122,6 +155,7 @@ public record PortfolioResponse(
     PortfolioCost Cost,
     IReadOnlyList<SpendYear> AnnualSpend,
     IReadOnlyList<UpcomingMilestone> Milestones,
+    IReadOnlyList<TimelineRow> Timeline,
 
     IReadOnlyList<StatusSlice> StatusDistribution,
     IReadOnlyList<EntityValue> ValueByEntity,
