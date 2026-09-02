@@ -26,8 +26,8 @@ side is every `.d-*` selector in the shipped sheets.
 | the prototype emits | 411 `d-*` classes | **411** |
 | the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **131** |
-| → **GAP** — and the prototype actually **renders** it | — | **97** |
+| missing from the port | 151 | **125** |
+| → **GAP** — and the prototype actually **renders** it | — | **91** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -41,7 +41,8 @@ side is every `.d-*` selector in the shipped sheets.
 | A4b · الشكل 38 · 39 facets, chips, caps | 6 | ⏸ **not markup** — needs a decision |
 | A5 · الربط بالأنشطة | 5 of 7 | ⬛ **dead** — the port already followed the newer component; the 2 live ones fold into A7 and A16/17 |
 | A14 · contract context strip | 0 | ❌ **dead** — same superseded module |
-| A6 … A17, live remainder | 49 | 🔨 |
+| A8 · SCR-W14 report shell + bodies | 6 | **✅ done** — and it needed a new endpoint |
+| A6 … A17, live remainder | 43 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -67,7 +68,7 @@ than the first measure claimed.
 **Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
 A2b is built.
 
-## Triage — what the remaining 97 actually are
+## Triage — what the remaining 97 actually are (A8 has since closed 6)
 
 Done after four clusters produced four different outcomes, so the rest is sorted **before**
 anyone starts building rather than one cluster at a time. Every class below has a mounted
@@ -77,7 +78,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 43 left | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **1** | the port has a documented better equivalent; porting would be a regression |
 
@@ -109,7 +110,7 @@ recorded in `styles.css` as a deliberate improvement. Porting it would undo that
 
 | cluster | live | evidence checked |
 |---|---|---|
-| A8 · الشكل 49 reports | 6 | the reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
+| A8 · SCR-W14 reports ✅ | 6 | **done, and it was not the markup this table predicted** — see below. The reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
 | A6 · الأشكال 50–56 supply | 7 | receipts as cards under two subheadings + the item archive; the port lists both as table rows. Content present |
 | A12 · الأشكال 21–24 schedule | 6 | `d-sched-stat` `d-val-row` `d-parse` `d-spin` are plain markup; `d-gantt-ext` is the approved-extension ghost bar and needs the amendment's new finish, which the port already reads; `d-act-amd` wraps content the port draws through `<epm-amd-panel>` — it goes **inside** that component |
 | A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
@@ -320,13 +321,32 @@ attachment cards — the port lists both as table rows.
 
 `d-slastages`
 
-### A8 · الشكل 49 — التقارير · SCR-E7 · SCR-W14 · 6
+### A8 · SCR-W14 — التقارير والتحليلات · 6 · **✅ DONE**
 
-`project-modules.jsx:2771` `DModReports` (`:2797`) → `features/reports/reports.page.html` ·
-`features/project-reports/project-reports.page.html`
+`project-modules.jsx:2771` `DModReports` (shell at `:2797`) →
+`features/project-reports/project-reports.page.html` + **a new endpoint**
 
-The catalog is a **shell with category rail and a view pane** (`d-report-shell` ·
-`d-report-cat` · `d-report-view`), not a filtered table.
+**Two label corrections first.** This is not الشكل 49 — that plate is the *university* reports
+screen, `DReports` (`desktop-reports.jsx:58`), which emits none of these classes and is
+SCR-E7. And the triage called this markup; it was not. The reference's `DModReports` is a
+report **viewer** — a rail of report types beside a view that renders each one inline. The
+port's SCR-W14 was a **catalog**: which reports this project can produce, and which source is
+empty when it cannot (P-123). Two screens, two questions, and the port's answer is
+information the reference does not have.
+
+Built at the client's decision: **the shell AND the bodies.** `EP-PRP-02`
+(`GET /api/projects/{id}/reports/{reportId}`) returns one report as figures + an optional
+comparison + a table — which is what all six of the reference's bodies are, so the view
+carries no branch per report and a new report describes itself. Seven of the nine render real
+bodies (2–55 rows); nothing is computed client-side, and effective value and finish come from
+`Domain/Amendments`, the same function SCR-W3 calls, so a figure here cannot disagree with the
+contract tab.
+
+**The port's answer was kept, and split in two.** `available: false` means the project has
+nothing to report on and names the empty source. `rendered: false` means the report is
+producible and this build does not draw it inline — RPT-04 wants weight-rolled BOQ progress,
+which is SCR-W6's own rollup and would have been a second answer to «ما نسبة الإنجاز». Two
+different absences, each said in words rather than shown as an empty pane (`04 §9`).
 
 `d-report-shell` `d-report-cat` `d-report-cat-i` `d-report-view` `d-report-view-head`
 `d-rev-title`

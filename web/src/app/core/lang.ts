@@ -2667,6 +2667,14 @@ const STR = {
   prp_unavailable:  { ar: 'غير متاح',                       en: 'Unavailable' },
   prp_needs:        { ar: 'ينقصه:',                         en: 'Waiting on:' },
   prp_run:          { ar: 'تشغيل',                          en: 'Run' },
+  // [EP-PRP-02] — the view's own tag. `06 §12`'s figures are illustrative and
+  // the reference marks its rendered reports the same way (`demo_data`).
+  prp_demo:         { ar: 'بيانات تجريبية',                 en: 'Demo data' },
+  // Producible, but not DRAWN here — a different absence from «غير متاح»,
+  // and the view says which one it is rather than showing an empty pane.
+  prp_norender_t:   { ar: 'لا معاينة داخل الشاشة',           en: 'No inline preview' },
+  prp_norender_b:   { ar: 'التقرير قابل للإنتاج، ولا تُرسم معاينته داخل هذه الشاشة في هذا الإصدار.',
+                      en: 'The report is producible; this build does not draw its preview inline.' },
   prp_f_available:  { ar: 'قابلة للإنتاج',                  en: 'producible' },
   prp_norm_t:       { ar: 'التعريف واحد، والسؤال يختلف',    en: 'One definition, a different question' },
   prp_norm_b:       { ar: 'هذه التقارير هي نفسها المعرَّفة في «التقارير والإحصائيات» على مستوى الجهة؛ الفرق أن تلك الشاشة تسأل هل يمكن إنتاج التقرير أصلاً، وهذه تسأل هل يمكن إنتاجه لهذا المشروع — أي هل يملك المشروع سجلات في كل مصدر يقرؤه. إنتاج الملف نفسه غير مبنيّ في أي مرحلة من هذا النموذج.',
