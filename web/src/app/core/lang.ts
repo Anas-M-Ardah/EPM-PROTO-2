@@ -1471,6 +1471,8 @@ const STR = {
   scd_imp_drop_b:  { ar: 'تُقرأ الصيغة التي اخترتها أعلاه، لا امتداد الملف.',
                      en: 'The format you chose above is what is read — not the file extension.' },
   scd_imp_empty:   { ar: 'لم يُعثر على أي نشاط في الملف.',   en: 'No activity was found in the file.' },
+  // ملحق الشكل 24 step 1 — the parse is async and used to say nothing.
+  scd_imp_parsing:  { ar: 'جارٍ تحليل الملف',                 en: 'Parsing the file' },
   scd_imp_unreadable:{ ar: 'تعذّرت قراءة الملف بالصيغة المختارة.',
                      en: 'The file could not be read in the chosen format.' },
   scd_imp_s2_b:    { ar: 'قُرئ من الملف:',                   en: 'Read from the file:' },
@@ -1531,6 +1533,15 @@ const STR = {
   scd_imp_no_cap:  { ar: 'الاعتماد من صلاحية دائرة المهندس المقيم أو مدير المشروع، ولا يعتمده من قدّمه.',
                      en: 'Approval is the resident-engineer department’s or the project manager’s capacity, and the person who submitted it may not approve it.' },
   scd_milestone:   { ar: 'حدث فارق',                        en: 'milestone' },
+  // The Gantt's hatched tail: approved, NOT yet applied (02 §9).
+  scd_ext_title:   { ar: 'تمديد معتمد بأمر تغييري — لم يُطبَّق بعد',
+                     en: 'Approved extension by change order — not yet applied' },
+  // «تعديل بأمر تغييري» in the activity detail. Settled and pending stay apart.
+  scd_amd_t:       { ar: 'تعديل بأمر تغييري',                en: 'Amended by change order' },
+  scd_amd_settled: { ar: 'مطبَّق — داخل التواريخ أعلاه',      en: 'Applied — inside the dates above' },
+  scd_amd_pending: { ar: 'معتمد بانتظار التطبيق',            en: 'Approved, awaiting application' },
+  scd_amd_sources: { ar: 'الأوامر',                          en: 'Orders' },
+  scd_amd_unapplied:{ ar: '(لم يُطبَّق)',                     en: '(not applied)' },
 
   /* ── الشكل 23 · المقارنة والأثر ─────────────────────────────────────── */
   scd_tab_compare: { ar: 'المقارنة والأثر',                 en: 'Compare & impact' },

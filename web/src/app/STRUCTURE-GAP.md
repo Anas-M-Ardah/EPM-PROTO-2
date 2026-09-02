@@ -26,8 +26,8 @@ side is every `.d-*` selector in the shipped sheets.
 | the prototype emits | 411 `d-*` classes | **411** |
 | the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **118** |
-| → **GAP** — and the prototype actually **renders** it | — | **84** |
+| missing from the port | 151 | **114** |
+| → **GAP** — and the prototype actually **renders** it | — | **80** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -43,7 +43,10 @@ side is every `.d-*` selector in the shipped sheets.
 | A14 · contract context strip | 0 | ❌ **dead** — same superseded module |
 | A8 · SCR-W14 report shell + bodies | 6 | **✅ done** — and it needed a new endpoint |
 | A6 · الأشكال 50–56 supply receipts + archive | 7 | **✅ done** |
-| A7 … A17, live remainder | 36 | 🔨 |
+| A12a · الأشكال 21 · 24 gantt extension, amendment block, parse state | 4 | **✅ done** |
+| A12b · import validation checks | 1 | ⏸ **needs the server to declare its gates** |
+| A12c · `d-sched-stat` | 1 | ⬛ **superseded** by `<epm-status-pill>` |
+| A7 … A17, live remainder | 30 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -79,9 +82,9 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 36 left | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 30 left | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
-| **superseded** | **1** | the port has a documented better equivalent; porting would be a regression |
+| **superseded** | **2** | the port has a documented better equivalent; porting would be a regression |
 
 **Triage started on A5 and A5 stopped existing.** The port's الربط بالأنشطة draws
 `boq-assign-row` · `boq-queue-b` · `boq-qcard` · `boq-remchip` — which are not bespoke at
@@ -113,7 +116,7 @@ recorded in `styles.css` as a deliberate improvement. Porting it would undo that
 |---|---|---|
 | A8 · SCR-W14 reports ✅ | 6 | **done, and it was not the markup this table predicted** — see below. The reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
 | A6 · الأشكال 50–56 supply ✅ | 7 | **done, and the prediction was half right.** The port DID draw cards under two subheadings — with a bespoke `.sup-card` while `.d-rcpt` and `.d-att` sat shipped and unused. What the table missed: every receipt carries `documents` that **nothing rendered at all** |
-| A12 · الأشكال 21–24 schedule | 6 | `d-sched-stat` `d-val-row` `d-parse` `d-spin` are plain markup; `d-gantt-ext` is the approved-extension ghost bar and needs the amendment's new finish, which the port already reads; `d-act-amd` wraps content the port draws through `<epm-amd-panel>` — it goes **inside** that component |
+| A12 · الأشكال 21–24 schedule ✅ | 6 | **4 done, 1 split, 1 superseded.** `d-gantt-ext` was the find: the Gantt showed **nothing** for an approved-but-unapplied extension, so an activity with 12 days waiting drew like one with none. `d-parse`/`d-spin` fill a genuinely async gap — the parse said nothing at all. `d-act-amd` went **inside** the activity pane, which had no amendment information. `d-val-row` needs the server to declare its gates (A12b); `d-sched-stat` is superseded by `<epm-status-pill>` |
 | A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
 | A15 · shared primitives | 7 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
 | A13 · charts | 6 | the port has `<epm-scurve>` but **no** mini-timeline; `.d-tl-mini*` is a compact per-row list. The BOQ tab's `.d-mini-bar` is the nearest thing. Needs its rows fed, so it is markup + a data check |
@@ -400,9 +403,27 @@ is not the frame the port builds.
 `schedule-module.jsx:80` `DGantt` (`:239`) · `DImportWizard` · `DModSchedule` ·
 `DSchedStatus` → `features/schedule/schedule.page.html` · `schedule-import.wizard.ts`
 
-`d-gantt-resize` is the prototype's own column grip (the port wrote `d-gantt-namegrip`
-instead — see §E, that one is a **keep**); `d-parse`/`d-val-row`/`d-spin` are the import
-wizard's parse and validation rows; `d-act-amd` is the amendment badge on an activity.
+**A12a — done · 4.** `d-gantt-ext` is the one that mattered: `02 §9` and non-negotiable #2
+keep an approved-but-unapplied order out of every effective figure and show it labelled
+beside them — and the Gantt showed **nothing at all**, so an activity carrying 12 approved
+days drew exactly like one carrying none. It is now the sheet's hatched, dashed tail picking
+up where the bar ends (verified on A10: bar ends 887.5px, tail 19.5px to 2026-12-10).
+`d-parse`/`d-spin` fill a real silence — the parse *is* async (`File.text()`, and the Excel
+path lazily imports SheetJS) and nothing on screen said so. `d-act-amd` went inside the
+activity pane, which showed the dates, the float and the cost with no sign a change order had
+moved any of them; applied and pending stay apart there, and the drawer still opens from it.
+
+**A12b — 1, split.** `d-val-row` is one row per validation GATE with its own pass/warn mark.
+`EP-SCD-05` returns **violations**, not gates, so the checks list would have to be invented
+client-side from what failed — which would silently claim a gate ran. The honest fix is the
+server declaring the gates it runs (`Domain/ScheduleImport` validates seven: file, activityId,
+name, baseline, cost, manhours, predecessors), the same shape `EP-PRP-02` took in A8.
+
+**A12c — 1, superseded.** `d-sched-stat` is the reference's raw status span. The port renders
+activity status through `<epm-status-pill kind="activity-status">` at all three sites
+`DSchedStatus` appears, and on the Gantt row as the bar FILL (`04 §5` — status is the fill,
+criticality the ring). Porting a fourth vocabulary would fragment the one thing `CLAUDE.md`
+§6 asks to keep single. §E.
 
 `d-gantt-ext` `d-gantt-resize` `d-act-amd` `d-parse` `d-val-row` `d-sched-stat` `d-spin`
 
