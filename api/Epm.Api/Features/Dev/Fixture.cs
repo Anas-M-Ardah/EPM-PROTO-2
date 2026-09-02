@@ -24,11 +24,16 @@ public static class Fixture
 {
     public static void Load(EpmDb db)
     {
-        // ── PHASE 1.1 Lookups ────────────────────────────────────────────
-        // NOT illustrative: these are 06 §1–§11 verbatim, the specification's
-        // own value lists. They live in Features/Lookups/LookupCatalog.cs and
-        // are loaded here only because nothing is seeded on boot (P-03).
-        db.Lookups.AddRange(LookupCatalog.Rows());
+        // ── PHASE 1.1 Lookups — NOT SEEDED HERE ANY MORE ─────────────────
+        // The vocabulary (06 §1–§11) is code-defined reference data, not part
+        // of this scenario, and `LookupCatalog.EnsureSeededAsync` owns it: it
+        // runs on boot (Program.cs), after `[EP-DEV-01]` reset, and again at the
+        // top of `[EP-DEV-02]` before this method is called.
+        //
+        // It used to be added here as well, from a time when nothing was seeded
+        // on boot. After the seeder arrived, the ordinary demo sequence — reset,
+        // then load-fixture — inserted the catalog TWICE, and every register's
+        // status chips rendered twice over. One owner, and it is guarded (P-228).
 
         // ── PAGE-01 Projects list ────────────────────────────────────────
         // One fully-detailed project with TWO contracts, so contract scoping
