@@ -823,9 +823,19 @@ epm-schedule-control-page > epm-page-head .d-page-head {
    Padding the three body types by name rather than every non-header child of
    a panel: a register table and the `.d-mini` rows on SCR-E8 are deliberately
    full-bleed, because their hover state has to span the whole row. */
-.d-panel > .epm-donut-row,
-.d-panel > .epm-bars,
-.d-panel > .d-grid.stats { padding: var(--space-16); }
+/* REMOVED at the A15 port — AND IT HAD NEVER WORKED. The comment above is
+   right about the defect and wrong about the fix: `.epm-donut-row`, `.epm-bars`
+   and `.epm-legend` have no caller anywhere in the app, and the three
+   `.d-grid.stats` strips are page-level children, not panel children. So the
+   selector matched NOTHING and every panel body still sat at 1px of inset —
+   measured on SCR-E1, eight panels, all of them.
+
+   `.d-panel-body` (desktop.css:286) is the wrapper the sheet has always
+   expected. It is applied to the four chart components that genuinely sat
+   flush — two `<epm-scurve>` and two `<epm-bar-compare>` — and to nothing
+   else: `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry their own padding,
+   and the `.d-mini` rows are deliberately full-bleed so their hover spans the
+   row. See P-219. */
 
 /* The two-panel row inherits `.d-grid`'s 12px gap, which reads as a seam next
    to the 16px rhythm above and below it. Matching them makes the horizontal

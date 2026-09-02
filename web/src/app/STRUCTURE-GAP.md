@@ -26,8 +26,8 @@ side is every `.d-*` selector in the shipped sheets.
 | the prototype emits | 411 `d-*` classes | **411** |
 | the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **114** |
-| → **GAP** — and the prototype actually **renders** it | — | **80** |
+| missing from the port | 151 | **110** |
+| → **GAP** — and the prototype actually **renders** it | — | **76** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -47,7 +47,9 @@ side is every `.d-*` selector in the shipped sheets.
 | A12b · import validation checks | 1 | ⏸ **needs the server to declare its gates** |
 | A12c · `d-sched-stat` | 1 | ⬛ **superseded** by `<epm-status-pill>` |
 | A11 · shell zones and panes | 6 | ⬛ **none portable** — 2 never render, 1 renders empty, 2 are a recorded divergence, 1 would breach §6 |
-| A7 … A17, live remainder | 24 | 🔨 |
+| A15a · shared primitives — panel body, callout | 4 | **✅ done** |
+| A15b · `d-check` `d-model-topbar` `d-l04-z8fall` | 3 | ⬛ **not portable** — one recorded decision, two superseded |
+| A7 · A9 · A10 · A13 · A16 · A17, live remainder | 20 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -83,9 +85,9 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 24 left, 6 withdrawn by A11 | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 20 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
-| **superseded** | **2** | the port has a documented better equivalent; porting would be a regression |
+| **superseded** | **4** | the port has a documented better equivalent; porting would be a regression |
 
 **Triage started on A5 and A5 stopped existing.** The port's الربط بالأنشطة draws
 `boq-assign-row` · `boq-queue-b` · `boq-qcard` · `boq-remchip` — which are not bespoke at
@@ -474,12 +476,39 @@ The pinned "which contract am I in" strip with its figure and its selector row.
 `desktop-admin.jsx:90` · `desktop-shell.jsx` `DCheck` · `project-modules.jsx` `DModBOQ` /
 `DPaymentWizard` → every page
 
-Small, and they repaint the whole app at once. `d-panel-body` is the padding wrapper
-`.d-panel` expects — `web/src/styles.css` currently hand-pads three body types by name
-because it was never used. `d-callout*` is the explanatory box الشكل 13 · 14 · 20 · 23 all
-carry. `d-check`/`d-switch` are the checkbox and toggle الشكل 1 and الشكل 47 need.
-`d-model-topbar` is the module top bar — misleadingly named, used by BOQ, supply and
-reports as well as the model tab.
+**A15a — done · 4.** `d-panel-body` and `d-callout*`.
+
+`d-panel-body` fixed a defect that was recorded as fixed and never was. `styles.css` said
+`.d-panel` carries no padding of its own, that the sheet expects a `.d-panel-body` wrapper
+these pages never used, and that the bodies «all touched the panel border on all four sides.
+Measured: 1px of inset, which is the border». The diagnosis was right. The fix —
+`.d-panel > .epm-donut-row, .d-panel > .epm-bars, .d-panel > .d-grid.stats { padding }` —
+**matched nothing**: `.epm-donut-row`, `.epm-bars` and `.epm-legend` have no caller anywhere
+in the app, and the three `.d-grid.stats` strips are page-level children, not panel children.
+Re-measured on SCR-E1: eight panels, every body still at 1px. Now four chart components sit
+at 17px and the rest are untouched — `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry their
+own padding, and the `.d-mini` rows are deliberately full-bleed.
+
+`d-callout` took الشكل 38's «مربع تفسيري لقاعدة الـ20%», which had been `.d-msgbar info` —
+a class the sheet describes as «page-level state, four tones». The 20% rule is not a state;
+it is what the screen is about, standing before any figure. **`.d-callout-tx > b` only:** the
+sheet also styles a `.k` child with `text-transform: uppercase` and `letter-spacing: .4px`,
+which `CLAUDE.md` §6 forbids outright — Arabic has no case and letter-spacing severs its
+joins. The reference never uses `.k` there either.
+
+**A15b — not portable · 3.**
+
+- **`d-check`** — its only reachable caller is `DSpaces`' select column, and §B4 already
+  records this port as having no select column and no `.d-bulkbar` (`entities.page.html:228`).
+  Same decision, so the checkbox has nowhere to go.
+- **`d-model-topbar`** — the *older* in-module header. `.d-pz6` is the module frame's own Z6
+  and the port uses it everywhere. `DModReports` draws both: `desktop-workspace.jsx:262`
+  wraps it in `DModuleFrame` with a title (reports is not in `SELF_FRAMED`) **and** it draws
+  its own topbar with the same title. Porting it would reproduce a duplicated header.
+- **`d-l04-z8fall`** — exists only to repeat a Z8 aside's content in the flow below 1180px.
+  The port's «كيف تُحتسب» is an `<epm-drawer>`, which `CLAUDE.md` §6 asks for by name
+  («secondary detail goes in a drawer, not an in-place expander») and which needs no
+  fallback because it works at every width.
 
 `d-panel-body` `d-callout` `d-callout-ico` `d-callout-tx` `d-check` `d-switch`
 `d-model-topbar` `d-l04-z8fall`

@@ -174,12 +174,25 @@
             </div>
 
           } @else {
-            <!-- الشكل 38's «مربع تفسيري لقاعدة الـ20%», before any figure. -->
-            <div class="d-msgbar info">
-              <epm-icon name="payments" [size]="16" />
-              <div>
+            <!-- الشكل 38's «مربع تفسيري لقاعدة الـ20%», before any figure.
+
+                 `.d-callout` IS that box — the sheet's explanatory panel, with
+                 its own 40px icon tile (`supply-items.jsx:827`,
+                 `project-modules.jsx:872`). It had been `.d-msgbar info`, which
+                 the sheet describes as «page-level state, four tones»: this is
+                 not a state, it is the rule the screen is about, standing
+                 before any figure. Both are shipped; this is the right one.
+
+                 `.d-callout-tx > b` only. The sheet also styles a `.k` child
+                 with `text-transform: uppercase` and `letter-spacing: .4px`,
+                 which CLAUDE.md §6 forbids outright — Arabic has no case and
+                 letter-spacing severs its joins. The reference never uses `.k`
+                 here either; noting it so nobody reaches for it. -->
+            <div class="d-callout">
+              <span class="d-callout-ico"><epm-icon name="payments" [size]="18" /></span>
+              <div class="d-callout-tx">
                 <b>{{ lang.t('chg_w_tier_t') }}</b>
-                <span>{{ type() === 'supply' ? lang.t('chg_w_tier_supply') : lang.t('chg_w_tier_b') }}</span>
+                <span class="d-cell-sub">{{ type() === 'supply' ? lang.t('chg_w_tier_supply') : lang.t('chg_w_tier_b') }}</span>
               </div>
             </div>
 
