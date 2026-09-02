@@ -457,6 +457,21 @@
                                       [style.--bar-status]="barColor(r)">
                                   <span class="fill" [style.width.%]="r.progress"></span>
                                 </span>
+                                <!-- «تمديد معتمد بأمر تغييري» — the approved
+                                     order that has NOT been applied. 02 §9 and
+                                     non-negotiable #2 keep it out of every
+                                     effective figure, and it is drawn here as
+                                     what it is: hatched and dashed, picking up
+                                     where the bar ends, never part of it. The
+                                     Gantt used to show nothing at all, so an
+                                     activity with days waiting looked like one
+                                     with none. -->
+                                @if (extWidth(r) > 0) {
+                                  <span class="d-gantt-ext"
+                                        [style.inset-inline-start.px]="left(barEnd(r))"
+                                        [style.width.px]="extWidth(r)"
+                                        [title]="lang.t('scd_ext_title') + ' — ' + fmt.date(extFinish(r))"></span>
+                                }
                               }
                             </div>
                           </div>
@@ -842,6 +857,49 @@
                     <td class="r num"><bdi>{{ fmt.money(a.remainingValue) }}</bdi></td></tr>
                 </tbody>
               </table>
+
+              <!-- ── «تعديل بأمر تغييري» · `.d-act-amd` ────────────────────
+                   `DModSchedule` schedule-module.jsx:559 puts the amendment
+                   INSIDE the activity detail. The port had it only as a mark on
+                   the row, opening a drawer — so an approver reading the
+                   activity saw its dates, its float and its cost with no sign
+                   that a change order had moved any of them.
+
+                   Applied and approved-but-unapplied stay APART (`02 §9`,
+                   non-negotiable #2): the settled days are already inside the
+                   dates above, the pending ones are not and say so. The drawer
+                   stays — this names the fact and offers the detail, it does
+                   not replace it. -->
+              @if (a.amendment; as m) {
+                <div class="d-act-amd">
+                  <div class="hd">
+                    <epm-icon name="history" [size]="15" />
+                    <b>{{ lang.t('scd_amd_t') }}</b>
+                    <epm-amd-mark [count]="m.count" [pendingCount]="m.pendingCount"
+                                  [sources]="m.sources" (opened)="openAmendments(a.id)" />
+                  </div>
+                  <div class="d-form-grid">
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('scd_amd_settled') }}</span>
+                      <span class="v num"><bdi>{{ fmt.days(m.deltaDays) }}</bdi></span>
+                    </div>
+                    @if (m.pendingDeltaDays !== null) {
+                      <div class="d-form-i">
+                        <span class="k">{{ lang.t('scd_amd_pending') }}</span>
+                        <span class="v num"><bdi>{{ fmt.days(m.pendingDeltaDays) }}</bdi></span>
+                      </div>
+                    }
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('scd_amd_sources') }}</span>
+                      <span class="v">
+                        @for (s of m.sources; track s.no) {
+                          <bdi class="mono">{{ s.no }}</bdi>@if (!s.isApplied) { <span class="d-cell-sub">{{ lang.t('scd_amd_unapplied') }}</span> }
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
 
               <!-- الشكل 21's own link row — `.d-recl`, copied and uncalled. -->
               <div class="d-recl">

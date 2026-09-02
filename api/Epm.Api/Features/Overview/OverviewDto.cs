@@ -162,6 +162,21 @@ public record OverviewProgress(int Started, int Available);
 public record OverviewNextAction(string ModuleId, string Reason, int Waiting);
 
 /// <summary>
+/// `[EP-OVW-02]` — الشكل 4's «نقاط حالة ملوّنة لكل وحدة», for the rail.
+///
+/// The same `OverviewModule` rows `[EP-OVW-01]` carries, from the same method,
+/// without the two S-curves and the earned value the dots do not need. The
+/// rail is the frame around all fifteen module screens, so it asks for this on
+/// every one of them.
+///
+/// Members are IDENTICAL to `ModulesResponse` in
+/// web/src/app/features/workspace/workspace.types.ts.
+/// </summary>
+public record ModulesResponse(
+    IReadOnlyList<OverviewModule> Modules,
+    OverviewProgress Progress);
+
+/// <summary>
 /// **ملحق الشكل 4**'s identity line: «الجهة المستفيدة جامعة بغداد؛ المقاول شركة
 /// الفرات للمقاولات؛ المكتب الاستشاري الهندسي؛ نوع المشروع تنفيذ أمانة؛ التمويل
 /// البرنامج الحكومي؛ المنطقة ديالى؛ المباشرة 2026-03-12؛ الإنجاز التعاقدي

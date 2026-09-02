@@ -308,6 +308,8 @@ export class BoqPage {
   shareDraft = signal<ShareDraft[] | null>(null);
   queueFilter = signal('');
   picker = signal(false);
+  /** A5-rest — «توزيع», the `.d-actmenu` that holds the basis and the action. */
+  distMenu = signal(false);
 
   readonly colCount = 13;
 

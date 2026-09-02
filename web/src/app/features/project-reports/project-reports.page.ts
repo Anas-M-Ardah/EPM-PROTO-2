@@ -2,14 +2,16 @@ import {
   Component, ViewEncapsulation, computed, effect, inject, signal, untracked,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import * as fmt from '../../core/format';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../core/icon.component';
 import { SectionComponent } from '../../shared/section.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { BarCompareComponent } from '../../shared/bar-compare.component';
 import { LangService } from '../../core/lang';
 import { ToastService } from '../../shared/toast.service';
 import { ProjectReportsApi } from './project-reports.api';
-import { ProjectReportRow, ProjectReportsResponse } from './project-reports.types';
+import { ProjectReportBody, ProjectReportRow, ProjectReportsResponse } from './project-reports.types';
 
 /**
  * SCR-W14 — التقارير والتحليلات, the project tab · `04 §3`.
@@ -35,7 +37,7 @@ import { ProjectReportRow, ProjectReportsResponse } from './project-reports.type
 @Component({
   selector: 'epm-project-reports-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent, TableSkeletonComponent],
+  imports: [IconComponent, SectionComponent, TableSkeletonComponent, BarCompareComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './project-reports.page.html',
 })
@@ -45,6 +47,7 @@ export class ProjectReportsPage {
   lang = inject(LangService);
   /** «تشغيل» and «تصدير» are demo stubs and say so. */
   toast = inject(ToastService);
+  fmt = fmt;
 
   /** التقرير · الفئة · الدورية · المصادر · الحالة. */
   readonly colCount = 5;
@@ -107,6 +110,84 @@ export class ProjectReportsPage {
     this.toast.demo(`تشغيل ${r.titleAr}`, `Run ${r.titleEn}`);
   }
 
+  /* ── THE VIEW · [EP-PRP-02] ───────────────────────────────────────────────
+     `DModReports` project-modules.jsx:2805 is a rail beside a view, and the
+     view RENDERS the selected report rather than describing it. `selected` is
+     that choice; `body` is what came back for it.
+
+     The rail keeps this port's own answer — availability, and what is missing
+     when a report cannot be produced — so picking an unproducible report shows
+     the reason rather than an empty table (P-123 · P-213). */
+  selected = signal<string | null>(null);
+  body = signal<ProjectReportBody | null>(null);
+  bodyLoading = signal(false);
+  bodyError = signal<string | null>(null);
+
+  select(id: string) {
+    if (this.selected() === id) return;
+    this.selected.set(id);
+    this.loadBody();
+  }
+
+  /** The rail's own rows: every report, category filter applied. */
+  railRows = computed(() => this.shown());
+
+  bodyTitle(): string {
+    const b = this.body();
+    return b ? this.lang.pick(b.titleAr, b.titleEn) : '';
+  }
+  bodyDescription(): string {
+    const b = this.body();
+    return b ? this.lang.pick(b.descriptionAr, b.descriptionEn) : '';
+  }
+  bodyMissing(): string {
+    const b = this.body();
+    return b ? this.lang.pick(b.missingAr ?? '', b.missingEn ?? '') : '';
+  }
+  chartTitle(): string {
+    const b = this.body();
+    return b ? this.lang.pick(b.chartTitleAr ?? '', b.chartTitleEn ?? '') : '';
+  }
+  label(x: { labelAr: string; labelEn: string }): string {
+    return this.lang.pick(x.labelAr, x.labelEn);
+  }
+  columnName(c: { nameAr: string; nameEn: string }): string {
+    return this.lang.pick(c.nameAr, c.nameEn);
+  }
+
+  /* `<epm-bar-compare>`'s own shape, so this is the app's one bar chart rather
+     than a second one. The COLOUR is assigned here and not sent by the API:
+     `--viz-1/2/3` are the three interactive-namespace series (05 §7.5), and a
+     colour is presentation — the endpoint owns the figure, not its paint. */
+  private readonly viz = ['var(--viz-1)', 'var(--viz-2)', 'var(--viz-3)'];
+  barItems = computed(() => (this.body()?.bars ?? []).map((b, i) => ({
+    label: this.label(b), value: b.value, display: b.display,
+    color: this.viz[i % this.viz.length],
+  })));
+
+  /** Same stub as the register's `run`, from the view this time. */
+  runBody() {
+    const b = this.body();
+    if (!b || !b.available) return;
+    this.toast.demo(`تشغيل ${b.titleAr}`, `Run ${b.titleEn}`);
+  }
+
+  loadBody() {
+    const pid = this.projectId();
+    const id = this.selected();
+    if (!pid || !id) return;
+    this.bodyLoading.set(true);
+    this.bodyError.set(null);
+
+    this.api.body(pid, id).subscribe({
+      next: b => { this.body.set(b); this.bodyLoading.set(false); },
+      error: e => {
+        this.bodyError.set(e?.error?.message ?? e?.message ?? 'request failed');
+        this.bodyLoading.set(false);
+      },
+    });
+  }
+
   constructor() {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');
@@ -129,6 +210,11 @@ export class ProjectReportsPage {
       next: model => {
         this.data.set(model);
         this.loading.set(false);
+        /* The view is never blank. `DModReports` opens on its first report
+           (`useState('status')`); this opens on the rail's first row, which
+           follows the category filter rather than being pinned to an id. */
+        const first = this.shown()[0];
+        if (first) this.select(first.id);
       },
       error: e => {
         this.error.set(e?.error?.message ?? e?.message ?? 'request failed');

@@ -132,7 +132,14 @@ From client review. These are the ones most likely to be "simplified" by mistake
 
 ## 6. Design rules that get broken most often
 
-- Type scale is exactly **11 / 11.5 / 12 / 13 / 15 / 18 / 21 / 24**. Nothing smaller than 11px.
+- Type scale — **this line is the PRE-v1.1 scale and no longer matches the shipped tokens.**
+  It said 11 / 11.5 / 12 / 13 / 15 / 18 / 21 / 24, nothing smaller than 11px. Phase 1.5
+  replaced the palette and the scale together and this was not updated, so a size was
+  measured against it and wrongly called off-scale (P-214). `tokens.css` ships
+  `--fs-100…--fs-1000` = **10 · 12 · 14 · 16 · 20 · 24 · 28 · 32 · 40 · 68**. Use the TOKENS,
+  never a literal. The 11px floor is still the accessibility intent, and `--fs-100` breaches
+  it at 10px — that is P-33, one of the four the client chose to keep (see the REVERTED table
+  in `DECISIONS.md`), not a licence to add more.
 - **No uppercase, no letter-spacing** — Arabic has no case and letter-spacing breaks its shaping.
 - **Nothing floats.** Separation is hairlines and plane changes, never shadows.
 - Sections are **label + space**, never nested boxes. Tables are the primary element, not cards.

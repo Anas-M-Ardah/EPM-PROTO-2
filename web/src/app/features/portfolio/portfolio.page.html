@@ -364,13 +364,67 @@
         </div>
       }
 
-      @if (spendBars().length > 0) {
+      <!-- A13 · «الصرف السنوي» — `DLineTrend` in `.d-line-chart`
+           (desktop-views.jsx:281, desktop-charts.jsx:84). The MARK is the
+           reference's; the DATA is ours and stays ours. The reference feeds
+           this panel five invented weights over hard-coded years 2022–2026;
+           these are the years that actually carry a paid payment. The sub-line
+           keeps saying so, and the panel is NOT relabelled «تراكمي» the way the
+           reference's is — that series only looks cumulative because its
+           weights ascend, and the real cumulative position is the financial
+           curve higher up this page. -->
+      @if (spendTrend().length > 0) {
         <div class="d-panel">
           <div class="d-panel-head">
             <b>{{ lang.t('prt_annual_spend') }}</b>
             <span class="d-cell-sub">{{ lang.t('prt_annual_sub') }}</span>
           </div>
-          <epm-bar-compare [items]="spendBars()" [caption]="lang.t('prt_annual_spend')" />
+          <epm-line-trend [points]="spendTrend()" color="var(--viz-1)"
+                          [caption]="lang.t('prt_annual_spend')" />
+        </div>
+      }
+
+      <!-- A13 · «الجدول الزمني للمشاريع» — `DTlMini`, desktop-charts.jsx:116,
+           mounted at desktop-views.jsx:285. One row per project: the name, a
+           track filled to its physical progress, and the two dates that say
+           whether it lands on time.
+
+           The row is a `<button>` because the reference's is — it opens the
+           project — and `.d-tl-mini-row` is `all: unset`, which resets
+           `outline` and beats the global `:focus-visible`. Same defect and same
+           fix as `.d-contract-card` at A1 (P-207), so the ring is restored in
+           `styles.css` with the global rule's own values rather than left off.
+
+           THE OVERRUN IS NEVER COLOUR ALONE: the late date is red AND the row's
+           title names the delay in words AND both dates are printed either way
+           (05 §7.6). -->
+      @if (timelineRows().length > 0) {
+        <div class="d-panel">
+          <div class="d-panel-head">
+            <b>{{ lang.t('prt_timeline') }}</b>
+            <span class="d-cell-sub">{{ lang.t('prt_timeline_sub') }}</span>
+          </div>
+          <div class="d-tl-mini">
+            @for (t of timelineRows(); track t.projectId) {
+              <button type="button" class="d-tl-mini-row"
+                      [title]="t.overrun ? lang.t('prt_tl_overrun') : lang.t('prt_tl_ontime')"
+                      [routerLink]="['/projects', t.projectId]">
+                <span class="d-tl-mini-name">{{ t.name }}</span>
+                <div>
+                  <div class="d-tl-mini-track">
+                    <span class="d-tl-mini-fill"
+                          [style.width.%]="t.fill" [style.background]="t.color"></span>
+                  </div>
+                  <div class="dates">
+                    <span class="mono"><bdi>{{ fmt.date(t.start) }}</bdi></span>
+                    <span class="mono" [class.late]="t.overrun">
+                      <bdi>{{ fmt.date(t.finish) }}</bdi>
+                    </span>
+                  </div>
+                </div>
+              </button>
+            }
+          </div>
         </div>
       }
 

@@ -26,14 +26,31 @@
         @for (m of g.modules; track m.id) {
           @if (m.built) {
             <!-- The title carries the label for the ≤1200px collapsed rail,
-                 where the sheet hides `.ml` and only the icon is left. -->
+                 where the sheet hides `.ml` and only the icon is left. It now
+                 carries the readiness too, since that is the other thing the
+                 collapsed rail cannot show in text. -->
             <button type="button" class="d-modnav-item"
                     [class.on]="moduleId() === m.id"
-                    [title]="lang.t(m.key)"
+                    [title]="dotTitle(m)"
                     [attr.aria-current]="moduleId() === m.id ? 'page' : null"
                     (click)="open(m)">
               <epm-icon [name]="m.icon" [size]="17" />
               <span class="ml">{{ lang.t(m.key) }}</span>
+
+              <!-- الشكل 4 · «بنقاط حالة ملوّنة لكل وحدة». `.d-tab-ready`
+                   (desktop.css:506) is a 7px dot, pushed to the row end by
+                   `.d-modnav-item .d-tab-ready` and re-pinned to the corner
+                   below 1200px where the label is hidden — both shipped.
+
+                   05 §7.6 — a 7px dot carries no text, so the WORD travels
+                   with it: `role="img"` + `aria-label`, and the row's `title`
+                   repeats it with the waiting count. Absent until the server
+                   answers, rather than drawn neutral and then corrected. -->
+              @if (stateOf(m.id); as s) {
+                <span class="d-tab-ready {{ stateClass(s.state) }}"
+                      role="img"
+                      [attr.aria-label]="stateLabel(s.state)"></span>
+              }
             </button>
           } @else {
             <!--

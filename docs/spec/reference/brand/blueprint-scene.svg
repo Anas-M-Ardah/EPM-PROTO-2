@@ -1,0 +1,108 @@
+<!-- Hero blueprint scene. Rendered through <img>, so every colour is explicit —
+     currentColor does not reach here. Dark theme lifts it via opacity + brightness,
+     which is why the technical lines are mid-slate rather than near-black.
+     The composition is centre-weighted on purpose: the page masks one side out
+     depending on direction (left in LTR, right in RTL), so the tower must survive
+     both and the two accents — north arrow, detail callout — sit one per side. -->
+<svg viewBox="0 0 720 720" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0 H0 V24" stroke="#8ea3c4" stroke-width=".7"/>
+    </pattern>
+    <pattern id="grid5" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M120 0 H0 V120" stroke="#8ea3c4" stroke-width="1.1"/>
+    </pattern>
+    <pattern id="hatch" width="13" height="13" patternUnits="userSpaceOnUse">
+      <path d="M0 13 L13 0" stroke="#5f7a9e" stroke-width="1.1"/>
+    </pattern>
+    <radialGradient id="fade" cx="48%" cy="62%" r="64%">
+      <stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <mask id="gm"><rect width="720" height="720" fill="url(#fade)"/></mask>
+  </defs>
+
+  <!-- drawing grid, faded from the middle out so it never meets a hard edge -->
+  <g mask="url(#gm)" opacity=".5">
+    <rect width="720" height="720" fill="url(#grid)"/>
+    <rect width="720" height="720" fill="url(#grid5)" opacity=".8"/>
+  </g>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <!-- annex block -->
+    <g stroke="#3f5878">
+      <rect x="96" y="420" width="120" height="192" stroke-width="1.6"/>
+      <path d="M96 468 H216 M96 516 H216 M96 564 H216" stroke-width=".9" opacity=".8"/>
+      <path d="M156 420 V612" stroke-width=".8" stroke-dasharray="7 5" opacity=".7"/>
+      <path d="M88 420 H224" stroke-width="1.8"/>
+    </g>
+
+    <!-- tower elevation: ten floors at 48, on a three-bay column grid -->
+    <g stroke="#1d3c6e">
+      <rect x="232" y="132" width="240" height="480" stroke-width="2"/>
+      <path d="M300 104 H404 V132" stroke-width="1.6"/>
+      <path d="M352 104 V64" stroke-width="1.4"/>
+      <path d="M224 132 H480" stroke-width="2.4"/>
+    </g>
+    <circle cx="352" cy="62" r="4" fill="#e8645a"/>
+
+    <g stroke="#3f5878" stroke-width=".9">
+      <path d="M232 180 H472 M232 228 H472 M232 276 H472 M232 324 H472 M232 372 H472
+               M232 420 H472 M232 468 H472 M232 516 H472 M232 564 H472"/>
+    </g>
+    <!-- column grid lines, drawn as centrelines the way a section sheet would -->
+    <g stroke="#5f7a9e" stroke-width=".8" stroke-dasharray="9 6" opacity=".75">
+      <path d="M292 120 V624 M352 120 V624 M412 120 V624"/>
+    </g>
+    <!-- curtain-wall band per floor -->
+    <g stroke="#5f7a9e" stroke-width=".8" opacity=".55">
+      <rect x="244" y="146" width="216" height="20"/><rect x="244" y="194" width="216" height="20"/>
+      <rect x="244" y="242" width="216" height="20"/><rect x="244" y="290" width="216" height="20"/>
+      <rect x="244" y="338" width="216" height="20"/><rect x="244" y="386" width="216" height="20"/>
+      <rect x="244" y="434" width="216" height="20"/><rect x="244" y="482" width="216" height="20"/>
+      <rect x="244" y="530" width="216" height="20"/>
+    </g>
+    <!-- entrance -->
+    <g stroke="#1d3c6e" stroke-width="1.5">
+      <path d="M316 612 V568 H388 V612"/><path d="M352 568 V612" stroke-width=".9"/>
+    </g>
+
+    <!-- ground line and made ground -->
+    <path d="M40 612 H680" stroke="#1d3c6e" stroke-width="2.6"/>
+  </g>
+  <rect x="48" y="613" width="624" height="22" fill="url(#hatch)" opacity=".5"/>
+
+  <!-- dimensions: overall height, tower width, annex width -->
+  <g stroke="#e8645a" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M520 132 V612" stroke-width="1.6"/>
+    <path d="M513 141 L520 132 L527 141 M513 603 L520 612 L527 603" stroke-width="1.5"/>
+    <path d="M472 132 H534 M472 372 H534 M472 612 H534" stroke-width=".9" opacity=".8"/>
+    <path d="M232 664 H472" stroke-width="1.6"/>
+    <path d="M241 657 L232 664 L241 671 M463 657 L472 664 L463 671" stroke-width="1.5"/>
+    <path d="M232 620 V678 M472 620 V678" stroke-width=".9" opacity=".8"/>
+    <path d="M96 664 H216" stroke-width="1.2" opacity=".85"/>
+    <path d="M105 658 L96 664 L105 670 M207 658 L216 664 L207 670" stroke-width="1.2" opacity=".85"/>
+    <path d="M96 620 V678 M216 620 V678" stroke-width=".8" opacity=".6"/>
+  </g>
+  <circle cx="520" cy="372" r="3" fill="#e8645a"/>
+
+  <!-- detail callout: column–slab junction, blown up off the tower's edge -->
+  <g stroke="#5f7a9e" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M478 216 L534 200" stroke-width=".9" stroke-dasharray="6 4"/>
+    <circle cx="600" cy="200" r="62" stroke-width="1.3"/>
+    <g stroke="#3f5878">
+      <rect x="572" y="152" width="26" height="96" stroke-width="1.4"/>
+      <path d="M556 196 H648" stroke-width="1.6"/>
+      <path d="M556 208 H648" stroke-width=".9" opacity=".7"/>
+      <path d="M598 172 H636 M598 232 H636" stroke-width=".8" opacity=".6"/>
+    </g>
+    <path d="M604 196 H648" stroke="#e8645a" stroke-width="1.4"/>
+  </g>
+
+  <!-- north arrow -->
+  <g stroke="#5f7a9e" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="176" r="34" stroke-width="1.2" opacity=".8"/>
+    <path d="M120 148 L133 204 L120 192 L107 204 Z" stroke-width="1.3" fill="#3f5878" fill-opacity=".18"/>
+    <path d="M120 130 V138 M120 214 V222 M74 176 H82 M158 176 H166" stroke-width="1.1" opacity=".7"/>
+  </g>
+</svg>

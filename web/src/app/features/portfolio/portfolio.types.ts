@@ -71,6 +71,29 @@ export interface SpendYear {
   value: number;
 }
 
+/**
+ * SCR-E1's «الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً» — `DTlMini`,
+ * docs/spec/reference/app/desktop-charts.jsx:116, fed at desktop-views.jsx:285.
+ *
+ * Members are IDENTICAL to `TimelineRow` in
+ * api/Epm.Api/Features/Portfolio/PortfolioDto.cs.
+ */
+export interface TimelineRow {
+  projectId: string;
+  nameAr: string;
+  nameEn: string;
+  workspaceCode: string;
+  status: string;
+  /** BR-04's weighted progress, and the bar's fill. Null draws an empty bar. */
+  physical: number | null;
+  value: number;
+  start: string | null;
+  /** Latest ORIGINAL contract finish — the contractual date. */
+  plannedFinish: string | null;
+  /** Latest forecast finish; later than `plannedFinish` means an overrun. */
+  forecastFinish: string | null;
+}
+
 export interface UpcomingMilestone {
   projectId: string;
   nameAr: string;
@@ -115,6 +138,7 @@ export interface PortfolioResponse {
   cost: PortfolioCost;
   annualSpend: SpendYear[];
   milestones: UpcomingMilestone[];
+  timeline: TimelineRow[];
 
   statusDistribution: StatusSlice[];
   valueByEntity: EntityValue[];

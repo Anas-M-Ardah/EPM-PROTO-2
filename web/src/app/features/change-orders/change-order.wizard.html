@@ -174,12 +174,25 @@
             </div>
 
           } @else {
-            <!-- الشكل 38's «مربع تفسيري لقاعدة الـ20%», before any figure. -->
-            <div class="d-msgbar info">
-              <epm-icon name="payments" [size]="16" />
-              <div>
+            <!-- الشكل 38's «مربع تفسيري لقاعدة الـ20%», before any figure.
+
+                 `.d-callout` IS that box — the sheet's explanatory panel, with
+                 its own 40px icon tile (`supply-items.jsx:827`,
+                 `project-modules.jsx:872`). It had been `.d-msgbar info`, which
+                 the sheet describes as «page-level state, four tones»: this is
+                 not a state, it is the rule the screen is about, standing
+                 before any figure. Both are shipped; this is the right one.
+
+                 `.d-callout-tx > b` only. The sheet also styles a `.k` child
+                 with `text-transform: uppercase` and `letter-spacing: .4px`,
+                 which CLAUDE.md §6 forbids outright — Arabic has no case and
+                 letter-spacing severs its joins. The reference never uses `.k`
+                 here either; noting it so nobody reaches for it. -->
+            <div class="d-callout">
+              <span class="d-callout-ico"><epm-icon name="payments" [size]="18" /></span>
+              <div class="d-callout-tx">
                 <b>{{ lang.t('chg_w_tier_t') }}</b>
-                <span>{{ type() === 'supply' ? lang.t('chg_w_tier_supply') : lang.t('chg_w_tier_b') }}</span>
+                <span class="d-cell-sub">{{ type() === 'supply' ? lang.t('chg_w_tier_supply') : lang.t('chg_w_tier_b') }}</span>
               </div>
             </div>
 
@@ -290,11 +303,31 @@
                         </tr>
 
                         <!-- ══ الشكل 39 — تفصيل البند والمقترحان ═══════ -->
+                        <!-- الشكل 39's expanded item card. `.d-vow-ed` is the
+                             sheet's own editor row (`DVOCreateWizard`
+                             vo-wizard.jsx:425): it gives the row a
+                             `--surface-container-low` plane and a closing
+                             border, so the editor reads as a panel opened out
+                             of the table rather than as more table. It also
+                             zeroes the cell's padding, because every child
+                             carries its own inset — `.d-vow-edh` 12/16/10 and
+                             `.d-vow-props` 14/16.
+
+                             `.d-vow-sub` (desktop.css:1819) only stripped the
+                             top border; it is one of the six classes the sheet
+                             ships that the prototype never emits, and this row
+                             was its only caller.
+
+                             `.d-vow-edh` joins `.d-vow-tier` rather than
+                             replacing it: `edh` supplies the inset and the
+                             divider that `padding: 0` removed, `tier` keeps
+                             `.t` and the suspended tone on the 20% note. Same
+                             flex declarations, so nothing collides. -->
                         @if (openLine() === r.code) {
-                          <tr class="d-vow-sub">
+                          <tr class="d-vow-ed">
                             <td colspan="8">
                               @if (previewOf(r.code); as p) {
-                                <div class="d-vow-tier">
+                                <div class="d-vow-edh d-vow-tier">
                                   <span class="t">
                                     <b>{{ changeLabel(r.changeType) }}</b>
                                     <bdi class="mono">{{ r.code }}</bdi> — {{ desc(boqOf(r.code)) }}
@@ -1095,12 +1128,27 @@
         </button>
       </div>
 
-      <div class="d-modal-body">
-        <label class="d-field">
+      <!-- الشكل 38's picker bar. `DVOMultiPick` vo-wizard-parts.jsx:42 puts the
+           search in `.d-vow-filters > .d-vow-search`, ABOVE `.d-modal-body`
+           rather than inside it: the bar is `flex: none` so it stays put while
+           the result table scrolls under it. `.d-field` is the app's generic
+           search box and was standing in for it.
+
+           `.d-vow-search input` is `all: unset`, so the input carries no class
+           of its own — the bar owns the chrome.
+
+           The two other children of this bar — `.d-vow-facets` and the
+           `.d-vow-chip` row — are NOT here: see A4b in STRUCTURE-GAP.md. They
+           need facet definitions and filter state, which is behaviour. -->
+      <div class="d-vow-filters">
+        <div class="d-vow-search">
           <epm-icon name="search" [size]="16" />
           <input type="search" [value]="pickQuery()" (input)="pickQuery.set($any($event.target).value)"
                  [attr.aria-label]="lang.t('chg_w_search')" [attr.placeholder]="lang.t('chg_w_search')" />
-        </label>
+        </div>
+      </div>
+
+      <div class="d-modal-body">
 
         @if (what === 'boq') {
           @if (boqPool().length === 0) {

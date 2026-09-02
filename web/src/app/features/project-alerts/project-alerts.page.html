@@ -128,9 +128,19 @@
                       <td class="mono d-cell-sub"><bdi>{{ r.code }}</bdi></td>
                       <td class="d-cell-strong">{{ ruleName(r) }}</td>
                       <td class="d-cell-sub">{{ ruleTrigger(r) }}</td>
-                      <!-- 05 §7.6 — coloured AND labelled, always. -->
+                      <!-- 05 §7.6 — coloured AND labelled, always. A17 adds the
+                           third carrier: `.d-alert-sev` (desktop.css:1223) is
+                           what `DAlertSev` draws in this exact cell
+                           (alerts-module.jsx:210), and its leading mark is a
+                           PER-SEVERITY glyph where `.d-pill::before` was the
+                           same 6px dot for all three. Shape now carries the
+                           severity too, which is what «never colour alone»
+                           actually asks for. `severityIcon()` already existed
+                           on this component for the inbox dot; this is its
+                           second caller, not a new mapping. -->
                       <td>
-                        <span class="d-pill {{ severityClass(r.severity) }}">
+                        <span class="d-alert-sev {{ severityClass(r.severity) }}">
+                          <epm-icon [name]="severityIcon(r.severity)" [size]="13" />
                           {{ severityLabel(r.severity) }}
                         </span>
                       </td>

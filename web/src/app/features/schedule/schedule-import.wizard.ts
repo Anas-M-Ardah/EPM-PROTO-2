@@ -118,17 +118,26 @@ export class ScheduleImportWizard {
    * `.txt` name is still an XER, and guessing would be a second answer to a
    * question the wizard already asked.
    */
+  /**
+   * True while the file is being read and parsed. The interval is real — an
+   * `.xer` goes through `File.text()` and the Excel path lazily imports
+   * SheetJS first — and until now nothing on screen said so.
+   */
+  parsing = signal(false);
+
   private read(f: File) {
     this.fileError.set(null);
     this.preview.set(null);
     this.fileName.set(f.name);
     this.fileSize.set(f.size);
+    this.parsing.set(true);
 
     const parse = this.format() === 'excel'
       ? readWorkbook(f)
       : f.text().then(t => this.format() === 'xer' ? parseXer(t) : parseP6Xml(t));
 
     parse.then(rows => {
+      this.parsing.set(false);
       if (rows.length === 0) {
         this.rows.set([]);
         this.fileError.set(this.lang.t('scd_imp_empty'));
@@ -137,6 +146,7 @@ export class ScheduleImportWizard {
       this.rows.set(rows);
       this.step.set(2);
     }).catch(() => {
+      this.parsing.set(false);
       this.rows.set([]);
       this.fileError.set(this.lang.t('scd_imp_unreadable'));
     });

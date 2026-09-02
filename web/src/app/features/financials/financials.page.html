@@ -414,32 +414,48 @@
 
                 <!-- «شريط تقدّم لنسبة الاستهلاك». The bar is geometry; the
                      percentage beside it is the server's (BR-04's rollup over
-                     an allocation rather than a bill). -->
-                <div class="epm-bar">
-                  <div class="h">
+                     an allocation rather than a bill).
+
+                     A7 · ملحق الشكل 15 — this is `.d-yalloc`, the sheet's own
+                     annual-allocation strip (desktop.css:3023), which the port
+                     had re-drawn as `.epm-bar` + `.d-fig-row`. Three things
+                     come with the swap and none of them is a new rule: `.ah
+                     .num` is `margin-inline-start: auto`, so the `.sp` spacer
+                     stops being markup; `.af` is a THREE-COLUMN grid rather
+                     than a flex row, so the widest figure can no longer push
+                     the other two off the baseline; and `.d-yalloc` is a
+                     `container-type: inline-size`, so the terms stack at 520px
+                     of its OWN width instead of the viewport's.
+
+                     `<em>` is the label and `.d-money` the figure — its
+                     `unicode-bidi: isolate` is the `<bdi>` 05 §5.2 asks for,
+                     the same reading as the reconciliation strip above. -->
+                <div class="d-yalloc">
+                  <div class="ah">
                     <span class="k">{{ lang.t('fin_alloc_pct') }}</span>
-                    <span class="sp"></span>
-                    <span class="v">
+                    <b class="num">
                       <bdi>{{ a.consumptionPct === null ? '—' : fmt.pct(a.consumptionPct, 0) }}</bdi>
-                    </span>
+                    </b>
                   </div>
-                  <span class="track epm-track">
+                  <span class="track">
                     <i [style.width.%]="bar(a.consumptionPct ?? 0)"></i>
                   </span>
-                </div>
-
-                <div class="d-fig-row">
-                  <div class="d-fig">
-                    <span class="k">{{ lang.t('fin_alloc_amount') }}</span>
-                    <span class="v num"><bdi>{{ fmt.money(a.allocated) }}</bdi></span>
-                  </div>
-                  <div class="d-fig">
-                    <span class="k">{{ lang.t('fin_alloc_spent') }}</span>
-                    <span class="v num"><bdi>{{ fmt.money(a.spent) }}</bdi></span>
-                  </div>
-                  <div class="d-fig">
-                    <span class="k">{{ lang.t('fin_alloc_left') }}</span>
-                    <span class="v num"><bdi>{{ fmt.money(a.remaining) }}</bdi></span>
+                  <div class="af">
+                    <span>
+                      <em>{{ lang.t('fin_alloc_amount') }}</em>
+                      <span class="d-money md"><b class="num">{{ fmt.money(a.allocated) }}</b>
+                        <i>{{ lang.t('cur_iqd') }}</i></span>
+                    </span>
+                    <span>
+                      <em>{{ lang.t('fin_alloc_spent') }}</em>
+                      <span class="d-money md"><b class="num">{{ fmt.money(a.spent) }}</b>
+                        <i>{{ lang.t('cur_iqd') }}</i></span>
+                    </span>
+                    <span>
+                      <em>{{ lang.t('fin_alloc_left') }}</em>
+                      <span class="d-money md"><b class="num">{{ fmt.money(a.remaining) }}</b>
+                        <i>{{ lang.t('cur_iqd') }}</i></span>
+                    </span>
                   </div>
                 </div>
 
@@ -540,23 +556,31 @@
               </div>
 
               <!-- «بطاقة لكل مرحلة بمؤشر حالة ملوّن» — and never colour alone:
-                   every card states its cap and what has happened to it (05 §7.6). -->
-              <div class="epm-cardgrid">
+                   every card states its cap and what has happened to it (05 §7.6).
+
+                   A7 · ملحق الشكل 17 — `.d-slastages` (desktop.css:3041) is the
+                   sheet's own stage grid, which the port had re-drawn as
+                   `.epm-cardgrid` of `.d-panel.epm-hrows.epm-slastage`. The
+                   sheet's cards are `grid-template-rows: auto auto 1fr` so the
+                   footer pins to the bottom of EVERY card and a long stage name
+                   cannot make one row taller than its neighbours — the reason
+                   the comment above the rule gives, and the thing the hand-rolled
+                   version got wrong. The state rides `.ss.done` / `.ss.active`
+                   on the card, and the dot is never the only carrier: `.sf`'s
+                   second span says «منجز» / «Nي مضت» / «لم تبدأ» in words (05 §7.6). -->
+              <div class="d-slastages">
                 @for (st of sla.stages; track st.no) {
-                  <section class="d-panel epm-hrows epm-slastage">
-                    <div class="hd">
-                      <span class="d-sev-dot {{ stageDot(st.state) }}"></span>
-                      <div class="t">
-                        <b>{{ lookups.label('audit-stage', st.stageKey) }}</b>
-                        <span class="d-cell-sub">{{ lang.pick(st.partyAr, st.partyEn) }}</span>
-                      </div>
+                  <div class="ss {{ stageState(st.state) }}">
+                    <div class="sh">
+                      <span class="dot"></span>
+                      <b>{{ lookups.label('audit-stage', st.stageKey) }}</b>
                     </div>
-                    <div class="ft">
-                      <span class="d-cell-sub">
+                    <div class="sm">{{ lang.pick(st.partyAr, st.partyEn) }}</div>
+                    <div class="sf">
+                      <span>
                         {{ lang.t('fin_sla_cap') }} <bdi>{{ st.capDays }}</bdi> {{ lang.t('fin_sla_days') }}
                       </span>
-                      <span class="sp"></span>
-                      <span class="d-cell-sub">{{ stageLabel(st) }}</span>
+                      <span>{{ stageLabel(st) }}</span>
 
                       <!-- ملحق الشكل 17 · المسار 8 steps 5–9 — «إطلاق المعاملة».
                            ONE BUTTON, on the desk holding the file, and only for
@@ -573,7 +597,7 @@
                         </button>
                       }
                     </div>
-                  </section>
+                  </div>
                 }
               </div>
 

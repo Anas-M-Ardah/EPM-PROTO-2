@@ -201,6 +201,32 @@ export class SchedulePage {
   barStart(r: ScheduleRow): string | null { return r.actualStart ?? r.baselineStart; }
   barEnd(r: ScheduleRow): string | null { return r.actualFinish ?? r.forecastFinish ?? r.baselineFinish; }
 
+  /* ── THE APPROVED-BUT-UNAPPLIED EXTENSION · `.d-gantt-ext` ────────────────
+     `02 §9` and non-negotiable #2: an approved order that has not been APPLIED
+     changes nothing yet, and is shown as a projection beside the effective
+     figure — never folded into it. Every other screen honours that; the Gantt
+     did not show it at all, so an activity with 21 approved days waiting drew
+     exactly like one with none.
+
+     `DGantt` schedule-module.jsx:239 draws it as a hatched, dashed segment
+     picking up where the bar ends. `pendingDeltaDays` is the server's own
+     figure — «what the approved-unapplied orders would add» — so nothing is
+     computed here beyond turning two dates into pixels, which is geometry
+     (CLAUDE.md §3.1). */
+  extFinish(r: ScheduleRow): string | null {
+    const days = r.amendment?.pendingDeltaDays;
+    const from = this.barEnd(r);
+    if (!days || days <= 0 || !from) return null;
+    const d = new Date(from + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  extWidth(r: ScheduleRow): number {
+    const to = this.extFinish(r);
+    return to ? this.width(this.barEnd(r), to) : 0;
+  }
+
   /** 06 §9 status → the shared status-pill token, so the fill is the design system's. */
   statusToken(code: string): string {
     switch (code) {

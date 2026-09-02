@@ -10,6 +10,8 @@ import { ToastService } from '../../shared/toast.service';
 import {
   MODULE_GROUPS, OVERVIEW_MODULE, ProjectModule, moduleById, moduleRoute, modulesFor,
 } from './project-modules';
+import { WorkspaceApi } from './workspace.api';
+import { OverviewModule } from './workspace.types';
 
 /**
  * The project workspace shell (`04 §3`).
@@ -56,6 +58,7 @@ export class WorkspacePage {
   lookups = inject(LookupsService);
   scope = inject(ProjectScopeService);
   toast = inject(ToastService);
+  private api = inject(WorkspaceApi);
 
   readonly overview = OVERVIEW_MODULE;
   /**
@@ -101,8 +104,12 @@ export class WorkspacePage {
 
   constructor() {
     this.route.paramMap.subscribe(p => {
-      this.projectId.set(p.get('id') ?? '');
+      const id = p.get('id') ?? '';
+      this.projectId.set(id);
       this.syncModule();
+      // الشكل 4's rail dots. Keyed on the PROJECT, not the module, so moving
+      // between the fifteen screens does not re-fetch fourteen counts.
+      this.loadModuleStates(id);
     });
     this.route.queryParamMap.subscribe(p => this.workspace.set(p.get('ws') ?? ''));
 
@@ -153,6 +160,75 @@ export class WorkspacePage {
 
   moduleTitle(m: ProjectModule | undefined): string {
     return m ? this.lang.t(m.key) : this.lang.t('mod_overview');
+  }
+
+  // ══ الشكل 4 — «بنقاط حالة ملوّنة لكل وحدة» ══════════════════════════════
+  //
+  // The plate asks for the readiness in TWO places: as `.d-tab-ready` dots on
+  // this rail, and as «خط سير المراحل» on the overview body. Both read
+  // `[EP-OVW-02]`/`[EP-OVW-01]`'s shared `ModuleStates`, so a dot here and a
+  // step there cannot disagree — which matters, because the strip's «الإجراء
+  // التالي المطلوب» button navigates to the rail entry beside it.
+  //
+  // NOT the reference's dots. `buildReadiness()` (`data.jsx:475`) is labelled
+  // «(demo)» in its own comment and PICKS AT RANDOM for two modules —
+  // `pick(['approved','inprogress','na'])` off a seeded RNG on the project id.
+  // These come from row counts and what is actually waiting on someone.
+
+  /** Readiness by module id, empty until `[EP-OVW-02]` answers. */
+  private moduleStates = signal<Record<string, OverviewModule>>({});
+
+  stateOf(id: string): OverviewModule | undefined { return this.moduleStates()[id]; }
+
+  /**
+   * The sheet's own dot class (`desktop.css:507-513`), through the SAME mapping
+   * the overview's strip uses so the two render one vocabulary.
+   *
+   * `not-available` never reaches here: an unbuilt module draws the locked row
+   * with its phase note instead, and `Resolve` only returns that state when the
+   * module is not built.
+   */
+  stateClass(state: string | undefined): string {
+    switch (state) {
+      case 'in-progress': return 'r-info';
+      case 'needs-attention': return 'r-warn';
+      default: return 'r-neutral';
+    }
+  }
+
+  /**
+   * 05 §7.6 — the dot is 7px and carries no text, so the WORD travels with it
+   * on `aria-label` and `title`. A colour alone is not a status here any more
+   * than it is anywhere else in this app.
+   */
+  stateLabel(state: string | undefined): string {
+    if (!state) return '';
+    return this.lang.t(('ovw_state_' + state.replace(/-/g, '_')) as never);
+  }
+
+  /** «يتطلب إجراء · 3» — the count, when something is actually waiting. */
+  dotTitle(m: ProjectModule): string {
+    const s = this.stateOf(m.id);
+    if (!s) return this.lang.t(m.key);
+    const label = this.stateLabel(s.state);
+    return s.waiting > 0
+      ? `${this.lang.t(m.key)} — ${label} · ${s.waiting}`
+      : `${this.lang.t(m.key)} — ${label}`;
+  }
+
+  private loadModuleStates(id: string) {
+    this.moduleStates.set({});
+    if (!id) return;
+    this.api.getModules(id).subscribe({
+      next: r => {
+        const by: Record<string, OverviewModule> = {};
+        for (const m of r.modules ?? []) by[m.id] = m;
+        this.moduleStates.set(by);
+      },
+      // A rail without dots is the pre-A-plate rail, which still navigates.
+      // The dots are an indicator; losing them must not cost the frame.
+      error: () => this.moduleStates.set({}),
+    });
   }
 
   backToProjects() {

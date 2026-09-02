@@ -431,83 +431,12 @@ public static class OverviewEndpoints
             };
 
             // ── الشكل 4 — «خط سير المراحل» ───────────────────────────────
-            // §79: «خط سير المراحل يقرأ حالة كل وحدة من الوحدة نفسها». So each
-            // module is counted from ITS OWN table, and the verdict is
-            // Domain/ModuleReadiness's — this file only supplies the counts.
-            //
-            // WAITING is the signal that separates "working" from "needs me":
-            //   contracts      — amendments approved but not yet applied (02 §9)
-            //   changeorders   — orders still moving through the stage chain
-            // A module with rows and nothing waiting is working as intended.
-            var boqCount = contractIds.Count == 0 ? 0 : await db.BoqItems.AsNoTracking()
-                .CountAsync(b => contractIds.Contains(b.ContractId));
-
-            var activityCount = contractIds.Count == 0 ? 0 : await db.Activities.AsNoTracking()
-                .CountAsync(a => contractIds.Contains(a.ContractId));
-
-            var paymentCount = contractIds.Count == 0 ? 0 : await db.Payments.AsNoTracking()
-                .CountAsync(x => contractIds.Contains(x.ContractId));
-
-            var riskCount = await db.Risks.AsNoTracking().CountAsync(r => r.ProjectId == p.Id);
-            var openRiskCount = await db.Risks.AsNoTracking()
-                .CountAsync(r => r.ProjectId == p.Id && r.Status != "closed");
-
-            var modelCount = await db.ModelElements.AsNoTracking().CountAsync(e => e.ProjectId == p.Id);
-
-            var meetingIds = await db.Meetings.AsNoTracking()
-                .Where(m => m.ProjectId == p.Id).Select(m => m.Id).ToListAsync();
-            var meetingCount = meetingIds.Count;
-            var openActionCount = await db.MeetingActions.AsNoTracking()
-                .CountAsync(a => meetingIds.Contains(a.MeetingId) && a.Status != "closed");
-
-            var documentCount = await db.Documents.AsNoTracking().CountAsync(d => d.ProjectId == p.Id);
-            var docIds = await db.Documents.AsNoTracking()
-                .Where(d => d.ProjectId == p.Id).Select(d => d.Id).ToListAsync();
-            // «قيد المراجعة» — a document whose CURRENT revision is a draft.
-            var draftDocCount = (await db.DocumentRevisions.AsNoTracking()
-                .Where(r => docIds.Contains(r.DocumentId)).ToListAsync())
-                .GroupBy(r => r.DocumentId)
-                .Count(g => g.OrderByDescending(r => r.No).First().Status == "draft");
-
-            var alertCount = await db.Alerts.AsNoTracking().CountAsync(a => a.ProjectId == p.Id);
-
-            var auditCount = await db.ProjectActivityEvents.AsNoTracking().CountAsync(e => e.ProjectId == p.Id)
-                + await db.ContractActivityEvents.AsNoTracking().CountAsync(e => contractIds.Contains(e.ContractId));
-
-            var orders = contractIds.Count == 0
-                ? []
-                : await db.ChangeOrders.AsNoTracking()
-                    .Where(o => contractIds.Contains(o.ContractId))
-                    .Select(o => o.Lifecycle)
-                    .ToListAsync();
-
-            // The rail's order IS the documents' order — keep them identical or
-            // the next action stops matching the sidebar it points at.
-            var moduleStates = ModuleReadiness.ResolveAll(
-            [
-                // التعريف
-                new("information",  true,  1, 0),
-                new("contract",     true,  contracts.Count, totals.PendingAmendments),
-                new("boq",          true,  boqCount, 0),
-                new("financial",    true,  paymentCount, 0),
-                // التنفيذ والمتابعة
-                new("schedule",     true,  activityCount, 0),
-                new("progress",     true,  activityCount, 0),
-                new("changeorders", true,  orders.Count,
-                    orders.Count(l => l is not ("closed" or "rejected" or "cancelled"))),
-                // Phase 6 built these seven and this list still said they did
-                // not exist, so seven of the fifteen units on «خط سير المراحل»
-                // were reporting zero rows on a project that has them (P-131).
-                new("risk",         true,  riskCount,     openRiskCount),
-                // السجلات والوثائق
-                new("model",        true,  modelCount,    0),
-                new("meetings",     true,  meetingCount,  openActionCount),
-                new("documents",    true,  documentCount, draftDocCount),
-                // الرقابة
-                new("alerts",       true,  alertCount,    alerts.Open),
-                new("reports",      true,  0,             0),
-                new("audit",        true,  auditCount,    0),
-            ]);
+            // Extracted to `ModuleStates` below, because الشكل 4 asks for this
+            // answer TWICE — here, and as «نقاط حالة ملوّنة لكل وحدة» on the rail,
+            // which is present on all fifteen module screens. One method, so the
+            // strip's «الإجراء التالي المطلوب» cannot point at a rail entry whose
+            // dot disagrees with it.
+            var moduleStates = await ModuleStates(db, p.Id);
 
             var (started, available) = ModuleReadiness.Progress(moduleStates);
 
@@ -528,5 +457,135 @@ public static class OverviewEndpoints
                 new OverviewProgress(started, available),
                 next is null ? null : new OverviewNextAction(next.Id, next.State, next.Waiting)));
         });
+
+        // [EP-OVW-02] GET /api/projects/{id}/modules
+        // web: workspace.api.ts getModules() → workspace.page.ts | spec: 04 §3
+        // tables: Contracts · ContractAmendments · BoqItems · Activities · Payments
+        //         · Risks · ModelElements · Meetings · MeetingActions · Documents
+        //         · DocumentRevisions · Alerts · ChangeOrders · *ActivityEvents
+        //
+        // الشكل 4 wants «تنقّل جانبي … بنقاط حالة ملوّنة لكل وحدة», and the rail is
+        // the frame around all fifteen module screens — not just the overview. So
+        // the dots get their own endpoint rather than making every screen pull the
+        // whole overview payload (two S-curves, earned value, the alert cards) for
+        // fourteen small integers.
+        app.MapGet("/api/projects/{projectId}/modules", async (EpmDb db, HttpContext http, string projectId) =>
+        {
+            var p = await db.Projects.AsNoTracking()
+                .Select(x => new { x.Id, x.WorkspaceCode })
+                .FirstOrDefaultAsync(x => x.Id == projectId);
+
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
+
+            var states = await ModuleStates(db, p.Id);
+            var (started, available) = ModuleReadiness.Progress(states);
+
+            return Results.Ok(new ModulesResponse(
+                states.Select(m => new OverviewModule(m.Id, m.State, m.Rows, m.Waiting)).ToList(),
+                new OverviewProgress(started, available)));
+        });
+    }
+
+    /// <summary>
+    /// الشكل 4's «خط سير المراحل», and the same states the rail's coloured dots
+    /// read. §79: «خط سير المراحل يقرأ حالة كل وحدة من الوحدة نفسها» — so each
+    /// module is counted from ITS OWN table, and the verdict is
+    /// Domain/ModuleReadiness's; this method only supplies the counts.
+    ///
+    /// WAITING is the signal that separates "working" from "needs me":
+    ///   contracts      — amendments approved but not yet applied (02 §9)
+    ///   changeorders   — orders still moving through the stage chain
+    /// A module with rows and nothing waiting is working as intended.
+    ///
+    /// Extracted from `[EP-OVW-01]` when the rail needed the same answer. Two
+    /// callers, one method — the alternative was two copies of fourteen counts
+    /// that would eventually disagree on the screen that navigates between them.
+    /// </summary>
+    private static async Task<IReadOnlyList<ModuleReadiness.ModuleState>> ModuleStates(
+        EpmDb db, string projectId)
+    {
+        var contractIds = await db.Contracts.AsNoTracking()
+            .Where(c => c.ProjectId == projectId)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        // The same predicate the overview's per-contract rollup counts on: an
+        // amendment approved and not yet applied (02 §9).
+        var pendingAmendments = contractIds.Count == 0 ? 0 : await db.ContractAmendments.AsNoTracking()
+            .CountAsync(a => contractIds.Contains(a.ContractId) && a.AppliedAt == null);
+
+        var alertsOpen = await db.Alerts.AsNoTracking()
+            .CountAsync(a => a.ProjectId == projectId && !a.Acknowledged);
+
+        var boqCount = contractIds.Count == 0 ? 0 : await db.BoqItems.AsNoTracking()
+                .CountAsync(b => contractIds.Contains(b.ContractId));
+
+            var activityCount = contractIds.Count == 0 ? 0 : await db.Activities.AsNoTracking()
+                .CountAsync(a => contractIds.Contains(a.ContractId));
+
+            var paymentCount = contractIds.Count == 0 ? 0 : await db.Payments.AsNoTracking()
+                .CountAsync(x => contractIds.Contains(x.ContractId));
+
+            var riskCount = await db.Risks.AsNoTracking().CountAsync(r => r.ProjectId == projectId);
+            var openRiskCount = await db.Risks.AsNoTracking()
+                .CountAsync(r => r.ProjectId == projectId && r.Status != "closed");
+
+            var modelCount = await db.ModelElements.AsNoTracking().CountAsync(e => e.ProjectId == projectId);
+
+            var meetingIds = await db.Meetings.AsNoTracking()
+                .Where(m => m.ProjectId == projectId).Select(m => m.Id).ToListAsync();
+            var meetingCount = meetingIds.Count;
+            var openActionCount = await db.MeetingActions.AsNoTracking()
+                .CountAsync(a => meetingIds.Contains(a.MeetingId) && a.Status != "closed");
+
+            var documentCount = await db.Documents.AsNoTracking().CountAsync(d => d.ProjectId == projectId);
+            var docIds = await db.Documents.AsNoTracking()
+                .Where(d => d.ProjectId == projectId).Select(d => d.Id).ToListAsync();
+            // «قيد المراجعة» — a document whose CURRENT revision is a draft.
+            var draftDocCount = (await db.DocumentRevisions.AsNoTracking()
+                .Where(r => docIds.Contains(r.DocumentId)).ToListAsync())
+                .GroupBy(r => r.DocumentId)
+                .Count(g => g.OrderByDescending(r => r.No).First().Status == "draft");
+
+            var alertCount = await db.Alerts.AsNoTracking().CountAsync(a => a.ProjectId == projectId);
+
+            var auditCount = await db.ProjectActivityEvents.AsNoTracking().CountAsync(e => e.ProjectId == projectId)
+                + await db.ContractActivityEvents.AsNoTracking().CountAsync(e => contractIds.Contains(e.ContractId));
+
+            var orders = contractIds.Count == 0
+                ? []
+                : await db.ChangeOrders.AsNoTracking()
+                    .Where(o => contractIds.Contains(o.ContractId))
+                    .Select(o => o.Lifecycle)
+                    .ToListAsync();
+
+            // The rail's order IS the documents' order — keep them identical or
+            // the next action stops matching the sidebar it points at.
+            return ModuleReadiness.ResolveAll(
+            [
+                // التعريف
+                new("information",  true,  1, 0),
+                new("contract",     true,  contractIds.Count, pendingAmendments),
+                new("boq",          true,  boqCount, 0),
+                new("financial",    true,  paymentCount, 0),
+                // التنفيذ والمتابعة
+                new("schedule",     true,  activityCount, 0),
+                new("progress",     true,  activityCount, 0),
+                new("changeorders", true,  orders.Count,
+                    orders.Count(l => l is not ("closed" or "rejected" or "cancelled"))),
+                // Phase 6 built these seven and this list still said they did
+                // not exist, so seven of the fifteen units on «خط سير المراحل»
+                // were reporting zero rows on a project that has them (P-131).
+                new("risk",         true,  riskCount,     openRiskCount),
+                // السجلات والوثائق
+                new("model",        true,  modelCount,    0),
+                new("meetings",     true,  meetingCount,  openActionCount),
+                new("documents",    true,  documentCount, draftDocCount),
+                // الرقابة
+                new("alerts",       true,  alertCount,    alertsOpen),
+                new("reports",      true,  0,             0),
+                new("audit",        true,  auditCount,    0),
+            ]);
     }
 }

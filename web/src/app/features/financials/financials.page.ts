@@ -276,17 +276,24 @@ export class FinancialsPage {
   // ── الشكل 17 — مهل التدقيق ───────────────────────────────────────────
 
   /**
-   * The stage dot. `.d-sev-dot` is the severity marker the alerts screens
-   * use, so a late desk here reads the same as a late anything else — and it
-   * is never the only carrier: the card states its cap and its elapsed days
-   * in words beside it (05 §7.6).
+   * A7 — the card's state class, from `.d-slastages`'s own two-value
+   * vocabulary: `.ss.done` is `--status-completed`, `.ss.active` is
+   * `--status-suspended`, and a stage that has not started carries no
+   * modifier at all, so its `.dot` stays `--outline` (desktop.css:3051-3054).
+   *
+   * `overdue` maps onto `active` because the REFERENCE HAS NO PER-STAGE
+   * OVERDUE: `EPM.paymentSLA` (model.js:732) emits `done` · `active` · `todo`
+   * and treats lateness as one fact about the whole SLA, not about a desk.
+   * This port derives it per desk, which is more than the reference knows —
+   * and it is not lost by the collapse, because it is stated in words twice
+   * over: the pill above reads «مُصعّد» and the msgbar below says so outright.
+   * That is what 05 §7.6 asks for; a third dot colour is not.
    */
-  stageDot(state: string): string {
+  stageState(state: string): string {
     switch (state) {
-      case 'overdue': return 'high';
-      case 'current': return 'medium';
-      case 'done': return 'low';
-      default: return 'none';
+      case 'done': return 'done';
+      case 'current': case 'overdue': return 'active';
+      default: return '';
     }
   }
 

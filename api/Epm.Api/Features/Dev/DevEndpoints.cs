@@ -57,6 +57,16 @@ public static class DevEndpoints
                 await db.Database.EnsureCreatedAsync();
             }
 
+            // The vocabulary, exactly once, on EVERY path into here.
+            //
+            // `Fixture.Load` used to add it itself, from a time when nothing was
+            // seeded on boot. Once `EnsureSeededAsync` was added to boot and to
+            // `[EP-DEV-01]`, the ordinary demo sequence — reset, then load —
+            // produced TWO copies of every lookup row, and every filter chip on
+            // every register rendered twice (P-228). The guarded seeder is the
+            // one place that decides, and it is idempotent.
+            await LookupCatalog.EnsureSeededAsync(db);
+
             Fixture.Load(db);
             return Results.Ok(new { ok = true, projects = await db.Projects.CountAsync() });
         });

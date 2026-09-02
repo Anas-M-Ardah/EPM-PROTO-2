@@ -189,13 +189,35 @@
             </div>
 
           } @else {
-            <div class="d-tablewrap"><table class="d-table" style="min-width: 1240px">
+            <!-- `.d-vow-tw.wide-voreg` + `.d-line-table.d-vo-reg` — the shell
+                 `DModVO` vo-record.jsx:721 gives this exact register, copied
+                 into `desktop.css` at Phase 1.5 and never called.
+
+                 It replaces `.d-tablewrap` + `.d-table` and an inline
+                 `min-width: 1240px`. Three things change and all three are the
+                 sheet's: the min-width becomes `wide-voreg`'s own 1080px so it
+                 is not a number in the template (`05 §8` names inline styles
+                 beating the stylesheet a defect class); the register gains
+                 `max-height: 62vh` with its own scroll, which is what keeps the
+                 filter bar and the footer in view on a long list; and the type
+                 drops from `.d-table`'s **14px** — a size that is not on the
+                 eight-step scale at all (CLAUDE.md §6) — to `.d-line-table`'s
+                 `--fs-200`, the "doc's `table.dg` contract, applied to every
+                 in-page grid" the sheet says it is. `.d-vo-reg` then tops-aligns
+                 the cells, because four of the seven columns carry a
+                 `.d-cell-sub` under the value. -->
+            <div class="d-vow-tw wide-voreg"><table class="d-line-table d-vo-reg">
               <thead>
                 <tr>
                   <th>{{ lang.t('chg_col_no') }}</th>
                   <th>{{ lang.t('chg_col_order') }}</th>
                   <th class="r">{{ lang.t('chg_col_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
-                  <th class="r">{{ lang.t('chg_col_days') }}</th>
+                  <!-- The unit rides in `.cur`, the same way القيمة's (د.ع)
+                       does one column over — `vo-record.jsx:724`. The A7 audit
+                       found this header alone dropping it, so the column said
+                       «المدة» and left the reader to guess days. -->
+                  <th class="r">{{ lang.t('chg_col_days') }}
+                    <span class="cur">({{ lang.t('scd_days') }})</span></th>
                   <th>{{ lang.t('chg_col_status') }}</th>
                   <th>{{ lang.t('chg_col_owner') }}</th>
                   <th class="r">{{ lang.t('chg_col_files') }}</th>
@@ -216,10 +238,15 @@
                       [attr.aria-label]="lang.t('chg_open') + ': ' + r.no + ' — ' + title(r)"
                       (click)="open(r.no)"
                       (keydown)="onRowKey($event, r.no)">
-                    <td class="mono"><bdi>{{ r.no }}</bdi></td>
+                    <td class="code"><bdi>{{ r.no }}</bdi></td>
 
-                    <!-- The title column carries NO status information (03 §10). -->
-                    <td>
+                    <!-- The title column carries NO status information (03 §10).
+                         `.name.wrap` is the sheet's own cell contract, and it is
+                         load-bearing after the table swap: `.d-line-table tbody
+                         td` is `white-space: nowrap`, and this is the one column
+                         holding a sentence. `.code` above it is mono-and-muted,
+                         which is what an identifier column is (desktop.css:2922). -->
+                    <td class="name wrap">
                       <div>{{ title(r) }}</div>
                       <div class="d-cell-sub">
                         {{ typeLabel(r.type) }} · <bdi class="mono">{{ r.incomingNo }}</bdi>
@@ -235,12 +262,14 @@
                       </div>
                     </td>
 
-                    <td class="r mono"><bdi>{{ r.days === 0 ? '—' : fmt.delta(r.days) }}</bdi></td>
+                    <td class="r num"><bdi>{{ r.days === 0 ? '—' : fmt.delta(r.days) }}</bdi></td>
 
                     <!-- THE STATUS COLUMN: lifecycle pill + exception chips +
                          the relation chip. Three different questions, all of
-                         them about status, none of them repeated elsewhere. -->
-                    <td>
+                         them about status, none of them repeated elsewhere.
+                         `.wrap` because three chips and a stage name do not fit
+                         one nowrap line at 1080px. -->
+                    <td class="wrap">
                       <div class="d-pillrow">
                         <epm-status-pill [code]="r.lifecycle" kind="co-lifecycle" />
                         @for (c of r.exceptions; track c.code) {
@@ -259,7 +288,20 @@
                       </div>
                     </td>
 
-                    <td>
+                    <!-- The owning DESK, which is a party name and wraps.
+                         `.d-cell-sub` on the CELL is the reference's own
+                         (`vo-record.jsx:752` — `td.d-cell-sub.wrap`).
+
+                         IT CHANGES NOTHING VISUALLY, AND THAT IS NOT A BUG TO
+                         FIX. `.d-line-table tbody td` (0,2,1) beats
+                         `.d-cell-sub` (0,1,0), so the cell keeps the body
+                         colour — measured on the LIVE prototype, where this
+                         same class sits on this same cell and is equally
+                         inert. The class is here so the two DOMs agree; adding
+                         CSS to «make it work» would diverge from the reference
+                         rather than match it. The `.d-cell-sub` on the date
+                         line INSIDE the cell does apply, and always did. -->
+                    <td class="d-cell-sub wrap">
                       <div>{{ r.currentOwner || '—' }}</div>
                       <div class="d-cell-sub mono">
                         <bdi>{{ fmt.date(r.lastActionDate) }}</bdi>
@@ -267,18 +309,18 @@
                       </div>
                     </td>
 
-                    <td class="r mono"><bdi>{{ r.attachments || '—' }}</bdi></td>
+                    <td class="r num"><bdi>{{ r.attachments || '—' }}</bdi></td>
                   </tr>
                 }
               </tbody>
               <tfoot>
                 <tr>
-                  <td class="mono">{{ lang.t('chg_total') }}</td>
+                  <td class="code">{{ lang.t('chg_total') }}</td>
                   <td class="d-cell-sub">
                     <bdi>{{ shown().length }}</bdi> {{ lang.t('chg_of') }} <bdi>{{ d.rows.length }}</bdi>
                   </td>
-                  <td class="r mono"><bdi>{{ fmt.delta(shownValue()) }}</bdi></td>
-                  <td class="r mono"><bdi>{{ shownDays() === 0 ? '—' : fmt.delta(shownDays()) }}</bdi></td>
+                  <td class="r num"><bdi>{{ fmt.delta(shownValue()) }}</bdi></td>
+                  <td class="r num"><bdi>{{ shownDays() === 0 ? '—' : fmt.delta(shownDays()) }}</bdi></td>
                   <td colspan="2" class="d-cell-sub">
                     {{ lang.t('chg_kpi_net') }} <bdi>{{ fmt.money(d.indicators.netApproved) }}</bdi>
                   </td>

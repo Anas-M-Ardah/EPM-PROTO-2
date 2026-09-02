@@ -43,6 +43,19 @@
 
       <!-- ══ 1 — الصيغة والملف ════════════════════════════════════════════ -->
       @if (step() === 1) {
+        <!-- «جارٍ تحليل الملف» — `DImportWizard` schedule-module.jsx:393. The
+             parse IS asynchronous: an `.xer` or a P6 XML is read with
+             `File.text()`, and the Excel path lazily imports SheetJS before it
+             can start. Until now that interval said nothing at all — the drop
+             zone simply sat there — which on a large workbook reads as a file
+             that failed silently. `.d-parse` + `.d-spin` are the sheet's own
+             state for exactly this, copied at Phase 1.5 and never called. -->
+        @if (parsing()) {
+          <div class="d-parse" role="status" aria-live="polite">
+            <div class="d-spin"></div>
+            <span>{{ lang.t('scd_imp_parsing') }} <bdi>{{ fileName() }}</bdi></span>
+          </div>
+        } @else {
         <div class="d-form-grid">
           <!-- Both were native `<select class="epm-select">` — wearing the
                shared control's class while opening the OPERATING SYSTEM's list
@@ -84,6 +97,7 @@
           <p class="d-cell-sub">
             <bdi class="mono">{{ fileName() }}</bdi> · <bdi>{{ size(fileSize()) }}</bdi>
           </p>
+        }
         }
       }
 

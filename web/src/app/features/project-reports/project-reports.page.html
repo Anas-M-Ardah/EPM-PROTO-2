@@ -83,56 +83,150 @@
               </button>
             </div>
           } @else {
-            <div class="d-tablewrap"><table class="d-table" style="min-width: 1180px">
-              <thead>
-                <tr>
-                  <th>{{ lang.t('prp_col_report') }}</th>
-                  <th>{{ lang.t('prp_col_category') }}</th>
-                  <th>{{ lang.t('prp_col_frequency') }}</th>
-                  <th>{{ lang.t('prp_col_sources') }}</th>
-                  <th>{{ lang.t('col_status') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (r of shown(); track r.id) {
-                  <tr>
-                    <td>
-                      <span class="mono d-cell-sub"><bdi>{{ r.id }}</bdi></span>
-                      <div class="d-cell-strong">{{ title(r) }}</div>
-                      <div class="d-cell-sub">{{ description(r) }}</div>
-                    </td>
-                    <td>{{ categoryLabel(r.category) }}</td>
-                    <td class="d-cell-sub">{{ frequencyLabel(r.frequency) }}</td>
-                    <!-- Each source with the count THIS project has in it. The
-                         zero is the whole answer to why a row is unavailable. -->
-                    <td class="d-cell-sub">
-                      @for (s of r.sources; track s.table) {
-                        <div>
-                          {{ sourceName(s) }}
-                          <bdi [class.d-cell-strong]="s.rows === 0">{{ s.rows }}</bdi>
-                        </div>
-                      }
-                    </td>
-                    <td>
-                      @if (r.available) {
-                        <span class="d-pill completed">{{ lang.t('prp_available') }}</span>
-                        <div class="d-rowacts" style="margin-block-start: 6px">
-                          <button type="button" class="d-btn sm" (click)="run(r)">
-                            <epm-icon name="bolt" [size]="15" />{{ lang.t('prp_run') }}
-                          </button>
-                          <span class="d-cell-sub"><bdi>{{ r.formats.join(' · ') }}</bdi></span>
-                        </div>
-                      } @else {
-                        <span class="d-pill suspended">{{ lang.t('prp_unavailable') }}</span>
-                        <!-- 04 §9 — name what is missing. A greyed-out button
-                             that explains nothing is the defect this avoids. -->
-                        <div class="d-cell-sub">{{ lang.t('prp_needs') }} {{ missing(r) }}</div>
-                      }
-                    </td>
-                  </tr>
+            <!-- ══ الرف والعرض · [EP-PRP-02] ═══════════════════════════════
+                 `DModReports` project-modules.jsx:2797 — `.d-report-shell` is
+                 a 230px rail beside the view, collapsing to one column at
+                 1100px. The reference RENDERS the selected report rather than
+                 describing it, and so does this now.
+
+                 What this port keeps that the reference has no notion of:
+                 whether the report can be produced FOR THIS PROJECT, and which
+                 source is empty when it cannot. That answer rides in the rail
+                 and again in the view, so picking an unproducible report
+                 states the reason instead of drawing an empty table
+                 (P-123 · P-213). -->
+            <div class="d-report-shell">
+
+              <div class="d-report-cat" role="tablist"
+                   [attr.aria-label]="lang.t('prp_library')">
+                @for (r of railRows(); track r.id) {
+                  <button type="button" class="d-report-cat-i" role="tab"
+                          [class.on]="selected() === r.id"
+                          [attr.aria-selected]="selected() === r.id"
+                          (click)="select(r.id)">
+                    <epm-icon [name]="r.available ? 'summarize' : 'lock'" [size]="16" />
+                    <span>{{ title(r) }}</span>
+                  </button>
                 }
-              </tbody>
-            </table></div>
+              </div>
+
+              <div class="d-report-view" role="tabpanel">
+                @if (bodyLoading()) {
+                  <span class="d-skel d-skel-row" style="width:40%"></span>
+                  <span class="d-skel d-skel-row" style="width:100%"></span>
+                } @else if (bodyError()) {
+                  <div class="d-msgbar danger">
+                    <epm-icon name="error" [size]="16" />
+                    <div><b>{{ lang.t('error_t') }}</b><span><bdi>{{ bodyError() }}</bdi></span></div>
+                  </div>
+                } @else {
+                 @if (body(); as b) {
+
+                  <div class="d-report-view-head">
+                    <div>
+                      <b>{{ bodyTitle() }}</b>
+                      <span class="d-cell-sub">
+                        {{ lang.pick(d.projectNameAr, d.projectNameEn) }}
+                        · <bdi>{{ d.projectId }}</bdi>
+                        @if (d.dataDate) { · <bdi>{{ fmt.date(d.dataDate) }}</bdi> }
+                      </span>
+                    </div>
+                    <span class="d-demo-tag">{{ lang.t('prp_demo') }}</span>
+                  </div>
+
+                  <!-- 04 §9 — an unproducible report NAMES what is empty. The
+                       reference has no such state because its data is always
+                       there; this port's is not, and silence would be worse
+                       than an empty table. -->
+                  @if (!b.available) {
+                    <div class="d-msgbar warning">
+                      <epm-icon name="lock" [size]="16" />
+                      <div>
+                        <b>{{ lang.t('prp_unavailable') }}</b>
+                        <span>{{ lang.t('prp_needs') }} {{ bodyMissing() }}</span>
+                      </div>
+                    </div>
+                  } @else if (!b.rendered) {
+                    <!-- Producible, and this build does not draw it inline —
+                         a DIFFERENT absence from «غير متاح», and conflating the
+                         two would tell the reader to go and record data that is
+                         already there. RPT-04 wants weight-rolled BOQ progress,
+                         which is SCR-W6's own rollup. `04 §9`. -->
+                    <div class="d-msgbar info">
+                      <epm-icon name="info" [size]="16" />
+                      <div>
+                        <b>{{ lang.t('prp_norender_t') }}</b>
+                        <span>{{ lang.t('prp_norender_b') }}</span>
+                      </div>
+                    </div>
+                  } @else {
+
+                    @if (b.figures.length) {
+                      <div class="d-fig-row">
+                        @for (f of b.figures; track f.labelEn) {
+                          <div class="d-fig">
+                            <div class="k">{{ label(f) }}</div>
+                            <!-- `.bad` only where the API says a thing has gone
+                                 wrong. A magnitude is never toned by threshold
+                                 (CLAUDE.md §6). -->
+                            <div class="v num" [class.bad]="f.tone === 'bad'"
+                                 [class.good]="f.tone === 'good'"><bdi>{{ f.value }}</bdi></div>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    @if (b.bars.length) {
+                      <b class="d-rev-title">{{ chartTitle() }}</b>
+                      <epm-bar-compare [items]="barItems()" />
+                    }
+
+                    @if (b.table; as t) {
+                      <div class="d-card-sub" style="margin-top: 12px">
+                        <div class="d-vow-tw">
+                          <table class="d-line-table">
+                            <thead>
+                              <tr>
+                                @for (c of t.columns; track c.nameEn) {
+                                  <th [class.r]="c.numeric">{{ columnName(c) }}</th>
+                                }
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (row of t.cells; track $index) {
+                                <tr>
+                                  @for (cell of row; track $index) {
+                                    <td [class.r]="t.columns[$index].numeric"
+                                        [class.num]="t.columns[$index].numeric"
+                                        [class.wrap]="!t.columns[$index].numeric">
+                                      <bdi>{{ cell }}</bdi>
+                                    </td>
+                                  }
+                                </tr>
+                              } @empty {
+                                <tr>
+                                  <td [attr.colspan]="t.columns.length" class="d-cell-sub">
+                                    {{ lang.t('prp_nomatch_b') }}
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    }
+
+                    <div class="d-rowacts" style="margin-block-start: 12px">
+                      <button type="button" class="d-btn sm primary" (click)="runBody()">
+                        <epm-icon name="bolt" [size]="15" />{{ lang.t('prp_run') }}
+                      </button>
+                      <span class="d-cell-sub"><bdi>{{ b.formats.join(' · ') }}</bdi></span>
+                    </div>
+                  }
+                 }
+                }
+              </div>
+            </div>
 
             <div class="d-pager">
               <span>

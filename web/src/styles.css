@@ -74,6 +74,31 @@ epm-field-group { display: contents; }
    host has to be spelled out. Measured, on SCR-W6. */
 .d-l04 > epm-field-group > .d-fgroup { grid-column: span 12; }
 
+/* ── THE SAME TRAP AGAIN, AND THIS ONE CRUSHED EVERY SECTION CARD ────────
+   `.d-pz7` is `display: flex; flex-direction: column; overflow-y: auto`, and
+   `desktop.css:2374` already pins its children with `.d-pz7 > * { flex: 0 0
+   auto }` — the rule that stops a column of cards being shrunk to fit instead
+   of scrolling. It never matched. `.d-pz7 > *` selects the `<epm-field-group>`
+   HOST, which `display: contents` has left without a box, so the declaration
+   lands on nothing and the real flex item — `.d-fgroup` — kept the CSS default
+   `flex-shrink: 1`.
+
+   The cards then shrank below their content, and `.d-fgroup` is
+   `overflow: hidden` (desktop.css:2142), so each one clipped its own body to a
+   sliver and the six headers stacked into each other. MEASURED on الشكل 5 in
+   edit mode at 800×620: six cards needing 1204px rendered in 147px, and
+   `.d-pz7` reported `scrollHeight === clientHeight` — it never scrolled,
+   because nothing overflowed it. The same 5/5 on الشكل 8's التفاصيل: 910px of
+   content in 268px.
+
+   It hits every screen that puts a section card in a module pane — الشكل 5,
+   الشكل 8 · 10, الشكل 14 · 18, الشكل 25 — and only once the content outgrows
+   the pane, which is why it reads as "sometimes broken" rather than always.
+
+   `flex: 0 0 auto` is `.d-pz7 > *`'s own declaration, spelled through the host
+   the way the `.d-l04` rule above had to be. See P-209. */
+.d-pz7 > epm-field-group > .d-fgroup { flex: 0 0 auto; }
+
 /* ── THE CARD HEADER IS A CONTROL AND HAD NO FOCUS RING ──────────────────
    `.d-fgroup > .gh` is the collapse toggle: `role="button"`, `tabindex="0"`,
    Enter and Space bound. It is reachable by keyboard on every screen that uses
@@ -91,6 +116,76 @@ epm-field-group { display: contents; }
 }
 /* Closed, the header IS the card, so the ring follows all four corners. */
 .d-fgroup.closed > .gh:focus-visible { border-radius: var(--r-lg); }
+
+/* ── THE GATE MESSAGES INSIDE الشكل 39's EDITOR NEED THE ROW'S OWN INSET ──
+   `.d-vow-ed > td` is `padding: 0 !important` (desktop.css:1979), because in
+   the reference every child of the editor carries its own — `.d-vow-edh`
+   12/16/10, `.d-vow-props` 14/16, and `.d-vow-note` through the sheet's own
+   `.d-vow-ed .d-vow-note { margin: 0 16px 14px }`.
+
+   This port shows BR-07's validation gates inline at the foot of the editor,
+   which the reference does not, so `.d-msgbar` arrives with no inset and sits
+   flush against the cell edge. One rule, matching the inset the sheet gives
+   its own note, so an addition of ours lines up with the children beside it.
+
+   The sheet writes that note's bottom margin as a literal `14px`, which is not
+   on the spacing scale (2·4·6·8·10·12·16·20·24…). CLAUDE.md §3.7 wants tokens,
+   so this takes `--space-12` — the neighbouring step — rather than copying a
+   literal across. */
+.d-vow-ed > td > .d-msgbar { margin: 0 var(--space-16) var(--space-12); }
+
+/* ── THE CONTRACT CARD IS A BUTTON AND HAD NO FOCUS RING EITHER ──────────
+   Same defect, same fix, found the same way — by tabbing to it. الشكل 6's
+   card IS the control that opens الشكل 7 (`.d-contract-card` is `all: unset`
+   on a <button>, desktop.css:1014, and the reference does the same), so it is
+   a tab stop on the contracts tab of every project.
+
+   `all: unset` resets `outline` to `none`, and it BEATS the global ring at
+   `tokens.css:390`: both selectors are one class worth of specificity and
+   `desktop.css` loads later, so source order decides. Measured — focused, the
+   card computed `outline-style: none`. The sheet gives it a `:hover` rule and
+   no `:focus-visible` one, so a keyboard user could not see where they were.
+   WCAG 2.4.7, and CLAUDE.md §6's «:focus-visible on every interactive
+   element».
+
+   OUTSET, unlike `.d-fgroup > .gh` above: the card is not `overflow: hidden`
+   and the ring belongs outside its own border. Values are the global rule's,
+   so the card focuses like everything else in the app. */
+.d-contract-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ── AND A THIRD TIME, ON THE TIMELINE ROW (A13) ─────────────────────────
+   `.d-tl-mini-row` is `all: unset` on a <button> too (desktop.css:801), and
+   `DTlMini` gives it an `onRowClick` — so it is a tab stop, and it computed
+   `outline-style: none` for the same reason the card did. Same values as the
+   global rule and the card above, so all three focus alike. */
+.d-tl-mini-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* The dates line under each track. The sheet stops at `.d-tl-mini-fill` and
+   `DTlMini` styles this row INLINE — `display: flex; justifyContent:
+   space-between; marginTop: 4`, with the finish coloured
+   `overrun ? var(--error) : var(--on-surface-variant)`
+   (`desktop-charts.jsx:125-127`). 05 §8 names inline styles beating the
+   stylesheet as a defect class, and this port has taken the class every other
+   time it met one, so the declarations move here unchanged.
+
+   Scoped CHILD names — `.dates`, `.late` — not new `d-*` blocks: it is the
+   sheet's own idiom (`.d-yalloc .ah`, `.d-slastages .sf`, `.d-rcpt .hd`), and
+   it keeps the structure inventory honest, since a `d-`-prefixed name here
+   would read as a class the design system ships and it does not.
+
+   THE LATE DATE IS NOT COLOUR-ALONE: both dates are printed either way, and
+   the row's `title` names the overrun in words (05 §7.6). */
+.d-tl-mini-row .dates {
+  display: flex; justify-content: space-between; margin-top: var(--space-4);
+  font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface-variant);
+}
+.d-tl-mini-row .dates > .late { color: var(--error); }
 
 /* ── THE SAME TRAP, ON EVERY PROJECT-WORKSPACE MODULE ─────────────────────
    `.d-pframe` is written as `flex: 1; min-height: 0` and expects to be a direct
@@ -759,9 +854,35 @@ epm-schedule-control-page > epm-page-head .d-page-head {
    Padding the three body types by name rather than every non-header child of
    a panel: a register table and the `.d-mini` rows on SCR-E8 are deliberately
    full-bleed, because their hover state has to span the whole row. */
-.d-panel > .epm-donut-row,
-.d-panel > .epm-bars,
-.d-panel > .d-grid.stats { padding: var(--space-16); }
+/* REMOVED at the A15 port — AND IT HAD NEVER WORKED. The comment above is
+   right about the defect and wrong about the fix: `.epm-donut-row`, `.epm-bars`
+   and `.epm-legend` have no caller anywhere in the app, and the three
+   `.d-grid.stats` strips are page-level children, not panel children. So the
+   selector matched NOTHING and every panel body still sat at 1px of inset.
+
+   ── AND THEN THE REPLACEMENT WAS WRONG TOO. WITHDRAWN AT A7'S AUDIT. ──────
+   A15 wrapped four chart components in `.d-panel-body` «that genuinely sat
+   flush». **They never sat flush.** `<epm-scurve>` and `<epm-bar-compare>`
+   both emit `.d-chart-card` (desktop.css:779), which is a card in its own
+   right — background, border, radius, shadow and `padding: 16px 20px 12px`.
+   The wrapper added 16px on top of that, so those four panels were inset
+   roughly twice as far as everything around them.
+
+   Checked against the LIVE prototype, which settles it: on the dashboard its
+   panels are `.d-panel > .d-panel-head + .d-chart-card`, a DIRECT child, and
+   the page emits `.d-panel-body` **zero** times. The sheet even has rules
+   keyed on that adjacency — `.d-dash-main > .d-panel > .d-chart-card` at
+   desktop.css:730 and `.d-hero > …` at :751 — which an inserted wrapper would
+   stop matching (this port uses neither container, so nothing broke there;
+   the padding is the whole of the damage).
+
+   `.d-panel-body` has no home in this port at all. Its only emitters in the
+   reference are `DAdmOverview` · `DAdmAssignments` (admin, §C1), `DProfile`
+   (§C2) and `DDistribution` (dead) — screens this port does not have. It
+   belongs with the feed classes in «out of reach», not in the backlog. All
+   seven wrappers are gone; `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry
+   their own padding as before, and the `.d-mini` rows stay full-bleed so
+   their hover spans the row. See P-219 and P-224. */
 
 /* The two-panel row inherits `.d-grid`'s 12px gap, which reads as a seam next
    to the 16px rhythm above and below it. Matching them makes the horizontal
@@ -920,18 +1041,19 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
   white-space: normal; text-align: start;
   color: var(--fg-subtle, var(--on-surface-variant)); }
 
-/* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
-   The stage card is  — the same two-row card الشكل 6 uses
-   — and needs only its two rows laid out. The dot is , the
-   severity marker the alerts screens already use, so a desk holding a file too
-   long reads the same as any other overdue thing; it is never the only carrier,
-   since the card prints its cap and its elapsed days beside it (05 §7.6). */
-.epm-slastage > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
-.epm-slastage > .hd > .t { min-inline-size: 0; }
-.epm-slastage > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
-.epm-slastage > .hd > .t > .d-cell-sub { display: block; }
-.epm-slastage > .ft { display: flex; align-items: baseline; gap: var(--space-8); }
-.epm-slastage > .ft > .sp { flex: 1; }
+/* REMOVED at the A7 structure port: `.epm-slastage`, and `.epm-cardgrid` /
+   `.epm-hrows` / `.epm-bar` below it — the four the A1 note promised «go with
+   A7». الشكل 17's stage card is `.d-slastages .ss` (desktop.css:3041), shipped
+   and unused, and the strip above it is `.d-yalloc` (:3023). Both were
+   re-derived here while the sheet's own sat in the file.
+
+   What the hand-rolled pair got wrong, and the sheet does not: `.d-slastages
+   .ss` is `grid-template-rows: auto auto 1fr`, so every card in the row is the
+   same shape and the footer pins to the bottom of each — a long stage name
+   used to make one card taller than its neighbours. And `.d-yalloc .af` is a
+   three-column GRID where `.d-fig-row` was a flex row, so the widest figure
+   can no longer push the other two off the baseline. See P-221 and
+   web/src/app/STRUCTURE-GAP.md §A7. */
 
 /* ══ الشكل 11 — «تمييز أحداث النظام الآلية عن أحداث المستخدمين» ═══════════
    The automatic half of the log reads as a different KIND of row, not as a
@@ -972,40 +1094,41 @@ button.d-file { font: inherit; text-align: start; cursor: pointer; }
    same sentence; both are gone. */
 button.d-file > .fm { align-items: flex-start; }
 
-/* ══ الشكل 7 — «تفصيل كلفة العقد» ═════════════════════════════════════════
-   A tile per expense item: name, amount, its own spend bar, and what has been
-   disbursed against it. Three tiles that wrap to one column on a narrow pane,
-   sized by the CARD (`.d-fgroup` is a container) rather than the viewport —
-   the same contract fits a wide pane and a split one. */
-.epm-costgrid {
-  display: grid; gap: var(--space-16);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-.epm-costtile {
-  display: grid; gap: var(--space-4);
-  grid-template-columns: 1fr auto;
-  align-content: start;
-  padding: var(--space-12);
-  border: 1px solid var(--stroke-subtle, var(--outline-variant));
-  border-radius: var(--r-sm);
-  background: var(--surface-container-lowest);
-}
-.epm-costtile .k { font-size: 12px; color: var(--on-surface-variant); }
-.epm-costtile .pct { font-size: 12px; color: var(--on-surface-variant); text-align: end; }
-.epm-costtile .v { grid-column: 1 / -1; font-size: 15px; font-weight: var(--fw-bold); }
-.epm-costtile .track { grid-column: 1 / -1; }
-.epm-costtile .sp2 { grid-column: 1 / -1; font-size: 11.5px; }
+/* REMOVED at the A1 structure port: `.epm-costgrid` / `.epm-costtile`.
+   الشكل 7's «تفصيل كلفة العقد» is `.d-costsplit` — `desktop.css:2873`, copied
+   from `DModContractNew` project-modules.jsx:731 at Phase 1.5 and never
+   called. Same three tiles, same amount-over-bar-over-spent order, already
+   responsive at 1100px. See P-207 and web/src/app/STRUCTURE-GAP.md §A1. */
 
 /* ══ الشكل 6 — سجل عقود المشروع ═══════════════════════════════════════════
-   The register is CARDS, not a table. The plate in «ملحق الشاشات والوظائف» is
-   the binding visual here — not `DModContractNew`, which this screen used to
-   be a port of and which renders a seven-column table with none of the five
-   figures the card carries. Recorded because replacing a reviewed component
-   needs a reason on the record.
+   THE CLAIM THAT USED TO STAND HERE WAS WRONG. It said the register is cards
+   «not `DModContractNew`, which renders a seven-column table», and ~90 lines
+   of `.epm-*` were written on that basis. `DModContractNew` renders
+   `.d-contract-grid` of `.d-contract-card` — in the v1.1 branch, in the
+   pre-v1.1 `main`, and in both checked-in revisions of the reference
+   (`git log -- docs/spec/reference/app/project-modules.jsx`). The register
+   was cards in the reference all along, and this file re-drew them.
 
-   Nothing below introduces a colour, a size or a radius: every value is a
-   token, and `.d-panel` · `.d-pill` · `.epm-track` · `.d-recon` · `.d-z9` are
-   the existing primitives (CLAUDE.md §7). */
+   Deleted at the A1 structure port, the markup now emitting the sheet's own:
+
+     .epm-concard*  → .d-contract-card + -top/-title/-val/-mtx/-kv/-foot
+     .epm-conmeta   → .d-contract-card-kv   (a <dl>, which it should have been)
+     .epm-confoot   → .d-contract-card-foot + .tags/.tg
+     .epm-barpair   → .d-csum-bars .bx/.bh/.track/.bf   (and .track > u is the
+                      spend tick, which `.epm-track > .mk` was a second copy of)
+     .d-pill.count  → .d-contract-card-foot .tg — a card TAG counts a thing;
+                      `.d-pill` reports a state, which is why it needed a
+                      ::before suppressed to stop looking like one
+
+   `.epm-reghead` survives one caller (SCR-W7's own summary row). `.epm-cardgrid`
+   and `.epm-hrows` went at A7, with `.epm-slastage` and `.epm-bar`; `.epm-reghead`
+   did NOT, and the reason is worth stating so the next pass does not chase it.
+   الشكل 17 has no such row: the reference carries the verdict as `DFGroup`'s
+   `sub` and the current stage inside the `DMsgBar` below the cards. This port
+   states both up front, next to the certificate's own status — three facts the
+   reference splits across two elements. That is the port having more to say,
+   not a structure it drew differently, so there is nothing in the sheet to
+   adopt. See P-207, P-221 and web/src/app/STRUCTURE-GAP.md §A1 · §A7. */
 
 /* ── C1 · the summary card's identity row ──────────────────────────────── */
 .epm-reghead { display: flex; align-items: flex-end; gap: var(--space-12); flex-wrap: wrap; }
@@ -1015,79 +1138,84 @@ button.d-file > .fm { align-items: flex-start; }
 .epm-reghead > .per { text-align: end; }
 .epm-reghead > .per > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
 
-/* ── C3 · D3 · «شريطا تقدّم متقابلان» ───────────────────────────────────────
-   Two halves set against each other for comparison. Both fills run from the
-   inline-start edge — RTL progress — so «متقابلان» is the juxtaposition, not
-   mirrored geometry. Used at BOTH scales: the project summary (spend vs
-   weighted physical) and each contract card (physical vs spend). */
-/* 150px, not 220: this same rule runs inside a CARD, whose inner width is a
-   third of the summary's. At 220 the pair stacked there and the comparison
-   — which is the entire point of the row — stopped being one glance. Sized by
-   the container, so a narrow pane still folds it to one column rather than
-   crushing two. */
-.epm-barpair {
-  display: grid; gap: var(--space-12) var(--space-24);
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-.epm-bar { min-inline-size: 0; }
-.epm-bar > .h { display: flex; align-items: baseline; gap: var(--space-8); }
-.epm-bar > .h > .k { font-size: var(--fs-200); color: var(--on-surface-variant); }
-.epm-bar > .h > .sp { flex: 1; }
-.epm-bar > .h > .v {
-  font-size: var(--fs-400); line-height: var(--lh-400);
-  font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
-}
-/* The spend rail is the only one that is not `--viz-1`. Two magnitudes on one
-   row need to be told apart at a glance, and they are ALSO labelled and
-   printed in words — the colour is never the only carrier (05 §8). */
-.epm-bar > .track > i.spend { background: var(--success); }
+/* REMOVED at the A1 structure port: `.epm-barpair`, and the `.epm-track`
+   marker below it. «شريطا تقدّم متقابلان» is `.d-csum-bars` — `desktop.css:2659`
+   — whose `.track > u` is the «العلامة = نسبة الصرف» tick that `.epm-track >
+   .mk` had been a second implementation of.
 
-/* THE MARKER — «العلامة = نسبة الصرف». What makes the summary row a
-   comparison rather than two bars: the physical rail is ticked at the spend %,
-   so 28-against-30 is one glance. `inset-inline-start` puts it on the same
-   axis the fill grows along, in both directions. */
-.epm-track.marked { position: relative; overflow: visible; }
-.epm-track > .mk {
-  position: absolute; inset-block: -3px; inline-size: 2px;
-  background: var(--on-surface); border-radius: var(--r-pill);
-}
+   And REMOVED at A7, as that note said it would be: `.epm-bar` — SCR-W7's
+   annual-allocation strip, now `.d-yalloc`. Its `.spend` modifier did not go
+   with it; that rule survives below, re-pointed at the shipped rails, because
+   it is the one thing here the sheet genuinely does not provide. */
 
 /* ── Sections are label + space, never nested boxes (CLAUDE.md §6) ──────
-   One panel, rows divided by hairlines. Both the summary card and each
-   contract card are this shape, so it is one rule rather than two. */
-.epm-hrows > * { padding: var(--space-16); }
-.epm-hrows > * + * { border-block-start: 1px solid var(--outline-variant); }
+   REMOVED at A7 with their last caller: `.epm-hrows` and `.epm-cardgrid`.
+   الشكل 17's stage cards are `.d-slastages` — one grid, its own card, and the
+   `auto auto 1fr` rows that keep a row of them the same height. */
 
-/* ── D · the contract cards ────────────────────────────────────────────── */
-.epm-cardgrid {
-  display: grid; gap: var(--space-16);
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-.epm-concard > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
-.epm-concard > .hd > .t { min-inline-size: 0; }
-.epm-concard > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
-.epm-concard > .hd > .sp { flex: 1; }
-.epm-concard > .val > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
-.epm-concard > .val > b {
-  display: block; font-size: var(--fs-500); line-height: var(--lh-500);
-  font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
-}
-/* The amendment delta. A ملحق that RAISES the contract is the exceptional
-   fact the plate colours; a reduction is shown in the same place with the
-   neutral branch, because colouring a magnitude by its sign is the defect
-   CLAUDE.md §6 names. The arrow carries the direction either way. */
-.epm-concard > .val > .up { color: var(--error); }
-.epm-conmeta {
-  display: grid; gap: var(--space-12) var(--space-16);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.epm-conmeta > div > .k { display: block; font-size: var(--fs-200); color: var(--on-surface-variant); }
-.epm-confoot { display: flex; align-items: center; gap: var(--space-6); }
-.epm-confoot > .sp { flex: 1; }
+/* THE ONE RULE THIS PORT ADDS, and it replaces two it deleted.
+   `.d-csum-bars .track > i` and `.d-progress .t > span` both take a single
+   fill colour, and the reference paints the spend rail by an inline
+   `style={{ background: 'var(--success)' }}` at four call sites
+   (project-modules.jsx:474, :519, :526). `05 §8` names inline styles beating
+   the stylesheet as a defect class and CLAUDE.md §3.7 wants the class, so the
+   modifier lives here — the same rule `.epm-bar > .track > i.spend` carried
+   before, re-pointed at the shipped rails.
 
-/* The amendment badges carry no status dot — they count a thing, they do not
-   report a state, and `.d-pill::before` would read as one. */
-.d-pill.count::before { content: none; }
+   The spend rail is the only one that is not `--viz-1`. Two magnitudes on one
+   row need telling apart at a glance, and both are ALSO labelled and printed
+   in words — the colour is never the only carrier (05 §8). */
+.d-csum-bars .track > i.spend,
+.d-progress .t.spend > span { background: var(--success); }
+
+/* A7 · and the same reading, one rail further on. `.d-yalloc .track > i`
+   (desktop.css:3030) sets height and radius and NO background: the reference
+   paints it inline too — `style={{ background: yrPct > 95 ? 'var(--warning)'
+   : 'var(--viz-1)' }}` at project-modules.jsx:1223 — so the fill arrives here
+   for the same reason the two above it do. Emitting the sheet's `.track`
+   without this leaves the rail invisible; the port's `.epm-track` would have
+   supplied a fill but ALSO its own background and `margin-block`, and
+   styles.css loads last, so it would have overridden the sheet it is meant to
+   be adopting.
+
+   ONE colour, not the reference's two. Its >95% branch colours a magnitude by
+   threshold, which CLAUDE.md §6 forbids by name; the near-exhausted state is
+   already carried in words by the msgbar under the strip, so the rail stays
+   `--viz-1` and says nothing the label does not. */
+.d-yalloc .track > i { background: var(--viz-1); }
+
+/* A17 · and the third of the same kind. `.d-alert-sev` (desktop.css:1223) sets
+   geometry and weight and NO colour, because `DAlertSev` paints it inline —
+   `background: color-mix(in srgb, ${s.color} 15%, transparent); color:
+   ${s.color}` at alerts-module.jsx:25, off `ALERT_SEV`.
+
+   `ALERT_SEV`'s three colours are `var(--error)` · `var(--status-suspended-tx)`
+   · `var(--status-completed-tx)`. Checked against the LIVE prototype in both
+   themes, those resolve to exactly the tokens used below — `--error` and
+   `--status-delayed-tx` are the same value in light (#C22B2E) and in dark
+   (#F58C8E), and the other two are their own `-tx`. So this is the reference's
+   palette, reached through the status vocabulary the rest of the app already
+   speaks. `ALERT_SEV` even carries a `.cls` field naming these three —
+   `stalled` · `suspended` · `completed` — which nothing in the reference
+   consumes; the port's rules table had been drawing `.d-pill` off the same
+   mapping, which is why this is a change of geometry and glyph, not of colour.
+
+   **15% flat, matching `DAlertSev`** — not `.d-pill`'s 14 / 17 / 15. The sheet
+   nudges its amber pill to 17% because amber at 15% goes faint against the
+   surface (desktop.css:1674), and that adjustment is real; but the component
+   being ported paints a flat `color-mix(… 15%, transparent)` at all three, and
+   where the two disagree the thing being ported wins. Recorded rather than
+   silently averaged, because the sheet's reading is the better one and a later
+   pass may well prefer it.
+
+   The glyph is the point. `.d-pill::before` is the same 6px dot for all three
+   severities, so shape carries nothing and colour does the work alone;
+   `.d-alert-sev` takes a per-severity icon — warning · error · info — which is
+   the «shape + colour + accessible label» that 05 §7.6 and the reference's own
+   DSevDot comment both ask for. */
+.d-alert-sev.stalled   { background: color-mix(in srgb, var(--status-delayed) 15%, transparent);   color: var(--status-delayed-tx); }
+.d-alert-sev.suspended { background: color-mix(in srgb, var(--status-suspended) 15%, transparent); color: var(--status-suspended-tx); }
+.d-alert-sev.completed { background: color-mix(in srgb, var(--status-completed) 15%, transparent); color: var(--status-completed-tx); }
 
 /* ── E · «شريط تذييل ثابت» ─────────────────────────────────────────────────
    Contract count · effective value · disbursed · data date. `.d-z9` is the
@@ -1318,21 +1446,15 @@ button.d-file > .fm { align-items: flex-start; }
 }
 .d-drop:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-/* ── الشكل 52 — «بطاقات استلام» و«بطاقات مستندات» ────────────────────────
-   The plate asks for CARDS: «بطاقات استلام مصنفة تحت عنوانين فرعيين … تحمل كل
-   بطاقة رقم الاستلام والكمية والتاريخ والجهة أو المخزن واللجنة ونتيجة
-   المطابقة». `.d-card-sub` (desktop.css:990) is the copied stylesheet's own
-   card and does all the work — border, radius, surface. What it has no rule
-   for is a HEADER ROW inside one, because nothing in the reference puts a
-   three-part head on a sub-card. That row is the whole of what follows. */
-.sup-card { margin-bottom: var(--space-8, 8px); }
-.sup-card > .hd {
-  display: flex; align-items: center; gap: var(--space-10, 10px);
-  padding: var(--space-8, 8px) var(--space-12, 12px);
-  border-bottom: 1px solid var(--outline-variant);
-}
-.sup-card > .hd > .sp { flex: 1; }
-.sup-card > .d-form-grid { padding: var(--space-10, 10px) var(--space-12, 12px); }
+/* REMOVED at the A6 structure port: `.sup-card`.
+   الشكل 52's receipt and document cards are `.d-rcptlist`/`.d-rcpt` and
+   `.d-attlist`/`.d-att` — `desktop.css:3546` and `:3526`, from
+   `DModSupplyItems` supply-items.jsx:429 and :459, copied at Phase 1.5 and
+   never called. The claim above — that the sheet «has no rule for a header row
+   inside a sub-card» — was true of `.d-card-sub` and false of the sheet: the
+   receipt card's header, its `.who` line and its `.nt` note were all already
+   there, and so was `.fls` for the files this screen was not drawing at all.
+   See P-214 and web/src/app/STRUCTURE-GAP.md §A6. */
 
 /* ── الشكل 50's «الاستلام» cell ──────────────────────────────────────────
    Three parts in one cell, and the plate is explicit about all three: a

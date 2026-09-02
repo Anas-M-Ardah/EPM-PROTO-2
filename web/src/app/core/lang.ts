@@ -223,6 +223,12 @@ const STR = {
   prt_cost_spent:  { ar: 'الصرف التراكمي',                  en: 'Cumulative spend' },
   prt_annual_spend:{ ar: 'الصرف السنوي',                    en: 'Annual disbursement' },
   prt_annual_sub:  { ar: 'من تواريخ الدفعات المسجَّلة',      en: 'From recorded payment dates' },
+  // A13 — «الجدول الزمني للمشاريع · أعلى 5 مشاريع كلفةً» (DTlMini).
+  prt_timeline:     { ar: 'الجدول الزمني للمشاريع',           en: 'Project timeline' },
+  prt_timeline_sub: { ar: 'أعلى 5 مشاريع كلفةً',              en: 'Top 5 by cost' },
+  // The overrun in WORDS, on the row's title — never colour alone (05 §7.6).
+  prt_tl_overrun:   { ar: 'الإنجاز المتوقع بعد التاريخ التعاقدي', en: 'Forecast finish is later than the contractual date' },
+  prt_tl_ontime:    { ar: 'ضمن التاريخ التعاقدي',              en: 'Within the contractual date' },
   prt_milestones:  { ar: 'معالم قادمة',                     en: 'Upcoming milestones' },
   prt_milestones_sub:{ ar: 'أقرب الإنجازات المخططة',        en: 'Nearest planned finishes' },
   prt_filtered_t:  { ar: 'لا مشروع يطابق المرشّحات',        en: 'No project matches the filters' },
@@ -1137,6 +1143,11 @@ const STR = {
   boq_asn_cost:    { ar: 'الكلفة',                         en: 'Cost' },
   boq_asn_mh:      { ar: 'ساعات العمل',                    en: 'Man-hours' },
   boq_asn_auto:    { ar: 'توزيع تلقائي',                   en: 'Auto-distribute' },
+  // A5-rest — the «توزيع» menu (.d-actmenu, boq-assign.jsx:235). The basis is a
+  // PARAMETER of auto-distribute, so the reference puts it inside the menu.
+  boq_asn_distribute: { ar: 'توزيع',                        en: 'Distribute' },
+  boq_asn_action:     { ar: 'الإجراء',                      en: 'Action' },
+  boq_asn_auto_hint:  { ar: 'يوزّع 100% بنسبة وزن كل نشاط',  en: 'Spreads 100% by each activity weight' },
   boq_asn_add:     { ar: 'إضافة نشاط',                     en: 'Add activity' },
   boq_asn_activity:{ ar: 'النشاط',                         en: 'Activity' },
   boq_asn_its_wt:  { ar: 'وزن النشاط',                     en: 'Activity wt' },
@@ -1471,6 +1482,8 @@ const STR = {
   scd_imp_drop_b:  { ar: 'تُقرأ الصيغة التي اخترتها أعلاه، لا امتداد الملف.',
                      en: 'The format you chose above is what is read — not the file extension.' },
   scd_imp_empty:   { ar: 'لم يُعثر على أي نشاط في الملف.',   en: 'No activity was found in the file.' },
+  // ملحق الشكل 24 step 1 — the parse is async and used to say nothing.
+  scd_imp_parsing:  { ar: 'جارٍ تحليل الملف',                 en: 'Parsing the file' },
   scd_imp_unreadable:{ ar: 'تعذّرت قراءة الملف بالصيغة المختارة.',
                      en: 'The file could not be read in the chosen format.' },
   scd_imp_s2_b:    { ar: 'قُرئ من الملف:',                   en: 'Read from the file:' },
@@ -1531,6 +1544,15 @@ const STR = {
   scd_imp_no_cap:  { ar: 'الاعتماد من صلاحية دائرة المهندس المقيم أو مدير المشروع، ولا يعتمده من قدّمه.',
                      en: 'Approval is the resident-engineer department’s or the project manager’s capacity, and the person who submitted it may not approve it.' },
   scd_milestone:   { ar: 'حدث فارق',                        en: 'milestone' },
+  // The Gantt's hatched tail: approved, NOT yet applied (02 §9).
+  scd_ext_title:   { ar: 'تمديد معتمد بأمر تغييري — لم يُطبَّق بعد',
+                     en: 'Approved extension by change order — not yet applied' },
+  // «تعديل بأمر تغييري» in the activity detail. Settled and pending stay apart.
+  scd_amd_t:       { ar: 'تعديل بأمر تغييري',                en: 'Amended by change order' },
+  scd_amd_settled: { ar: 'مطبَّق — داخل التواريخ أعلاه',      en: 'Applied — inside the dates above' },
+  scd_amd_pending: { ar: 'معتمد بانتظار التطبيق',            en: 'Approved, awaiting application' },
+  scd_amd_sources: { ar: 'الأوامر',                          en: 'Orders' },
+  scd_amd_unapplied:{ ar: '(لم يُطبَّق)',                     en: '(not applied)' },
 
   /* ── الشكل 23 · المقارنة والأثر ─────────────────────────────────────── */
   scd_tab_compare: { ar: 'المقارنة والأثر',                 en: 'Compare & impact' },
@@ -2667,6 +2689,14 @@ const STR = {
   prp_unavailable:  { ar: 'غير متاح',                       en: 'Unavailable' },
   prp_needs:        { ar: 'ينقصه:',                         en: 'Waiting on:' },
   prp_run:          { ar: 'تشغيل',                          en: 'Run' },
+  // [EP-PRP-02] — the view's own tag. `06 §12`'s figures are illustrative and
+  // the reference marks its rendered reports the same way (`demo_data`).
+  prp_demo:         { ar: 'بيانات تجريبية',                 en: 'Demo data' },
+  // Producible, but not DRAWN here — a different absence from «غير متاح»,
+  // and the view says which one it is rather than showing an empty pane.
+  prp_norender_t:   { ar: 'لا معاينة داخل الشاشة',           en: 'No inline preview' },
+  prp_norender_b:   { ar: 'التقرير قابل للإنتاج، ولا تُرسم معاينته داخل هذه الشاشة في هذا الإصدار.',
+                      en: 'The report is producible; this build does not draw its preview inline.' },
   prp_f_available:  { ar: 'قابلة للإنتاج',                  en: 'producible' },
   prp_norm_t:       { ar: 'التعريف واحد، والسؤال يختلف',    en: 'One definition, a different question' },
   prp_norm_b:       { ar: 'هذه التقارير هي نفسها المعرَّفة في «التقارير والإحصائيات» على مستوى الجهة؛ الفرق أن تلك الشاشة تسأل هل يمكن إنتاج التقرير أصلاً، وهذه تسأل هل يمكن إنتاجه لهذا المشروع — أي هل يملك المشروع سجلات في كل مصدر يقرؤه. إنتاج الملف نفسه غير مبنيّ في أي مرحلة من هذا النموذج.',

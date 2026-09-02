@@ -4,7 +4,7 @@
    Bilingual AR/EN · RTL-first · Light + Dark
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Cairo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 /* ---- Autodesk-blue tonal ramp (platform primary) ---- */
 :root {
@@ -34,78 +34,83 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Primary — Autodesk product blue */
-  --primary:               #0b6499;
+  /* Primary — EPM blue (blue-60) per design standards v1.1 */
+  --primary:               #1F5CDB;
   --on-primary:            #ffffff;
-  --primary-container:     #cfe7f6;
-  --on-primary-container:  #063049;
-  --primary-hover:         #094f7a;
-  --primary-deep:          #0a3f60;
+  --primary-container:     #E3ECFD;
+  --on-primary-container:  #0C2760;
+  --primary-hover:         #1748B0;
+  --primary-deep:          #12388A;
 
-  /* Secondary — slate */
-  --secondary:             #4c5560;
+  /* Secondary — cool slate */
+  --secondary:             #565E69;
   --on-secondary:          #ffffff;
-  --secondary-container:   #e2e4e6;
-  --on-secondary-container: #1a1f25;
+  --secondary-container:   #EAEDF0;
+  --on-secondary-container: #1D2127;
 
-  /* Tertiary / accent — Oracle Redwood red (action) */
-  --tertiary:              #c74634;
+  /* Tertiary / accent — deep blue action (reference uses one blue accent) */
+  --tertiary:              #1748B0;
   --on-tertiary:           #ffffff;
-  --tertiary-container:    #f8ddd7;
-  --on-tertiary-container:  #4b120a;
-  --tertiary-hover:        #a83729;
+  --tertiary-container:    #E3ECFD;
+  --on-tertiary-container:  #0C2760;
+  --tertiary-hover:        #12388A;
 
-  /* Status */
-  --error:    #bc2c1a;   --on-error: #ffffff;
-  --error-container: #f9ddd7; --on-error-container: #440d06;
-  --success:  #1e8a52;   --on-success: #ffffff;
-  --warning:  #b1741a;   --on-warning: #ffffff;
-  --info:     #0b6499;   --on-info: #ffffff;
+  /* Status — reference status ramp (green/amber/red/teal) */
+  --error:    #C22B2E;   --on-error: #ffffff;
+  --error-container: #FDECEC; --on-error-container: #7C1214;
+  --success:  #177D48;   --on-success: #ffffff;
+  --warning:  #9A6B05;   --on-warning: #ffffff;
+  --info:     #0F7480;   --on-info: #ffffff;
 
-  /* Neutral surfaces (Redwood warm greige) */
-  --background:                 #eeece7;
-  --on-background:              #1c1a18;
-  --surface:                    #f2f1ee;
-  --surface-dim:                #ddd8d1;
+  /* Neutral surfaces — cool grey ramp (grey-00..12) */
+  --background:                 #F1F3F5;
+  --on-background:              #1D2127;
+  --surface:                    #F6F7F9;
+  --surface-dim:                #EAEDF0;
   --surface-bright:             #ffffff;
   --surface-container-lowest:   #ffffff;
-  --surface-container-low:      #faf9f6;
-  --surface-container:          #f3f1ed;
-  --surface-container-high:     #ece9e3;
-  --surface-container-highest:  #e4e0d9;
-  --on-surface:                 #23201c;
-  --on-surface-variant:         #605a51;
-  --outline:                    #9b9389;
-  --outline-variant:            #ddd8cf;
-  --inverse-surface:            #2c2925;
-  --inverse-on-surface:         #f3f1ed;
+  --surface-container-low:      #FBFBFC;
+  --surface-container:          #F6F7F9;
+  --surface-container-high:     #F1F3F5;
+  --surface-container-highest:  #EAEDF0;
+  --on-surface:                 #1D2127;
+  --on-surface-variant:         #565E69;
+  --outline:                    #A9B1BC;
+  --outline-variant:            #E1E5EA;
+  --inverse-surface:            #262B32;
+  --inverse-on-surface:         #F1F3F5;
 
   /* Scrim / overlays */
-  --scrim: rgba(28, 26, 24, 0.45);
-  --hover-overlay:  rgba(11, 100, 153, 0.06);
-  --focus-ring:     rgba(11, 100, 153, 0.38);
+  --scrim: rgba(13, 17, 20, 0.45);
+  --hover-overlay:  rgba(31, 92, 219, 0.06);
+  --focus-ring:     rgba(31, 92, 219, 0.38);
 
-  /* Elevation (flat, warm-neutral tint) */
-  --elev-1: 0 1px 2px rgba(40, 34, 28, .05), 0 1px 2px rgba(40, 34, 28, .08);
-  --elev-2: 0 1px 2px rgba(40, 34, 28, .06), 0 2px 6px rgba(40, 34, 28, .09);
-  --elev-3: 0 4px 8px rgba(40, 34, 28, .07), 0 1px 3px rgba(40, 34, 28, .09);
-  --elev-4: 0 6px 14px rgba(40, 34, 28, .09), 0 2px 6px rgba(40, 34, 28, .07);
-  --elev-5: 0 12px 28px rgba(40, 34, 28, .13), 0 4px 10px rgba(40, 34, 28, .09);
+  /* v1.1 reference-name aliases (so shared classes can speak the standard vocab) */
+  --fg-strong: #0E1114;   --fg-subtle: #8B94A1;   --fg-disabled: #A9B1BC;
+  --stroke-default: #D5DAE1;  --stroke-strong: #A9B1BC;  --stroke-subtle: #EAEDF0;
+  --bg-selected: #F2F6FE;  --bg-subtle: #F6F7F9;  --accent-border: #9DBCF7;  --fg-link: #1748B0;
 
-  /* Data-viz accents — Autodesk bright blue + signature gradients */
-  --azure-300:#6ec4ee; --azure-400:#2ba6e0; --azure-500:#0696d7; --azure-600:#0b6499;
-  --cyan-300:#7fdce6; --violet-400:#7c83e8;
+  /* Elevation — cool Fluent shadows (reference shadow-2..28) */
+  --elev-1: 0 1px 2px rgba(16,24,40,.06), 0 1px 1px rgba(16,24,40,.04);
+  --elev-2: 0 2px 4px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.05);
+  --elev-3: 0 4px 8px rgba(16,24,40,.10), 0 2px 4px rgba(16,24,40,.06);
+  --elev-4: 0 8px 16px rgba(16,24,40,.12), 0 2px 6px rgba(16,24,40,.06);
+  --elev-5: 0 14px 28px rgba(16,24,40,.16), 0 4px 10px rgba(16,24,40,.08);
+
+  /* Data-viz accents — EPM blue + reference series */
+  --azure-300:#9DBCF7; --azure-400:#6E9AF1; --azure-500:#3F79E9; --azure-600:#1F5CDB;
+  --cyan-300:#7fdce6; --violet-400:#8B7CE8;
   /* Data-viz ramp — series colours, deliberately outside the status and
-     interactive namespaces. Pairwise dE: 1/2 35, 1/3 61, 2/3 49. */
-  --viz-1: #0696d7;  --viz-2: #7c83e8;  --viz-3: #8c3f6b;
-  --viz-track: #e4e0d9;  --viz-base: #9b9389;
+     interactive namespaces. */
+  --viz-1: #1F5CDB;  --viz-2: #0F7480;  --viz-3: #8B5CF6;
+  --viz-track: #EAEDF0;  --viz-base: #A9B1BC;
   /* Status namespace — separated from --primary/--info so no token
      carries two meanings. Fills use these; pill text uses -tx. */
-  --status-ongoing: #0b6499;   --status-ongoing-tx: #094f7a;
-  --status-completed: #1e8a52; --status-completed-tx: #146b3e;
-  --status-delayed: #bc2c1a;   --status-delayed-tx: #bc2c1a;
-  --status-suspended: #b1741a; --status-suspended-tx: #8a5a12;
-  --status-cancelled: #605a51; --status-cancelled-tx: #605a51;
+  --status-ongoing: #1F5CDB;   --status-ongoing-tx: #1748B0;
+  --status-completed: #177D48; --status-completed-tx: #177D48;
+  --status-delayed: #C22B2E;   --status-delayed-tx: #C22B2E;
+  --status-suspended: #9A6B05; --status-suspended-tx: #9A6B05;
+  --status-cancelled: #565E69; --status-cancelled-tx: #565E69;
   --grad-sky: linear-gradient(135deg,#23262b 0%,#0b6499 42%,#0696d7 82%,#57b0dd 100%);
   --grad-sky-2: linear-gradient(120deg,#0b6499 0%,#0696d7 62%,#6ec4ee 100%);
   --grad-accent: linear-gradient(120deg,#c74634 0%,#e07a63 100%);
@@ -117,25 +122,33 @@
   --elev-glow: 0 8px 24px rgba(40,34,28,.10), 0 1px 4px rgba(40,34,28,.05);
   --aurora: none;
 
-  /* Charcoal command bar (Autodesk platform) */
-  --topbar-bg: #23262b;
-  --topbar-fg: #f0f1f2;
-  --topbar-fg-dim: #a9adb4;
-  --topbar-border: #34383f;
-  --topbar-field: rgba(255,255,255,.09);
-  --topbar-field-hover: rgba(255,255,255,.15);
+  /* Command bar — dark cool shell (grey-90) per design standards */
+  --topbar-bg: #1D2127;
+  --topbar-fg: #E9ECF1;
+  --topbar-fg-dim: #A7B0BC;
+  --topbar-border: rgba(255,255,255,.08);
+  --topbar-field: rgba(255,255,255,.08);
+  --topbar-field-hover: rgba(255,255,255,.14);
   --topbar-hover: rgba(255,255,255,.10);
 
-  /* Left navigation — warm light rail, squared active w/ start accent */
-  --nav-bg: #f7f5f1;
-  --nav-bg-2: #efece6;
-  --nav-fg: #23201c;
-  --nav-fg-dim: #605a51;
-  --nav-hover: rgba(11,100,153,.07);
-  --nav-active-bg: #cfe7f6;   /* primary-container */
-  --nav-border: #ddd8cf;
-  --nav-accent: #0b6499;      /* primary */
-  --nav-accent-deep: #063049;
+  /* Left navigation — DARK shell rail (design standards §08: rail = --bg-shell) */
+  --nav-bg: #1D2127;
+  --nav-bg-2: #15181D;
+  --nav-fg: #E9ECF1;
+  --nav-fg-dim: #A7B0BC;
+  --nav-hover: rgba(255,255,255,.08);
+  --nav-active-bg: rgba(255,255,255,.14);
+  --nav-border: rgba(255,255,255,.06);
+  --nav-accent: #6E9AF1;      /* active indicator on dark */
+  --nav-accent-deep: #8CB2F7;
+
+  /* BOQ allocation-state trios (fg / soft bg / border) — reference status ramp */
+  --alloc-full-fg:#177D48;    --alloc-full-bg:#E8F6EE;    --alloc-full-bd:#B9E3CB;
+  --alloc-partial-fg:#9A6B05; --alloc-partial-bg:#FFF6E3; --alloc-partial-bd:#F2DCA8;
+  --alloc-over-fg:#C22B2E;    --alloc-over-bg:#FDECEC;    --alloc-over-bd:#F5C2C3;
+  --alloc-none-fg:#565E69;    --alloc-none-bg:#F1F3F5;    --alloc-none-bd:#E1E5EA;
+  --calc-fg:#1F5CDB;          --calc-bg:#E3ECFD;          /* read-only calculated-field marker */
+  --boq-limit:#C22B2E;        /* 100% over-allocation limit marker */
 }
 
 /* ============================================================
@@ -144,50 +157,55 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --primary:               #6ec4ee;
-  --on-primary:            #04314c;
-  --primary-container:     #0a4a72;
-  --on-primary-container:  #cfe7f6;
-  --primary-hover:         #8fd3f2;
-  --primary-deep:          #23262b;
+  --primary:               #3F79E9;
+  --on-primary:            #ffffff;
+  --primary-container:     #132542;
+  --on-primary-container:  #8CB2F7;
+  --primary-hover:         #6E9AF1;
+  --primary-deep:          #12388A;
 
-  --secondary:             #bcc1c8;
-  --on-secondary:          #262b31;
-  --secondary-container:   #3a4048;
-  --on-secondary-container: #e2e4e6;
+  --secondary:             #A7B0BC;
+  --on-secondary:          #15181D;
+  --secondary-container:   #2E343D;
+  --on-secondary-container: #E9ECF1;
 
-  --tertiary:              #f0a99b;
-  --on-tertiary:           #571509;
-  --tertiary-container:    #a83729;
-  --on-tertiary-container:  #f8ddd7;
-  --tertiary-hover:        #f4c0b5;
+  --tertiary:              #8CB2F7;
+  --on-tertiary:           #081A41;
+  --tertiary-container:    #132542;
+  --on-tertiary-container:  #8CB2F7;
+  --tertiary-hover:        #B4CDFA;
 
-  --error:    #f1b4a9;   --on-error: #5c1105;
-  --error-container: #892b20; --on-error-container: #f9ddd7;
-  --success:  #5cc28d;   --on-success: #00382a;
-  --warning:  #e7bd74;   --on-warning: #412d00;
-  --info:     #6ec4ee;   --on-info: #04314c;
+  --error:    #F58C8E;   --on-error: #2E1112;
+  --error-container: #5A2224; --on-error-container: #F58C8E;
+  --success:  #6FD6A0;   --on-success: #0E2A1C;
+  --warning:  #F0C266;   --on-warning: #2E2306;
+  --info:     #69CBD5;   --on-info: #082A2E;
 
-  --background:                 #141311;
-  --on-background:              #e7e3dd;
-  --surface:                    #141311;
-  --surface-dim:                #141311;
-  --surface-bright:             #3a3733;
-  --surface-container-lowest:   #0f0e0c;
-  --surface-container-low:      #1c1a17;
-  --surface-container:          #211f1b;
-  --surface-container-high:     #2b2823;
-  --surface-container-highest:  #363229;
-  --on-surface:                 #e7e3dd;
-  --on-surface-variant:         #c8c1b6;
-  --outline:                    #928b7f;
-  --outline-variant:            #45413a;
-  --inverse-surface:            #e7e3dd;
-  --inverse-on-surface:         #2c2925;
+  --background:                 #0E1114;
+  --on-background:              #E9ECF1;
+  --surface:                    #15181D;
+  --surface-dim:                #0E1114;
+  --surface-bright:             #262B32;
+  --surface-container-lowest:   #1D2127;
+  --surface-container-low:      #15181D;
+  --surface-container:          #1D2127;
+  --surface-container-high:     #262B32;
+  --surface-container-highest:  #2E343D;
+  --on-surface:                 #E9ECF1;
+  --on-surface-variant:         #A7B0BC;
+  --outline:                    #454C57;
+  --outline-variant:            #2E343D;
+  --inverse-surface:            #E9ECF1;
+  --inverse-on-surface:         #1D2127;
 
-  --scrim: rgba(0, 0, 0, 0.6);
-  --hover-overlay:  rgba(110, 196, 238, 0.09);
-  --focus-ring:     rgba(110, 196, 238, 0.45);
+  --scrim: rgba(0, 0, 0, 0.62);
+  --hover-overlay:  rgba(63, 121, 233, 0.10);
+  --focus-ring:     rgba(63, 121, 233, 0.45);
+
+  /* v1.1 reference-name aliases — dark */
+  --fg-strong: #FFFFFF;   --fg-subtle: #7D8794;   --fg-disabled: #5A626D;
+  --stroke-default: #2E343D;  --stroke-strong: #454C57;  --stroke-subtle: #232830;
+  --bg-selected: #12233F;  --bg-subtle: #15181D;  --accent-border: #2B4C87;  --fg-link: #8CB2F7;
 
   --elev-1: 0 1px 2px rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
   --elev-2: 0 1px 2px rgba(0,0,0,.30), 0 2px 6px rgba(0,0,0,.44);
@@ -195,16 +213,16 @@
   --elev-4: 0 6px 14px rgba(0,0,0,.40), 0 2px 6px rgba(0,0,0,.40);
   --elev-5: 0 12px 28px rgba(0,0,0,.50), 0 4px 10px rgba(0,0,0,.44);
 
-  /* Data-viz accents + signature gradients — dark */
-  --azure-300:#8ed3f2; --azure-400:#4fb6e8; --azure-500:#2ba6e0; --azure-600:#0696d7;
-  --cyan-300:#7fdce6; --violet-400:#9aa0f0;
-  --viz-1: #2ba6e0;  --viz-2: #9aa0f0;  --viz-3: #c47ba0;
-  --viz-track: #45413a;  --viz-base: #928b7f;
-  --status-ongoing: #8ed3f2;   --status-ongoing-tx: #8ed3f2;
-  --status-completed: #5cc28d; --status-completed-tx: #5cc28d;
-  --status-delayed: #f1b4a9;   --status-delayed-tx: #f1b4a9;
-  --status-suspended: #e7bd74; --status-suspended-tx: #e7bd74;
-  --status-cancelled: #a49d92; --status-cancelled-tx: #a49d92;
+  /* Data-viz accents — dark */
+  --azure-300:#9DBCF7; --azure-400:#6E9AF1; --azure-500:#3F79E9; --azure-600:#6E9AF1;
+  --cyan-300:#69CBD5; --violet-400:#B9A3F5;
+  --viz-1: #6E9AF1;  --viz-2: #3FA9B3;  --viz-3: #B9A3F5;
+  --viz-track: #2E343D;  --viz-base: #565E69;
+  --status-ongoing: #6E9AF1;   --status-ongoing-tx: #8CB2F7;
+  --status-completed: #6FD6A0; --status-completed-tx: #6FD6A0;
+  --status-delayed: #F58C8E;   --status-delayed-tx: #F58C8E;
+  --status-suspended: #F0C266; --status-suspended-tx: #F0C266;
+  --status-cancelled: #A7B0BC; --status-cancelled-tx: #A7B0BC;
   --grad-sky: linear-gradient(135deg,#23262b 0%,#0a4a72 42%,#0696d7 88%,#57b0dd 100%);
   --grad-sky-2: linear-gradient(120deg,#0a4a72 0%,#0696d7 70%,#6ec4ee 100%);
   --grad-accent: linear-gradient(120deg,#c74634 0%,#e07a63 100%);
@@ -216,34 +234,42 @@
   --elev-glow: 0 8px 24px rgba(0,0,0,.42), 0 1px 4px rgba(0,0,0,.36);
   --aurora: none;
 
-  /* Charcoal command bar — dark */
-  --topbar-bg: #1b1a18;
-  --topbar-fg: #e7e3dd;
-  --topbar-fg-dim: #a49d92;
-  --topbar-border: #2b2823;
+  /* Command bar — dark cool shell */
+  --topbar-bg: #15181D;
+  --topbar-fg: #E9ECF1;
+  --topbar-fg-dim: #A7B0BC;
+  --topbar-border: rgba(255,255,255,.08);
   --topbar-field: rgba(255,255,255,.07);
   --topbar-field-hover: rgba(255,255,255,.13);
   --topbar-hover: rgba(255,255,255,.08);
 
-  /* Left navigation — dark warm rail */
-  --nav-bg: #1a1815;
-  --nav-bg-2: #0f0e0c;
-  --nav-fg: #e7e3dd;
-  --nav-fg-dim: #c8c1b6;
+  /* Left navigation — same --bg-shell as the top bar (design standards §08) */
+  --nav-bg: #15181D;
+  --nav-bg-2: #0E1114;
+  --nav-fg: #E9ECF1;
+  --nav-fg-dim: #A7B0BC;
   --nav-hover: rgba(255,255,255,.06);
-  --nav-active-bg: #0a4a72;   /* primary-container */
-  --nav-border: #2b2823;
-  --nav-accent: #6ec4ee;
-  --nav-accent-deep: #cfe7f6;
+  --nav-active-bg: #132542;   /* primary-container */
+  --nav-border: rgba(255,255,255,.06);
+  --nav-accent: #6E9AF1;
+  --nav-accent-deep: #8CB2F7;
+
+  /* BOQ allocation-state trios — dark (reference status) */
+  --alloc-full-fg:#6FD6A0;    --alloc-full-bg:#0E2A1C;    --alloc-full-bd:#1D4A32;
+  --alloc-partial-fg:#F0C266; --alloc-partial-bg:#2E2306; --alloc-partial-bd:#513E10;
+  --alloc-over-fg:#F58C8E;    --alloc-over-bg:#2E1112;    --alloc-over-bd:#5A2224;
+  --alloc-none-fg:#A7B0BC;    --alloc-none-bg:#1D2127;    --alloc-none-bd:#2E343D;
+  --calc-fg:#8CB2F7;          --calc-bg:#132542;
+  --boq-limit:#F58C8E;
 }
 
 /* ============================================================
    NON-COLOR TOKENS  (shared)
    ============================================================ */
 :root {
-  /* Type families */
-  --font-ar: 'Cairo', 'Hanken Grotesk', system-ui, sans-serif;
-  --font-en: 'Hanken Grotesk', system-ui, sans-serif;
+  /* Type families — Cairo (Arabic, RTL primary) + Inter (Latin) per EPM design standards v1.1 */
+  --font-ar: 'Cairo', 'Inter', system-ui, sans-serif;
+  --font-en: 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Type scale — compact, data-forward (px) */
@@ -268,9 +294,9 @@
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
   --sp-12: 48px; --sp-16: 64px;
 
-  /* Radius — squared, platform-tool geometry */
-  --r-xs: 4px;  --r-sm: 5px;  --r-md: 6px; --r-lg: 8px;
-  --r-xl: 12px; --r-pill: 999px;
+  /* Radius — v1.1 §05 map: xs 2 / sm 4 (default) / md 6 / lg 8 / xl 12 / pill */
+  --r-xs: 2px;  --r-sm: 4px;  --r-md: 6px; --r-lg: 8px;
+  --r-xl: 12px; --r-2xl: 16px; --r-pill: 999px;
 
   /* Layout */
   --shell-header-h: 60px;
@@ -278,12 +304,55 @@
   --shell-nav-w-collapsed: 68px;
   --content-max: 1360px;
 
+  /* Fluent-2 page rhythm aliases (4px grid) — one source for page/section spacing */
+  --page-pad: var(--sp-5);       /* 20px canvas inline padding (v1.1 §08) */
+  --page-pad-lg: var(--sp-6);    /* 24px on wide viewports */
+  --card-pad: var(--sp-5);       /* 20px card interior (.card-pad) */
+  --card-pad-sm: var(--sp-4);    /* 16px dense card */
+  --control-gap: var(--sp-2);    /* 8px between controls */
+
+  /* Density system (EPM design standards v1.1 §04) — comfortable default.
+     Switch the whole app to compact via [data-density="compact"] on <html>. */
+  --ctl-h-sm: 28px;  --ctl-h-md: 32px;  --ctl-h-lg: 40px;
+  --row-h: 40px;     --row-h-head: 40px;
+  --cell-px: var(--sp-3);        /* 12px table cell inline padding */
+  --section-gap: var(--sp-6);    /* 24px between page sections */
+
+  /* BOQ workspace dimensions (design handoff) */
+  --boq-grid-min: 1180px;
+  --boq-panel-sm: 420px;
+  --boq-panel-lg: 700px;
+  --boq-queue-w: 316px;
+  --boq-queue-min: 260px;
+  --boq-editor-min: 380px;
+  --boq-picker-w: 340px;
+  --boq-row-cmp: 34px;
+  --boq-row-std: 42px;
+  --boq-row-cft: 48px;
+
+  /* Allocation-bar segment palette — cycles per allocation. Cohesive with the
+     app's blue/azure ramp (+ one violet) rather than the handoff's cool set. */
+  --seg-1: var(--navy-600);
+  --seg-2: var(--azure-500);
+  --seg-3: var(--navy-300);
+  --seg-4: var(--navy-200);
+  --seg-5: var(--violet-400);
+  --seg-6: var(--azure-400);
+
   /* Motion */
   --ease-standard: cubic-bezier(.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(.2, 0, 0, 1);
   --dur-fast: 120ms;
   --dur: 200ms;
   --dur-slow: 320ms;
+}
+
+/* Compact density — user preference (v1.1 §04); tightens controls, rows, gaps */
+[data-density="compact"] {
+  --ctl-h-sm: 24px;  --ctl-h-md: 28px;  --ctl-h-lg: 34px;
+  --row-h: 30px;     --row-h-head: 32px;
+  --cell-px: var(--sp-2);        /* 8px */
+  --section-gap: var(--sp-4);    /* 16px */
 }
 
 /* ============================================================
@@ -311,7 +380,10 @@ h1, h2, h3, h4, h5, h6,
 button, input, select, textarea, optgroup {
   font-family: var(--font-ar);
 }
-.num { font-family: var(--font-ar); font-variant-numeric: tabular-nums; }
+.num { font-family: var(--font-ar); font-variant-numeric: tabular-nums lining-nums; }
+/* isolate the numeric run so digits/commas read LTR, but DON'T flip block alignment
+   (direction:ltr would make text-align:end resolve to the opposite edge vs headers) */
+.num { unicode-bidi: isolate; }
 
 ::selection { background: var(--primary-container); color: var(--on-primary-container); }
 
@@ -329,3 +401,69 @@ a:hover { text-decoration: underline; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 *::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+
+/* Fluent 2 — honour reduced-motion globally (a11y foundation) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   PAGE + CARD PRIMITIVES  (design-language.md — Fluent surfaces)
+   Reusable across modules; near-flat, 1px border, quiet.
+   ============================================================ */
+/* Page header — H1 + context sub + optional single primary action */
+.ui-page-head { display: flex; align-items: flex-start; gap: var(--sp-4); margin-bottom: var(--section-gap); }
+.ui-page-head .tx { flex: 1; min-width: 0; }
+.ui-page-head h1 { margin: 0; font-size: var(--headline); line-height: var(--headline-lh); font-weight: var(--fw-bold); letter-spacing: -0.01em; color: var(--on-surface); }
+.ui-page-head .sub { margin-top: 4px; font-size: var(--body-sm); line-height: var(--body-sm-lh); color: var(--on-surface-variant); }
+.ui-page-head .acts { display: flex; gap: var(--control-gap); flex: none; }
+
+/* 3 formalised card classes (design-language.md) */
+.card-exec, .card-analytic, .card-op {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-1);
+}
+.card-exec { padding: var(--card-pad); display: flex; align-items: center; gap: var(--sp-4); }
+.card-exec .k { font-size: var(--label); color: var(--on-surface-variant); font-weight: var(--fw-medium); }
+.card-exec .v { font-size: var(--title-lg); font-weight: var(--fw-bold); color: var(--on-surface); font-variant-numeric: tabular-nums; }
+.card-analytic { padding: var(--card-pad); display: flex; flex-direction: column; gap: var(--sp-3); }
+.card-analytic > .hd { display: flex; align-items: center; justify-content: space-between; font-size: var(--title); font-weight: var(--fw-bold); color: var(--on-surface); }
+.card-op { padding: var(--card-pad-sm); }
+.card-op:hover { border-color: var(--outline); }
+
+/* ============================================================
+   DOC SCALES — EPM Design System v1.1 §Typography / §Spacing.
+   CLOSED SETS. font-size may only be 10/12/14/16/20/24/28/32/40/68;
+   spacing only 2/4/6/8/10/12/16/20/24/28/32/40/48/64/80.
+
+   NOTE the prefix: this file already defines --sp-N as a 4px-GRID
+   INDEX (--sp-4 = 16px). The doc's --sp-N is LITERAL PIXELS
+   (--sp-4 = 4px). Reusing that name silently 4x'd every value, so the
+   doc scale lives under --space-N (literal px) and never collides.
+   ============================================================ */
+:root {
+  --fs-100: 10px;  --lh-100: 14px;
+  --fs-200: 12px;  --lh-200: 16px;
+  --fs-300: 14px;  --lh-300: 20px;
+  --fs-400: 16px;  --lh-400: 22px;
+  --fs-500: 20px;  --lh-500: 28px;
+  --fs-600: 24px;  --lh-600: 32px;
+  --fs-700: 28px;  --lh-700: 36px;
+  --fs-800: 32px;  --lh-800: 40px;
+  --fs-900: 40px;  --lh-900: 52px;
+  --fs-1000: 68px; --lh-1000: 92px;
+
+  --fw-semibold: 600;
+
+  --space-2: 2px;   --space-4: 4px;   --space-6: 6px;   --space-8: 8px;
+  --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-20: 20px;
+  --space-24: 24px; --space-28: 28px; --space-32: 32px; --space-40: 40px;
+  --space-48: 48px; --space-64: 64px; --space-80: 80px;
+}

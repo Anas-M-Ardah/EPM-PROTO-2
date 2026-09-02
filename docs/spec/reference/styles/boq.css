@@ -1,0 +1,723 @@
+/* ============================================================
+   BOQ workspace — Register grid + record panel + Assignment.
+   Logical properties throughout so one sheet serves AR-RTL and
+   EN-LTR. Tokens come from the app's system (dark theme works).
+   ============================================================ */
+
+/* ---------------- workspace shell (module tabs) ---------------- */
+.boq-ws { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.boq-modtabs { display: flex; gap: var(--space-2); padding: var(--space-8) var(--space-20) 0; border-bottom: 1px solid var(--border); background: var(--surface-bright); flex: none; }
+.boq-modtab { display: inline-flex; align-items: center; gap: var(--space-6); padding: var(--space-10) var(--space-16); border: 0; background: transparent; border-bottom: 2px solid transparent;
+  font-family: var(--font-ar); font-size: var(--fs-200); font-weight: 500; color: var(--on-surface-variant); cursor: pointer; }
+.boq-modtab.on { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+.boq-warnbadge { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 var(--space-4); border-radius: 8px;
+  background: var(--warning-strong, #b54708); color: #fff; font-size: 10px; font-weight: 700; font-family: var(--font-en); }
+.boq-modtabs .boq-tool { margin-inline-start: 6px; }
+.boq-ctxsel { display: inline-flex; align-items: center; gap: var(--space-6); height: 32px; padding: 0 var(--space-6) 0 var(--space-10); border-radius: var(--r-lg); background: var(--surface-2, var(--surface-container-low)); border: 1px solid var(--border); }
+.boq-ctxsel > span { font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-ctxsel select { border: 0; background: transparent; font-family: var(--font-ar); font-size: 12px; color: var(--on-surface); outline: none; max-width: 220px; }
+.boq-itemname.flat { padding-inline-start: 0; }
+.boq-ovmenu button.danger { color: var(--error); }
+.boq-ovmenu button.danger:hover { background: var(--alloc-over-bg); }
+
+/* ---------------- shared atoms ---------------- */
+.boq-mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+.boq-code { font-family: var(--font-mono); font-size: var(--fs-100); font-weight: 600; color: var(--primary); }
+
+.boq-badge { display: inline-flex; align-items: center; gap: var(--space-4); height: 20px; padding: 0 var(--space-8); border-radius: 999px;
+  font-size: var(--fs-100); font-weight: 600; line-height: 1; white-space: nowrap;
+  background: var(--alloc-none-bg); color: var(--alloc-none-fg); border: 1px solid var(--alloc-none-bd); }
+.boq-badge.full { background: var(--alloc-full-bg); color: var(--alloc-full-fg); border-color: var(--alloc-full-bd); }
+.boq-badge.partial { background: var(--alloc-partial-bg); color: var(--alloc-partial-fg); border-color: var(--alloc-partial-bd); }
+.boq-badge.over { background: var(--alloc-over-bg); color: var(--alloc-over-fg); border-color: var(--alloc-over-bd); }
+.boq-badge.sm { height: 17px; font-size: var(--fs-100); padding: 0 var(--space-6); margin-inline-start: 6px; }
+.boq-calc { display: inline-flex; align-items: center; height: 15px; padding: 0 var(--space-4); margin-inline-start: 6px; border-radius: 4px;
+  font-size: var(--fs-100); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; background: var(--calc-bg); color: var(--calc-fg); font-family: var(--font-en); }
+.boq-manual { display: inline-flex; align-items: center; height: 16px; padding: 0 var(--space-6); margin-inline-start: 8px; border-radius: 4px;
+  font-size: var(--fs-100); font-weight: 600; background: var(--alloc-partial-bg); color: var(--alloc-partial-fg); border: 1px solid var(--alloc-partial-bd); }
+.boq-dash { color: var(--outline); }
+
+.boq-btn { display: inline-flex; align-items: center; gap: var(--space-6); height: 34px; padding: 0 var(--space-12); border-radius: var(--r-lg);
+  border: 1px solid var(--border); background: var(--surface-bright); color: var(--on-surface); font-family: var(--font-ar);
+  font-size: 12px; font-weight: 600; cursor: pointer; }
+.boq-btn:hover { background: var(--surface-container-high); }
+.boq-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.boq-btn.primary:hover { background: var(--primary-hover); }
+.boq-btn.primary:disabled, .boq-btn:disabled { background: var(--surface-dim); border-color: var(--border); color: var(--outline); cursor: not-allowed; }
+.boq-btn.block { width: 100%; justify-content: center; margin-top: 10px; }
+
+.boq-iconbtn { display: grid; place-items: center; width: 32px; height: 32px; border: 0; background: transparent; border-radius: var(--r-md);
+  color: var(--on-surface-variant); cursor: pointer; }
+.boq-iconbtn:hover { background: var(--surface-container-high); color: var(--on-surface); }
+.boq-iconbtn.sm { width: 26px; height: 26px; color: var(--text-5, var(--outline)); }
+
+/* ---------------- workspace layout ---------------- */
+.boq-workspace-row { display: flex; align-items: stretch; gap: 0; height: 100%; min-height: 0; }
+.boq-grid-col { flex: 1 1 auto; min-width: var(--boq-editor-min); display: flex; flex-direction: column; min-height: 0; padding: var(--space-12) var(--space-20) 0; }
+
+/* ---------------- filter bar ---------------- */
+.boq-filterbar { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; margin-bottom: 11px; }
+.boq-filterbar .sp { flex: 1; }
+.boq-search { display: flex; align-items: center; gap: var(--space-6); width: 260px; height: 36px; padding: 0 var(--space-10); border-radius: var(--r-lg);
+  background: var(--surface-bright); border: 1px solid var(--border); color: var(--on-surface-variant); }
+.boq-search input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--font-ar); font-size: var(--fs-200); color: var(--on-surface); outline: none; }
+.boq-search .clr { display: grid; place-items: center; width: 20px; height: 20px; border: 0; background: transparent; color: var(--on-surface-variant); cursor: pointer; border-radius: 4px; }
+.boq-chips { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
+.boq-fchip { display: inline-flex; align-items: center; gap: var(--space-6); height: 36px; padding: 0 var(--space-10); border-radius: var(--r-lg);
+  background: var(--surface-bright); border: 1px solid var(--border); color: var(--text-2, var(--on-surface)); font-family: var(--font-ar); font-size: var(--fs-200); cursor: pointer; }
+.boq-fchip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--outline); }
+.boq-fchip .dot.full { background: var(--alloc-full-fg); } .boq-fchip .dot.partial { background: var(--alloc-partial-fg); }
+.boq-fchip .dot.over { background: var(--alloc-over-fg); } .boq-fchip .dot.none { background: var(--alloc-none-fg); }
+.boq-fchip .n { font-size: var(--fs-100); font-weight: 700; color: var(--on-surface-variant); }
+.boq-fchip.on { border-color: var(--primary); background: var(--brand-weak, var(--primary-container)); }
+.boq-fchip.full.on { background: var(--alloc-full-bg); border-color: var(--alloc-full-bd); color: var(--alloc-full-fg); }
+.boq-fchip.partial.on { background: var(--alloc-partial-bg); border-color: var(--alloc-partial-bd); color: var(--alloc-partial-fg); }
+.boq-fchip.over.on { background: var(--alloc-over-bg); border-color: var(--alloc-over-bd); color: var(--alloc-over-fg); }
+.boq-fchip.none.on { background: var(--alloc-none-bg); border-color: var(--alloc-none-bd); color: var(--alloc-none-fg); }
+.boq-fchip.on .n, .boq-fchip.full.on .n, .boq-fchip.partial.on .n, .boq-fchip.over.on .n, .boq-fchip.none.on .n { color: inherit; }
+
+.boq-tool { display: inline-flex; align-items: center; gap: var(--space-6); height: 36px; padding: 0 var(--space-10); border-radius: var(--r-lg);
+  background: var(--surface-bright); border: 1px solid var(--border); color: var(--on-surface); font-family: var(--font-ar); font-size: var(--fs-200); cursor: pointer; }
+.boq-tool:hover { background: var(--surface-container-high); }
+.boq-colmenu-wrap { position: relative; }
+.boq-menu-scrim { position: fixed; inset: 0; z-index: 40; }
+.boq-colmenu { position: absolute; top: 40px; inset-inline-end: 0; z-index: 41; width: 230px; padding: var(--space-6); border-radius: var(--r-xl);
+  background: var(--surface-bright); border: 1px solid var(--border); box-shadow: var(--elev-4); }
+.boq-colmenu .row { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-6) var(--space-8); border-radius: var(--r-md); font-size: 12px; color: var(--on-surface); cursor: pointer; }
+.boq-colmenu .row:hover { background: var(--surface-container-high); }
+.boq-density { display: inline-flex; align-items: center; gap: var(--space-2); height: 36px; padding: var(--space-2); border-radius: var(--r-lg); background: var(--surface-container-high); }
+.boq-density button { display: grid; place-items: center; width: 34px; height: 30px; border: 0; background: transparent; border-radius: var(--r-md); color: var(--on-surface-variant); cursor: pointer; }
+.boq-density button.on { background: var(--surface-bright); color: var(--primary); box-shadow: var(--elev-1); }
+
+/* ---------------- grid ---------------- */
+.boq-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--surface-bright); border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+.boq-grid-scroll { flex: 1; overflow: auto; }
+.boq-table { width: 100%; min-width: var(--boq-grid-min); border-collapse: separate; border-spacing: 0; }
+.boq-table th, .boq-table td { text-align: start; white-space: nowrap; }
+.boq-table td.al-end, .boq-table th.al-end { text-align: end; }
+.boq-table td.al-center, .boq-table th.al-center { text-align: center; }
+
+.boq-th { position: sticky; top: 0; z-index: 2; padding: var(--space-8) var(--space-12); background: var(--surface-2, var(--surface-container-low)); color: var(--on-surface-variant);
+  font-size: var(--fs-100); font-weight: 600; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+.boq-th > span { vertical-align: middle; }
+.boq-th.sorted { color: var(--primary); }
+.boq-th svg { vertical-align: middle; color: var(--primary); margin-inline-start: 3px; }
+.boq-ov-th { width: 40px; cursor: default; }
+
+.boq-sticky-id { position: sticky; inset-inline-start: 0; z-index: 1; background: var(--surface-bright); min-width: 260px; max-width: 380px; }
+.boq-th.boq-sticky-id { z-index: 3; background: var(--surface-2, var(--surface-container-low)); }
+
+.boq-table td { padding: 0 var(--space-12); height: var(--rowh, 42px); border-bottom: 1px solid var(--border-row, var(--outline-variant)); font-size: var(--fs-200); color: var(--text-2, var(--on-surface)); }
+.boq-table.cmp td { font-size: var(--fs-200); }
+.boq-table.cmp .boq-mono { font-size: var(--fs-100); }
+.boq-table .boq-mono { font-size: var(--fs-200); color: var(--on-surface); }
+
+.boq-divrow { cursor: pointer; }
+.boq-divrow td { background: var(--surface-2, var(--surface-container-low)); font-weight: 600; }
+.boq-divrow td.boq-sticky-id { background: var(--surface-2, var(--surface-container-low)); }
+.boq-divname { display: flex; align-items: center; gap: var(--space-6); }
+.boq-divname > svg { color: var(--on-surface-variant); flex: none; }
+.boq-divname b { font-size: var(--fs-200); color: var(--on-surface); }
+
+.boq-itemrow { cursor: pointer; }
+.boq-itemrow:hover td { background: var(--surface-container-low); }
+.boq-itemrow:hover td.boq-sticky-id { background: var(--surface-container-low); }
+.boq-itemrow.sel td { background: var(--brand-weak, var(--primary-container)); }
+.boq-itemrow.sel td.boq-sticky-id { background: var(--brand-weak, var(--primary-container)); }
+.boq-itemname { display: flex; align-items: center; gap: var(--space-8); padding-inline-start: 22px; }
+.boq-itemname .desc { font-size: var(--fs-200); color: var(--text-2, var(--on-surface)); max-width: 330px; overflow: hidden; text-overflow: ellipsis; }
+
+.boq-aw { font-weight: 600; }
+.boq-aw.full { color: var(--alloc-full-fg); } .boq-aw.partial { color: var(--alloc-partial-fg); }
+.boq-aw.over { color: var(--alloc-over-fg); } .boq-aw.none { color: var(--alloc-none-fg); }
+
+.boq-prog { display: flex; align-items: center; gap: var(--space-8); }
+.boq-prog .trk { flex: 1; min-width: 60px; height: 6px; border-radius: 4px; background: var(--surface-container-high); overflow: hidden; }
+.boq-prog .fil { height: 100%; border-radius: 4px; }
+.boq-prog .lbl { width: 34px; text-align: end; font-size: var(--fs-100); color: var(--on-surface-variant); }
+
+.boq-ov-td { position: relative; width: 40px; text-align: center; }
+.boq-ovmenu { position: absolute; top: 30px; inset-inline-end: 8px; z-index: 41; width: 190px; padding: var(--space-4); border-radius: var(--r-lg);
+  background: var(--surface-bright); border: 1px solid var(--border); box-shadow: var(--elev-4); }
+.boq-ovmenu button { display: flex; align-items: center; gap: var(--space-8); width: 100%; padding: var(--space-6) var(--space-8); border: 0; background: transparent; border-radius: var(--r-md);
+  font-family: var(--font-ar); font-size: 12px; color: var(--on-surface); cursor: pointer; text-align: start; }
+.boq-ovmenu button:hover { background: var(--surface-container-high); }
+
+.boq-noresult { padding: var(--space-24) var(--space-12); text-align: center; color: var(--on-surface-variant); font-size: var(--fs-200); }
+/* comparison columns */
+.boq-mut { color: var(--on-surface-variant); }
+.boq-var.up { color: var(--alloc-full-fg); } .boq-var.down { color: var(--alloc-over-fg); }
+/* clear-all filter chip */
+.boq-fchip.clear { border-style: dashed; color: var(--on-surface-variant); }
+.boq-fchip.clear:hover { color: var(--error); border-color: var(--alloc-over-bd); }
+/* saved-view menu rows */
+.boq-colmenu .row.viewrow { justify-content: space-between; gap: var(--space-4); padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8); }
+.boq-colmenu .row.viewrow .vw { flex: 1; display: flex; align-items: center; gap: var(--space-6); border: 0; background: transparent; font-family: var(--font-ar); font-size: 12px; color: var(--on-surface); cursor: pointer; text-align: start; padding: var(--space-4); border-radius: var(--r-sm); }
+.boq-colmenu .row.viewrow .vw:hover { background: var(--surface-container-high); }
+.boq-colmenu .row.viewrow .vw svg { color: var(--primary); }
+.boq-colmenu .row.viewrow .del { display: grid; place-items: center; width: 22px; height: 22px; border: 0; background: transparent; color: var(--on-surface-variant); border-radius: var(--r-sm); cursor: pointer; }
+.boq-colmenu .row.viewrow .del:hover { background: var(--alloc-over-bg); color: var(--error); }
+.boq-colmenu .row.save { color: var(--primary); font-weight: 600; border-top: 1px solid var(--border-subtle, var(--outline-variant)); margin-top: 4px; padding-top: 8px; cursor: pointer; }
+.boq-colmenu .row.save:hover { background: var(--surface-container-high); }
+/* skeleton loading (rows at true height) */
+.boq-skelrow td { height: var(--rowh, 42px); }
+.boq-skel { display: inline-block; width: 70%; height: 11px; border-radius: 5px; background: linear-gradient(90deg, var(--surface-container-high) 25%, var(--surface-container) 37%, var(--surface-container-high) 63%); background-size: 400% 100%; animation: boq-shimmer 1.3s ease infinite; }
+@keyframes boq-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+/* empty state */
+.boq-emptyrow { padding: 0 !important; }
+.boq-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-8); text-align: center; padding: var(--space-48) var(--space-20); }
+.boq-empty-state .tile { display: grid; place-items: center; width: 54px; height: 54px; border-radius: var(--r-xl); background: var(--brand-weak, var(--primary-container)); color: var(--primary); }
+.boq-empty-state b { font-size: 14px; font-weight: 600; color: var(--on-surface); }
+.boq-empty-state span { font-size: var(--fs-200); color: var(--on-surface-variant); }
+.boq-empty-state .acts { display: flex; gap: var(--space-8); margin-top: 6px; }
+
+.boq-totals td { position: sticky; bottom: 0; z-index: 1; height: 40px; background: var(--totals-bg, var(--surface-container-high)); border-top: 2px solid var(--totals-border, var(--outline-variant)); font-weight: 700; }
+.boq-totals td.boq-sticky-id { z-index: 2; background: var(--totals-bg, var(--surface-container-high)); }
+.boq-totals .boq-mono { font-weight: 700; }
+
+.boq-grid-foot { display: flex; align-items: center; justify-content: space-between; padding: var(--space-8) var(--space-16); border-top: 1px solid var(--border-subtle, var(--outline-variant)); font-size: var(--fs-200); color: var(--on-surface-variant); }
+.boq-grid-foot .calc { display: inline-flex; align-items: center; gap: var(--space-6); }
+.boq-grid-foot .calc svg { color: var(--primary); }
+
+/* ---------------- record detail panel ---------------- */
+.boq-panel { flex: 0 0 var(--boq-panel-sm); width: var(--boq-panel-sm); border-inline-start: 1px solid var(--border); background: var(--surface-bright);
+  display: flex; flex-direction: column; min-height: 0; transition: width var(--dur) var(--ease-standard), flex-basis var(--dur) var(--ease-standard); }
+.boq-panel.wide { flex-basis: var(--boq-panel-lg); width: var(--boq-panel-lg); }
+.boq-panel-h { display: flex; align-items: flex-start; gap: var(--space-8); padding: var(--space-12) var(--space-16); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); }
+.boq-panel-h .tx { flex: 1; min-width: 0; }
+.boq-panel-h .row1 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: 5px; }
+.boq-panel-h b { display: block; font-size: 14px; font-weight: 600; color: var(--on-surface); line-height: 1.35; }
+.boq-panel-h .acts { display: flex; gap: var(--space-2); }
+.boq-panel-tabs { display: flex; gap: var(--space-2); padding: 0 var(--space-10); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); overflow-x: auto; }
+.boq-ptab { padding: var(--space-8) var(--space-10); border: 0; background: transparent; border-bottom: 2px solid transparent; font-family: var(--font-ar); font-size: var(--fs-200); color: var(--on-surface-variant); cursor: pointer; white-space: nowrap; }
+.boq-ptab.on { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+.boq-panel-b { flex: 1; overflow-y: auto; padding: var(--space-12) var(--space-16); }
+.boq-panel-f { display: flex; gap: var(--space-8); padding: var(--space-12) var(--space-16); border-top: 1px solid var(--border-subtle, var(--outline-variant)); background: var(--surface-3, var(--surface-container-low)); }
+.boq-panel-f .boq-btn { flex: 1; justify-content: center; }
+
+.boq-fgrp { margin-bottom: 18px; }
+.boq-fgrp-t { font-size: var(--fs-100); font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--on-surface-variant); margin-bottom: 4px; }
+.boq-kv { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-6) 0; border-bottom: 1px solid var(--border-row, var(--outline-variant)); }
+.boq-kv .k { display: flex; align-items: center; font-size: var(--fs-200); color: var(--on-surface-variant); }
+.boq-kv .v { font-size: 12px; color: var(--on-surface); text-align: end; }
+
+.boq-banner { display: flex; align-items: flex-start; gap: var(--space-8); padding: var(--space-10) var(--space-12); border-radius: var(--r-lg); font-size: var(--fs-200); line-height: 1.45; margin-bottom: 12px;
+  background: var(--alloc-none-bg); color: var(--alloc-none-fg); border: 1px solid var(--alloc-none-bd); }
+.boq-banner svg { flex: none; margin-top: 1px; }
+.boq-banner.full { background: var(--alloc-full-bg); color: var(--alloc-full-fg); border-color: var(--alloc-full-bd); }
+.boq-banner.partial { background: var(--alloc-partial-bg); color: var(--alloc-partial-fg); border-color: var(--alloc-partial-bd); }
+.boq-banner.over { background: var(--alloc-over-bg); color: var(--alloc-over-fg); border-color: var(--alloc-over-bd); }
+
+.boq-actcard { border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--space-10) var(--space-12); margin-bottom: 9px; background: var(--surface-bright); }
+.boq-actcard .row1 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: 6px; }
+.boq-actcard .row1 .nm { font-size: var(--fs-200); color: var(--text-2, var(--on-surface)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boq-actcard .row2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-6) var(--space-12); }
+.boq-actcard .boq-kv { border: 0; padding: 0; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.boq-actcard .boq-kv .v { text-align: start; }
+
+.boq-empty-box { padding: var(--space-16); text-align: center; border: 1px dashed var(--border); border-radius: var(--r-lg); color: var(--on-surface-variant); font-size: 12px; }
+
+.boq-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10); margin-bottom: 14px; }
+.boq-tile { border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--space-10) var(--space-12); background: var(--surface-container-low); }
+.boq-tile .k { display: block; font-size: var(--fs-100); color: var(--on-surface-variant); margin-bottom: 4px; }
+.boq-tile .v { font-size: 16px; font-weight: 600; color: var(--on-surface); }
+.boq-howcalc { border: 1px solid var(--border-subtle, var(--outline-variant)); border-radius: var(--r-lg); background: var(--surface-2, var(--surface-container-low)); padding: var(--space-10) var(--space-12); }
+.boq-howcalc .t { display: flex; align-items: center; gap: var(--space-6); font-size: var(--fs-100); font-weight: 600; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
+.boq-howcalc .t svg { color: var(--primary); }
+.boq-howcalc p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--text-2, var(--on-surface)); }
+
+.boq-doc { display: flex; align-items: center; gap: var(--space-10); padding: var(--space-8) 0; border-bottom: 1px solid var(--border-row, var(--outline-variant)); }
+.boq-doc > svg { color: var(--on-surface-variant); flex: none; }
+.boq-doc .tx { flex: 1; min-width: 0; }
+.boq-doc .tx b { display: block; font-size: 12px; color: var(--on-surface); }
+.boq-doc .tx span { font-size: var(--fs-100); color: var(--on-surface-variant); font-family: var(--font-mono); }
+
+.boq-hist { display: flex; align-items: baseline; gap: var(--space-8); padding: var(--space-8) 0; border-bottom: 1px solid var(--border-row, var(--outline-variant)); }
+.boq-hist .act { font-size: 12px; color: var(--on-surface); flex: 1; }
+.boq-hist .by { font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-hist .at { font-size: var(--fs-100); color: var(--on-surface-variant); }
+
+/* ================= Screen 2 — Activity assignment ================= */
+.boq-assign { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: var(--space-12) var(--space-20); }
+.boq-btn.sm { height: 30px; padding: 0 var(--space-10); font-size: var(--fs-200); }
+
+/* summary / control strip */
+.boq-sumstrip { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; margin-bottom: 11px; flex: none; }
+.boq-sumstrip .sp { flex: 1; }
+.boq-sumchip { display: inline-flex; align-items: center; gap: var(--space-6); height: 36px; padding: 0 var(--space-12); border-radius: var(--r-lg); background: var(--surface-bright); border: 1px solid var(--border); font-family: var(--font-ar); font-size: var(--fs-200); color: var(--on-surface); cursor: pointer; }
+.boq-sumchip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--outline); }
+.boq-sumchip .dot.full { background: var(--alloc-full-fg); } .boq-sumchip .dot.partial { background: var(--alloc-partial-fg); }
+.boq-sumchip .dot.over { background: var(--alloc-over-fg); } .boq-sumchip .dot.none { background: var(--alloc-none-fg); }
+.boq-sumchip .v { font-weight: 700; }
+.boq-sumchip.on { border-color: var(--brand-border, var(--primary)); background: var(--brand-weak, var(--primary-container)); }
+.boq-basis { display: inline-flex; align-items: center; gap: var(--space-8); height: 36px; padding: 0 var(--space-4) 0 var(--space-10); border-radius: var(--r-lg); background: var(--surface-bright); border: 1px solid var(--border); }
+.boq-basis .lbl { font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-basis .seg { display: inline-flex; gap: var(--space-2); padding: var(--space-2); border-radius: var(--r-md); background: var(--surface-container-high); }
+.boq-basis .seg button { height: 26px; padding: 0 var(--space-10); border: 0; background: transparent; border-radius: 5px; font-family: var(--font-ar); font-size: var(--fs-200); color: var(--on-surface-variant); cursor: pointer; }
+.boq-basis .seg button.on { background: var(--surface-bright); color: var(--primary); font-weight: 600; box-shadow: var(--elev-1); }
+.boq-validity { display: inline-flex; align-items: center; gap: var(--space-6); height: 36px; padding: 0 var(--space-12); border-radius: var(--r-lg); font-size: var(--fs-200); font-weight: 600; }
+.boq-validity.valid { background: var(--alloc-full-bg); color: var(--alloc-full-fg); border: 1px solid var(--alloc-full-bd); }
+.boq-validity.invalid { background: var(--alloc-over-bg); color: var(--alloc-over-fg); border: 1px solid var(--alloc-over-bd); }
+
+.boq-assign-row { display: flex; gap: var(--space-12); flex: 1; min-height: 0; }
+
+/* work queue */
+.boq-queue { flex: 0 0 var(--boq-queue-w); min-width: var(--boq-queue-min); display: flex; flex-direction: column; min-height: 0; background: var(--surface-bright); border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+.boq-queue-h { padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); }
+.boq-queue-h .t { display: flex; align-items: center; gap: var(--space-6); margin-bottom: 8px; }
+.boq-queue-h .t svg { color: var(--primary); }
+.boq-queue-h .t b { font-size: var(--fs-200); color: var(--on-surface); }
+.boq-queue-h .t .sub { font-size: var(--fs-100); color: var(--on-surface-variant); margin-inline-start: auto; }
+.boq-qsearch { display: flex; align-items: center; gap: var(--space-6); height: 32px; padding: 0 var(--space-8); border-radius: var(--r-md); background: var(--surface-2, var(--surface-container-low)); color: var(--on-surface-variant); margin-bottom: 8px; }
+.boq-qsearch input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--font-ar); font-size: 12px; color: var(--on-surface); outline: none; }
+.boq-qfilters { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.boq-qfilters button { padding: var(--space-4) var(--space-8); border: 0; border-radius: var(--r-md); background: var(--surface-container-high); font-family: var(--font-ar); font-size: var(--fs-100); color: var(--on-surface-variant); cursor: pointer; }
+.boq-qfilters button.on { background: var(--brand-weak, var(--primary-container)); color: var(--primary); font-weight: 600; }
+.boq-queue-b { flex: 1; overflow-y: auto; }
+.boq-qcard { display: block; width: 100%; text-align: start; padding: var(--space-10) var(--space-12); border: 0; border-bottom: 1px solid var(--border-row, var(--outline-variant)); border-inline-start: 3px solid transparent; background: transparent; cursor: pointer; }
+.boq-qcard:hover { background: var(--surface-container-low); }
+.boq-qcard.on { background: var(--brand-weak, var(--primary-container)); border-inline-start-color: var(--primary); }
+.boq-qcard .l1 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: 4px; }
+.boq-qcard .l1 .sp { flex: 1; }
+.boq-qcard .l2 { font-size: var(--fs-200); color: var(--text-2, var(--on-surface)); line-height: var(--lh-300); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 6px; }
+.boq-qcard .l3 { display: flex; align-items: center; gap: var(--space-8); }
+.boq-qcard .l3 .bar { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-container-high); overflow: hidden; }
+.boq-qcard .l3 .fil { height: 100%; border-radius: 3px; background: var(--outline); }
+.boq-qcard .l3 .fil.full { background: var(--alloc-full-fg); } .boq-qcard .l3 .fil.partial { background: var(--alloc-partial-fg); }
+.boq-qcard .l3 .fil.over { background: var(--alloc-over-fg); } .boq-qcard .l3 .fil.none { background: var(--alloc-none-fg); }
+.boq-qcard .l3 .pct { width: 34px; text-align: end; font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-queue-empty { padding: var(--space-20); text-align: center; font-size: 12px; color: var(--on-surface-variant); }
+
+/* focused editor */
+.boq-editor { flex: 1 1 auto; min-width: var(--boq-editor-min); display: flex; flex-direction: column; min-height: 0; background: var(--surface-bright); border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+.boq-editor-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-8); text-align: center; padding: var(--space-40); }
+.boq-editor-empty .tile { display: grid; place-items: center; width: 54px; height: 54px; border-radius: var(--r-xl); background: var(--brand-weak, var(--primary-container)); color: var(--primary); }
+.boq-editor-empty b { font-size: var(--fs-300); font-weight: 600; color: var(--on-surface); }
+.boq-editor-empty span { font-size: var(--fs-200); color: var(--on-surface-variant); }
+
+.boq-ihead { padding: var(--space-16) var(--space-16); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); flex: none; }
+.boq-ihead .l1 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: 6px; }
+.boq-ihead .desc { display: block; font-size: var(--fs-300); font-weight: 600; color: var(--on-surface); margin-bottom: 10px; }
+.boq-imeta { display: flex; flex-wrap: wrap; gap: var(--space-16); }
+.boq-imeta .fact { display: flex; flex-direction: column; gap: var(--space-2); }
+.boq-imeta .fact .k { font-size: var(--fs-100); text-transform: uppercase; letter-spacing: .4px; color: var(--on-surface-variant); }
+.boq-imeta .fact .v { font-size: 12px; font-weight: 600; color: var(--on-surface); }
+
+/* allocation visual */
+.boq-allocvis { padding: var(--space-16) var(--space-16); background: var(--surface-3, var(--surface-container-low)); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); flex: none; }
+.boq-allocvis .top { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-12); margin-bottom: 12px; }
+.boq-allocvis .bigwrap { display: flex; align-items: baseline; gap: var(--space-8); }
+.boq-allocvis .big { font-size: var(--fs-700); font-weight: 600; line-height: 1; color: var(--on-surface); }
+.boq-allocvis .big.full { color: var(--alloc-full-fg); } .boq-allocvis .big.partial { color: var(--alloc-partial-fg); }
+.boq-allocvis .big.over { color: var(--alloc-over-fg); } .boq-allocvis .big.none { color: var(--alloc-none-fg); }
+.boq-allocvis .cap { font-size: 12px; color: var(--on-surface-variant); }
+.boq-allocvis .rem { font-size: var(--fs-200); font-weight: 500; }
+.boq-allocvis .rem .over { color: var(--alloc-over-fg); } .boq-allocvis .rem .partial { color: var(--alloc-partial-fg); }
+.boq-allocvis .rem .full { color: var(--alloc-full-fg); } .boq-allocvis .rem .none { color: var(--alloc-none-fg); }
+.boq-segbar { position: relative; height: 15px; border-radius: var(--r-lg); background: var(--surface-container-high); display: flex; overflow: hidden; }
+.boq-seg { height: 100%; border-inline-end: 1px solid rgba(255,255,255,.7); }
+.boq-seg-rem { background: repeating-linear-gradient(45deg, var(--border) 0, var(--border) 4px, var(--surface-container-high) 4px, var(--surface-container-high) 8px); }
+.boq-limit { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--boq-limit); z-index: 2; }
+.boq-legend { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: 10px; }
+.boq-legend .lg { display: inline-flex; align-items: center; gap: var(--space-4); font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-legend .sw { width: 9px; height: 9px; border-radius: 3px; }
+.boq-legend .sw.hatch { background: repeating-linear-gradient(45deg, var(--border) 0, var(--border) 3px, var(--surface-container-high) 3px, var(--surface-container-high) 6px); }
+.boq-legend .pct { color: var(--on-surface); font-weight: 600; }
+
+/* toolbar + picker */
+.boq-toolbar { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-10) var(--space-16); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); flex: none; }
+.boq-toolbar .sec { font-size: var(--fs-100); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; color: var(--on-surface-variant); }
+.boq-toolbar .sp { flex: 1; }
+.boq-picker-wrap { position: relative; }
+.boq-picker { position: absolute; top: 40px; inset-inline-end: 0; z-index: 41; width: var(--boq-picker-w); border-radius: var(--r-xl); background: var(--surface-bright); border: 1px solid var(--border); box-shadow: var(--elev-5); overflow: hidden; }
+.boq-picker-s { display: flex; align-items: center; gap: var(--space-6); padding: var(--space-8) var(--space-10); background: var(--surface-2, var(--surface-container-low)); border-bottom: 1px solid var(--border-subtle, var(--outline-variant)); color: var(--on-surface-variant); }
+.boq-picker-s input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--font-ar); font-size: 12px; color: var(--on-surface); outline: none; }
+.boq-picker-b { max-height: 280px; overflow-y: auto; padding: var(--space-4); }
+.boq-picker-row { display: flex; align-items: center; gap: var(--space-8); width: 100%; padding: var(--space-6) var(--space-10); border: 0; background: transparent; border-radius: var(--r-md); text-align: start; font-family: var(--font-ar); }
+.boq-picker-row.wbs { color: var(--on-surface-variant); background: var(--surface-2, var(--surface-container-low)); cursor: default; }
+.boq-picker-row.act { cursor: pointer; color: var(--on-surface); }
+.boq-picker-row.act:hover { background: var(--surface-container-high); }
+.boq-picker-row .cd { font-size: 10px; color: var(--primary); }
+.boq-picker-row.wbs .cd { color: var(--on-surface-variant); }
+.boq-picker-row .nm { flex: 1; font-size: var(--fs-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boq-picker-row .aw { font-size: var(--fs-100); color: var(--on-surface-variant); font-weight: 600; }
+.boq-picker-row svg { flex: none; color: var(--on-surface-variant); }
+.boq-picker-row.act svg { color: var(--primary); }
+
+/* allocation rows */
+.boq-allocrows { flex: 1; overflow-y: auto; padding: var(--space-12) var(--space-16); }
+.boq-allocrow { border: 1px solid var(--border); border-radius: var(--r-xl); padding: var(--space-12) var(--space-12); margin-bottom: 9px; background: var(--surface-bright); }
+.boq-allocrow.dup { border-color: var(--alloc-partial-bd); }
+.boq-allocrow .l1 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: 10px; }
+.boq-allocrow .l1 .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.boq-allocrow .l1 .nm { font-size: var(--fs-200); color: var(--text-2, var(--on-surface)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boq-allocrow .l1 .sp { flex: 1; }
+.boq-allocrow .l1 .del:hover { background: var(--alloc-over-bg); color: var(--alloc-over-fg); }
+.boq-allocrow .l2 { display: flex; align-items: flex-end; gap: var(--space-12); flex-wrap: wrap; }
+.boq-allocrow .l2 .sp { flex: 1; }
+.boq-allocrow .fld { display: flex; flex-direction: column; gap: var(--space-4); }
+.boq-allocrow .fld .k { display: flex; align-items: center; font-size: var(--fs-100); color: var(--on-surface-variant); }
+.boq-allocrow .fld .v { font-size: var(--fs-200); font-weight: 600; color: var(--on-surface); }
+.boq-allocrow .fld .inp { position: relative; display: inline-flex; align-items: center; }
+.boq-allocrow .fld .inp i { position: absolute; inset-inline-end: 10px; font-style: normal; font-size: 12px; color: var(--on-surface-variant); }
+.boq-share { width: 132px; height: 32px; padding: 0 var(--space-20) 0 var(--space-10); border: 1px solid var(--border); border-radius: 7px; background: var(--surface-bright); font-size: var(--fs-200); font-weight: 600; color: var(--on-surface); outline: none; }
+.boq-share:focus { border-color: var(--primary); outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* editor footer */
+.boq-editor-foot { display: flex; align-items: center; gap: var(--space-10); padding: var(--space-12) var(--space-16); border-top: 1px solid var(--border-subtle, var(--outline-variant)); background: var(--surface-3, var(--surface-container-low)); flex: none; }
+.boq-editor-foot .sp { flex: 1; }
+.boq-editor-foot .verdict { display: flex; align-items: center; gap: var(--space-8); }
+.boq-editor-foot .verdict.valid svg { color: var(--alloc-full-fg); }
+.boq-editor-foot .verdict.invalid svg { color: var(--alloc-over-fg); }
+.boq-editor-foot .verdict .tx b { display: block; font-size: 12px; font-weight: 600; color: var(--on-surface); }
+.boq-editor-foot .verdict .tx span { font-size: var(--fs-100); color: var(--on-surface-variant); }
+
+/* narrow viewports: let the workspace scroll, never crush the primary panels */
+@media (max-width: 1180px) {
+  .boq-workspace-row { overflow-x: auto; }
+  .boq-assign-row { overflow-x: auto; }
+}
+
+/* ============================================================
+   BOQ inside the shared page shell (v237+)
+   The module used to carry its own tab strip, its own toolbar and
+   its own footer nested inside the grid card. Those are Z5 / Z6 /
+   Z10 now, so only the grid itself lives in Z7.
+   ============================================================ */
+.d-pz7 > .boq-grid { flex: 1 1 auto; min-height: 0; }
+/* the grid card is the whole content region — no outer padding of its own */
+.boq-grid { border-radius: var(--r-lg); }
+/* the search + filter chips are the table's own toolbar strip, sitting
+   inside the card above the header row (the doc's `.gridbar`) */
+.boq-grid > .d-toolbar { margin: 0; border: 0; border-bottom: 1px solid var(--stroke-default);
+  border-radius: 0; box-shadow: none; background: var(--surface-container-lowest);
+  padding: var(--space-8) var(--space-12); gap: var(--space-8); }
+.boq-grid > .d-toolbar .sp { flex: 1; }
+.boq-grid-foot { padding: var(--space-8) var(--space-12);
+  font-size: var(--fs-200); line-height: var(--lh-300); }
+
+/* the contract picker is a filter, so it sits in the Z6 toolbar — same
+   segmented-control family as the financial page's year picker */
+.d-ctxsel { display: inline-flex; align-items: center; gap: var(--space-6);
+  padding: var(--space-4) var(--space-8); border-radius: var(--r-md);
+  background: var(--surface-container-low); border: 1px solid var(--stroke-default); }
+.d-ctxsel > span { font-size: var(--fs-200); line-height: var(--lh-300); color: var(--fg-subtle); }
+.d-ctxsel select { border: 0; background: transparent; font-family: var(--font-ar);
+  font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-medium);
+  color: var(--on-surface); outline: none; max-width: 260px; cursor: pointer; }
+
+/* the module's own icon buttons keep working next to the shared d-btn */
+.boq-grid > .d-toolbar .boq-density { display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2); border: 1px solid var(--stroke-default);
+  border-radius: var(--r-md); background: var(--surface-container-low); }
+.boq-grid > .d-toolbar .boq-density button { border: 0; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; padding: var(--space-4);
+  border-radius: var(--r-sm); color: var(--on-surface-variant); }
+.boq-grid > .d-toolbar .boq-density button.on { background: var(--surface); color: var(--fg-link); box-shadow: var(--elev-1); }
+.boq-grid > .d-toolbar .boq-colmenu-wrap { position: relative; display: inline-flex; }
+.d-pz6 .d-btn .n, .boq-grid > .d-toolbar .boq-tool .n { font-family: var(--font-mono); font-size: var(--fs-100);
+  color: var(--fg-subtle); margin-inline-start: var(--space-4); }
+
+/* ---- the grid follows the shared table contract (doc `table.dg`) -------
+   It had 10.5px headers, 12.5px cells and 11.5px mono — none of which are
+   on the type scale, and none of which matched any other grid in the app. */
+.boq-th { height: var(--row-h-head); padding: 0 var(--cell-px);
+  background: var(--surface-container); color: var(--on-surface-variant);
+  font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-semibold);
+  text-transform: none; letter-spacing: 0; border-bottom: 1px solid var(--stroke-default); }
+.boq-th.boq-sticky-id { background: var(--surface-container); }
+.boq-th .cur { font-weight: var(--fw-regular); color: var(--fg-subtle); }
+.boq-table td { padding: 0 var(--cell-px); font-size: var(--fs-200); line-height: var(--lh-300);
+  border-bottom: 1px solid var(--stroke-subtle); }
+.boq-table .boq-mono, .boq-table.cmp td, .boq-table.cmp .boq-mono {
+  font-size: var(--fs-200); line-height: var(--lh-300); }
+.boq-divname b, .boq-itemname .desc { font-size: var(--fs-200); line-height: var(--lh-300); }
+.boq-itemname .desc { font-weight: var(--fw-medium); color: var(--on-surface); }
+.boq-prog .lbl { font-size: var(--fs-100); line-height: var(--lh-200); }
+/* the selected row carries the same mark as every other grid in the app */
+.boq-itemrow.sel td { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.boq-itemrow.sel td.boq-sticky-id { background: color-mix(in srgb, var(--primary) 8%, transparent);
+  box-shadow: inset 2px 0 0 0 var(--primary); }
+html[dir="rtl"] .boq-itemrow.sel td.boq-sticky-id { box-shadow: inset -2px 0 0 0 var(--primary); }
+/* totals sit on the container tint with one hairline, like every tfoot */
+.boq-totals td { height: var(--row-h); background: var(--surface-container);
+  border-top: 1px solid var(--stroke-default); font-weight: var(--fw-semibold); }
+.boq-totals td.boq-sticky-id { background: var(--surface-container); }
+.boq-totals .boq-mono { font-weight: var(--fw-semibold); }
+.boq-noresult { padding: var(--space-24) var(--cell-px); font-size: var(--fs-200); line-height: var(--lh-300); }
+.boq-empty-state b { font-size: var(--fs-300); line-height: var(--lh-400); }
+.boq-empty-state span { font-size: var(--fs-200); line-height: var(--lh-300); }
+.boq-grid-foot .calc { font-size: var(--fs-200); line-height: var(--lh-300); }
+
+/* ---- scale normalisation: the module predates the closed type/space
+   scales, so these bring its remaining atoms onto them --------------- */
+.boq-fchip { font-size: var(--fs-200); line-height: var(--lh-300);
+  padding-inline: var(--space-12); }
+.boq-mono.n, .boq-fchip .n { font-size: var(--fs-100); line-height: var(--lh-200); }
+.boq-code { font-size: var(--fs-100); line-height: var(--lh-200); }
+.boq-divname { gap: var(--space-8); }
+.boq-itemname { padding-inline-start: var(--space-24); }
+/* a <b> inside an already-semibold cell resolves to `bolder` = 900 */
+.boq-table b, .boq-totals b, .boq-divname b { font-weight: var(--fw-semibold); }
+/* the UA button padding that nothing resets */
+.boq-iconbtn, .boq-tool, .boq-fchip, .boq-density button, .boq-sumchip { padding-block: 0; }
+.boq-iconbtn.sm { padding: var(--space-4); }
+.boq-search input, .boq-qsearch input { padding-block: 0; }
+.boq-badge { font-size: var(--fs-100); line-height: var(--lh-200); }
+
+/* the record panel is docked in Z8 now, so the frame owns its width —
+   its own fixed 420px overflowed the 320px slot and clipped every value.
+   Expanding it is the frame's `asideWide`, which the standard pane uses. */
+.d-pz8 > .boq-panel, .d-pz8 > .boq-panel.wide {
+  flex: 1 1 auto; width: 100%; min-width: 0; border-inline-start: 0; }
+.boq-panel-h { padding: var(--space-12) var(--space-16); }
+.boq-panel-h b { font-size: var(--fs-300); line-height: var(--lh-400); }
+.boq-panel-b { padding: var(--space-12) var(--space-16); }
+.boq-panel-f { padding: var(--space-12) var(--space-16); }
+
+/* the grid toolbar: search grows, chips stay together, and the grid-scoped
+   controls sit at the far end as one group that wraps as a unit */
+.boq-grid > .d-toolbar .boq-search { flex: 1 1 260px; min-width: 200px; }
+.boq-grid > .d-toolbar .boq-chips { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+.boq-grid > .d-toolbar > .boq-colmenu-wrap, .boq-grid > .d-toolbar > .boq-density { flex: none; }
+.boq-tool { font-size: var(--fs-200); line-height: var(--lh-300); padding-inline: var(--space-12); }
+
+/* ============================================================
+   BOQ ON THE SHARED COMPONENTS (v248)
+   The register is a `.d-tablewrap` + `.d-toolbar` + `.d-line-table`
+   like every other grid, the record is a `DRecordPane`, notices are
+   `DMsgBar`, money is `DMoney` and status is `.d-pill`. What remains
+   here is only what is genuinely BOQ: the allocation-state colours,
+   the overflow menu, the column/view menus and the skeleton.
+   ============================================================ */
+/* the card sizes to its rows like every other card on every other page;
+   a long register scrolls inside the card rather than stretching it to a
+   half-empty full-height box */
+.d-pz7 > #boq-reg { display: flex; flex-direction: column; min-height: 0; }
+#boq-reg > .gb.flush { display: flex; flex-direction: column; min-height: 0; }
+#boq-reg > .gb.flush > .d-vow-tw { overflow: auto; max-height: 62vh; }
+.d-vow-tw.wide-boq > .d-boqgrid { min-width: 1180px; }
+
+/* identity stays put while the measures scroll.
+   The second frozen column's offset MUST equal the first column's real
+   width. `width` on a cell in an auto-layout table is only a suggestion —
+   the code column was declared 96px and rendered 67px, so the description
+   parked 29px past it and left a gap. Both now read one variable, and the
+   first column is pinned to it so the browser cannot shrink it. */
+.d-boqgrid { --freeze-1: 96px; }
+.d-boqgrid th.freeze, .d-boqgrid td.freeze {
+  position: sticky; inset-inline-start: 0; z-index: 1; background: var(--surface); }
+.d-boqgrid th.freeze:first-child, .d-boqgrid td.freeze:first-child {
+  width: var(--freeze-1); min-width: var(--freeze-1); max-width: var(--freeze-1); }
+.d-boqgrid th.freeze.nm, .d-boqgrid td.freeze.nm {
+  inset-inline-start: var(--freeze-1); border-inline-end: 1px solid var(--stroke-default); }
+.d-boqgrid thead th.freeze { z-index: 3; background: var(--surface-container); }
+.d-boqgrid tfoot td.freeze { z-index: 2; background: var(--surface-container); }
+.d-boqgrid tbody tr.sel td { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+/* frozen cells composite their tint over the surface instead of onto
+   transparency — a sticky cell that is not opaque lets the columns
+   scrolling beneath it show straight through */
+.d-boqgrid tbody tr.sel td.freeze { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.d-boqgrid tbody tr:hover td.freeze { background: color-mix(in srgb, var(--on-surface) 4%, var(--surface)); }
+.d-boqgrid tbody tr.lvl1:hover td.freeze { background: var(--surface-container-low); }
+.d-boqgrid tbody tr.sel td.freeze:first-child { box-shadow: inset 2px 0 0 0 var(--primary); }
+html[dir="rtl"] .d-boqgrid tbody tr.sel td.freeze:first-child { box-shadow: inset -2px 0 0 0 var(--primary); }
+/* the division roll-up reads like the cost sheet's */
+.d-boqgrid tbody tr.lvl1 td, .d-boqgrid tbody tr.lvl1 td.freeze { background: var(--surface-container-lowest); }
+.d-boqgrid tbody tr.lvl1 .num, .d-boqgrid tbody tr.lvl1 .d-money > b { font-weight: var(--fw-medium); }
+.d-boqgrid tbody tr.lvl1 .tw { color: var(--fg-subtle); }
+.d-boqgrid td.nm .nmx { display: inline-block; max-width: 300px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.d-boqgrid td.nm .amd { color: var(--status-suspended-tx); margin-inline-start: var(--space-4); vertical-align: middle; }
+.d-boqgrid td.nm .d-proposed { margin-inline-start: var(--space-6); }
+.d-boqgrid th { cursor: pointer; user-select: none; }
+.d-boqgrid th .srt { color: var(--fg-link); margin-inline-start: var(--space-2); vertical-align: middle; }
+.d-boqgrid th.sorted { color: var(--fg-link); }
+.d-boqgrid td.ovc { position: relative; text-align: center; }
+.d-boqgrid td.empty { height: auto; padding: var(--space-32) var(--space-12); text-align: center; }
+/* allocation state carries into the assigned-weight figure */
+.d-boqgrid .boq-aw.full { color: var(--alloc-full-fg); }
+.d-boqgrid .boq-aw.partial { color: var(--alloc-partial-fg); }
+.d-boqgrid .boq-aw.over { color: var(--alloc-over-fg); }
+.d-boqgrid .boq-aw.none { color: var(--fg-subtle); }
+
+/* the filter chips carry the allocation-state dot */
+.d-toolbar .d-fchip .dot { width: var(--space-6); height: var(--space-6); border-radius: var(--r-pill);
+  display: inline-block; margin-inline-end: var(--space-6); }
+.d-toolbar .d-fchip .dot.full { background: var(--alloc-full-fg); }
+.d-toolbar .d-fchip .dot.partial { background: var(--alloc-partial-fg); }
+.d-toolbar .d-fchip .dot.over { background: var(--alloc-over-fg); }
+.d-toolbar .d-fchip .dot.none { background: var(--fg-subtle); }
+.d-toolbar .d-btn .n { font-family: var(--font-mono); font-size: var(--fs-100);
+  color: var(--fg-subtle); margin-inline-start: var(--space-4); }
+
+
+/* the calculation note reuses the pager strip's ground */
+.d-pager.calcnote { justify-content: flex-start; gap: var(--space-6); }
+.d-pager.calcnote svg { color: var(--primary); }
+
+/* the empty state inside a table cell */
+.d-boqgrid .d-empty .acts { display: flex; gap: var(--space-8); margin-top: var(--space-8); justify-content: center; }
+
+/* the workspace wrapper hands its whole box to the frame it renders */
+.boq-ws { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.boq-ws > .d-pframe { flex: 1 1 auto; min-height: 0; }
+
+/* ============================================================
+   ASSIGNMENT (L17 linkage matrix) ON THE SHARED COMPONENTS
+   Coverage strip → Z6 chips. Method → Z6 select. Explanation →
+   Z8 pane. Cancel/Save with a change summary → Z9. The source
+   list and the allocation control are two standard cards.
+   ============================================================ */
+.boq-assign-row { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: var(--space-16); align-items: start; }
+@container (max-width: 900px) { .boq-assign-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* the source list scrolls inside its card */
+#boq-queue > .gb.flush > .boq-queue-b { max-height: 58vh; overflow: auto; }
+.boq-queue-b .pad { display: block; padding: var(--space-16); }
+.boq-qcard { display: block; width: 100%; text-align: start; border: 0;
+  border-bottom: 1px solid var(--stroke-subtle); border-inline-start: 2px solid transparent;
+  background: transparent; cursor: pointer; padding: var(--space-10) var(--space-12); }
+.boq-qcard:hover { background: var(--surface-container-low); }
+.boq-qcard.on { background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-inline-start-color: var(--primary); }
+.boq-qcard .l1 { display: flex; align-items: center; gap: var(--space-8); }
+.boq-qcard .l1 .sp { flex: 1; }
+.boq-qcard .code { font-size: var(--fs-100); line-height: var(--lh-200); color: var(--fg-subtle); }
+.boq-qcard .l2 { font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface);
+  font-weight: var(--fw-medium); margin: var(--space-4) 0 var(--space-6);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.boq-qcard .l3 .d-mini-bar { width: 100%; }
+.boq-qcard .l3 .t span.full { background: var(--alloc-full-fg); }
+.boq-qcard .l3 .t span.partial { background: var(--alloc-partial-fg); }
+.boq-qcard .l3 .t span.over { background: var(--alloc-over-fg); }
+
+/* the coverage bar for the selected item reuses the allocation card */
+#boq-editor .d-yalloc .ah .num { margin-inline-start: var(--space-8); }
+#boq-editor .d-yalloc .ah > .over, #boq-editor .d-yalloc .ah > .full,
+#boq-editor .d-yalloc .ah > .partial, #boq-editor .d-yalloc .ah > .none {
+  font-size: var(--fs-200); line-height: var(--lh-300); margin-inline-start: auto; }
+#boq-editor .d-yalloc .ah > .over { color: var(--alloc-over-fg); }
+#boq-editor .d-yalloc .ah > .full { color: var(--alloc-full-fg); }
+#boq-editor .d-yalloc .ah > .partial { color: var(--alloc-partial-fg); }
+#boq-editor .d-yalloc .ah > .none { color: var(--fg-subtle); }
+.boq-legend.af { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.boq-legend .sw { display: inline-block; width: var(--space-8); height: var(--space-8);
+  border-radius: var(--r-sm); margin-inline-end: var(--space-6); vertical-align: middle; }
+.boq-legend .sw.hatch { background: repeating-linear-gradient(45deg,
+  var(--surface-container-high) 0 3px, transparent 3px 6px); border: 1px solid var(--stroke-default); }
+
+/* the share input inside a grid cell */
+.boq-shareinp { display: inline-flex; align-items: center; gap: var(--space-2);
+  border: 1px solid var(--stroke-default); border-radius: var(--r-md);
+  padding: 0 var(--space-6); background: var(--surface); }
+.boq-shareinp input { width: 52px; border: 0; background: none; outline: none;
+  text-align: end; font-family: var(--font-mono); font-size: var(--fs-200);
+  line-height: var(--lh-300); color: var(--on-surface); padding-block: var(--space-4); }
+.boq-shareinp i { font-style: normal; font-size: var(--fs-100); color: var(--fg-subtle); }
+.boq-shareinp:focus-within { border-color: var(--primary); }
+.d-line-table tbody tr.dup td { background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.d-line-table td .sw { display: inline-block; width: var(--space-8); height: var(--space-8);
+  border-radius: var(--r-sm); vertical-align: middle; }
+
+/* Z9 tones */
+.d-z9 .saved.dirty { color: var(--fg-link); }
+.d-z9 .saved.bad { color: var(--error); }
+
+/* the activity picker keeps its popover, on the shared surface tokens */
+.boq-picker-wrap { position: relative; display: inline-flex; }
+
+/* the item's coverage legend carries a swatch, so its label row needs to
+   size to content instead of the allocation card's fixed label row */
+#boq-editor .d-yalloc .af { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+#boq-editor .d-yalloc .af span { grid-template-rows: auto auto; }
+#boq-editor .d-yalloc .af em { display: flex; align-items: center; overflow: visible;
+  line-height: var(--lh-300); }
+#boq-editor .d-yalloc .af b.num { font-size: var(--fs-300); line-height: var(--lh-400);
+  font-family: var(--font-mono); font-weight: var(--fw-medium); }
+#boq-editor .d-yalloc .ah .num { font-size: var(--fs-400); line-height: var(--lh-500); }
+
+/* the target list keeps its columns and scrolls sideways rather than
+   crushing them into the space left by Z8 */
+.d-vow-tw.wide-alloc { overflow-x: auto; }
+.d-vow-tw.wide-alloc > .d-line-table { min-width: 620px; }
+
+/* the remaining-share chip sits with the actions that change it */
+.boq-remchip { display: inline-flex; align-items: baseline; gap: var(--space-6);
+  padding: var(--space-4) var(--space-10); border-radius: var(--r-md);
+  border: 1px solid var(--stroke-default); background: var(--surface-container-low); }
+.boq-remchip em { font-style: normal; font-size: var(--fs-200); line-height: var(--lh-300); color: var(--fg-subtle); }
+.boq-remchip .num { font-family: var(--font-mono); font-size: var(--fs-300); line-height: var(--lh-400);
+  font-weight: var(--fw-semibold); }
+.boq-remchip.full { border-color: var(--alloc-full-fg); }
+.boq-remchip.full .num { color: var(--alloc-full-fg); }
+.boq-remchip.over { border-color: var(--alloc-over-fg); }
+.boq-remchip.over .num { color: var(--alloc-over-fg); }
+.boq-remchip.partial .num { color: var(--alloc-partial-fg); }
+
+/* ---- facet filter: one row per state in a narrow column ---- */
+.d-facets { display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--stroke-default); }
+.d-facets button { display: flex; align-items: center; gap: var(--space-8);
+  width: 100%; padding: var(--space-6) var(--space-12); border: 0;
+  border-inline-start: 2px solid transparent; background: none; cursor: pointer;
+  font-family: var(--font-ar); font-size: var(--fs-200); line-height: var(--lh-300);
+  color: var(--on-surface-variant); text-align: start; }
+.d-facets button:hover { background: var(--surface-container-low); }
+.d-facets button.on { background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-inline-start-color: var(--primary); color: var(--fg-link); font-weight: var(--fw-semibold); }
+.d-facets .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-facets .n { font-family: var(--font-mono); font-size: var(--fs-200); color: var(--fg-subtle); }
+.d-facets button.on .n { color: var(--fg-link); }
+.d-facets .dot { width: var(--space-8); height: var(--space-8); border-radius: var(--r-pill); flex: none; }
+.d-facets .dot.all { background: var(--outline); }
+.d-facets .dot.full { background: var(--alloc-full-fg); }
+.d-facets .dot.partial { background: var(--alloc-partial-fg); }
+.d-facets .dot.over { background: var(--alloc-over-fg); }
+.d-facets .dot.none { background: var(--fg-subtle); }
+
+/* ---- action menu: a parameter and its actions in one popover ---- */
+.d-actmenu { position: absolute; top: calc(100% + var(--space-4)); inset-inline-end: 0; z-index: 41;
+  width: 288px; padding: var(--space-6); border-radius: var(--r-lg);
+  background: var(--surface); border: 1px solid var(--stroke-default); box-shadow: var(--elev-3); }
+.d-actmenu .sec { font-size: var(--fs-100); line-height: var(--lh-200); color: var(--fg-subtle);
+  padding: var(--space-6) var(--space-8) var(--space-4); }
+.d-actmenu .segrow { display: flex; gap: var(--space-2); padding: var(--space-2);
+  margin: 0 var(--space-4) var(--space-4); border: 1px solid var(--stroke-default);
+  border-radius: var(--r-md); background: var(--surface-container-low); }
+.d-actmenu .segrow button { flex: 1; border: 0; background: none; cursor: pointer;
+  padding: var(--space-4) var(--space-8); border-radius: var(--r-sm);
+  font-family: var(--font-ar); font-size: var(--fs-200); line-height: var(--lh-300);
+  font-weight: var(--fw-medium); color: var(--on-surface-variant); }
+.d-actmenu .segrow button.on { background: var(--surface); color: var(--fg-link);
+  font-weight: var(--fw-semibold); box-shadow: var(--elev-1); }
+.d-actmenu > button[role="menuitem"] { display: flex; align-items: flex-start; gap: var(--space-8);
+  width: 100%; padding: var(--space-8); border: 0; background: none; cursor: pointer;
+  border-radius: var(--r-md); text-align: start; color: var(--on-surface); }
+.d-actmenu > button[role="menuitem"]:hover { background: var(--surface-container-low); }
+.d-actmenu > button[role="menuitem"] svg { flex: none; margin-top: var(--space-2); color: var(--on-surface-variant); }
+.d-actmenu .tx { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.d-actmenu .tx b { font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-semibold); }
+.d-actmenu .tx em { font-style: normal; font-size: var(--fs-100); line-height: var(--lh-200); color: var(--fg-subtle); }
+.d-actmenu > button.danger { color: var(--error); }
+.d-actmenu > button.danger svg { color: var(--error); }
+
+/* the share cell: the editable value, its fill affordance, and the weight
+   it derives — one column instead of three */
+.d-line-table td.sharecell { padding-block: var(--space-6); }
+.d-line-table td.sharecell .d-cell-sub { margin-top: var(--space-2); font-size: var(--fs-100);
+  line-height: var(--lh-200); white-space: nowrap; }
+.boq-shareinp .fill { display: inline-flex; align-items: center; justify-content: center;
+  width: var(--space-20); height: var(--space-20); margin-inline-start: var(--space-2);
+  border: 0; border-radius: var(--r-sm); background: none; cursor: pointer;
+  color: var(--on-surface-variant); padding: 0; }
+.boq-shareinp .fill:hover { background: var(--surface-container-high); color: var(--fg-link); }
+/* the segment swatch rides with the activity code */
+.d-line-table td.code .sw { margin-inline-end: var(--space-6); }
+.d-facets button:disabled { opacity: .5; cursor: default; }
+.d-facets button:disabled:hover { background: none; }
+/* the progress bar is context, not the subject — it gives up width first */
+.wide-alloc .d-mini-bar { min-width: 0; gap: var(--space-6); }
+.wide-alloc .d-mini-bar .t { min-width: var(--space-24); }
+.wide-alloc td:last-child, .wide-alloc th:last-child { padding-inline: var(--space-4); }
