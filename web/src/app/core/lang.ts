@@ -1143,6 +1143,11 @@ const STR = {
   boq_asn_cost:    { ar: 'الكلفة',                         en: 'Cost' },
   boq_asn_mh:      { ar: 'ساعات العمل',                    en: 'Man-hours' },
   boq_asn_auto:    { ar: 'توزيع تلقائي',                   en: 'Auto-distribute' },
+  // A5-rest — the «توزيع» menu (.d-actmenu, boq-assign.jsx:235). The basis is a
+  // PARAMETER of auto-distribute, so the reference puts it inside the menu.
+  boq_asn_distribute: { ar: 'توزيع',                        en: 'Distribute' },
+  boq_asn_action:     { ar: 'الإجراء',                      en: 'Action' },
+  boq_asn_auto_hint:  { ar: 'يوزّع 100% بنسبة وزن كل نشاط',  en: 'Spreads 100% by each activity weight' },
   boq_asn_add:     { ar: 'إضافة نشاط',                     en: 'Add activity' },
   boq_asn_activity:{ ar: 'النشاط',                         en: 'Activity' },
   boq_asn_its_wt:  { ar: 'وزن النشاط',                     en: 'Activity wt' },

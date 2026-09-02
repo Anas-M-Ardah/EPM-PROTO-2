@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **317** |
+| the Angular app emits | 273 | **318** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **101** |
-| → **GAP** — and the prototype actually **renders** it | — | **67** |
+| missing from the port | 151 | **100** |
+| → **GAP** — and the prototype actually **renders** it | — | **66** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -54,7 +54,7 @@ side is every `.d-*` selector in the shipped sheets.
 | A16 · الشكل 10 amendment stack | 1 | **✅ done** |
 | A17 · الشكل 47 · 48 alert severity | 1 | **✅ done** |
 | A13 · charts — mini timeline + line trend | 6 | **✅ done** — and it needed an endpoint field |
-| A5-rest · `d-actmenu` | 1 | 🔨 |
+| A5-rest · `d-actmenu` توزيع menu | 1 | **✅ done** |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -82,7 +82,7 @@ and «33» in §Acceptance — and neither was ever recomputed as clusters withd
 written when the only recorded non-markup verdicts were B and C, so every later withdrawal
 (A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
 into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
-67 that remain are:
+66 that remain are:
 
 | | | |
 |---|---|---|
@@ -95,9 +95,9 @@ into the file's prose and never into its arithmetic. Counted rather than tallied
 | A12b | 1 | `d-val-row` — waiting on the server's gates |
 | `d-switch` | 1 | admin and profile both — same reach as §C |
 | `d-panel-body` | 1 | **withdrawn at the A7 audit** — admin, profile and one dead component are its only emitters. §A15a |
-| **buildable markup left** | **1** | A5-rest 1 — `d-actmenu` |
+| **buildable markup left** | **0** | — the backlog is empty |
 
-29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 1 = 67, so acceptance is 67 − 1 = **66**. Anything else
+29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 0 = 66, and the measured GAP is **66**. ACCEPTANCE IS MET. Anything else
 needs a row here explaining it — including a later decision to build one of the ⏸ clusters,
 which would lower it again.
 
@@ -117,7 +117,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 1 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 0 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **4** | the port has a documented better equivalent; porting would be a regression |
 
@@ -347,9 +347,31 @@ The allocation state is a **block with its own meta and progress** per row
 `d-add-trigger`); the assignment screen carries a per-row method menu (`d-actmenu`) and the
 year-allocation strip (`d-yalloc`); a line priced in two bands draws `d-rate-multi`.
 
+**`d-actmenu` — ✅ DONE, and it was the last class in the backlog.**
+`boq-assign.jsx:235` `DBoqAssign` → `features/boq/boq.page.html`
+
+«توزيع» on الربط بالأنشطة, and the reference states the reason in its own comment: *«one menu
+instead of four controls: the basis is a parameter of auto-distribute, so it lives WITH it
+rather than beside it».* The port had them side by side — a `.boq-basis` segmented control
+and a bare button.
+
+`.boq-basis` is shipped in `boq.css` and emitted by **nothing** in the reference — checked
+against the live prototype, zero hits across all four boq files. It is a retired treatment
+the sheet still carries and this port adopted; the menu is the current one.
+
+**One menu item, not the reference's three, and the difference is recorded rather than
+invented.** «وزّع المتبقي بالتساوي» is a behaviour this port does not have. And the
+reference's «تصفير الحصص» is **not** this port's `resetShares()`: `clearAll()` zeroes every
+share locally, while `resetShares()` is a server write that restores BR-03's *computed*
+shares and belongs on the save bar where it already sits. Moving it into the menu under that
+label would have misdescribed what it does.
+
+The rest of A5's classes stay dead — `DBOQAssignment` is superseded and mounted by nothing
+(P-212), and `d-tl-mini-fill` / `d-tl-mini-track` went to A13, where `DTlMini` actually
+renders them.
+
 `d-alloc` `d-alloc-top` `d-alloc-meta` `d-alloc-prog` `d-openrow` `d-add-inline`
-`d-add-trigger` `d-actmenu` `d-yalloc` `d-rate-multi` `d-tl-mini-fill` `d-tl-mini-track`
-`d-form-hint` `d-inp`
+`d-add-trigger` `d-rate-multi` `d-form-hint` `d-inp`
 
 ### A6 · الأشكال 50–56 — supply items, receipts, archive · 6
 
@@ -901,10 +923,20 @@ into this file and ask.** Do not resolve it by reverting.
 ## Acceptance
 
 The port is done when `node tools/structure-gap.mjs` reports a GAP of **66** and every
-`epm-*` selector still resolves. The 65 is broken out in the table under §The number — it is
-not «the intended plus the module-absent», which is what this line said while nine clusters
-were withdrawing classes into verdicts the sum never saw. Any other number needs a row in
-this file explaining it.
+`epm-*` selector still resolves. **Both hold as of this pass** — 66 measured, 30 selectors
+resolving, `<epm-select>` at 30 callers, and OWN unchanged at 5.
+
+The 66 is broken out in the table under §The number — it is not «the intended plus the
+module-absent», which is what this line said while nine clusters were withdrawing classes
+into verdicts the sum never saw. Any other number needs a row in this file explaining it.
+
+**What «done» does and does not mean here.** The markup backlog is empty: every class the
+prototype renders, that this port has a screen for, is now emitted. The 66 that remain are
+19 + 6 + 1 + 3 intended, 6 whose module does not exist, 11 that are behaviour behind a
+decision, and 20 withdrawn with a reason apiece. The two ⏸ clusters — A2b's focus mode and
+A4b's facets and caps — are the only ones a later decision could still turn into work, and
+`d-vow-cap` is the one of those worth building on its own merits (`CLAUDE.md` §6 wants
+invalid input prevented and the cap explained).
 
 ---
 

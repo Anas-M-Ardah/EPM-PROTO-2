@@ -718,22 +718,58 @@
                     <span class="d-cell-sub">{{ lang.t('boq_asn_target') }}</span>
                     <span class="sp"></span>
 
-                    @if (asn()!.manHoursAvailable) {
-                      <span class="boq-basis">
-                        <span class="lbl">{{ lang.t('boq_asn_basis') }}</span>
-                        <span class="seg">
-                          <button type="button" [class.on]="basis() === 'cost'"
-                                  (click)="setBasis('cost')">{{ lang.t('boq_asn_cost') }}</button>
-                          <button type="button" [class.on]="basis() === 'mh'"
-                                  (click)="setBasis('mh')">{{ lang.t('boq_asn_mh') }}</button>
-                        </span>
-                      </span>
-                    }
+                    <!-- A5-rest · `.d-actmenu` — `boq-assign.jsx:235`, and the
+                         reference states the reason in its own comment: «one
+                         menu instead of four controls: the basis is a parameter
+                         of auto-distribute, so it lives WITH it rather than
+                         beside it». This toolbar had them side by side — a
+                         `.boq-basis` segmented control and a bare button.
 
-                    <button type="button" class="d-btn sm" [disabled]="activeRows().length === 0"
-                            (click)="autoDistribute()">
-                      <epm-icon name="bolt" [size]="15" />{{ lang.t('boq_asn_auto') }}
-                    </button>
+                         `.boq-basis` is shipped in `boq.css` and emitted by
+                         NOTHING in the reference — checked against the live
+                         prototype, zero hits in all four boq files. It is a
+                         retired treatment the sheet still carries and this port
+                         adopted; the menu is the current one.
+
+                         ONE menu item, not the reference's three. «وزّع المتبقي
+                         بالتساوي» is a behaviour this port does not have, and
+                         its «تصفير الحصص» is NOT this port's `resetShares()`:
+                         the reference zeroes every share locally, ours is a
+                         server write that restores BR-03's COMPUTED shares and
+                         belongs on the save bar where it already is. Putting it
+                         here under that label would misdescribe what it does. -->
+                    <div class="boq-colmenu-wrap">
+                      <button type="button" class="d-btn sm" aria-haspopup="true"
+                              [attr.aria-expanded]="distMenu()"
+                              [disabled]="activeRows().length === 0"
+                              (click)="distMenu.set(!distMenu())">
+                        <epm-icon name="bolt" [size]="15" />{{ lang.t('boq_asn_distribute') }}
+                        <epm-icon name="expand_more" [size]="14" />
+                      </button>
+                      @if (distMenu()) {
+                        <div class="boq-menu-scrim" (click)="distMenu.set(false)"></div>
+                        <div class="d-actmenu" role="menu">
+                          @if (asn()!.manHoursAvailable) {
+                            <div class="sec">{{ lang.t('boq_asn_basis') }}</div>
+                            <div class="segrow">
+                              <button type="button" [class.on]="basis() === 'cost'"
+                                      (click)="setBasis('cost')">{{ lang.t('boq_asn_cost') }}</button>
+                              <button type="button" [class.on]="basis() === 'mh'"
+                                      (click)="setBasis('mh')">{{ lang.t('boq_asn_mh') }}</button>
+                            </div>
+                          }
+                          <div class="sec">{{ lang.t('boq_asn_action') }}</div>
+                          <button type="button" role="menuitem"
+                                  (click)="distMenu.set(false); autoDistribute()">
+                            <epm-icon name="bolt" [size]="15" />
+                            <span class="tx">
+                              <b>{{ lang.t('boq_asn_auto') }}</b>
+                              <em>{{ lang.t('boq_asn_auto_hint') }}</em>
+                            </span>
+                          </button>
+                        </div>
+                      }
+                    </div>
 
                     <div class="boq-colmenu-wrap">
                       <button type="button" class="d-btn sm primary" aria-haspopup="true"
