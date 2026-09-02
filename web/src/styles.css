@@ -1137,6 +1137,28 @@ button.d-file > .fm { align-items: flex-start; }
    `--viz-1` and says nothing the label does not. */
 .d-yalloc .track > i { background: var(--viz-1); }
 
+/* A17 · and the third of the same kind. `.d-alert-sev` (desktop.css:1223) sets
+   geometry and weight and NO colour, because `DAlertSev` paints it inline —
+   `background: color-mix(in srgb, ${s.color} 15%, transparent); color:
+   ${s.color}` at alerts-module.jsx:25, off `ALERT_SEV`.
+
+   The tones are the ones `.d-pill` already uses (desktop.css:1671-1675), NOT
+   the reference's older `var(--error)` set, so severity in the rules table
+   reads identically to severity everywhere else in this app. `ALERT_SEV` does
+   carry a `.cls` field naming exactly these three — `stalled` · `suspended` ·
+   `completed` — and nothing in the reference consumes it; the port's rules
+   table had been drawing `.d-pill` off the same mapping, which is why this is
+   a change of geometry and glyph rather than of colour.
+
+   The glyph is the point. `.d-pill::before` is the same 6px dot for all three
+   severities, so shape carries nothing and colour does the work alone;
+   `.d-alert-sev` takes a per-severity icon — warning · error · info — which is
+   the «shape + colour + accessible label» that 05 §7.6 and the reference's own
+   DSevDot comment both ask for. */
+.d-alert-sev.stalled   { background: color-mix(in srgb, var(--status-delayed) 14%, transparent);   color: var(--status-delayed-tx); }
+.d-alert-sev.suspended { background: color-mix(in srgb, var(--status-suspended) 17%, transparent); color: var(--status-suspended-tx); }
+.d-alert-sev.completed { background: color-mix(in srgb, var(--status-completed) 15%, transparent); color: var(--status-completed-tx); }
+
 /* ── E · «شريط تذييل ثابت» ─────────────────────────────────────────────────
    Contract count · effective value · disbursed · data date. `.d-z9` is the
    module frame's bottom bar; the shadow it carries for the edit bar is

@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **310** |
+| the Angular app emits | 273 | **312** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **108** |
-| → **GAP** — and the prototype actually **renders** it | — | **74** |
+| missing from the port | 151 | **106** |
+| → **GAP** — and the prototype actually **renders** it | — | **72** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -51,7 +51,9 @@ side is every `.d-*` selector in the shipped sheets.
 | A15b · `d-check` `d-model-topbar` `d-l04-z8fall` | 3 | ⬛ **not portable** — one recorded decision, two superseded |
 | A7 · الشكل 15 · 17 allocation strip + audit SLA | 2 | **✅ done** |
 | A10 · feed and share bar | 6 | ⬛ **out of reach** — only admin and profile render it |
-| A13 · A16 · A17 · A5-rest, live remainder | 9 | 🔨 |
+| A16 · الشكل 10 amendment stack | 1 | **✅ done** |
+| A17 · الشكل 47 · 48 alert severity | 1 | **✅ done** |
+| A13 · A5-rest, live remainder | 7 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -79,7 +81,7 @@ and «33» in §Acceptance — and neither was ever recomputed as clusters withd
 written when the only recorded non-markup verdicts were B and C, so every later withdrawal
 (A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
 into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
-74 that remain are:
+72 that remain are:
 
 | | | |
 |---|---|---|
@@ -90,11 +92,18 @@ into the file's prose and never into its arithmetic. Counted rather than tallied
 | superseded | 5 | `d-gantt-resize` `d-sched-stat` `d-check` `d-model-topbar` `d-l04-z8fall` |
 | feed, and `d-dot` | 6 | only admin and profile still render them |
 | A12b | 1 | `d-val-row` — waiting on the server's gates |
-| **buildable markup left** | **9** | A13 6 · A16 1 · A17 1 · A5-rest 1 |
+| `d-switch` | 1 | admin and profile both — same reach as §C |
+| **buildable markup left** | **7** | A13 6 · A5-rest 1 |
 
-29 + 6 + 11 + 6 + 5 + 6 + 1 + 9 = 74, so acceptance is 74 − 9 = **65**. Anything else needs
-a row here explaining it — including a later decision to build one of the ⏸ clusters, which
-would lower it again.
+29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 7 = 72, so acceptance is 72 − 7 = **65**. Anything else
+needs a row here explaining it — including a later decision to build one of the ⏸ clusters,
+which would lower it again.
+
+**Check the partition, do not trust the tally.** `tools/structure-gap.mjs --list` prints the
+GAP set; bucketing it by hand is how the «40» and the «33» above got away from the file in
+the first place, and the first version of *this* table lost `d-switch` and summed to 73
+against a measured 74. Every row above was checked to cover the printed set exactly once —
+no class in two buckets, none in none.
 
 ## Triage — what the remaining 97 actually are (A6 · A8 · A12 closed 17; A11 withdrew 6)
 
@@ -106,7 +115,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 20 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 7 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **4** | the port has a documented better equivalent; porting would be a regression |
 
@@ -572,16 +581,55 @@ joins. The reference never uses `.k` there either.
 `d-panel-body` `d-callout` `d-callout-ico` `d-callout-tx` `d-check` `d-switch`
 `d-model-topbar` `d-l04-z8fall`
 
-### A16 · الشكل 10 — amendment stack · 1
+### A16 · الشكل 10 — amendment stack · 1 · **✅ DONE**
 
 `contract-amendments.jsx:324` `DContractAmendments` → `features/contract-tab/contract.page.html`
 
+The plate's five sections were already there and already right; what was missing is the
+wrapper they stand in. Z7 spaces its blocks at `--space-16` for every tab, and
+`.d-amdstack` (`desktop.css:2775`) is the flex column `DContractAmendments` puts its own
+groups in, at `--space-20`. Measured after: 20px inside, 16px around it.
+
+**Two of its three rules are inert here, and the row says so rather than claiming a win.**
+`.d-amdstack .d-form-grid` and `.d-amdstack .d-vow-tw` only bite when the sections inside
+use those classes; this tab draws `<dl class="d-meta">` and `.d-tablewrap > .d-table` where
+the reference draws `.d-form-grid` and `.d-vow-tw.wide-amd > .d-line-table`. That is the
+same swap A2a made for the CO register, it is **not** part of A16 — which is one class — and
+whoever takes it will find the wrapper already waiting.
+
 `d-amdstack`
 
-### A17 · الشكل 47 · 48 — alert severity · 1
+### A17 · الشكل 47 · 48 — alert severity · 1 · **✅ DONE**
 
-`alerts-module.jsx:25` `DAlertSev` → `features/alerts/alerts.page.html` ·
-`project-alerts.page.html`
+`alerts-module.jsx:25` `DAlertSev` (call sites `:118` · `:210`) →
+`features/project-alerts/project-alerts.page.html`
+
+**This row nearly got withdrawn, and the reason it was not is worth keeping.** `DAlertSev`
+has exactly two call sites: the `DRecordPane` aside that opens when an alert is selected —
+which this port does not have on either alerts screen, so that one is behaviour, not markup
+— and the **rules table**, which the port *does* have, in `project-alerts.page.html`. The
+first read said the rules engine is out of scope (`alerts.page.html:22` says so of the
+enterprise screen) and nearly closed the row on it.
+
+Everywhere the port already renders a severity it was **right**: `.d-sevcell` +
+`<epm-sev-dot>` in the enterprise table matches `enterprise-areas.jsx:213`, and the inbox
+row's `.d-sev-dot` matches `DSevDot` at `alerts-module.jsx:275`. The rules table was the one
+place it had invented a treatment — `.d-pill` + a tone — and `ALERT_SEV` even carries a
+`.cls` field naming those exact tones, `stalled` · `suspended` · `completed`. **Nothing in
+the reference consumes that field**; it is vestigial, and it is what made the port's pill
+look sanctioned.
+
+So the swap is geometry and glyph, not colour: `.d-pill::before` is the same 6px dot for all
+three severities, so shape carries nothing and colour works alone, while `.d-alert-sev`
+takes a per-severity icon — warning · error · info. Verified in the browser: three distinct
+glyphs (triangle · exclamation · info), 24px, the labels «حرِج» · «متوسط» · «منخفض». That is
+05 §7.6's «shape + colour + accessible label», and the reference's own `DSevDot` comment
+argues it in the same words.
+
+`.d-alert-sev` ships with **no colour** — `DAlertSev` paints it inline from `ALERT_SEV`, the
+third instance of the pattern A7 found — so three tone rules join the documented block in
+`styles.css`, using `.d-pill`'s own v1.1 tokens rather than the reference's older
+`var(--error)` set, so severity here reads identically to severity everywhere else. See P-222.
 
 `d-alert-sev`
 
