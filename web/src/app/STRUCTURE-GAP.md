@@ -46,7 +46,8 @@ side is every `.d-*` selector in the shipped sheets.
 | A12a · الأشكال 21 · 24 gantt extension, amendment block, parse state | 4 | **✅ done** |
 | A12b · import validation checks | 1 | ⏸ **needs the server to declare its gates** |
 | A12c · `d-sched-stat` | 1 | ⬛ **superseded** by `<epm-status-pill>` |
-| A7 … A17, live remainder | 30 | 🔨 |
+| A11 · shell zones and panes | 6 | ⬛ **none portable** — 2 never render, 1 renders empty, 2 are a recorded divergence, 1 would breach §6 |
+| A7 … A17, live remainder | 24 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -72,7 +73,7 @@ than the first measure claimed.
 **Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
 A2b is built.
 
-## Triage — what the remaining 97 actually are (A8 and A6 have since closed 13)
+## Triage — what the remaining 97 actually are (A6 · A8 · A12 closed 17; A11 withdrew 6)
 
 Done after four clusters produced four different outcomes, so the rest is sorted **before**
 anyone starts building rather than one cluster at a time. Every class below has a mounted
@@ -82,7 +83,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 30 left | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 24 left, 6 withdrawn by A11 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **2** | the port has a documented better equivalent; porting would be a regression |
 
@@ -103,12 +104,15 @@ Of these, **`d-vow-cap` is the one worth building on its own merits** — `CLAUD
 invalid input prevented and the cap explained, and the port's quantity fields carry neither
 a max nor a hint.
 
-### superseded — 1
+### superseded — 2
 
 `d-gantt-resize` is the reference's drag handle on the **info block**; the port has
 `d-gantt-namegrip` on the **name column**, which is what `04 §5` actually asks for and is
 recorded in `styles.css` as a deliberate improvement. Porting it would undo that. Moved to
-§E.
+§E. And `d-sched-stat` joins it from A12c: the port renders activity status through
+`<epm-status-pill kind="activity-status">` at all three sites the reference uses
+`DSchedStatus`, and as the bar FILL on the Gantt row — a fourth status vocabulary would
+fragment the one thing §6 asks to keep single.
 
 ### markup — 49, by cluster, largest first
 
@@ -117,7 +121,7 @@ recorded in `styles.css` as a deliberate improvement. Porting it would undo that
 | A8 · SCR-W14 reports ✅ | 6 | **done, and it was not the markup this table predicted** — see below. The reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
 | A6 · الأشكال 50–56 supply ✅ | 7 | **done, and the prediction was half right.** The port DID draw cards under two subheadings — with a bespoke `.sup-card` while `.d-rcpt` and `.d-att` sat shipped and unused. What the table missed: every receipt carries `documents` that **nothing rendered at all** |
 | A12 · الأشكال 21–24 schedule ✅ | 6 | **4 done, 1 split, 1 superseded.** `d-gantt-ext` was the find: the Gantt showed **nothing** for an approved-but-unapplied extension, so an activity with 12 days waiting drew like one with none. `d-parse`/`d-spin` fill a genuinely async gap — the parse said nothing at all. `d-act-amd` went **inside** the activity pane, which had no amendment information. `d-val-row` needs the server to declare its gates (A12b); `d-sched-stat` is superseded by `<epm-status-pill>` |
-| A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
+| A11 · shell zones ⬛ | 6 | **none portable, and this row was wrong.** The shell does jump d-pz2 → d-pz5 — and so does the reference: d-pz3 is gated on a `vitals` prop no call site passes, d-ctxmenu on a state nothing sets, d-pz4 renders empty. See §A11 |
 | A15 · shared primitives | 7 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
 | A13 · charts | 6 | the port has `<epm-scurve>` but **no** mini-timeline; `.d-tl-mini*` is a compact per-row list. The BOQ tab's `.d-mini-bar` is the nearest thing. Needs its rows fed, so it is markup + a data check |
 | A10 · feed and share bar | 6 | `d-feed*` and `d-dot`. **Check these against الشكل 2 and الشكل 4, not against `DActRows`** — that component is dead, so the only thing still rendering `d-feed*` is admin |
@@ -389,11 +393,31 @@ moved. Both pages currently draw `d-trail`/`d-tstep`, which is the generic step 
 `desktop-shell.jsx:611` `DProjectHeader` · `DPager` · `DContextMenu` →
 `shell/shell.component.html` · `features/workspace/workspace.page.html`
 
-**Z3 and Z4 are absent entirely.** `d-pz3` is the project header band and `d-pz4` the pager
-zone; the shell jumps `d-pz2` → `d-pz5`. `d-pane`/`d-pane-scroll`/`d-detail` are the
-workspace's own scroll frame — the reason `web/src/styles.css` carries the long
-`display: contents` block fighting Angular host elements is that the frame the sheet expects
-is not the frame the port builds.
+**⬛ NOTHING HERE IS PORTABLE, and every one of the six has its own reason.** This entry used
+to say «Z3 and Z4 are absent entirely — the shell jumps `d-pz2` → `d-pz5`». The jump is real.
+What the entry missed is that **the reference makes the same jump**, and the rest is either
+a recorded divergence or a rule this port keeps and the reference does not.
+
+| class | why not |
+|---|---|
+| `d-pz3` | **Never renders.** `DProjectHeader` guards it with `vitals && vitals.length > 0`, and the one call site — `desktop-workspace.jsx:257` — passes **no `vitals` at all**. `grep -rn "vitals=" *.jsx` returns nothing |
+| `d-ctxmenu` | **Never renders.** `DContextMenu` is gated on `ctxMenu`, and `setCtxMenu` appears exactly once in the whole reference: inside that element's own `onClose`. Nothing ever opens it |
+| `d-pz4` | Renders, and renders **empty**: `const headerActions = [];` (`desktop-workspace.jsx:179`). Porting it adds an empty div. The port puts module actions in Z6, which the reference also does |
+| `d-pane` `d-detail` | The inner wrappers of `.d-three`, which §B4 already records as deliberately restructured — this shell uses `.d-detail-layout` / `.d-detail-main`, and `shell.component.ts:124` says so. `.d-pane` is `min-width:0; flex column; overflow hidden` and `.d-detail` is a background; both are already provided |
+| `d-qrow-rail` | A 3px bar beside the project name in the picker, coloured by status **and carrying no label or title**. `CLAUDE.md` §6: *status is never colour-only*. Porting it would import a rule breach the port currently does not have |
+
+### The blind spot this cluster exposed
+
+The mount graph (P-212) answers *"is this component reachable"*. It cannot answer *"does this
+branch ever execute"* — and `d-pz3` and `d-ctxmenu` are both reachable components whose
+markup is behind a prop or a state that **no call site ever supplies**. Detecting that needs
+dataflow, not a graph, so it stays a **triage step rather than a tool check**:
+
+> Before porting a class, find its enclosing conditional. If it is gated on a prop, grep every
+> call site for that prop. If it is gated on state, grep for the setter.
+
+Two of six here failed that check. It is the same family as A3 and A5 — markup that exists in
+the source and draws nothing in the running app — and it is why the triage reads call sites.
 
 `d-pz3` `d-pz4` `d-ctx` `d-ctx-sec` `d-ctx-act` `d-pane` `d-pane-scroll` `d-detail`
 `d-qrow-rail` `d-ctxmenu`
