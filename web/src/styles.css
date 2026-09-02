@@ -994,18 +994,19 @@ small.epm-f-err { font-size: 11px; color: var(--error); }
   white-space: normal; text-align: start;
   color: var(--fg-subtle, var(--on-surface-variant)); }
 
-/* ══ الشكل 17 — «بطاقة لكل مرحلة بمؤشر حالة ملوّن» ════════════════════════
-   The stage card is  — the same two-row card الشكل 6 uses
-   — and needs only its two rows laid out. The dot is , the
-   severity marker the alerts screens already use, so a desk holding a file too
-   long reads the same as any other overdue thing; it is never the only carrier,
-   since the card prints its cap and its elapsed days beside it (05 §7.6). */
-.epm-slastage > .hd { display: flex; align-items: flex-start; gap: var(--space-8); }
-.epm-slastage > .hd > .t { min-inline-size: 0; }
-.epm-slastage > .hd > .t > b { display: block; font-size: var(--fs-300); font-weight: var(--fw-semibold); }
-.epm-slastage > .hd > .t > .d-cell-sub { display: block; }
-.epm-slastage > .ft { display: flex; align-items: baseline; gap: var(--space-8); }
-.epm-slastage > .ft > .sp { flex: 1; }
+/* REMOVED at the A7 structure port: `.epm-slastage`, and `.epm-cardgrid` /
+   `.epm-hrows` / `.epm-bar` below it — the four the A1 note promised «go with
+   A7». الشكل 17's stage card is `.d-slastages .ss` (desktop.css:3041), shipped
+   and unused, and the strip above it is `.d-yalloc` (:3023). Both were
+   re-derived here while the sheet's own sat in the file.
+
+   What the hand-rolled pair got wrong, and the sheet does not: `.d-slastages
+   .ss` is `grid-template-rows: auto auto 1fr`, so every card in the row is the
+   same shape and the footer pins to the bottom of each — a long stage name
+   used to make one card taller than its neighbours. And `.d-yalloc .af` is a
+   three-column GRID where `.d-fig-row` was a flex row, so the widest figure
+   can no longer push the other two off the baseline. See P-221 and
+   web/src/app/STRUCTURE-GAP.md §A7. */
 
 /* ══ الشكل 11 — «تمييز أحداث النظام الآلية عن أحداث المستخدمين» ═══════════
    The automatic half of the log reads as a different KIND of row, not as a
@@ -1072,9 +1073,15 @@ button.d-file > .fm { align-items: flex-start; }
                       `.d-pill` reports a state, which is why it needed a
                       ::before suppressed to stop looking like one
 
-   `.epm-reghead` survives one caller (SCR-W7's own summary row) and goes with
-   A7. `.epm-cardgrid` and `.epm-hrows` likewise. See P-207 and
-   web/src/app/STRUCTURE-GAP.md §A1. */
+   `.epm-reghead` survives one caller (SCR-W7's own summary row). `.epm-cardgrid`
+   and `.epm-hrows` went at A7, with `.epm-slastage` and `.epm-bar`; `.epm-reghead`
+   did NOT, and the reason is worth stating so the next pass does not chase it.
+   الشكل 17 has no such row: the reference carries the verdict as `DFGroup`'s
+   `sub` and the current stage inside the `DMsgBar` below the cards. This port
+   states both up front, next to the certificate's own status — three facts the
+   reference splits across two elements. That is the port having more to say,
+   not a structure it drew differently, so there is nothing in the sheet to
+   adopt. See P-207, P-221 and web/src/app/STRUCTURE-GAP.md §A1 · §A7. */
 
 /* ── C1 · the summary card's identity row ──────────────────────────────── */
 .epm-reghead { display: flex; align-items: flex-end; gap: var(--space-12); flex-wrap: wrap; }
@@ -1087,31 +1094,17 @@ button.d-file > .fm { align-items: flex-start; }
 /* REMOVED at the A1 structure port: `.epm-barpair`, and the `.epm-track`
    marker below it. «شريطا تقدّم متقابلان» is `.d-csum-bars` — `desktop.css:2659`
    — whose `.track > u` is the «العلامة = نسبة الصرف» tick that `.epm-track >
-   .mk` had been a second implementation of. `.epm-bar` itself survives one
-   caller in SCR-W7 and goes with A7. */
-.epm-bar { min-inline-size: 0; }
-.epm-bar > .h { display: flex; align-items: baseline; gap: var(--space-8); }
-.epm-bar > .h > .k { font-size: var(--fs-200); color: var(--on-surface-variant); }
-.epm-bar > .h > .sp { flex: 1; }
-.epm-bar > .h > .v {
-  font-size: var(--fs-400); line-height: var(--lh-400);
-  font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
-}
-/* The spend rail is the only one that is not `--viz-1`. Two magnitudes on one
-   row need to be told apart at a glance, and they are ALSO labelled and
-   printed in words — the colour is never the only carrier (05 §8). */
-.epm-bar > .track > i.spend { background: var(--success); }
+   .mk` had been a second implementation of.
+
+   And REMOVED at A7, as that note said it would be: `.epm-bar` — SCR-W7's
+   annual-allocation strip, now `.d-yalloc`. Its `.spend` modifier did not go
+   with it; that rule survives below, re-pointed at the shipped rails, because
+   it is the one thing here the sheet genuinely does not provide. */
 
 /* ── Sections are label + space, never nested boxes (CLAUDE.md §6) ──────
-   One panel, rows divided by hairlines. SCR-W7's summary card is the last
-   caller; it goes with A7. */
-.epm-hrows > * { padding: var(--space-16); }
-.epm-hrows > * + * { border-block-start: 1px solid var(--outline-variant); }
-
-.epm-cardgrid {
-  display: grid; gap: var(--space-16);
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
+   REMOVED at A7 with their last caller: `.epm-hrows` and `.epm-cardgrid`.
+   الشكل 17's stage cards are `.d-slastages` — one grid, its own card, and the
+   `auto auto 1fr` rows that keep a row of them the same height. */
 
 /* THE ONE RULE THIS PORT ADDS, and it replaces two it deleted.
    `.d-csum-bars .track > i` and `.d-progress .t > span` both take a single
@@ -1127,6 +1120,22 @@ button.d-file > .fm { align-items: flex-start; }
    in words — the colour is never the only carrier (05 §8). */
 .d-csum-bars .track > i.spend,
 .d-progress .t.spend > span { background: var(--success); }
+
+/* A7 · and the same reading, one rail further on. `.d-yalloc .track > i`
+   (desktop.css:3030) sets height and radius and NO background: the reference
+   paints it inline too — `style={{ background: yrPct > 95 ? 'var(--warning)'
+   : 'var(--viz-1)' }}` at project-modules.jsx:1223 — so the fill arrives here
+   for the same reason the two above it do. Emitting the sheet's `.track`
+   without this leaves the rail invisible; the port's `.epm-track` would have
+   supplied a fill but ALSO its own background and `margin-block`, and
+   styles.css loads last, so it would have overridden the sheet it is meant to
+   be adopting.
+
+   ONE colour, not the reference's two. Its >95% branch colours a magnitude by
+   threshold, which CLAUDE.md §6 forbids by name; the near-exhausted state is
+   already carried in words by the msgbar under the strip, so the rail stays
+   `--viz-1` and says nothing the label does not. */
+.d-yalloc .track > i { background: var(--viz-1); }
 
 /* ── E · «شريط تذييل ثابت» ─────────────────────────────────────────────────
    Contract count · effective value · disbursed · data date. `.d-z9` is the

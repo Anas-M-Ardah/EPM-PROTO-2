@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **288** |
+| the Angular app emits | 273 | **310** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **110** |
-| → **GAP** — and the prototype actually **renders** it | — | **76** |
+| missing from the port | 151 | **108** |
+| → **GAP** — and the prototype actually **renders** it | — | **74** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -49,7 +49,9 @@ side is every `.d-*` selector in the shipped sheets.
 | A11 · shell zones and panes | 6 | ⬛ **none portable** — 2 never render, 1 renders empty, 2 are a recorded divergence, 1 would breach §6 |
 | A15a · shared primitives — panel body, callout | 4 | **✅ done** |
 | A15b · `d-check` `d-model-topbar` `d-l04-z8fall` | 3 | ⬛ **not portable** — one recorded decision, two superseded |
-| A7 · A9 · A10 · A13 · A16 · A17, live remainder | 20 | 🔨 |
+| A7 · الشكل 15 · 17 allocation strip + audit SLA | 2 | **✅ done** |
+| A10 · feed and share bar | 6 | ⬛ **out of reach** — only admin and profile render it |
+| A13 · A16 · A17 · A5-rest, live remainder | 9 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -72,8 +74,27 @@ than the first measure claimed.
    unmounted one is still unreachable, and the prototype supersedes whole modules — which
    is how A5 and A14 turned out to be retired screens (P-212).
 
-**Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
-A2b is built.
+**Acceptance is a GAP of 65.** That number replaces two this file used to carry — «40» here
+and «33» in §Acceptance — and neither was ever recomputed as clusters withdrew. Both were
+written when the only recorded non-markup verdicts were B and C, so every later withdrawal
+(A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
+into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
+74 that remain are:
+
+| | | |
+|---|---|---|
+| **B** intended | 29 | BIM/IFC 19 · drawings viewer 6 · readiness 1 · §B4 3 |
+| **C** module absent | 6 | administration 4 · profile 2 |
+| behaviour | 11 | A2b 5 · A4b 6 |
+| A11 shell | 6 | none portable — see §A11 |
+| superseded | 5 | `d-gantt-resize` `d-sched-stat` `d-check` `d-model-topbar` `d-l04-z8fall` |
+| feed, and `d-dot` | 6 | only admin and profile still render them |
+| A12b | 1 | `d-val-row` — waiting on the server's gates |
+| **buildable markup left** | **9** | A13 6 · A16 1 · A17 1 · A5-rest 1 |
+
+29 + 6 + 11 + 6 + 5 + 6 + 1 + 9 = 74, so acceptance is 74 − 9 = **65**. Anything else needs
+a row here explaining it — including a later decision to build one of the ⏸ clusters, which
+would lower it again.
 
 ## Triage — what the remaining 97 actually are (A6 · A8 · A12 closed 17; A11 withdrew 6)
 
@@ -329,14 +350,52 @@ attachment cards — the port lists both as table rows.
 
 `d-att` `d-attlist` `d-rcpt` `d-rcptlist` `d-filechip` `d-form-ro`
 
-### A7 · الشكل 17 — مهل التدقيق · SCR-W7 · 1
+### A7 · الشكل 15 · 17 — التخصيص السنوي and مهل التدقيق · SCR-W7 · 2 · **✅ DONE**
 
-`project-modules.jsx:1324` `DModFinancialNew` → `features/financials/financials.page.html`
+`project-modules.jsx:1225` (`.d-yalloc`) · `:1324` (`.d-slastages`) `DModFinancialNew`
+→ `features/financials/financials.page.html`
 
-**Already reinvented** — see §D. `.d-slastages .ss/.sh/.dot` is shipped at
-`desktop.css:3042`; the page draws `.epm-slastage`, declared in `web/src/styles.css`.
+**Both were already reinvented** — the largest §D pair after A1, and the A1 note had already
+named the rules that would go with them. `.d-slastages` is shipped at `desktop.css:3041` and
+`.d-yalloc` at `:3023`; the page drew `.epm-cardgrid` of `.d-panel.epm-hrows.epm-slastage`
+and `.epm-bar` + `.d-fig-row`, all declared in `web/src/styles.css`.
 
-`d-slastages`
+Deleted from `styles.css`: `.epm-slastage`, `.epm-cardgrid`, `.epm-hrows`, `.epm-bar` — the
+four the A1 note promised «go with A7». `.epm-reghead` did **not** go, and §A7's row in
+`styles.css` now says why: الشكل 17 has no such row, because the reference carries the
+verdict as `DFGroup`'s `sub` and the current stage inside the `DMsgBar`. This port states
+both up front beside the certificate's own status. That is the port having more to say, not
+a structure it drew differently, so there is nothing in the sheet to adopt.
+
+What the swap actually fixed, measured on the running fixture rather than argued:
+
+- **The stage cards were three different heights.** `.d-slastages .ss` is
+  `grid-template-rows: auto auto 1fr` precisely so a row of them is not — the comment above
+  the rule says so. Re-measured after: all three cards **107px**, footers on one line.
+- **`.d-yalloc .af` is a three-column grid** where `.d-fig-row` was a flex row, so the widest
+  figure can no longer push the other two off the baseline; and `.d-yalloc` is a
+  `container-type: inline-size`, so the terms stack at 520px of its **own** width rather than
+  the viewport's.
+
+Two things the rebuild turned up, both recorded in P-221:
+
+- **The sheet gives `.d-yalloc .track > i` no background.** The reference paints it inline —
+  `background: yrPct > 95 ? 'var(--warning)' : 'var(--viz-1)'` at `project-modules.jsx:1223`
+  — so emitting the sheet's `.track` alone leaves the rail invisible. The fill joins the one
+  rule this port already adds for exactly this reason (`.d-csum-bars .track > i.spend`).
+  Keeping the port's `.epm-track` instead would have supplied a fill but **also** its own
+  background and `margin-block`, and `styles.css` loads last — it would have overridden the
+  sheet it is meant to be adopting. **One colour, not the reference's two:** its >95% branch
+  colours a magnitude by threshold, which `CLAUDE.md` §6 forbids by name, and the
+  near-exhausted state is already carried in words by the msgbar under the strip.
+- **The reference has no per-stage overdue.** `EPM.paymentSLA` (`model.js:732`) emits
+  `done` · `active` · `todo` and treats lateness as one fact about the whole SLA; this port
+  derives it per desk, which is more than the reference knows. `overdue` maps onto `.ss.active`
+  and nothing is lost: the pill reads «تجاوز المهلة», the msgbar states R12's escalation, and
+  the card itself prints «19 يوم مضت» against «السقف 7 يوم». That is 05 §7.6 satisfied three
+  times over; a third dot colour is not what it asks for.
+
+`d-slastages` `d-yalloc`
 
 ### A8 · SCR-W14 — التقارير والتحليلات · 6 · **✅ DONE**
 
@@ -726,9 +785,11 @@ into this file and ask.** Do not resolve it by reverting.
 
 ## Acceptance
 
-The port is done when `node tools/structure-gap.mjs` reports a GAP of **33** — the 27
-intended plus the 6 whose module does not exist — and every `epm-*` selector still resolves.
-Any other number needs a row in this file explaining it.
+The port is done when `node tools/structure-gap.mjs` reports a GAP of **65** and every
+`epm-*` selector still resolves. The 65 is broken out in the table under §The number — it is
+not «the intended plus the module-absent», which is what this line said while nine clusters
+were withdrawing classes into verdicts the sum never saw. Any other number needs a row in
+this file explaining it.
 
 ---
 
