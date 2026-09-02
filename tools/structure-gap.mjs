@@ -81,17 +81,52 @@ for (const f of walk(REF, ['.jsx', '.js'])) {
    nothing in the running prototype. Verified against the live site as well as
    the checked-in copy. See P-210.
 
-   A component counts as mounted if it appears as `<X` or `<window.X` (the
-   prototype crosses files through `window`). A class whose every emitter is
-   unmounted is DEAD in the reference, not missing from the port. */
-const refSrc = walk(REF, ['.jsx', '.js']).map(f => readFileSync(f, 'utf8')).join('\n');
-const mounted = n => new RegExp('<(?:window\\.)?' + n + '[\\s/>]').test(refSrc);
-const liveComponent = new Map();               // component -> boolean
-const isLive = c => [...(proto.get(c) ?? [])].some(fc => {
-  const n = fc.split(':')[1];
-  if (!liveComponent.has(n)) liveComponent.set(n, mounted(n));
-  return liveComponent.get(n);
-});
+   AND IT HAS TO BE TRANSITIVE. Asking only "does `<X` appear anywhere" is one
+   level deep, and the prototype supersedes whole modules: `DBoqWorkspace`
+   (boq-workspace.jsx) replaced `DModBOQ`, and `desktop-workspace.jsx:221` —
+   the workspace router — mounts the new one. Nothing mounts `DModBOQ` at all
+   any more, so `DBOQAssignment` inside it is mounted by dead code and draws
+   nothing. A one-level check called it live and sent A5 off to rebuild a
+   screen the port had already built correctly from the newer component. See
+   P-212.
+
+   So: build the mount graph, then walk it from the entry. `main.jsx` mounts
+   `DesktopApp`; anything reachable from there renders, anything else does not,
+   however many `<X` sites it has. */
+const bodies = new Map();                      // component -> its source body
+const rootMounts = new Set();                  // mounted outside any component
+for (const f of walk(REF, ['.jsx', '.js'])) {
+  const lines = readFileSync(f, 'utf8').split('\n');
+  let cur = null, buf = [];
+  const flush = () => { if (cur) bodies.set(cur, (bodies.get(cur) ?? '') + buf.join('\n')); buf = []; };
+  for (const line of lines) {
+    /* COLUMN 0 ONLY. Every component in these files is declared flush left, and
+       every one of them opens with indented `const AR = …` helpers. Allowing
+       leading whitespace splits a component at its first local const and leaves
+       the component itself holding one line — its own signature — so the walk
+       finds no mounts and declares the entire prototype dead. It did. */
+    const d = line.match(/^(?:export\s+)?(?:function|const)\s+([A-Z][A-Za-z0-9_]*)/);
+    if (d) { flush(); cur = d[1]; }
+    if (cur) buf.push(line);
+    else for (const m of line.matchAll(/<(?:window\.)?([A-Z][A-Za-z0-9_]*)[\s/>]/g)) rootMounts.add(m[1]);
+  }
+  flush();
+}
+const mountsIn = n => [...((bodies.get(n) ?? '').matchAll(/<(?:window\.)?([A-Z][A-Za-z0-9_]*)[\s/>]/g))]
+  .map(m => m[1]);
+
+/* `main.jsx`'s own component is the entry; DesktopApp is what it renders for
+   the desktop app this port is a port of. Mobile and admin roots are included
+   because excluding them would silently reclassify their classes. */
+const reachable = new Set();
+const queue = ['DesktopApp', 'MobileApp', 'Admin', 'App', ...rootMounts];
+while (queue.length) {
+  const n = queue.pop();
+  if (!n || reachable.has(n)) continue;
+  reachable.add(n);
+  for (const k of mountsIn(n)) if (!reachable.has(k)) queue.push(k);
+}
+const isLive = c => [...(proto.get(c) ?? [])].some(fc => reachable.has(fc.split(':')[1]));
 
 /* .ts and .html ONLY. web/src/app/STRUCTURE-GAP.md names 162 of these classes and
    lives inside NG — widen this whitelist and the report reads its own backlog as

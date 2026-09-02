@@ -27,8 +27,8 @@ side is every `.d-*` selector in the shipped sheets.
 | the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
 | missing from the port | 151 | **131** |
-| → **GAP** — and the prototype actually **renders** it | — | **105** |
-| → **DEAD** — its component is never mounted, in the reference either | — | **26** |
+| → **GAP** — and the prototype actually **renders** it | — | **97** |
+| → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
 | cluster | classes | state |
@@ -39,39 +39,35 @@ side is every `.d-*` selector in the shipped sheets.
 | A3 · الشكل 33 review flow | 5 | ❌ **dead** — `DReviewFlow` is never mounted |
 | A4a · الشكل 38 · 39 picker bar + editor row | 3 | **✅ done** |
 | A4b · الشكل 38 · 39 facets, chips, caps | 6 | ⏸ **not markup** — needs a decision |
-| A5 … A17, live remainder | 65 | 🔨 |
-| **D · dead in the reference** | **26** | ❌ do not port |
+| A5 · الربط بالأنشطة | 5 of 7 | ⬛ **dead** — the port already followed the newer component; the 2 live ones fold into A7 and A16/17 |
+| A14 · contract context strip | 0 | ❌ **dead** — same superseded module |
+| A6 … A17, live remainder | 49 | 🔨 |
+| **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
 
-**The first measure said 148 and it was 151.** Three classes — `d-bulkbar`, `d-nav-grp`,
-`d-three` — were counted as ported because a *comment* in a template named them while
-explaining why they are deliberately absent. `tools/structure-gap.mjs` now strips HTML and
-JS comments before tokenising, and those three moved to §B4 where they belonged. Two more
-would have gone the same way this session: the A4b comment naming `.d-vow-facets` and
-`.d-vow-chip` as *not* built would have retired both rows.
+The drift is **omission, not invention**: 151 against 5. Nothing here says the port did
+something wrong instead — and three rounds of correction have said it did rather less wrong
+than the first measure claimed.
+
+### What each correction changed, and why the number keeps moving
+
+1. **148 → 151.** Three classes were counted as ported because a *comment* named them while
+   explaining why they are deliberately absent. The tool now strips HTML and JS comments
+   before tokenising, and `d-bulkbar` · `d-nav-grp` · `d-three` moved to §B4. Two more would
+   have gone the same way this session — the A4b comment naming `.d-vow-facets` and
+   `.d-vow-chip` as *not built* would have retired both rows.
+2. **26 dead.** The measurement read `className=` out of the reference **source**, so
+   components declared, exported to `window`, and never mounted looked like missing markup
+   (P-210).
+3. **26 → 34 dead.** That check was one level deep. A component mounted only *inside* an
+   unmounted one is still unreachable, and the prototype supersedes whole modules — which
+   is how A5 and A14 turned out to be retired screens (P-212).
 
 **Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
-A2b is built. It is no longer the single number this file opened with, because three
-clusters in, three different things turned out to be true: a real port, a missing feature,
-and dead code.
+A2b is built.
 
-**Two corrections have already changed what this file counts.** A2b: the first cluster that
-turned out to be a missing *feature* rather than a structure drawn differently, split out so
-a cluster is not reported done when half of it is a decision waiting to be taken. And §D:
-the measurement read `className=` out of the reference **source**, which counts components
-that are declared, exported to `window`, and never mounted. `node tools/structure-gap.mjs`
-now checks for `<X` or `<window.X` before calling a class missing, and 26 of the 131 turned
-out to draw nothing in the running prototype. **Acceptance is now a GAP of 32** — the 26
-intended-or-absent that remain live, plus A2b's 5, minus the one B3 class that moved to §D.
-
-The drift is **omission, not invention**: 148 against 6. Nothing here says the port did
-something wrong instead; it says it did less.
-
-**115 rebuild · 27 intended · 6 module absent.** Those three totals are the whole of the
-148, and each class below appears in exactly one row.
-
-## Triage — what the remaining 105 actually are
+## Triage — what the remaining 97 actually are
 
 Done after four clusters produced four different outcomes, so the rest is sorted **before**
 anyone starts building rather than one cluster at a time. Every class below has a mounted
@@ -81,9 +77,17 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **57** | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **1** | the port has a documented better equivalent; porting would be a regression |
+
+**Triage started on A5 and A5 stopped existing.** The port's الربط بالأنشطة draws
+`boq-assign-row` · `boq-queue-b` · `boq-qcard` · `boq-remchip` — which are not bespoke at
+all: they are `boq-assign.jsx`'s own classes, and `web/src/styles/boq.css` is a **verbatim
+copy** of the reference's (diff = 0). The port followed `DBoqAssign`, the newer component.
+`d-alloc*` and `d-openrow` come from `DBOQAssignment`, which lives inside `DModBOQ` —
+**superseded and mounted by nothing**. Rebuilding A5 would have replaced correct work with
+retired markup. Same for A14: `DContractCtx` is in the same superseded module. See P-212.
 
 ### behaviour — 11, all already split out
 
@@ -101,24 +105,32 @@ a max nor a hint.
 recorded in `styles.css` as a deliberate improvement. Porting it would undo that. Moved to
 §E.
 
-### markup — 57, by cluster, largest first
+### markup — 49, by cluster, largest first
 
 | cluster | live | evidence checked |
 |---|---|---|
-| A5 · الشكل 12 BOQ + الربط بالأنشطة | 9 | the port HAS the assignment tab (`view() === 'assign'`) with an editable grid, so the data is there; it draws `.d-editgrid`/`.d-cellinput` where the reference draws `.d-openrow` + `.d-alloc*`. A structural rewrite of one tab, like A1. `d-actmenu` is a popover — the port already has `<epm-popover>` |
 | A8 · الشكل 49 reports | 6 | the reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
-| A6 · الأشكال 50–56 supply | 6 | receipts as cards under two subheadings + the item archive; the port lists both as table rows. Content present |
+| A6 · الأشكال 50–56 supply | 7 | receipts as cards under two subheadings + the item archive; the port lists both as table rows. Content present |
 | A12 · الأشكال 21–24 schedule | 6 | `d-sched-stat` `d-val-row` `d-parse` `d-spin` are plain markup; `d-gantt-ext` is the approved-extension ghost bar and needs the amendment's new finish, which the port already reads; `d-act-amd` wraps content the port draws through `<epm-amd-panel>` — it goes **inside** that component |
 | A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
-| A15 · shared primitives | 6 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
-| A13 · charts | 5 | the port has `<epm-scurve>` but **no** mini-timeline; `.d-tl-mini*` is a compact per-row list. The BOQ tab's `.d-mini-bar` is the nearest thing. Needs its rows fed, so it is markup + a data check |
-| A14 · contract context strip | 3 | the port's contract page has no such strip at all; name and value are already on the page |
+| A15 · shared primitives | 7 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
+| A13 · charts | 6 | the port has `<epm-scurve>` but **no** mini-timeline; `.d-tl-mini*` is a compact per-row list. The BOQ tab's `.d-mini-bar` is the nearest thing. Needs its rows fed, so it is markup + a data check |
+| A10 · feed and share bar | 6 | `d-feed*` and `d-dot`. **Check these against الشكل 2 and الشكل 4, not against `DActRows`** — that component is dead, so the only thing still rendering `d-feed*` is admin |
 | A7 · الشكل 15 · 17 financials | 2 | `d-slastages` is a straight swap for the port's `.epm-slastage`; `d-yalloc` is the annual-allocation strip |
-| A10 · feed | 5 | `d-feed*` survive only through `DAdmOverview`, which is admin — see the note in §D-dead about A10 needing re-checking against the plate rather than the component |
-| A16 · A17 · misc | 3 | `d-amdstack` `d-alert-sev` `d-dot` — one element each |
+| A16 · A17 · A5 rest | 3 | `d-amdstack` `d-alert-sev` `d-actmenu` — one element each |
 
-**A5 and A8 are the two that change what a user sees most**, and both are the A1 shape: the
-port built a different structure for content it already has. Neither needs new data.
+Counts computed, not tallied by eye: the four buckets are 36 + 49 + 11 + 1 = 97, and the
+table above sums to 49.
+
+**A8 is now the one that changes what a user sees most**, and it is the A1 shape — a
+different structure built for content the port already has, needing no new data. A5 used to
+head this list; triaging it is what found P-212.
+
+**Read `d-feed*` and `d-panel-body` with care.** Their only remaining emitters are admin and
+profile components — screens this port does not have — so they are "live" only in the sense
+that something renders them *somewhere*. `d-panel-body` is worth adopting regardless,
+because the sheet expects it inside every `.d-panel`. A10 should be checked against الشكل 2
+and الشكل 4 rather than against `DActRows`, which is dead.
 
 | verdict | meaning |
 |---|---|
@@ -485,7 +497,7 @@ what the port needs of it. Low value — confirm and then move this to §B.
 
 ---
 
-## D-dead · 26 classes nothing renders — in the reference either
+## D-dead · 34 classes nothing renders — in the reference either
 
 `node tools/structure-gap.mjs --list` prints these under `--- DEAD ---`. Each is emitted
 only by a component that is **declared, exported to `window`, and never mounted** — no `<X`
@@ -505,6 +517,17 @@ counted against any cluster's total; the clusters below carry their live remaind
 | `DModBOQ` `project-modules.jsx` / `contract-context.jsx` · `D0count` | `d-add-inline` `d-add-trigger` `d-rate-multi` `d-inp` | A5 (14 → 10) |
 | `DMetricList` `desktop-charts.jsx:68` | `d-mlist` `d-mlist-row` | A13 (6 → 4) |
 | `DReadiness` `project-modules.jsx` | `d-ready` | B3 (2 → 1) |
+| **`DBOQAssignment`** — inside `DModBOQ`, which nothing mounts | `d-alloc` `d-alloc-top` `d-alloc-meta` `d-alloc-prog` `d-openrow` | **A5, now dead** |
+| **`DContractCtx`** `contract-context.jsx` — same superseded module | `d-cctx` `d-cctx-f` `d-cctx-r` | **A14, now dead** |
+
+The last two rows are a different kind of dead and are the reason the check had to become
+transitive. `DBOQAssignment` and `DContractCtx` **are** mounted — inside `DModBOQ`, which is
+mounted nowhere. `desktop-workspace.jsx:221`, the workspace router, sends a construction
+project's BOQ tab to `DBoqWorkspace` (`boq-workspace.jsx`) instead, and that is the component
+the port followed: `web/src/styles/boq.css` is a verbatim copy of the reference's, and the
+port's assignment tab emits its `boq-assign-row` · `boq-queue-b` · `boq-qcard` classes
+unchanged. A one-level mount check called all eight live and would have sent a rebuild at a
+screen that was already right.
 
 **A9 and A3 are now empty.** §D also settles P-09 from the other side: the readiness dots
 were "deliberately not ported" — and the reference does not draw them either.
