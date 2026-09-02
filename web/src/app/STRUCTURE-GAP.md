@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **312** |
+| the Angular app emits | 273 | **311** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **106** |
-| → **GAP** — and the prototype actually **renders** it | — | **72** |
+| missing from the port | 151 | **107** |
+| → **GAP** — and the prototype actually **renders** it | — | **73** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -47,7 +47,7 @@ side is every `.d-*` selector in the shipped sheets.
 | A12b · import validation checks | 1 | ⏸ **needs the server to declare its gates** |
 | A12c · `d-sched-stat` | 1 | ⬛ **superseded** by `<epm-status-pill>` |
 | A11 · shell zones and panes | 6 | ⬛ **none portable** — 2 never render, 1 renders empty, 2 are a recorded divergence, 1 would breach §6 |
-| A15a · shared primitives — panel body, callout | 4 | **✅ done** |
+| A15a · shared primitives — callout | 3 | **✅ done** — `d-panel-body` withdrawn, see below |
 | A15b · `d-check` `d-model-topbar` `d-l04-z8fall` | 3 | ⬛ **not portable** — one recorded decision, two superseded |
 | A7 · الشكل 15 · 17 allocation strip + audit SLA | 2 | **✅ done** |
 | A10 · feed and share bar | 6 | ⬛ **out of reach** — only admin and profile render it |
@@ -76,12 +76,12 @@ than the first measure claimed.
    unmounted one is still unreachable, and the prototype supersedes whole modules — which
    is how A5 and A14 turned out to be retired screens (P-212).
 
-**Acceptance is a GAP of 65.** That number replaces two this file used to carry — «40» here
+**Acceptance is a GAP of 66.** That number replaces two this file used to carry — «40» here
 and «33» in §Acceptance — and neither was ever recomputed as clusters withdrew. Both were
 written when the only recorded non-markup verdicts were B and C, so every later withdrawal
 (A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
 into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
-72 that remain are:
+73 that remain are:
 
 | | | |
 |---|---|---|
@@ -93,9 +93,10 @@ into the file's prose and never into its arithmetic. Counted rather than tallied
 | feed, and `d-dot` | 6 | only admin and profile still render them |
 | A12b | 1 | `d-val-row` — waiting on the server's gates |
 | `d-switch` | 1 | admin and profile both — same reach as §C |
+| `d-panel-body` | 1 | **withdrawn at the A7 audit** — admin, profile and one dead component are its only emitters. §A15a |
 | **buildable markup left** | **7** | A13 6 · A5-rest 1 |
 
-29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 7 = 72, so acceptance is 72 − 7 = **65**. Anything else
+29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 7 = 73, so acceptance is 73 − 7 = **66**. Anything else
 needs a row here explaining it — including a later decision to build one of the ⏸ clusters,
 which would lower it again.
 
@@ -544,18 +545,37 @@ The pinned "which contract am I in" strip with its figure and its selector row.
 `desktop-admin.jsx:90` · `desktop-shell.jsx` `DCheck` · `project-modules.jsx` `DModBOQ` /
 `DPaymentWizard` → every page
 
-**A15a — done · 4.** `d-panel-body` and `d-callout*`.
+**A15a — done · 3 of 4.** `d-callout*` stands. **`d-panel-body` was WITHDRAWN at the A7
+audit, and the seven wrappers it added have been removed.**
 
-`d-panel-body` fixed a defect that was recorded as fixed and never was. `styles.css` said
-`.d-panel` carries no padding of its own, that the sheet expects a `.d-panel-body` wrapper
-these pages never used, and that the bodies «all touched the panel border on all four sides.
-Measured: 1px of inset, which is the border». The diagnosis was right. The fix —
+The original diagnosis was right twice and the fix was wrong twice, which is worth keeping in
+full because it is the clearest §D in the file. `styles.css` said `.d-panel` carries no
+padding of its own, that the sheet expects a `.d-panel-body` wrapper these pages never used,
+and that the bodies «all touched the panel border on all four sides. Measured: 1px of inset,
+which is the border». The first fix —
 `.d-panel > .epm-donut-row, .d-panel > .epm-bars, .d-panel > .d-grid.stats { padding }` —
-**matched nothing**: `.epm-donut-row`, `.epm-bars` and `.epm-legend` have no caller anywhere
-in the app, and the three `.d-grid.stats` strips are page-level children, not panel children.
-Re-measured on SCR-E1: eight panels, every body still at 1px. Now four chart components sit
-at 17px and the rest are untouched — `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry their
-own padding, and the `.d-mini` rows are deliberately full-bleed.
+**matched nothing**: those three have no caller anywhere in the app, and the `.d-grid.stats`
+strips are page-level children, not panel children.
+
+A15 then replaced it with `.d-panel-body` around «the four chart components that genuinely
+sat flush». **They never sat flush.** `<epm-scurve>` and `<epm-bar-compare>` both emit
+`.d-chart-card` (`desktop.css:779`) — a card in its own right, with background, border,
+radius, shadow and `padding: 16px 20px 12px`. The wrapper added 16px on top, so those four
+panels were inset about twice as far as everything around them, and the «17px» this
+paragraph used to report was the wrapper's edge, not the chart's.
+
+**Checked against the live prototype, which settles it.** On its dashboard the panels are
+`.d-panel > .d-panel-head + .d-chart-card` — a *direct* child — and the page emits
+`.d-panel-body` **zero** times. The sheet even keys rules on that adjacency
+(`.d-dash-main > .d-panel > .d-chart-card`, `desktop.css:730`; `.d-hero > …`, `:751`), which
+an inserted wrapper stops matching; this port uses neither container, so nothing broke there
+and the padding is the whole of the damage.
+
+`.d-panel-body` has **no home in this port at all**. Its emitters in the reference are
+`DAdmOverview` · `DAdmAssignments` (admin, §C1), `DProfile` (§C2) and `DDistribution` (dead)
+— every one a screen this port does not have. It belongs with the feed classes under «out of
+reach», and it is counted there now. `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry their
+own padding as they always did, and the `.d-mini` rows stay full-bleed. See P-224.
 
 `d-callout` took الشكل 38's «مربع تفسيري لقاعدة الـ20%», which had been `.d-msgbar info` —
 a class the sheet describes as «page-level state, four tones». The 20% rule is not a state;
@@ -833,7 +853,7 @@ into this file and ask.** Do not resolve it by reverting.
 
 ## Acceptance
 
-The port is done when `node tools/structure-gap.mjs` reports a GAP of **65** and every
+The port is done when `node tools/structure-gap.mjs` reports a GAP of **66** and every
 `epm-*` selector still resolves. The 65 is broken out in the table under §The number — it is
 not «the intended plus the module-absent», which is what this line said while nine clusters
 were withdrawing classes into verdicts the sum never saw. Any other number needs a row in

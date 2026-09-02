@@ -827,15 +827,31 @@ epm-schedule-control-page > epm-page-head .d-page-head {
    right about the defect and wrong about the fix: `.epm-donut-row`, `.epm-bars`
    and `.epm-legend` have no caller anywhere in the app, and the three
    `.d-grid.stats` strips are page-level children, not panel children. So the
-   selector matched NOTHING and every panel body still sat at 1px of inset —
-   measured on SCR-E1, eight panels, all of them.
+   selector matched NOTHING and every panel body still sat at 1px of inset.
 
-   `.d-panel-body` (desktop.css:286) is the wrapper the sheet has always
-   expected. It is applied to the four chart components that genuinely sat
-   flush — two `<epm-scurve>` and two `<epm-bar-compare>` — and to nothing
-   else: `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry their own padding,
-   and the `.d-mini` rows are deliberately full-bleed so their hover spans the
-   row. See P-219. */
+   ── AND THEN THE REPLACEMENT WAS WRONG TOO. WITHDRAWN AT A7'S AUDIT. ──────
+   A15 wrapped four chart components in `.d-panel-body` «that genuinely sat
+   flush». **They never sat flush.** `<epm-scurve>` and `<epm-bar-compare>`
+   both emit `.d-chart-card` (desktop.css:779), which is a card in its own
+   right — background, border, radius, shadow and `padding: 16px 20px 12px`.
+   The wrapper added 16px on top of that, so those four panels were inset
+   roughly twice as far as everything around them.
+
+   Checked against the LIVE prototype, which settles it: on the dashboard its
+   panels are `.d-panel > .d-panel-head + .d-chart-card`, a DIRECT child, and
+   the page emits `.d-panel-body` **zero** times. The sheet even has rules
+   keyed on that adjacency — `.d-dash-main > .d-panel > .d-chart-card` at
+   desktop.css:730 and `.d-hero > …` at :751 — which an inserted wrapper would
+   stop matching (this port uses neither container, so nothing broke there;
+   the padding is the whole of the damage).
+
+   `.d-panel-body` has no home in this port at all. Its only emitters in the
+   reference are `DAdmOverview` · `DAdmAssignments` (admin, §C1), `DProfile`
+   (§C2) and `DDistribution` (dead) — screens this port does not have. It
+   belongs with the feed classes in «out of reach», not in the backlog. All
+   seven wrappers are gone; `.d-tl-band`, `.d-donut-row` and `.d-hbars` carry
+   their own padding as before, and the `.d-mini` rows stay full-bleed so
+   their hover spans the row. See P-219 and P-224. */
 
 /* The two-panel row inherits `.d-grid`'s 12px gap, which reads as a seam next
    to the 16px rhythm above and below it. Matching them makes the horizontal
@@ -1142,21 +1158,32 @@ button.d-file > .fm { align-items: flex-start; }
    `background: color-mix(in srgb, ${s.color} 15%, transparent); color:
    ${s.color}` at alerts-module.jsx:25, off `ALERT_SEV`.
 
-   The tones are the ones `.d-pill` already uses (desktop.css:1671-1675), NOT
-   the reference's older `var(--error)` set, so severity in the rules table
-   reads identically to severity everywhere else in this app. `ALERT_SEV` does
-   carry a `.cls` field naming exactly these three — `stalled` · `suspended` ·
-   `completed` — and nothing in the reference consumes it; the port's rules
-   table had been drawing `.d-pill` off the same mapping, which is why this is
-   a change of geometry and glyph rather than of colour.
+   `ALERT_SEV`'s three colours are `var(--error)` · `var(--status-suspended-tx)`
+   · `var(--status-completed-tx)`. Checked against the LIVE prototype in both
+   themes, those resolve to exactly the tokens used below — `--error` and
+   `--status-delayed-tx` are the same value in light (#C22B2E) and in dark
+   (#F58C8E), and the other two are their own `-tx`. So this is the reference's
+   palette, reached through the status vocabulary the rest of the app already
+   speaks. `ALERT_SEV` even carries a `.cls` field naming these three —
+   `stalled` · `suspended` · `completed` — which nothing in the reference
+   consumes; the port's rules table had been drawing `.d-pill` off the same
+   mapping, which is why this is a change of geometry and glyph, not of colour.
+
+   **15% flat, matching `DAlertSev`** — not `.d-pill`'s 14 / 17 / 15. The sheet
+   nudges its amber pill to 17% because amber at 15% goes faint against the
+   surface (desktop.css:1674), and that adjustment is real; but the component
+   being ported paints a flat `color-mix(… 15%, transparent)` at all three, and
+   where the two disagree the thing being ported wins. Recorded rather than
+   silently averaged, because the sheet's reading is the better one and a later
+   pass may well prefer it.
 
    The glyph is the point. `.d-pill::before` is the same 6px dot for all three
    severities, so shape carries nothing and colour does the work alone;
    `.d-alert-sev` takes a per-severity icon — warning · error · info — which is
    the «shape + colour + accessible label» that 05 §7.6 and the reference's own
    DSevDot comment both ask for. */
-.d-alert-sev.stalled   { background: color-mix(in srgb, var(--status-delayed) 14%, transparent);   color: var(--status-delayed-tx); }
-.d-alert-sev.suspended { background: color-mix(in srgb, var(--status-suspended) 17%, transparent); color: var(--status-suspended-tx); }
+.d-alert-sev.stalled   { background: color-mix(in srgb, var(--status-delayed) 15%, transparent);   color: var(--status-delayed-tx); }
+.d-alert-sev.suspended { background: color-mix(in srgb, var(--status-suspended) 15%, transparent); color: var(--status-suspended-tx); }
 .d-alert-sev.completed { background: color-mix(in srgb, var(--status-completed) 15%, transparent); color: var(--status-completed-tx); }
 
 /* ── E · «شريط تذييل ثابت» ─────────────────────────────────────────────────

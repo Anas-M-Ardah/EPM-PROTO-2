@@ -132,10 +132,8 @@
                   </span>
                 }
               </div>
-              <div class="d-panel-body">
-                <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
-                            [caption]="lang.t('prt_curve_progress')" />
-              </div>
+              <epm-scurve [data]="progressCurve()" color="var(--viz-1)"
+                          [caption]="lang.t('prt_curve_progress')" />
             </div>
           </div>
         }
@@ -216,10 +214,8 @@
                 </span>
               }
             </div>
-            <div class="d-panel-body">
-              <epm-scurve [data]="costCurve()" color="var(--success)"
-                          [caption]="lang.t('prt_curve_cost')" />
-            </div>
+            <epm-scurve [data]="costCurve()" color="var(--success)"
+                        [caption]="lang.t('prt_curve_cost')" />
           </div>
         </div>
       }
@@ -364,9 +360,7 @@
       @if (hasCost()) {
         <div class="d-panel">
           <div class="d-panel-head"><b>{{ lang.t('prt_cost_compare') }}</b></div>
-          <div class="d-panel-body">
-            <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
-          </div>
+          <epm-bar-compare [items]="costBars()" [caption]="lang.t('prt_cost_compare')" />
         </div>
       }
 
@@ -376,9 +370,7 @@
             <b>{{ lang.t('prt_annual_spend') }}</b>
             <span class="d-cell-sub">{{ lang.t('prt_annual_sub') }}</span>
           </div>
-          <div class="d-panel-body">
-            <epm-bar-compare [items]="spendBars()" [caption]="lang.t('prt_annual_spend')" />
-          </div>
+          <epm-bar-compare [items]="spendBars()" [caption]="lang.t('prt_annual_spend')" />
         </div>
       }
 
