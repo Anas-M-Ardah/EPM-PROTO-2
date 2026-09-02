@@ -212,7 +212,12 @@
                   <th>{{ lang.t('chg_col_no') }}</th>
                   <th>{{ lang.t('chg_col_order') }}</th>
                   <th class="r">{{ lang.t('chg_col_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
-                  <th class="r">{{ lang.t('chg_col_days') }}</th>
+                  <!-- The unit rides in `.cur`, the same way القيمة's (د.ع)
+                       does one column over — `vo-record.jsx:724`. The A7 audit
+                       found this header alone dropping it, so the column said
+                       «المدة» and left the reader to guess days. -->
+                  <th class="r">{{ lang.t('chg_col_days') }}
+                    <span class="cur">({{ lang.t('scd_days') }})</span></th>
                   <th>{{ lang.t('chg_col_status') }}</th>
                   <th>{{ lang.t('chg_col_owner') }}</th>
                   <th class="r">{{ lang.t('chg_col_files') }}</th>
@@ -283,8 +288,20 @@
                       </div>
                     </td>
 
-                    <!-- The owning DESK, which is a party name and wraps. -->
-                    <td class="wrap">
+                    <!-- The owning DESK, which is a party name and wraps.
+                         `.d-cell-sub` on the CELL is the reference's own
+                         (`vo-record.jsx:752` — `td.d-cell-sub.wrap`).
+
+                         IT CHANGES NOTHING VISUALLY, AND THAT IS NOT A BUG TO
+                         FIX. `.d-line-table tbody td` (0,2,1) beats
+                         `.d-cell-sub` (0,1,0), so the cell keeps the body
+                         colour — measured on the LIVE prototype, where this
+                         same class sits on this same cell and is equally
+                         inert. The class is here so the two DOMs agree; adding
+                         CSS to «make it work» would diverge from the reference
+                         rather than match it. The `.d-cell-sub` on the date
+                         line INSIDE the cell does apply, and always did. -->
+                    <td class="d-cell-sub wrap">
                       <div>{{ r.currentOwner || '—' }}</div>
                       <div class="d-cell-sub mono">
                         <bdi>{{ fmt.date(r.lastActionDate) }}</bdi>
