@@ -24,10 +24,10 @@ side is every `.d-*` selector in the shipped sheets.
 | | at first measure | now |
 |---|---|---|
 | the prototype emits | 411 `d-*` classes | **411** |
-| the Angular app emits | 273 | **318** |
+| the Angular app emits | 273 | **319** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **100** |
-| → **GAP** — and the prototype actually **renders** it | — | **66** |
+| missing from the port | 151 | **99** |
+| → **GAP** — and the prototype actually **renders** it | — | **65** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -56,7 +56,7 @@ side is every `.d-*` selector in the shipped sheets.
 | A13 · charts — mini timeline + line trend | 6 | **✅ done** — and it needed an endpoint field |
 | A5-rest · `d-actmenu` توزيع menu | 1 | **✅ done** |
 | **D · dead in the reference** | **34** | ❌ do not port |
-| B · intended | 29 | — |
+| B · intended | 28 | — |
 | C · module absent | 6 | — |
 
 The drift is **omission, not invention**: 151 against 5. Nothing here says the port did
@@ -77,16 +77,16 @@ than the first measure claimed.
    unmounted one is still unreachable, and the prototype supersedes whole modules — which
    is how A5 and A14 turned out to be retired screens (P-212).
 
-**Acceptance is a GAP of 66.** That number replaces two this file used to carry — «40» here
+**Acceptance is a GAP of 65.** That number replaces two this file used to carry — «40» here
 and «33» in §Acceptance — and neither was ever recomputed as clusters withdrew. Both were
 written when the only recorded non-markup verdicts were B and C, so every later withdrawal
 (A11's 6, A15b's 3, the superseded pair, A12b's 1, A4b's 6, the feed's 6, `d-switch`) went
 into the file's prose and never into its arithmetic. Counted rather than tallied by eye, the
-66 that remain are:
+65 that remain are:
 
 | | | |
 |---|---|---|
-| **B** intended | 29 | BIM/IFC 19 · drawings viewer 6 · readiness 1 · §B4 3 |
+| **B** intended | 28 | BIM/IFC 19 · drawings viewer 6 · §B4 3 — readiness LEFT this bucket, see §B3 |
 | **C** module absent | 6 | administration 4 · profile 2 |
 | behaviour | 11 | A2b 5 · A4b 6 |
 | A11 shell | 6 | none portable — see §A11 |
@@ -97,7 +97,7 @@ into the file's prose and never into its arithmetic. Counted rather than tallied
 | `d-panel-body` | 1 | **withdrawn at the A7 audit** — admin, profile and one dead component are its only emitters. §A15a |
 | **buildable markup left** | **0** | — the backlog is empty |
 
-29 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 0 = 66, and the measured GAP is **66**. ACCEPTANCE IS MET. Anything else
+28 + 6 + 11 + 6 + 5 + 6 + 1 + 1 + 1 + 0 = 65, and the measured GAP is **65**. ACCEPTANCE IS MET. Anything else
 needs a row here explaining it — including a later decision to build one of the ⏸ clusters,
 which would lower it again.
 
@@ -116,7 +116,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 
 | verdict | classes | what it means |
 |---|---|---|
-| **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
+| **not reachable** | **35** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
 | **markup** | **49** — 0 left; A11 withdrew 6, A15 withdrew 3 | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **4** | the port has a documented better equivalent; porting would be a regression |
@@ -758,12 +758,40 @@ why each looked ported:
 
 `d-bulkbar` `d-nav-grp` `d-three`
 
-### B3 · Module readiness dots — P-09 · 2
+### B3 · ~~Module readiness dots — P-09~~ · 1 · **`d-tab-ready` BUILT, and this row was wrong**
 
-`desktop-workspace.jsx` `DProjectDetail` · `project-modules.jsx` `DReadiness`. The rail
-shows a phase note in that slot instead.
+`desktop-workspace.jsx:187` `DProjectDetail` → `features/workspace/workspace.page.html`
 
-`d-ready` `d-tab-ready`
+**This entry did not survive being read against the client document.** It said the dots were
+a recorded omission and cited **P-09** — which is the rule that a value the system cannot
+yet derive returns null and renders an em dash. That rule has nothing to say about readiness
+dots, so an explicit requirement of ملحق الشكل 4 was sitting unbuilt behind a citation that
+did not cover it.
+
+The plate is unambiguous. الشكل 4's «الوظائف والخصائص الظاهرة» reads: *«تنقّل جانبي مقسّم إلى
+أربع مجموعات (التعريف · التنفيذ والمتابعة · السجلات والوثائق · الرقابة) **بنقاط حالة ملوّنة
+لكل وحدة**»* — and «جاهزية الوحدات» is named in the screen's stated purpose. The four groups
+already matched exactly; the dots did not exist.
+
+**Built from real state, not the reference's.** `buildReadiness()` (`data.jsx:475`) is
+labelled «(demo)» in its own comment, derives some states from `tech` via 90/40/0 thresholds,
+and **picks two at random** — `pick(['approved','inprogress','na'])` off a seeded RNG on the
+project id. Porting its VALUES would have put a dice roll on the first screen a manager
+opens. The dots read `Domain/ModuleReadiness` instead: row counts per module and what is
+actually waiting on a person.
+
+One endpoint was added — `[EP-OVW-02] GET /api/projects/{id}/modules` — because the rail
+frames all fifteen module screens and should not pull two S-curves and the earned value for
+fourteen small integers. The fact-gathering was **extracted** rather than copied, so
+`[EP-OVW-01]` and `[EP-OVW-02]` return the same states from one method: verified, both give
+`13/14` and the identical fourteen. That matters because «خط سير المراحل»'s «الإجراء التالي
+المطلوب» button navigates to the rail entry beside its own step.
+
+**This bucket is now empty.** `d-ready` — `DReadiness`'s full pill, with an icon and a word —
+is not here and never was: `DReadiness` is declared, exported and **mounted nowhere**, so it
+sits in §D with the rest of the dead. That is why B drops 29 → 28 and leaves no survivor. See P-227.
+
+*(no classes)*
 
 ---
 
@@ -922,17 +950,17 @@ into this file and ask.** Do not resolve it by reverting.
 
 ## Acceptance
 
-The port is done when `node tools/structure-gap.mjs` reports a GAP of **66** and every
+The port is done when `node tools/structure-gap.mjs` reports a GAP of **65** and every
 `epm-*` selector still resolves. **Both hold as of this pass** — 66 measured, 30 selectors
 resolving, `<epm-select>` at 30 callers, and OWN unchanged at 5.
 
-The 66 is broken out in the table under §The number — it is not «the intended plus the
+The 65 is broken out in the table under §The number — it is not «the intended plus the
 module-absent», which is what this line said while nine clusters were withdrawing classes
 into verdicts the sum never saw. Any other number needs a row in this file explaining it.
 
 **What «done» does and does not mean here.** The markup backlog is empty: every class the
 prototype renders, that this port has a screen for, is now emitted. The 66 that remain are
-19 + 6 + 1 + 3 intended, 6 whose module does not exist, 11 that are behaviour behind a
+19 + 6 + 3 intended, 6 whose module does not exist, 11 that are behaviour behind a
 decision, and 20 withdrawn with a reason apiece. The two ⏸ clusters — A2b's focus mode and
 A4b's facets and caps — are the only ones a later decision could still turn into work, and
 `d-vow-cap` is the one of those worth building on its own merits (`CLAUDE.md` §6 wants
