@@ -26,8 +26,8 @@ side is every `.d-*` selector in the shipped sheets.
 | the prototype emits | 411 `d-*` classes | **411** |
 | the Angular app emits | 273 | **288** |
 | defined in the shipped stylesheets | 530 | **530** |
-| missing from the port | 151 | **125** |
-| → **GAP** — and the prototype actually **renders** it | — | **91** |
+| missing from the port | 151 | **118** |
+| → **GAP** — and the prototype actually **renders** it | — | **84** |
 | → **DEAD** — its component is never mounted *or is inside one that is not* | — | **34** |
 | **OWN** — emitted by Angular, absent from the prototype | 6 | **5** |
 
@@ -42,7 +42,8 @@ side is every `.d-*` selector in the shipped sheets.
 | A5 · الربط بالأنشطة | 5 of 7 | ⬛ **dead** — the port already followed the newer component; the 2 live ones fold into A7 and A16/17 |
 | A14 · contract context strip | 0 | ❌ **dead** — same superseded module |
 | A8 · SCR-W14 report shell + bodies | 6 | **✅ done** — and it needed a new endpoint |
-| A6 … A17, live remainder | 43 | 🔨 |
+| A6 · الأشكال 50–56 supply receipts + archive | 7 | **✅ done** |
+| A7 … A17, live remainder | 36 | 🔨 |
 | **D · dead in the reference** | **34** | ❌ do not port |
 | B · intended | 29 | — |
 | C · module absent | 6 | — |
@@ -68,7 +69,7 @@ than the first measure claimed.
 **Acceptance is a GAP of 40** — 29 intended, 6 module-absent, 5 for A2b — dropping to 35 if
 A2b is built.
 
-## Triage — what the remaining 97 actually are (A8 has since closed 6)
+## Triage — what the remaining 97 actually are (A8 and A6 have since closed 13)
 
 Done after four clusters produced four different outcomes, so the rest is sorted **before**
 anyone starts building rather than one cluster at a time. Every class below has a mounted
@@ -78,7 +79,7 @@ question the mount check cannot answer: *is this markup, or is it a feature?*
 | verdict | classes | what it means |
 |---|---|---|
 | **not reachable** | **36** | the screen is out of the port's scope — the model viewer, the drawings viewer, admin, profile. Nothing to do until that scope changes |
-| **markup** | **49** — 43 left | the port renders the same content in a different structure. This is the real backlog |
+| **markup** | **49** — 36 left | the port renders the same content in a different structure. This is the real backlog |
 | **behaviour** | **11** | needs state or interaction the port does not have. Each needs a decision, not a template edit |
 | **superseded** | **1** | the port has a documented better equivalent; porting would be a regression |
 
@@ -111,7 +112,7 @@ recorded in `styles.css` as a deliberate improvement. Porting it would undo that
 | cluster | live | evidence checked |
 |---|---|---|
 | A8 · SCR-W14 reports ✅ | 6 | **done, and it was not the markup this table predicted** — see below. The reference is a two-pane `.d-report-shell` — category rail + view; the port filters a flat table with `.d-fchip`. The selection state already exists as the category filter, so it moves rather than gets built |
-| A6 · الأشكال 50–56 supply | 7 | receipts as cards under two subheadings + the item archive; the port lists both as table rows. Content present |
+| A6 · الأشكال 50–56 supply ✅ | 7 | **done, and the prediction was half right.** The port DID draw cards under two subheadings — with a bespoke `.sup-card` while `.d-rcpt` and `.d-att` sat shipped and unused. What the table missed: every receipt carries `documents` that **nothing rendered at all** |
 | A12 · الأشكال 21–24 schedule | 6 | `d-sched-stat` `d-val-row` `d-parse` `d-spin` are plain markup; `d-gantt-ext` is the approved-extension ghost bar and needs the amendment's new finish, which the port already reads; `d-act-amd` wraps content the port draws through `<epm-amd-panel>` — it goes **inside** that component |
 | A11 · shell zones and panes | 6 | `d-pz3` and `d-pz4` are absent zones — the shell jumps `d-pz2` → `d-pz5`. `d-ctxmenu` needs a right-click handler (light) |
 | A15 · shared primitives | 7 | `d-panel-body` `d-callout*` `d-check` `d-model-topbar` `d-l04-z8fall`. Small, and they repaint every screen at once. `d-panel-body`'s only reference callers are unported screens, but the sheet expects it inside every `.d-panel` — adopt anyway |
@@ -193,8 +194,15 @@ The register was `.d-tablewrap` + `.d-table` + an inline `min-width: 1240px`; it
 sheet's `.d-vow-tw.wide-voreg` + `.d-line-table.d-vo-reg`. Three things follow, all of them
 the sheet's own: the min-width stops being a number in the template, the register gains
 `max-height: 62vh` with its own scroll so the filter bar and footer stay in view, and the
-type drops from `.d-table`'s **14px — a size not on the eight-step scale at all** — to
-`--fs-200`. The cell contract came with it (`.code`, `.name.wrap`, `.r.num`), which is
+type drops from `.d-table`'s hard-coded `14px` to `.d-line-table`'s `--fs-200`.
+
+**A correction to what this paragraph first said.** It claimed 14px is «not on the eight-step
+scale at all», citing `CLAUDE.md` §6 — *"11 / 11.5 / 12 / 13 / 15 / 18 / 21 / 24"*. That is
+the **pre-v1.1** scale. The shipped tokens are `--fs-100…1000` = **10 · 12 · 14 · 16 · 20 ·
+24 · 28 · 32 · 40 · 68**, so 14px is `--fs-300` and squarely on it. The swap is still right —
+`.d-line-table` is the sheet's own «doc's `table.dg` contract, applied to every in-page
+grid», and it drops an inline `min-width` — but the type-scale argument was false. §6 has not
+been updated since Phase 1.5 replaced the palette and the scale together; see P-214. The cell contract came with it (`.code`, `.name.wrap`, `.r.num`), which is
 load-bearing: `.d-line-table tbody td` is `white-space: nowrap`.
 
 The المسار tab was three sections stacked in one column, which put the decision *below* the

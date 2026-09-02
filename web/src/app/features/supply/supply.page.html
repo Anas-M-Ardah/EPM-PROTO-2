@@ -422,38 +422,61 @@
                         · <bdi>{{ countOf(p.receipts, kind) }}</bdi>
                       </span>
 
-                      @for (r of p.receipts; track r.id) {
-                        @if (r.kind === kind) {
-                          <div class="d-card-sub sup-card">
-                            <div class="hd">
-                              <b class="mono"><bdi>{{ r.no }}</bdi></b>
-                              <span class="mono"><bdi>{{ fmt.qty(r.qty) }}</bdi> {{ p.item.unit }}</span>
-                              <span class="sp"></span>
-                              <span class="d-cell-sub mono"><bdi>{{ fmt.date(r.date) }}</bdi></span>
-                            </div>
-                            <div class="d-form-grid">
-                              <div class="d-form-i">
-                                <span class="k">{{ kind === 'warehouse' ? lang.t('sup_store') : lang.t('sup_receiver') }}</span>
-                                <span class="v">{{ r.party }}</span>
+                      <!-- `.d-rcptlist` / `.d-rcpt` — `DModSupplyItems`
+                           supply-items.jsx:429. A receipt is a RECORD, so the
+                           sheet gives it a header line (number · quantity ·
+                           date), one `.who` line for the party and its
+                           committee or conformity, and the note under that.
+                           The port had been drawing `.d-card-sub sup-card` with
+                           a `.d-form-grid` inside — a label/value form for six
+                           facts that belong on two lines, and `.sup-card` was
+                           bespoke while this sat shipped and unused. -->
+                      <div class="d-rcptlist">
+                        @for (r of p.receipts; track r.id) {
+                          @if (r.kind === kind) {
+                            <div class="d-rcpt">
+                              <div class="hd">
+                                <span class="no"><bdi>{{ r.no }}</bdi></span>
+                                <span class="sp"></span>
+                                <span class="qty num"><bdi>{{ fmt.qty(r.qty) }}</bdi> {{ p.item.unit }}</span>
+                                <time class="num"><bdi>{{ fmt.date(r.date) }}</bdi></time>
                               </div>
-                              <div class="d-form-i">
-                                <span class="k">{{ lang.t('sup_committee') }}</span>
-                                <span class="v">{{ r.committee }}</span>
+                              <!-- الجهة أو المخزن · واللجنة أو نتيجة المطابقة.
+                                   One line, as the plate lists them: a warehouse
+                                   receipt is signed by a committee, a
+                                   preliminary one carries a conformity result
+                                   (الشكل 53 · الشكل 54). -->
+                              <div class="who">
+                                {{ r.party }}@if (kind === 'warehouse') {
+                                  @if (r.committee) { · {{ r.committee }} }
+                                } @else {
+                                  @if (r.conformity) { · {{ r.conformity }} }
+                                }
                               </div>
-                              <div class="d-form-i">
-                                <span class="k">{{ lang.t('sup_conformity') }}</span>
-                                <span class="v">{{ r.conformity || '—' }}</span>
-                              </div>
-                              @if (r.notes) {
-                                <div class="d-form-i">
-                                  <span class="k">{{ lang.t('pay_w_note') }}</span>
-                                  <span class="v">{{ r.notes }}</span>
+                              @if (r.notes) { <div class="nt">{{ r.notes }}</div> }
+
+                              <!-- THE RECEIPT'S OWN EVIDENCE, which this screen
+                                   has never shown: every row carries
+                                   `documents`, and nothing rendered them — only
+                                   the item-level archive below. «مستندات
+                                   الاستلام» is الشكل 53's own section, so a
+                                   receipt with no visible file read as a
+                                   receipt with none. -->
+                              @if (r.documents.length) {
+                                <div class="fls">
+                                  @for (f of r.documents; track f.fileName) {
+                                    <button type="button" class="d-filechip" [title]="f.fileName"
+                                            (click)="toast.demo('معاينة ' + f.fileName, 'Preview ' + f.fileName)">
+                                      <epm-icon [name]="fileIcon(f.fileName)" [size]="13" />
+                                      <span class="nm"><bdi>{{ f.fileName }}</bdi></span>
+                                    </button>
+                                  }
                                 </div>
                               }
                             </div>
-                          </div>
+                          }
                         }
-                      }
+                      </div>
 
                       @if (countOf(p.receipts, kind) === 0) {
                         <p class="d-cell-sub">{{ lang.t('sup_kind_none') }}</p>
@@ -472,30 +495,31 @@
                     @if (p.documents.length === 0) {
                       <p class="d-cell-sub">{{ lang.t('sup_archive_empty') }}</p>
                     } @else {
+                      <!-- `.d-attlist` / `.d-att` — supply-items.jsx:459. An
+                           attached document is ONE row: type icon, the file
+                           name over its meta line, and the preview control at
+                           the end. The port had a second card vocabulary here
+                           too, with a form grid for two facts that the sheet
+                           puts on one `.num` line. -->
+                      <div class="d-attlist">
                       @for (doc of p.documents; track $index) {
-                        <div class="d-card-sub sup-card doc">
-                          <div class="hd">
-                            <epm-icon [name]="fileIcon(doc.fileName)" [size]="16" />
-                            <b class="mono"><bdi>{{ doc.fileName }}</bdi></b>
-                            <span class="sp"></span>
-                            <button type="button" class="d-icon-btn sm"
-                                    [attr.aria-label]="lang.t('sup_preview')"
-                                    (click)="preview(doc)">
-                              <epm-icon name="visibility" [size]="15" />
-                            </button>
-                          </div>
-                          <div class="d-form-grid">
-                            <div class="d-form-i">
-                              <span class="k">{{ lang.t('sup_doc_title') }}</span>
-                              <span class="v">{{ lang.pick(doc.titleAr, doc.titleEn) }}</span>
-                            </div>
-                            <div class="d-form-i">
-                              <span class="k">{{ lang.t('pay_w_size') }}</span>
-                              <span class="v mono"><bdi>{{ size(doc.sizeBytes) }}</bdi></span>
-                            </div>
-                          </div>
+                        <div class="d-att">
+                          <epm-icon [name]="fileIcon(doc.fileName)" [size]="16" />
+                          <span class="tx">
+                            <b [title]="doc.fileName">{{ doc.fileName }}</b>
+                            <span class="num">
+                              {{ lang.pick(doc.titleAr, doc.titleEn) }}
+                              · <bdi>{{ size(doc.sizeBytes) }}</bdi>
+                            </span>
+                          </span>
+                          <button type="button" class="d-icon-btn sm"
+                                  [attr.aria-label]="lang.t('sup_preview')"
+                                  (click)="preview(doc)">
+                            <epm-icon name="visibility" [size]="15" />
+                          </button>
                         </div>
                       }
+                      </div>
                     }
                   </div>
                 }
@@ -593,7 +617,12 @@
             <!-- «رقم الاستلام غير قابل للتحرير» — generated by the server, and
                  there is no field for it here at all. -->
             <span class="k">{{ lang.t('sup_receipt_no') }}</span>
-            <span class="v d-cell-sub">{{ lang.t('sup_no_auto') }}</span>
+            <!-- `.d-form-ro` is the sheet's read-only VALUE (supply-items.jsx:247):
+                 it takes a control's height so a generated field sits on the
+                 same baseline as the inputs beside it, instead of collapsing to
+                 a caption. الشكل 53 draws the number as a field you cannot
+                 edit, not as a note. -->
+            <span class="d-form-ro">{{ lang.t('sup_no_auto') }}</span>
           </div>
           <label class="d-form-i">
             <span class="k">{{ lang.t('prg_updates_at') }}</span>
@@ -604,8 +633,12 @@
             <span class="k">{{ lang.t('sup_qty') }} *</span>
             <input class="d-form-input num" inputmode="decimal" [value]="rQty()"
                    (input)="setQty($any($event.target).value, $any($event.target))" />
-            <!-- 05 §6 — the cap, explained where it applies. -->
-            <span class="d-cell-sub">{{ lang.t('sup_cap') }}
+            <!-- 05 §6 — the cap, explained where it applies. `.d-form-hint` is
+                 the sheet's own hint tone (supply-items.jsx:252): a ceiling is
+                 a caution, not body text, and `--status-suspended-tx` is what
+                 the rest of the app already uses to say «this is a limit».
+                 الشكل 53 puts «مع تلميح بالكمية المتبقية» under this field. -->
+            <span class="d-form-hint">{{ lang.t('sup_cap') }}
               <bdi class="mono">{{ fmt.qty(cap()) }}</bdi> {{ p.item.unit }}</span>
           </label>
 

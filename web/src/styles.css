@@ -1347,21 +1347,15 @@ button.d-file > .fm { align-items: flex-start; }
 }
 .d-drop:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-/* ── الشكل 52 — «بطاقات استلام» و«بطاقات مستندات» ────────────────────────
-   The plate asks for CARDS: «بطاقات استلام مصنفة تحت عنوانين فرعيين … تحمل كل
-   بطاقة رقم الاستلام والكمية والتاريخ والجهة أو المخزن واللجنة ونتيجة
-   المطابقة». `.d-card-sub` (desktop.css:990) is the copied stylesheet's own
-   card and does all the work — border, radius, surface. What it has no rule
-   for is a HEADER ROW inside one, because nothing in the reference puts a
-   three-part head on a sub-card. That row is the whole of what follows. */
-.sup-card { margin-bottom: var(--space-8, 8px); }
-.sup-card > .hd {
-  display: flex; align-items: center; gap: var(--space-10, 10px);
-  padding: var(--space-8, 8px) var(--space-12, 12px);
-  border-bottom: 1px solid var(--outline-variant);
-}
-.sup-card > .hd > .sp { flex: 1; }
-.sup-card > .d-form-grid { padding: var(--space-10, 10px) var(--space-12, 12px); }
+/* REMOVED at the A6 structure port: `.sup-card`.
+   الشكل 52's receipt and document cards are `.d-rcptlist`/`.d-rcpt` and
+   `.d-attlist`/`.d-att` — `desktop.css:3546` and `:3526`, from
+   `DModSupplyItems` supply-items.jsx:429 and :459, copied at Phase 1.5 and
+   never called. The claim above — that the sheet «has no rule for a header row
+   inside a sub-card» — was true of `.d-card-sub` and false of the sheet: the
+   receipt card's header, its `.who` line and its `.nt` note were all already
+   there, and so was `.fls` for the files this screen was not drawing at all.
+   See P-214 and web/src/app/STRUCTURE-GAP.md §A6. */
 
 /* ── الشكل 50's «الاستلام» cell ──────────────────────────────────────────
    Three parts in one cell, and the plate is explicit about all three: a
