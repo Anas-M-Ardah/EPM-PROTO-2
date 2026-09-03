@@ -1613,6 +1613,17 @@ const STR = {
   scd_empty_t:     { ar: 'لا جدول زمني لهذا العقد',        en: 'No schedule for this contract' },
   scd_empty_b:     { ar: 'يُستورد الجدول الزمني من Primavera P6. حمّل بيانات العرض للبدء.',
                      en: 'The schedule is imported from Primavera P6. Load the demo fixture to begin.' },
+  // 04 §9 — empty BECAUSE NOTHING WAS IMPORTED and empty BECAUSE THE IMPORT IS
+  // NOT APPROVED YET are two different states with two different buttons. The
+  // pair above told a person whose file is sitting in the approval queue to
+  // «load the demo data», which reads as «your import did not work» — the
+  // opposite of the truth, and it contradicted the pending bar on the same
+  // screen. The version's file name and activity count are named beside them,
+  // for the same reason the bar names them: they are the proof it landed.
+  scd_empty_pend_t:{ ar: 'استُورد الجدول الزمني وينتظر الاعتماد',
+                     en: 'The schedule is imported and awaiting approval' },
+  scd_empty_pend_b:{ ar: 'لا خط أساس نافذ لهذا العقد بعد، والإصدار المقدَّم لا يصير جدولاً حتى يُعتمد. تظهر الأنشطة فور اعتماده.',
+                     en: 'This contract has no baseline in force yet, and a submitted version does not become the schedule until it is approved. The activities appear as soon as it is.' },
   scd_nocrit_t:    { ar: 'لا أنشطة على المسار الحرج',      en: 'No activities on the critical path' },
   scd_nocrit_b:    { ar: 'ألغِ مرشّح المسار الحرج لعرض الجدول كاملاً.',
                      en: 'Clear the critical-path filter to see the whole schedule.' },
