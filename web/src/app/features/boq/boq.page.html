@@ -312,16 +312,23 @@
                      contract's, so this menu does not change when the contract
                      does. -->
                 <div class="boq-colmenu-wrap">
-                  <button type="button" class="d-btn sm ghost" aria-haspopup="true"
+                  <button #viewBtn type="button" class="d-btn sm ghost" aria-haspopup="true"
                           [attr.aria-expanded]="viewMenu()" (click)="viewMenu.set(!viewMenu())">
                     <epm-icon name="view_list" [size]="15" />{{ lang.t('boq_views') }}
                     @if (savedViews().length) {
                       <span class="n"><bdi>{{ savedViews().length }}</bdi></span>
                     }
                   </button>
+                  <!-- <epm-popover>, not an absolutely-positioned div: `.boq-grid`
+                       sets `overflow: hidden` so its rounded corners clip the
+                       table (boq.css:93), and that clips any menu inside it too.
+                       The popover is `position: fixed`, so it escapes the card —
+                       and it brings the scrim, the click-outside, Escape, and the
+                       flip-above-when-there-is-no-room the hand-rolled one lacked. -->
                   @if (viewMenu()) {
-                    <div class="boq-menu-scrim" (click)="viewMenu.set(false)"></div>
-                    <div class="boq-colmenu" role="menu" style="width: 250px">
+                    <epm-popover [anchor]="viewBtn" [width]="250" align="end"
+                                 [label]="lang.t('boq_views')" (closed)="viewMenu.set(false)">
+                    <div class="boq-colmenu inpop" role="menu">
                       @for (v of savedViews(); track v.id) {
                         <div class="row viewrow">
                           <button type="button" class="vw" (click)="applyView(v)">
@@ -339,24 +346,30 @@
                         <epm-icon name="add" [size]="14" />{{ lang.t('boq_view_save') }}
                       </div>
                     </div>
+                    </epm-popover>
                   }
                 </div>
 
                 <div class="boq-colmenu-wrap">
-                  <button type="button" class="d-btn sm ghost" aria-haspopup="true"
+                  <button #colBtn type="button" class="d-btn sm ghost" aria-haspopup="true"
                           [attr.aria-expanded]="colMenu()" (click)="colMenu.set(!colMenu())">
                     <epm-icon name="view_column" [size]="15" />{{ lang.t('boq_columns') }}
                   </button>
+                  <!-- Thirteen columns, in a card that clips its own overflow —
+                       so this list was cut off mid-row at «القيمة المكتسبة» and
+                       the last five were unreachable. Same fix as the views menu. -->
                   @if (colMenu()) {
-                    <div class="boq-menu-scrim" (click)="colMenu.set(false)"></div>
-                    <div class="boq-colmenu" role="menu">
-                      @for (c of columns; track c.k) {
-                        <label class="row">
-                          <input type="checkbox" [checked]="shown(c.k)" (change)="toggleCol(c.k)" />
-                          <span>{{ lang.t(c.label) }}</span>
-                        </label>
-                      }
-                    </div>
+                    <epm-popover [anchor]="colBtn" [width]="230" align="end"
+                                 [label]="lang.t('boq_columns')" (closed)="colMenu.set(false)">
+                      <div class="boq-colmenu inpop" role="menu">
+                        @for (c of columns; track c.k) {
+                          <label class="row">
+                            <input type="checkbox" [checked]="shown(c.k)" (change)="toggleCol(c.k)" />
+                            <span>{{ lang.t(c.label) }}</span>
+                          </label>
+                        }
+                      </div>
+                    </epm-popover>
                   }
                 </div>
               </div>

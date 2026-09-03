@@ -1652,3 +1652,21 @@ button.d-file > .fm { align-items: flex-start; }
   margin-top: var(--space-8); padding-top: var(--space-8);
   border-top: 1px solid var(--outline-variant); }
 .epm-cal-foot .sp { flex: 1; }
+
+
+/* ── The BOQ's «الأعمدة» and «العروض» menus, now inside <epm-popover> ────
+   `.d-tablewrap` sets `overflow: hidden` so its rounded corners clip the table
+   (desktop.css:389) — and an absolutely positioned box is still clipped by an
+   ancestor that hides overflow, so it clipped these menus too. Measured: the
+   trigger sits inside `.d-tablewrap` → `.d-pz7` → `.d-fill`, and the first and
+   last of those hide overflow. The columns list has THIRTEEN entries and was cut
+   off mid-row at «القيمة المكتسبة», leaving the last five unreachable at any
+   window height.
+
+   They render in the popover now, which is `position: fixed` and escapes the
+   card. `.boq-colmenu` keeps its rows and hovers; the popover owns the box, so
+   inside one the menu drops the positioning and the plane it used to draw for
+   itself — otherwise it is a panel inside a panel, with two borders and two
+   shadows (§6: sections are label + space, never nested boxes). */
+.boq-colmenu.inpop { position: static; inset: auto; width: auto; z-index: auto;
+  padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
