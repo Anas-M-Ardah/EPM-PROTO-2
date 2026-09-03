@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { IconComponent } from '../../core/icon.component';
+import { DateComponent } from '../../shared/date.component';
 import { LangService, StrKey } from '../../core/lang';
 import * as fmt from '../../core/format';
 import { FinancialsApi } from './financials.api';
@@ -34,7 +35,7 @@ import { FinancialsContract, PaymentAttachmentInput } from './financials.types';
   selector: 'epm-payment-wizard',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [IconComponent],
+  imports: [IconComponent, DateComponent],
   templateUrl: './payment.wizard.html',
 })
 export class PaymentWizard {

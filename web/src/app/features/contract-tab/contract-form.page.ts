@@ -12,6 +12,7 @@ import { ContractTabApi } from './contract.api';
 import { ContractDefinitionInput, ContractEvent, ContractViolation } from './contract.types';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
 import { SelectComponent, SelectOption } from '../../shared/select.component';
+import { DateComponent } from '../../shared/date.component';
 
 /**
  * المسار 2 — إنشاء العقود وربطها بالمشروع.
@@ -38,7 +39,7 @@ import { SelectComponent, SelectOption } from '../../shared/select.component';
 @Component({
   selector: 'epm-contract-form-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent, PersonaSwitcherComponent, SelectComponent],
+  imports: [IconComponent, SectionComponent, PersonaSwitcherComponent, SelectComponent, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contract-form.page.html',
 })

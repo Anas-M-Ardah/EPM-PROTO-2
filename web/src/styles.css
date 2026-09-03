@@ -1568,3 +1568,87 @@ button.d-file > .fm { align-items: flex-start; }
    the same badge for filter chips; a tab had no rule because until now no tab
    in this build carried one. Same treatment, so the two agree on screen. */
 .d-tab .n { font-size: var(--fs-100); opacity: .8; font-variant-numeric: tabular-nums; }
+
+
+/* ── Icons inside an empty state were painting grey ─────────────────────
+   `<epm-icon>` renders a `<span class="epm-icon">` and takes its colour from
+   `stroke="currentColor"`, so an icon is meant to be whatever text it sits in.
+   `.d-empty span` (desktop.css:1110) is written for the DESCRIPTION paragraph
+   — `color: var(--on-surface-variant)`, `font-size: 13px` — but it is a
+   class-plus-type selector, so it also catches every icon span inside an empty
+   state and beats what the icon would otherwise inherit.
+
+   Measured on الشكل 1's «+ مساحة عمل»: the label was #ffffff and the plus was
+   #565E69 on a #1F5CDB button — about 2:1, against a §7 contract that asks for
+   4.5:1 on text-sized marks. The same rule dimmed `.d-empty-ico`, which sets
+   its own `--azure-600` and was being overridden by one point of specificity.
+
+   Both are restored rather than restyled: the icon on a button takes the
+   button's colour, and the header medallion takes back the azure it declares.
+   No new colour is introduced — §6 keeps the colour channel for status. */
+.d-empty span.epm-icon { color: inherit; font-size: inherit; }
+.d-empty .d-empty-ico { color: var(--azure-600); font-size: inherit; }
+
+
+/* ── <epm-date> · the app's one date field ──────────────────────────────
+   Replaces `<input type="date">`, whose panel is drawn by the OPERATING SYSTEM:
+   it printed an empty field as «mm/dd/yyyy» — a US order in Latin digits — and
+   opened an English calendar, on a right-to-left Arabic form. Same reasoning as
+   `.epm-select` (P-197); this is the calendar half of it.
+
+   The trigger borrows `.d-form-input` from the form vocabulary, so a date field
+   and a text field are the same box. Everything below is the panel. */
+.epm-date { display: flex; align-items: center; gap: var(--space-8);
+  text-align: start; cursor: pointer; }
+.epm-date:disabled { cursor: not-allowed;
+  background: var(--surface-container); color: var(--on-surface-variant); }
+.epm-date .epm-date-ico { color: var(--on-surface-variant); flex: none; }
+.epm-date .epm-date-v { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+/* The empty state is a PROMPT, not a format mask: «mm/dd/yyyy» taught the
+   reader an order this app never uses and never accepts. */
+.epm-date .epm-date-v.ph { color: var(--on-surface-variant); }
+
+.epm-cal { padding: var(--space-4); }
+.epm-cal-head { display: flex; align-items: center; gap: var(--space-8);
+  padding: var(--space-4) var(--space-6) var(--space-10); }
+.epm-cal-head b { flex: 1; text-align: center; font-size: var(--fs-300);
+  font-weight: var(--fw-semibold); color: var(--on-surface); }
+
+.epm-cal-dows, .epm-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.epm-cal-dows { gap: var(--space-2); padding-bottom: var(--space-4); }
+/* The names are written out, so they must not be clipped by the column they
+   sit in — that would put the reader back to decoding a fragment. */
+.epm-cal-dows span { text-align: center; font-size: var(--fs-100);
+  color: var(--on-surface-variant); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.epm-cal-grid { gap: var(--space-2); }
+
+.epm-cal-d { aspect-ratio: 1; display: grid; place-items: center;
+  border: 1px solid transparent; border-radius: var(--r-sm); background: none;
+  font-size: var(--fs-200); font-variant-numeric: tabular-nums;
+  color: var(--on-surface); cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast); }
+.epm-cal-d:hover:not(:disabled) { background: var(--hover-overlay); }
+.epm-cal-d:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* A neighbouring month's day is CONTEXT, not a choice you are being offered —
+   it is still pickable, because paging to reach the 1st of next month is work
+   the grid can save. Dimmer, not hidden. */
+.epm-cal-d.out { color: var(--on-surface-variant); }
+
+/* TODAY IS A RING, SELECTED IS A FILL (§6: criticality is a ring, the colour
+   channel belongs to state). Both can be true at once and still read apart. */
+.epm-cal-d.today { border-color: var(--outline); font-weight: var(--fw-semibold); }
+.epm-cal-d.on { background: var(--primary); color: var(--on-primary);
+  border-color: transparent; font-weight: var(--fw-semibold); }
+
+/* Out of range stays IN the grid, unpickable, carrying its reason as a title —
+   §6 asks that a cap be explained rather than the control be hidden. Explicit
+   colour, never opacity (05 §7). */
+.epm-cal-d:disabled { cursor: not-allowed; color: var(--outline-variant);
+  background: none; text-decoration: line-through; }
+
+.epm-cal-foot { display: flex; align-items: center; gap: var(--space-8);
+  margin-top: var(--space-8); padding-top: var(--space-8);
+  border-top: 1px solid var(--outline-variant); }
+.epm-cal-foot .sp { flex: 1; }

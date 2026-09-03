@@ -225,20 +225,25 @@
               <div class="epm-ws-f2">
                 <label class="epm-ws-f">
                   <span>{{ lang.t('con_start') }}<i>*</i></span>
-                  <input class="d-form-input mono" dir="ltr" type="date"
-                         [class.epm-invalid]="errorFor('start')"
-                         [value]="form().start ?? ''"
-                         (input)="setText('start', $any($event.target).value)" />
+                  <epm-date [value]="form().start ?? ''"
+                            [label]="lang.t('con_start')"
+                            [max]="form().finish ?? null"
+                            [invalid]="!!errorFor('start')"
+                            (changed)="setText('start', $event)" />
                   @if (errorFor('start')) { <small class="epm-f-err">{{ errorFor('start') }}</small> }
                 </label>
 
                 <label class="epm-ws-f">
                   <span>{{ lang.t('con_finish') }}<i>*</i></span>
-                  <input class="d-form-input mono" dir="ltr" type="date"
-                         [class.epm-invalid]="errorFor('finish')"
-                         [disabled]="!isNew()"
-                         [value]="form().finish ?? ''"
-                         (input)="setText('finish', $any($event.target).value)" />
+                  <!-- The finish cannot precede the start, so the days before it
+                       are struck through rather than accepted and refused on
+                       submit (§6: prevent invalid input, and explain the cap). -->
+                  <epm-date [value]="form().finish ?? ''"
+                            [label]="lang.t('con_finish')"
+                            [min]="form().start ?? null"
+                            [disabled]="!isNew()"
+                            [invalid]="!!errorFor('finish')"
+                            (changed)="setText('finish', $event)" />
                   @if (errorFor('finish')) { <small class="epm-f-err">{{ errorFor('finish') }}</small> }
                   @if (!isNew()) { <small>{{ lang.t('con_finish_locked') }}</small> }
                 </label>
@@ -305,9 +310,9 @@
 
                 <label class="epm-ws-f">
                   <span>{{ lang.t('con_incoming_date') }}</span>
-                  <input class="d-form-input mono" dir="ltr" type="date"
-                         [value]="form().incomingDate ?? ''"
-                         (input)="setText('incomingDate', $any($event.target).value)" />
+                  <epm-date [value]="form().incomingDate ?? ''"
+                            [label]="lang.t('con_incoming_date')"
+                            (changed)="setText('incomingDate', $event)" />
                 </label>
               </div>
             </div>
