@@ -234,6 +234,14 @@ export class BoqPage {
    * afterwards, and nothing else on this screen would show it.
    */
   importVersions = signal<BoqImportVersionDto[]>([]);
+
+  /**
+   * The one awaiting a decision, and there is at most one: `EP-BOQ-10` lapses
+   * an earlier pending version when a newer sheet is submitted, and `EP-BOQ-13`
+   * lapses any other when one is approved. An approval replaces every line the
+   * other version was compared against, so a second pending submission could
+   * only ever be approved on a comparison against a bill that no longer exists.
+   */
   pendingImport = computed(() =>
     this.importVersions().find(v => v.state === 'submitted') ?? null);
 
@@ -286,9 +294,17 @@ export class BoqPage {
     });
   }
 
-  /** EP-BOQ-10 wrote a version; the bill is deliberately unchanged. */
-  importSubmitted(v: BoqImportVersionDto) {
-    this.importVersions.update(list => [v, ...list]);
+  /**
+   * EP-BOQ-10 wrote a version; the bill is deliberately unchanged.
+   *
+   * RE-READ rather than prepended. The submission that just landed lapsed the
+   * pending one before it (`EP-BOQ-10`), so the row this list already holds for
+   * that version now says `submitted` on the client and `lapsed` on the server.
+   * Pushing the new version on top would leave the stale one underneath it,
+   * saying a thing that is no longer true of any row in the database.
+   */
+  importSubmitted(_v: BoqImportVersionDto) {
+    this.loadImportVersions();
     this.toast.show(this.lang.t('boq_imp_done_t'));
   }
 

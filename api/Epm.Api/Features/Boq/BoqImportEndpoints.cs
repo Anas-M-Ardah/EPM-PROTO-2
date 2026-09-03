@@ -26,6 +26,18 @@ namespace Epm.Api.Features.Boq;
 /// Step 8's «تحديث أوزان البنود» is not a write. BR-01 derives weights from the
 /// lines at projection time (01 §3), so replacing the lines updates the weights
 /// by construction.
+///
+/// ── AT MOST ONE VERSION IS EVER PENDING ──────────────────────────────────
+/// A version's `PreviousAmount` and the comparison the approver read were both
+/// measured against the bill in force, so they are only true of the lines that
+/// were live when they were computed. Both writes keep the number of
+/// `submitted` rows per contract at one — a new submission lapses the earlier
+/// pending one, an approval lapses any other — because an approval REPLACES
+/// every line, and a second pending version could otherwise be approved on a
+/// comparison against a bill its own approval had already thrown away.
+/// `submitted → lapsed` is a version nobody decided on; `approved →
+/// superseded` is one that WAS the live bill and no longer is. Neither state
+/// deletes a row: «لا يُمحى إصدار سابق» holds for all four.
 /// </summary>
 public static class BoqImportEndpoints
 {
@@ -110,6 +122,28 @@ public static class BoqImportEndpoints
             // The same model the preview compared against, for the same reason.
             var previous = (await BoqEndpoints.Derive(db, contractId, "cost"))
                 .Sum(d => d.Line.Amount);
+
+            // ── ONE PENDING VERSION PER CONTRACT ─────────────────────────
+            // `previous` above, and the comparison the wizard showed, were both
+            // measured against the bill IN FORCE — never against another
+            // pending version. Two submissions side by side would each state
+            // what THEY would do to the same live lines, and EP-BOQ-13 replaces
+            // every one of those lines on approval. Approving the second
+            // afterwards would file a `PreviousAmount` and a delta computed
+            // against a bill that had already been thrown away.
+            //
+            // Listing both on the register would not fix it; both would print
+            // «الإصدار القائم» figures for a bill only one of them can be
+            // measured against. So the newer file is the live proposal and the
+            // earlier one LAPSES — nothing is deleted, the header and rows stay
+            // in `BoqImportVersions`/`Items`, and its number stands.
+            //
+            // `lapsed`, NOT `superseded`: superseded means a version that WAS
+            // the contract's bill, and one nobody approved never was.
+            var lapsing = await db.BoqImportVersions
+                .Where(v => v.ContractId == contractId && v.State == "submitted")
+                .ToListAsync();
+            foreach (var l in lapsing) l.State = "lapsed";
 
             // Per contract, 1-based. `Max + 1` over this contract's rows: the
             // number is the version's NAME on screen, so it counts what this
@@ -281,6 +315,29 @@ public static class BoqImportEndpoints
                 OriginalQty = r.Qty,
                 UnitRate = r.Rate,
             }));
+
+            // ── WHAT THIS APPROVAL DOES TO THE OTHER VERSIONS ────────────
+            // Every previously approved version stops being the contract's
+            // bill the moment these lines land, so it is marked `superseded` —
+            // the same transition `EP-SCD-06` makes on a baseline it replaces.
+            // Leaving them all `approved` would claim several live bills on a
+            // contract that has exactly one.
+            var superseded = await db.BoqImportVersions
+                .Where(v => v.ContractId == contractId && v.State == "approved")
+                .ToListAsync();
+            foreach (var s in superseded) s.State = "superseded";
+
+            // And any OTHER still-pending version lapses with it. EP-BOQ-10's
+            // rule means there is normally none — this resolves rows written
+            // before that rule existed, for the same reason: its comparison
+            // and its `PreviousAmount` were measured against lines this
+            // approval has just replaced, so they can no longer be approved on
+            // and must not sit invisible behind a bar that shows one.
+            var stale = await db.BoqImportVersions
+                .Where(v => v.ContractId == contractId
+                            && v.State == "submitted" && v.Id != version.Id)
+                .ToListAsync();
+            foreach (var t in stale) t.State = "lapsed";
 
             version.State = "approved";
             // Attribution, not decoration: this is the record of who moved the

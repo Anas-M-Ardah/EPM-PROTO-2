@@ -103,7 +103,7 @@ export class PersonaSwitcherComponent {
    * user and every row is a صفة they act in. The reading was the problem, not
    * the location — so the menu keeps the «العرض بصفة» heading and shows the
    * ROLE, never a second name, and the plate-mandated chips on الشكل 29 · 30
-   * stay exactly where the appendix draws them (P-232).
+   * stay exactly where the appendix draws them (P-233).
    */
   @Input() inline = false;
 

@@ -537,6 +537,12 @@ public static class ScheduleEndpoints
     /// listing it would name a baseline no figure on the screen was measured
     /// from. It belongs to `EP-SCD-07`'s version list, which is where a pending
     /// submission is shown.
+    ///
+    /// Neither is a `lapsed` one, and for a sharper version of the same reason:
+    /// it was overtaken while still pending, so it never became a baseline at
+    /// all. That is exactly why `EP-SCD-05` retires an overtaken submission as
+    /// `lapsed` rather than `superseded` — the filter below is what would turn
+    /// the looser word into a baseline this contract never had.
     /// </summary>
     private static async Task<List<ScheduleBaselineOption>> Baselines(EpmDb db, Contract c)
     {

@@ -76,7 +76,12 @@ export interface ScheduleImportPreviewResponse {
 export interface ScheduleImportVersion {
   id: number;
   no: number;
-  /** submitted · approved · superseded. */
+  /**
+   * submitted · approved · superseded · lapsed. At most one version per
+   * contract is `submitted` — EP-SCD-05 lapses an earlier pending one on a new
+   * submission, EP-SCD-06 lapses any other on approval — which is what lets
+   * schedule.page.ts draw ONE pending bar.
+   */
   state: string;
   format: string;
   basis: string;

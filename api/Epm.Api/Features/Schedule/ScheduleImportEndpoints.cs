@@ -17,6 +17,18 @@ namespace Epm.Api.Features.Schedule;
 ///   EP-SCD-05  submit    — writes a VERSION and its rows
 ///   EP-SCD-06  approve   — the only route that touches `Activities`
 ///
+/// ── AT MOST ONE VERSION IS EVER PENDING ──────────────────────────────────
+/// A version's impact figures are measured against `Activities`, so they are
+/// only true of the baseline that was in force when they were computed. Both
+/// writes therefore keep the number of `submitted` rows per contract at one —
+/// a new submission lapses the earlier pending one, an approval lapses any
+/// other — because a second pending version could otherwise be approved
+/// carrying an impact that described a schedule its own approval had already
+/// replaced. `submitted → lapsed` is the transition for a version nobody
+/// decided on; `approved → superseded` is the transition for one that WAS the
+/// baseline and no longer is. Two different facts, and `ScheduleEndpoints
+/// .Baselines` lists only the second.
+///
 /// ── WHY THE SEPARATION IS SHARPER HERE THAN ON THE BILL ──────────────────
 /// `Activities.BaselineStart`/`BaselineFinish` are the datum for every slip,
 /// float, planned percentage, SPI and penalty baseline in the system. Replacing
@@ -118,6 +130,37 @@ public static class ScheduleImportEndpoints
                 });
 
             var impact = ScheduleImport.Compare(rows, await Current(db, contractId));
+
+            // ── ONE PENDING VERSION PER CONTRACT ─────────────────────────
+            // `impact` was measured against `Activities` — the schedule IN
+            // FORCE — and never against another pending version. So two
+            // submissions sitting side by side would each describe what THEY
+            // would do to the SAME baseline, and approving either moves that
+            // baseline out from under the other's stored FinishBefore,
+            // ContractFinishDelta, Added, Removed and Moved. Approving the
+            // second afterwards would file an impact that was never true of
+            // what it replaced — a signed record of a comparison nobody made.
+            //
+            // Listing both on the page would not fix that. It would show two
+            // «قبل» columns that quietly describe the same schedule, and the
+            // second approval would still be wrong. The invariant is the fix:
+            // the newer file is the live proposal, and the earlier one LAPSES.
+            //
+            // NOTHING IS DELETED. The header and every row of the lapsed
+            // version stay in `ScheduleImportVersions`/`Items` — «لا يُمحى
+            // إصدار سابق» — and its number stands, so `No` keeps counting
+            // what this contract has seen rather than what is still live.
+            //
+            // `lapsed`, NOT `superseded`. `superseded` means a version that
+            // WAS the baseline and is not any more, and `ScheduleEndpoints
+            // .Baselines` lists every one of those in الشكل 23's baseline
+            // picker as «a baseline the contract has actually had». A version
+            // nobody approved was never a baseline, and filing it as
+            // superseded would put a baseline that never existed in that list.
+            var lapsing = await db.ScheduleImportVersions
+                .Where(v => v.ContractId == contractId && v.State == "submitted")
+                .ToListAsync();
+            foreach (var l in lapsing) l.State = "lapsed";
 
             var lastNo = await db.ScheduleImportVersions
                 .Where(v => v.ContractId == contractId)
@@ -278,6 +321,20 @@ public static class ScheduleImportEndpoints
                 .Where(v => v.ContractId == contractId && v.State == "approved")
                 .ToListAsync();
             foreach (var s in superseded) s.State = "superseded";
+
+            // AND ANY OTHER STILL-PENDING VERSION LAPSES WITH IT. Under
+            // EP-SCD-05's rule there is at most one pending version, so this
+            // normally finds nothing — it is what resolves rows written before
+            // that rule existed, and the reason is the same one: this approval
+            // MOVES the baseline, so another pending version's impact now
+            // describes a schedule that has just stopped being in force. It
+            // must not be approvable on those figures, and it must not be left
+            // waiting on a page that draws one pending version.
+            var stale = await db.ScheduleImportVersions
+                .Where(v => v.ContractId == contractId
+                            && v.State == "submitted" && v.Id != version.Id)
+                .ToListAsync();
+            foreach (var t in stale) t.State = "lapsed";
 
             version.State = "approved";
             version.ApproverId = gate.User.Id;

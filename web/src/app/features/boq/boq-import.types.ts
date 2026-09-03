@@ -61,6 +61,12 @@ export interface BoqImportPreviewResponse {
 
 export interface BoqImportVersionDto {
   no: number;
+  /**
+   * submitted · approved · superseded · lapsed. At most one version per
+   * contract is `submitted` — EP-BOQ-10 lapses an earlier pending one on a new
+   * submission, EP-BOQ-13 lapses any other on approval — which is what lets
+   * boq.page.ts draw ONE pending bar.
+   */
   state: string;
   sheetType: string;
   fileName: string;
