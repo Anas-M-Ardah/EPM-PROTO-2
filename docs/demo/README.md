@@ -9,8 +9,10 @@ origin. Nothing is loaded from a fixture; nothing is typed twice.
 | [`runsheet.html`](runsheet.html) | the runsheet itself — open it in a browser, or read it as source |
 | [`demo-schedule.xer`](demo-schedule.xer) | the Primavera XER imported at step 05 — four activities, costs matching the BOQ |
 
-Published copy: <https://claude.ai/code/artifact/f62cfe20-b73c-4e8c-8ac6-22b085995bb0>
+Published copy: <https://claude.ai/code/artifact/bbffae9d-45dd-4667-adb9-9097e51ec00d>
 (`runsheet.html` is the source of that page; edit here and republish, never the other way).
+Supersedes an earlier published copy at `f62cfe20-b73c-4e8c-8ac6-22b085995bb0`, which predates
+the أبواب at step 04 and the schedule-import section.
 
 ## The shape of it
 
@@ -46,7 +48,7 @@ The demo's whole argument is that both landing figures are checkable in the head
 Rehearse the finance act once, and correct the sheet from the screen rather than the
 other way round.
 
-## Two things that will bite
+## Three things that will bite
 
 1. **Use workspace code `ub` or `sp`.** Which workspaces `univ-specialist` holds is fixed
    in code, because the screen that would assign them is the Administration module, which
@@ -54,5 +56,11 @@ other way round.
    project in it.
 2. **Do not run `load-fixture`.** It is the opposite of this demo — `POST /api/dev/reset`
    only, and let the audience watch the data appear.
+3. **Step 05 will look like it failed.** Submitting the XER writes a *version*, not activities,
+   so the Gantt stays empty until `re-dept` approves it at step 06 — and the empty state
+   underneath the pending bar still prints the empty-database message, which contradicts it.
+   Submit exactly once: a second submission adds a second pending version and nothing
+   supersedes the first. The runsheet's "When the schedule does not appear" section has the
+   whole decision table.
 
 Figures throughout are illustrative, not ministry data.
