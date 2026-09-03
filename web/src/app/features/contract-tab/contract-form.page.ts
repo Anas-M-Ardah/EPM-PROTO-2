@@ -11,6 +11,7 @@ import { ToastService } from '../../shared/toast.service';
 import { ContractTabApi } from './contract.api';
 import { ContractDefinitionInput, ContractEvent, ContractViolation } from './contract.types';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 
 /**
  * المسار 2 — إنشاء العقود وربطها بالمشروع.
@@ -37,7 +38,7 @@ import { PersonaSwitcherComponent } from '../../shared/persona-switcher.componen
 @Component({
   selector: 'epm-contract-form-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent, PersonaSwitcherComponent],
+  imports: [IconComponent, SectionComponent, PersonaSwitcherComponent, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contract-form.page.html',
 })
@@ -93,6 +94,10 @@ export class ContractFormPage {
   }
 
   statuses = computed(() => this.lookups.list('contract-status'));
+
+  /** The same list in `<epm-select>`'s shape — code + the label for this language. */
+  statusSelectOptions = computed<SelectOption[]>(() =>
+    this.statuses().map(s => ({ code: s.code, label: this.lang.pick(s.nameAr, s.nameEn) })));
 
   /** §23 — contract entry is the specialist's, the same capacity as المسار 1. */
   canDefine = computed(() => canDefineProjects(this.persona.current()));

@@ -134,7 +134,7 @@
               </div>
 
               <label class="epm-ws-f">
-                <span>{{ lang.t('inf_nameAr') }}<i>*</i></span>
+                <span>{{ lang.t('con_nameAr') }}<i>*</i></span>
                 <input class="d-form-input" [class.epm-invalid]="errorFor('nameAr')"
                        [value]="form().nameAr ?? ''"
                        (input)="setText('nameAr', $any($event.target).value)" />
@@ -142,21 +142,22 @@
               </label>
 
               <label class="epm-ws-f">
-                <span>{{ lang.t('inf_nameEn') }}</span>
+                <span>{{ lang.t('con_nameEn') }}</span>
                 <input class="d-form-input" dir="ltr" [value]="form().nameEn ?? ''"
                        (input)="setText('nameEn', $any($event.target).value)" />
               </label>
 
               <label class="epm-ws-f">
-                <span>{{ lang.t('inf_status') }}<i>*</i></span>
-                <select class="d-form-input" [class.epm-invalid]="errorFor('status')"
-                        (change)="set('status', $any($event.target).value)">
-                  @for (s of statuses(); track s.code) {
-                    <option [value]="s.code" [selected]="form().status === s.code">
-                      {{ lang.pick(s.nameAr, s.nameEn) }}
-                    </option>
-                  }
-                </select>
+                <span>{{ lang.t('con_status') }}<i>*</i></span>
+                <!-- <epm-select>, the app's one dropdown — the project form beside
+                     this one already uses it throughout, and a native <select>
+                     renders its list with the OPERATING SYSTEM, so our font,
+                     spacing, RTL and dark theme stop at the popup's edge. -->
+                <epm-select [options]="statusSelectOptions()"
+                            [value]="form().status ?? ''"
+                            [label]="lang.t('con_status')"
+                            [invalid]="!!errorFor('status')"
+                            (changed)="set('status', $event)" />
                 @if (errorFor('status')) { <small class="epm-f-err">{{ errorFor('status') }}</small> }
               </label>
             </div>

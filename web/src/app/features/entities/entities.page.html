@@ -81,12 +81,14 @@
 
       <label class="epm-ws-f">
         <span>{{ lang.t('col_type') }}<i>*</i></span>
-        <select class="d-form-input" [value]="fKind()"
-                (change)="fKind.set($any($event.target).value)">
-          @for (k of kindOptions(); track k.code) {
-            <option [value]="k.code">{{ lang.pick(k.nameAr, k.nameEn) }}</option>
-          }
-        </select>
+        <!-- <epm-select>, the app's one dropdown. A native <select> renders its
+             list with the OPERATING SYSTEM, so our font, spacing, RTL and dark
+             theme all stop at the popup's edge — and this drawer is the first
+             control a new user meets. -->
+        <epm-select [options]="kindSelectOptions()"
+                    [value]="fKind()"
+                    [label]="lang.t('col_type')"
+                    (changed)="fKind.set($event)" />
       </label>
 
       <!--

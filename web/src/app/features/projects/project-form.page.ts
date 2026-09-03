@@ -196,6 +196,29 @@ export class ProjectFormPage {
     return ws ? this.lang.pick(ws.nameAr, ws.nameEn) : this.workspace();
   });
 
+  /**
+   * DERIVED, NOT ASKED FOR A SECOND TIME (§3.5). A project's beneficiary is its
+   * own workspace unless someone says otherwise, so choosing «جامعة بغداد» above
+   * should not be followed by typing it again below — that is data entry the
+   * screen already has the answer to.
+   *
+   * It stays EDITABLE because a project may benefit more than the unit that owns
+   * it, which is why the field is `beneficiaryCodes` and not `beneficiaryCode`.
+   * So the seed only fires while the field is empty or still carries the previous
+   * workspace's code: a deliberate edit is never overwritten.
+   */
+  private seedBeneficiary(next: string, previous: string) {
+    const current = (this.form().beneficiaryCodes ?? '').trim();
+    if (current !== '' && current !== previous) return;
+    this.set('beneficiaryCodes', next === '' ? null : next);
+  }
+
+  setWorkspace(code: string) {
+    const previous = this.workspace();
+    this.workspace.set(code);
+    this.seedBeneficiary(code, previous);
+  }
+
   title = computed(() => this.lang.t(this.isNew() ? 'prj_new_title' : 'prj_edit_title'));
 
   crumbs = computed<Crumb[]>(() => {
@@ -213,7 +236,9 @@ export class ProjectFormPage {
     const id = this.route.snapshot.paramMap.get('id');
     this.id.set(id);
     const fromRoute = this.route.snapshot.queryParamMap.get('ws') ?? '';
-    this.workspace.set(fromRoute);
+    // Opened already scoped (الشكل 3 is «مساحة العمل › المشاريع»), so the
+    // beneficiary is known before the form is painted.
+    this.setWorkspace(fromRoute);
     this.scopedWorkspace.set(fromRoute !== '');
     this.load();
   }

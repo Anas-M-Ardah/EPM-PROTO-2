@@ -543,6 +543,12 @@ const STR = {
   con_group_letter:{ ar: 'كتاب الإحالة',                   en: 'Award letter' },
   con_code:        { ar: 'رمز العقد',                      en: 'Contract code' },
   con_code_locked: { ar: 'الرمز هو مفتاح العقد ولا يقبل التعديل بعد الحفظ.', en: 'The code is the contract key and cannot be changed after saving.' },
+  // The contract's OWN name. This form used `inf_nameAr`/`inf_nameEn` — the
+  // project keys — so the field asking for «الأعمال المدنية» was labelled
+  // «اسم المشروع», which reads as though the project has to be named twice.
+  con_nameAr:      { ar: 'اسم العقد',                      en: 'Contract name' },
+  con_nameEn:      { ar: 'اسم العقد (بالإنجليزية)',       en: 'Contract name (English)' },
+  con_status:      { ar: 'حالة العقد',                     en: 'Contract status' },
   con_component:   { ar: 'المكوّن',                        en: 'Component' },
   con_component_ph:{ ar: 'المكوّن المدني',                 en: 'Civil works' },
   con_award:       { ar: 'مبلغ الإحالة',                   en: 'Award amount' },

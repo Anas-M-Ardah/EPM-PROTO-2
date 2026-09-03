@@ -151,7 +151,7 @@
                         [label]="lang.t('inf_workspace')"
                         [placeholder]="lang.t('prj_pick_workspace')"
                         [invalid]="!!formError() && !workspace()"
-                        (changed)="workspace.set($event)" />
+                        (changed)="setWorkspace($event)" />
             <small class="d-cell-sub">{{ lang.t('prj_workspace_hint') }}</small>
           </div>
         }
