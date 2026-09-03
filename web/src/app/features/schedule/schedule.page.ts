@@ -325,8 +325,9 @@ export class SchedulePage {
    * it was submitted and an approval moves that baseline.
    *
    * The comment this replaced said «approving supersedes», which was true of
-   * approved versions and of nothing else: submissions accumulated, and the bar
-   * below drew the newest of them while saying nothing about the rest.
+   * approved versions and of nothing else: submissions accumulated, and both
+   * sites that read this — the pending bar and P-229's pending empty state —
+   * drew the newest of them while saying nothing about the rest.
    *
    * `find` over a list `EP-SCD-07` returns newest-first, so on a database
    * written before that rule — where a second pending row can still exist — this
