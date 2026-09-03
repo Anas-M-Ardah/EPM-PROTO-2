@@ -28,7 +28,21 @@ public class ScheduleImportVersion
     /// <summary>Sequential within the contract. «الإصدار رقم N».</summary>
     public int No { get; set; }
 
-    /// <summary>Lookup `import-state`: submitted · approved · superseded.</summary>
+    /// <summary>
+    /// Lookup `import-state`: submitted · approved · superseded · lapsed.
+    ///
+    /// Two ends, and they are not the same fact. `superseded` is a version that
+    /// WAS the baseline and was replaced by a later approval — those are the
+    /// rows `ScheduleEndpoints.Baselines` lists in الشكل 23's picker as
+    /// baselines the contract has actually had. `lapsed` is a version that was
+    /// never approved and was overtaken while still pending, by a newer
+    /// submission or by an approval; it changed nothing and belongs in no
+    /// baseline list.
+    ///
+    /// AT MOST ONE ROW PER CONTRACT IS `submitted` — `EP-SCD-05` and
+    /// `EP-SCD-06` both enforce it, because an impact measured against a
+    /// baseline that has since moved cannot be approved on.
+    /// </summary>
     public string State { get; set; } = "submitted";
 
     /// <summary>xer · p6xml · excel — الشكل 24's own three options.</summary>
