@@ -201,38 +201,78 @@
 
         <!-- ملحق الشكل 24 — a submitted version, on the schedule it has NOT
              replaced. The bar says which schedule is on screen, because the
-             answer is not obvious once a newer one exists. -->
+             answer is not obvious once a newer one exists.
+
+             It rides above a SCHEDULE. When there are no rows there is no
+             schedule for it to qualify — «the schedule shown is the one in
+             force» names nothing — so the pending empty state below carries
+             the same facts and the same button instead of stacking a second
+             copy of them under this bar. -->
         @if (pendingVersion(); as v) {
-          <div class="d-msgbar warning">
-            <epm-icon name="warning" [size]="16" />
-            <div>
-              <b>{{ lang.t('scd_imp_pending_t') }}
-                — <bdi class="mono">{{ v.fileName }}</bdi> ·
-                <bdi>{{ v.activityCount }}</bdi> {{ lang.t('scd_imp_activities') }}</b>
-              <span>{{ lang.t('scd_imp_pending_b') }}
-                @if (v.contractFinishDelta !== 0) {
-                  · {{ lang.t('scd_imp_delta') }}
-                  <bdi>{{ fmt.delta(v.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}
-                }
-              </span>
+          @if (rows().length > 0) {
+            <div class="d-msgbar warning">
+              <epm-icon name="warning" [size]="16" />
+              <div>
+                <b>{{ lang.t('scd_imp_pending_t') }}
+                  — <bdi class="mono">{{ v.fileName }}</bdi> ·
+                  <bdi>{{ v.activityCount }}</bdi> {{ lang.t('scd_imp_activities') }}</b>
+                <span>{{ lang.t('scd_imp_pending_b') }}
+                  @if (v.contractFinishDelta !== 0) {
+                    · {{ lang.t('scd_imp_delta') }}
+                    <bdi>{{ fmt.delta(v.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}
+                  }
+                </span>
+              </div>
+              @if (canApproveImport()) {
+                <button type="button" class="d-btn sm primary" (click)="approveImport(v.no)">
+                  {{ lang.t('scd_impw_approve') }}
+                </button>
+              } @else {
+                <span class="d-cell-sub">{{ lang.t('scd_imp_no_cap') }}</span>
+              }
             </div>
-            @if (canApproveImport()) {
-              <button type="button" class="d-btn sm primary" (click)="approveImport(v.no)">
-                {{ lang.t('scd_impw_approve') }}
-              </button>
-            } @else {
-              <span class="d-cell-sub">{{ lang.t('scd_imp_no_cap') }}</span>
-            }
-          </div>
+          }
         }
 
         @if (data(); as d) {
           @if (d.rows.length === 0) {
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="calendar_month" [size]="30" /></span>
-              <b>{{ lang.t('scd_empty_t') }}</b>
-              <span>{{ lang.t('scd_empty_b') }}</span>
-            </div>
+            <!-- ══ 04 §9 — WHY it is empty decides what it says ═══════════
+                 A submitted version and an untouched database are not the
+                 same emptiness. Pointing a person whose import is sitting in
+                 the approval queue at «load the demo data» is the single
+                 likeliest way to make them conclude the import failed. -->
+            @if (pendingVersion(); as v) {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="hourglass_empty" [size]="30" /></span>
+                <b>{{ lang.t('scd_empty_pend_t') }}</b>
+                <!-- The file name and the count are the proof it landed. -->
+                <span>
+                  <bdi>{{ v.fileName }}</bdi> ·
+                  <bdi>{{ v.activityCount }}</bdi> {{ lang.t('scd_imp_activities') }}
+                  @if (v.contractFinishDelta !== 0) {
+                    · {{ lang.t('scd_imp_delta') }}
+                    <bdi>{{ fmt.delta(v.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}
+                  }
+                </span>
+                <span>{{ lang.t('scd_empty_pend_b') }}</span>
+                <!-- The button is the APPROVAL, never the fixture loader. And
+                     when this persona cannot approve, the reason stands in its
+                     place rather than a button that would be refused. -->
+                @if (canApproveImport()) {
+                  <button type="button" class="d-btn primary" (click)="approveImport(v.no)">
+                    {{ lang.t('scd_impw_approve') }}
+                  </button>
+                } @else {
+                  <span>{{ lang.t('scd_imp_no_cap') }}</span>
+                }
+              </div>
+            } @else {
+              <div class="d-empty">
+                <span class="d-empty-ico"><epm-icon name="calendar_month" [size]="30" /></span>
+                <b>{{ lang.t('scd_empty_t') }}</b>
+                <span>{{ lang.t('scd_empty_b') }}</span>
+              </div>
+            }
           } @else {
             <!-- ══ ملحق الشكل 21's HEADLINE ════════════════════════════════
                  «إنجاز المشروع التجميعي · الإنجاز المخطط · المتوقع · التأخر» —
