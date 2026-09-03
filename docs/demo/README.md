@@ -60,8 +60,8 @@ other way round.
    so the Gantt stays empty until `re-dept` approves it at step 06. Since P-229 the screen says
    so plainly — «استُورد الجدول الزمني وينتظر الاعتماد», with the file name, the activity count
    and the approval as its button — but a person expecting a Gantt still reads an empty Gantt.
-   Submit exactly once: a second submission adds a second pending version and nothing
-   supersedes the first. The runsheet's "When the schedule does not appear" section has the
-   whole decision table.
+   Submitting twice is harmless since P-230 — the second lapses the first, and a contract
+   holds at most one pending version — but it still only ever gets you one thing to approve.
+   The runsheet's "When the schedule does not appear" section has the whole decision table.
 
 Figures throughout are illustrative, not ministry data.

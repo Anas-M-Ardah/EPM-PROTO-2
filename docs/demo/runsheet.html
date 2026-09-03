@@ -779,27 +779,39 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
           the old bug and not a failed import — do not import again because of it.
         </p>
       </div>
-      <div class="note refuse">
-        <div class="eyebrow">Submit once. A second submission is not idempotent</div>
+      <div class="note derived">
+        <div class="eyebrow">Submit twice and the first one lapses — a contract holds at most one pending version</div>
         <p>
-          Each <span class="ar">تأكيد وتقديم</span> writes <em>another</em> pending version, and
-          nothing supersedes the earlier one — submit twice and the contract carries versions
-          <span class="num">1</span> and <span class="num">2</span>, both
-          <span class="ar">مقدَّم</span>, while the bar shows only one of them. Approving the
-          wrong number at step 06 would then baseline the older file.
-          <strong>If you have more than one, approve the highest number</strong> and say so.
+          Since <span class="num">P-230</span>, a new <span class="ar">تأكيد وتقديم</span>
+          <em>lapses</em> the pending version before it, and an approval lapses any other. The
+          reason is the impact figures: the analysis measures the incoming file against the
+          schedule <em>in force</em>, never against another pending version, so two of them
+          would each describe what <em>they</em> would do to the same baseline — and approving
+          one moves that baseline out from under the other's stored
+          <span class="ar">قبل</span> and delta. The invariant is the fix; listing both would
+          have printed two "before" columns quietly describing one schedule.
         </p>
         <p>
-          You can always check from a terminal, and it is a fair thing to show:
+          <code>lapsed</code> is a fourth state and deliberately not <code>superseded</code>:
+          الشكل 23's baseline picker is built from <code>approved</code> and
+          <code>superseded</code>, so filing a never-approved version as superseded would put a
+          baseline that never existed into the list. Nothing is deleted and no number is reused.
+        </p>
+        <p>
+          You can check the whole ladder from a terminal, and it is a fair thing to show:
         </p>
       </div>
       <pre><code>curl -s http://localhost:5080/api/projects/PRJ-0001/schedule/CNT-DEMO-01/import/versions</code></pre>
       <p>
-        Each entry carries its <code>no</code>, its <code>state</code>
-        (<code>submitted</code> · <code>approved</code> · <code>superseded</code>), the file
-        name, the activity count, and the contract finish before and after. If
-        <code>state</code> reads <code>submitted</code>, the import worked and is simply waiting
-        for a second person.
+        Each entry carries its <code>no</code>, its <code>state</code>, the file name, the
+        activity count, and the contract finish before and after. There are four states and
+        two routes through them:
+      </p>
+      <pre><code>submitted → approved → superseded
+submitted → lapsed</code></pre>
+      <p>
+        If <code>state</code> reads <code>submitted</code>, the import worked and is simply
+        waiting for a second person — and there will be exactly one such row.
       </p>
       <div class="note refuse">
         <div class="eyebrow">Separation of duties — a beat, not a bug</div>
@@ -837,10 +849,10 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
         <li>Switch persona. The same panel from step 05 is on screen, but its last line has
           become an <span class="ar">اعتماد الإصدار</span> button — the sentence naming whose
           permission it is was standing exactly where the button goes.</li>
-        <li>Approve the <strong>highest</strong> version number offered — version
-          <span class="num">1</span> if you submitted once, which is what you should have done.
-          This is the only action in the whole system that writes
-          <code>Activities.BaselineStart</code> and <code>BaselineFinish</code>.</li>
+        <li>Approve it. There is exactly one version to approve — a contract holds at most one
+          pending at a time — so there is no number to choose. This is the only action in the
+          whole system that writes <code>Activities.BaselineStart</code> and
+          <code>BaselineFinish</code>.</li>
         <li>Four activities and three WBS parents appear on the Gantt, and the pending-approval
           state goes with them. The WBS parents are the same three names you used as
           <span class="ar">أبواب</span> at step 04 — point at them together.</li>
@@ -1208,8 +1220,8 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
   <h2 class="sec">When the schedule does not appear</h2>
   <p>
     This is the one place in the runsheet where a correct system can look like a broken one.
-    Work down the table: the first two rows are the system behaving exactly as designed, and
-    the rest are things to actually fix.
+    Work down the table: the first four rows are the system behaving exactly as designed and
+    need nothing from you but a persona switch, and only the last two are things to act on.
   </p>
   <div class="tw">
     <table>
@@ -1231,9 +1243,9 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
           <td>On a current build, import — there is genuinely nothing there. On an older one, ignore it and read the bar.</td>
         </tr>
         <tr>
-          <td>Two versions, both <span class="ar">مقدَّم</span></td>
-          <td>You submitted twice. Nothing supersedes a pending version.</td>
-          <td>Approve the highest number. The lower one stays pending for good.</td>
+          <td>An earlier version reading <code>lapsed</code> in the <code>curl</code> above</td>
+          <td>You submitted twice. The second submission lapsed the first, by design. It never appears on screen — the page draws only the pending one.</td>
+          <td>Nothing. Approve the one still <code>submitted</code> — there is only ever one.</td>
         </tr>
         <tr>
           <td>The wizard stops at <span class="ar">التحقق</span> with violations</td>
