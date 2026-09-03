@@ -360,26 +360,25 @@
     <hr />
 
     <!--
-      ── THE CAPACITY IS SHOWN HERE, AND CHANGED ON THE SCREEN ────────────
-      «العرض بصفة» used to be a list in this menu, which read as an app-wide
-      identity control. It is not one. The appendix names the switcher exactly
-      three times and all three are change-order screens — الشكل 29's filter
-      bar and الشكل 30's header — because that is the one place a record shows
-      a different face to a different صفة (BR-14). `03 §7` agrees: the
-      switcher exists to review the change-order permission model.
+      ── THE CAPACITY IS SHOWN HERE, AND CHANGED HERE ─────────────────────
+      P-126 made this a reading and put the control on the screens that answer
+      differently to different صفة. The reason was the READING: beside the
+      workspace crumb, a list here said «who am I», and it is not that — there
+      is one user and every row is a صفة they act in.
 
-      So this menu STATES the capacity in effect, and the two screens that
-      depend on it carry the control (P-126). The line below is a reading, not
-      a button.
+      That reading is fixed by the heading and the rows, not by the location:
+      the label is «العرض بصفة», every row leads with the ROLE and its party,
+      and the person's name appears once at the top of this menu and never in
+      the list. What the old placement could not fix was the walk — the control
+      lives on eight screens, so switching from any of the others meant leaving
+      the page to find it and navigating back (P-233).
+
+      الشكل 29's filter bar and الشكل 30's header KEEP their own chips: there
+      the switcher is a filter over the rows in front of you, which is a
+      different job from this one.
     -->
     <div class="d-pop-lbl">{{ lang.t('persona') }}</div>
-    <div class="d-pop-row" style="cursor:default">
-      <span class="epm-pop-ico"><epm-icon name="badge" [size]="18" /></span>
-      <span class="d-pop-row-tx">
-        <b>{{ personaRole() }}</b>
-        <span>{{ lang.t('persona_where') }}</span>
-      </span>
-    </div>
+    <epm-persona-switcher [inline]="true" />
 
     <hr />
 

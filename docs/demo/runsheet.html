@@ -148,11 +148,42 @@
     font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
     color: var(--ink-faint); font-weight: 600; border-bottom-color: var(--rule-firm);
   }
-  td.n, th.n { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; padding-right: 0; }
+  /* Right-aligned columns carry their gutter on the LEFT, so two numeric columns
+     side by side never run into each other when the table is compressed. */
+  /* Right-aligned columns carry their gutter on the LEFT, so two numeric columns
+     side by side never run into each other when the table is compressed. A text
+     column FOLLOWING a numeric one needs the same, because the numeric cell has
+     given up its right padding to sit flush. */
+  td.n, th.n { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; padding-right: 0; padding-left: 18px; }
+  td.n + td, th.n + th { padding-left: 18px; }
   tr.total td { font-weight: 600; border-bottom: none; border-top: 2px solid var(--rule-firm); }
+
+  /* ── input tables ─────────────────────────────────────────────────
+     A field on the left and the exact value to type on the right. The
+     value column is monospace and sits on its own tint, because these
+     rows exist to be selected and copied rather than read. */
+  table.io td.f { width: 27%; }
+  table.io td.v {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    background: var(--surface); color: var(--ink);
+    padding-left: 10px; padding-right: 10px; width: 30%;
+    user-select: all;
+  }
+  table.io td.v.ar { font-family: Cairo, "IBM Plex Sans", sans-serif; font-size: 14px; }
+  /* Nothing to type: the system fills it, or the field stays as it is. */
+  table.io td.v.none {
+    background: none; color: var(--ink-faint); font-style: italic;
+    user-select: auto; font-family: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  table.io td.why { color: var(--ink-soft); font-size: 13.5px; }
+  .req { color: var(--bad); font-weight: 600; }
 
   /* ── steps ────────────────────────────────────────────────────────── */
   .step { display: grid; grid-template-columns: 84px 1fr; gap: 0 26px; padding: 30px 0; border-top: 1px solid var(--rule); }
+  /* A grid item will not shrink past its content's min-content width, so without
+     this a wide table drags the whole page sideways instead of scrolling inside
+     its own `.tw`. */
+  .step > div { min-width: 0; }
   .step:first-of-type { border-top: 2px solid var(--ink); }
   .step-rail { position: sticky; top: 20px; align-self: start; }
   .step-no {
@@ -179,6 +210,7 @@
   .note.derived .eyebrow { color: var(--accent); }
   .note.refuse  .eyebrow { color: var(--bad); }
   .note.beat    .eyebrow { color: var(--warn); }
+  .note.expect  .eyebrow { color: var(--good); }
 
   blockquote {
     margin: 14px 0 0; padding: 14px 18px; background: var(--surface);
@@ -265,13 +297,20 @@
     <p>
       <strong>Steps 01–07 carry the original sheet's claim</strong> that the sequence was run
       end to end; steps <strong>01–03 were independently re-run</strong> against the API on
-      2026-09-02 and behaved as written.
-      <strong>Steps 08–10 are new and have not been run at all.</strong> Their fields,
-      permissions, refusals and arithmetic are read directly from the endpoints
-      (<code>EP-FIN-02</code>, <code>EP-FIN-03</code>, <code>EP-FIN-04</code>) and from
+      2026-09-02 and behaved as written. <strong>Step 05 was re-run on 2026-09-03</strong> —
+      the XER parsed, the version was written, and the schedule tab showed the pending-approval
+      state over an empty Gantt exactly as described. The <span class="ar">أبواب</span> at step 04 and the
+      whole “When the schedule does not appear” section were written from that run.
+      <strong>Steps 08–10 have still not been run.</strong> Their fields, permissions, refusals
+      and arithmetic are read directly from the endpoints (<code>EP-FIN-02</code>,
+      <code>EP-FIN-03</code>, <code>EP-FIN-04</code>) and from
       <code>Domain/PaymentCertificate</code> and <code>Domain/EarnedValue</code> — the rules
       say these figures should appear, but nobody has watched them appear.
       Rehearse the finance act once before presenting, and trust the screen over this sheet.
+      <strong>Every input table on this sheet was read off the form templates and the endpoints
+      on 2026-09-03</strong> — field by field, including which ones are actually required and
+      which are dropdowns — so the fields and their required markers are current even where the
+      figures downstream of them are not.
     </p>
   </div>
 
@@ -291,39 +330,73 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     what the planned percentage and the audit-deadline clock are measured against.
   </p>
 
+  <div class="note derived">
+    <div class="eyebrow">How to read the input tables</div>
+    <p>
+      Every step below carries a table of the exact fields on that screen. A value on a tinted
+      monospace cell is <strong>typed or picked verbatim</strong> — click it once and it selects
+      whole. An italic grey cell means <strong>do not type anything</strong>: the field is
+      optional, or the system fills it. A red <span class="req">*</span> marks a field the
+      <em>server</em> refuses without, not merely one the form nags about. Amounts are written
+      without separators, because that is what the fields accept.
+    </p>
+    <p>
+      Field names are given in Arabic because that is what is on screen. Every dropdown says so
+      in its Notes column — those you pick, never type.
+    </p>
+  </div>
+
   <h2 class="sec">Who does what</h2>
   <p>
-    Sign in by typing a persona id in the username box; the password is ignored. You will
-    switch personas <strong>five times</strong>, and each switch is a point worth making — the
-    system refuses the wrong actor rather than hiding the button.
+    You will switch personas <strong>five times</strong>, and each switch is a point worth
+    making — the system refuses the wrong actor rather than hiding the button. Every refusal
+    below is printed on screen where the control would be.
   </p>
   <div class="tw">
-    <table>
-      <thead><tr><th>Persona</th><th>Does</th><th>Refused if wrong</th></tr></thead>
+    <table class="io">
+      <thead><tr><th>Persona</th><th>Type this to become them</th><th>Does</th><th>Refused if wrong</th></tr></thead>
       <tbody>
         <tr>
-          <td><span class="persona">senior-mgmt</span></td>
-          <td>Creates the workspace</td>
-          <td class="ar">تعريف مساحات العمل من صلاحيات المركز الوزاري.</td>
+          <td class="f"><span class="persona">senior-mgmt</span></td>
+          <td class="v">senior-mgmt</td>
+          <td class="why">Creates the workspace. Ministry-wide, so it sees every project.</td>
+          <td class="ar why">تعريف مساحات العمل من صلاحيات المركز الوزاري.</td>
         </tr>
         <tr>
-          <td><span class="persona">univ-specialist</span></td>
-          <td>Project, contract, bill of quantities, submits the schedule</td>
-          <td class="ar">تعريف المشروع من صلاحيات المستخدم المختص.</td>
+          <td class="f"><span class="persona">univ-specialist</span></td>
+          <td class="v">univ-specialist</td>
+          <td class="why">Project, contract, bill of quantities, submits the schedule. Holds <code>ub</code> and <code>sp</code> only.</td>
+          <td class="ar why">§23 يسند تعريف المشروع إلى المستخدم المختص في الجهة.</td>
         </tr>
         <tr>
-          <td><span class="persona">re-dept</span></td>
-          <td>Approves the baseline, records progress, raises the certificate, releases the first desk</td>
-          <td class="ar">اعتماد نسخة الجدول من صلاحيات دائرة المهندس المقيم.</td>
+          <td class="f"><span class="persona">re-dept</span></td>
+          <td class="v">re-dept</td>
+          <td class="why">Approves the baseline, records progress, raises the certificate, releases the first desk. Holds <code>ub</code> only.</td>
+          <td class="ar why">اعتماد إصدار الجدول الزمني من صلاحيات دائرة المهندس المقيم أو مدير المشروع.</td>
         </tr>
         <tr>
-          <td><span class="persona fin">finance-dept</span></td>
-          <td>Records the official budget, releases the audit and disbursement desks</td>
-          <td class="ar">تحرير البيانات المالية المسجّلة من صلاحيات الدائرة المالية.</td>
+          <td class="f"><span class="persona fin">finance-dept</span></td>
+          <td class="v">finance-dept</td>
+          <td class="why">Records the official budget, releases the audit and disbursement desks. Ministry-wide.</td>
+          <td class="ar why">تحرير البيانات المالية المسجّلة يخصّ الدائرة المالية وحدها (§7).</td>
         </tr>
       </tbody>
     </table>
   </div>
+  <p>
+    <strong>Two ways to become a persona, and you will use both.</strong> At the front door,
+    type the id above into the username box and press
+    <span class="ar">الدخول إلى النظام</span> — the password is ignored, leave it as it is.
+    Once inside, use <span class="ar">العرض بصفة</span> in the sidebar, under the name at the
+    bottom. The switcher is faster and it keeps you on the page you are already looking at,
+    which is what makes a refusal turn into a button in front of the audience.
+  </p>
+  <p>
+    Both forms of the id work — <code>re-dept</code> and <code>user.re-dept</code> match the
+    same person. Every request the app makes carries it as <code>X-Epm-User</code>, so if you
+    ever want to prove a refusal is real rather than a hidden button, re-run the same call with
+    a different id from a terminal.
+  </p>
 
   <h2 class="sec">Act one · the build</h2>
 
@@ -332,12 +405,53 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Create the workspace</h3>
       <p class="route">/entities</p>
-      <p>Press <span class="ar">إضافة جهة</span> and fill in:</p>
-      <ul>
-        <li>Code <code>ub</code> · display code <code>UOB</code></li>
-        <li><span class="ar">جامعة بغداد</span> / University of Baghdad</li>
-        <li>Kind: <span class="ar">جامعة حكومية</span></li>
-      </ul>
+      <p>
+        Sign in as <code>senior-mgmt</code>, go to
+        <span class="ar">مساحات العمل</span> in the sidebar, and press
+        <span class="ar">مساحة عمل</span> at the top right. A drawer opens titled
+        <span class="ar">إنشاء مساحة عمل</span>. Five fields, three of them required:
+      </p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Field</th><th>Type this</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="f ar">الجهة <span class="req">*</span></td>
+              <td class="v ar">جامعة بغداد</td>
+              <td class="why">The Arabic name. This is what appears everywhere in the app.</td>
+            </tr>
+            <tr>
+              <td class="f ar">الاسم بالإنجليزية</td>
+              <td class="v">University of Baghdad</td>
+              <td class="why">Optional, but the English side of the app reads blank without it.</td>
+            </tr>
+            <tr>
+              <td class="f ar">الرمز <span class="req">*</span></td>
+              <td class="v">ub</td>
+              <td class="why"><span class="ar">يظهر في الرابط. أحرف لاتينية وأرقام.</span> Max 12. <strong>This one is the trap — see below.</strong></td>
+            </tr>
+            <tr>
+              <td class="f ar">رمز الشارة <span class="req">*</span></td>
+              <td class="v">UOB</td>
+              <td class="why"><span class="ar">حرفان إلى خمسة</span> — shown on the coloured emblem beside the name.</td>
+            </tr>
+            <tr>
+              <td class="f ar">النوع <span class="req">*</span></td>
+              <td class="v ar">جامعة حكومية</td>
+              <td class="why">A dropdown. Pick it, do not type it.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Press <span class="ar">إضافة مساحة العمل</span>.</p>
+      <div class="note expect">
+        <div class="eyebrow">You should now see</div>
+        <p>
+          One row in the workspaces table: <span class="ar">جامعة بغداد</span> with the
+          <code>UOB</code> emblem, <span class="num">0</span> active projects and no value.
+          Every other column is an em dash, which is correct — it has nothing yet.
+        </p>
+      </div>
       <div class="note beat">
         <div class="eyebrow">Use the code <code>ub</code> — this is the one trap</div>
         <p>
@@ -357,19 +471,62 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Define the project</h3>
       <p class="route">/projects/new</p>
-      <p>Switch persona first. The form refuses to save until every required field is present — show that by pressing save early.</p>
-      <ul>
-        <li><span class="ar">مجمع كليات الهندسة</span> · code <code>UOB-01</code> · type <span class="ar">تنفيذ وبناء وتشييد</span></li>
-        <li>Year <span class="num">2026</span> · stage <span class="ar">تنفيذ</span> · status <span class="ar">مستمر</span> · region <span class="ar">بغداد</span></li>
-        <li>Funding <span class="ar">الموازنة الاتحادية</span> · priority <span class="ar">عالية</span> · planned cost <span class="num">1,000,000,000</span></li>
-        <li>Formation, beneficiary, organisational structure and consultancy firm are all required — the four people forget</li>
-      </ul>
+      <p>
+        Switch to <code>univ-specialist</code> first, or the form prints
+        <span class="ar">§23 يسند تعريف المشروع إلى المستخدم المختص في الجهة</span> instead of
+        fields. <strong>Press <span class="ar">حفظ المشروع</span> once while it is empty</strong>
+        — every required field marks itself in red at the same time, which is the point worth
+        making, and then fill them in.
+      </p>
+      <p>The form is four collapsible sections. Everything marked <span class="req">*</span> is refused without:</p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Field</th><th>Type this</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="f ar">اسم المشروع <span class="req">*</span></td><td class="v ar">مجمع كليات الهندسة</td><td class="why">—</td></tr>
+            <tr><td class="f ar">اسم المشروع (بالإنجليزية)</td><td class="v">Engineering Colleges Complex</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">مساحة العمل <span class="req">*</span></td><td class="v ar">جامعة بغداد</td><td class="why">Dropdown. Only the workspaces this persona holds appear — that is <code>ub</code> and <code>sp</code>, and it is why step 01 had to use one of those codes.</td></tr>
+            <tr><td class="f ar">رمز المشروع</td><td class="v">UOB-01</td><td class="why">Optional. May arrive tagged <span class="ar">مقترح</span>.</td></tr>
+            <tr><td class="f ar">سنة الإدراج <span class="req">*</span></td><td class="v">2026</td><td class="why">Number field with a floor of 1900 and a ceiling the server states in its refusal.</td></tr>
+            <tr><td class="f ar">نوع المشروع <span class="req">*</span></td><td class="v ar">المشاريع الإنشائية</td><td class="why">Dropdown. The other two are <span class="ar">مشاريع التجهيز</span> and <span class="ar">مشاريع التصنيف</span>.</td></tr>
+            <tr><td class="f ar">مرحلة تنفيذ المشروع <span class="req">*</span></td><td class="v ar">أعمال الأسس</td><td class="why">Dropdown of twelve, <span class="ar">تصميم</span> through <span class="ar">الاستلام والتسليم</span>. This one matches where the schedule will put us.</td></tr>
+            <tr><td class="f ar">حالة المشروع <span class="req">*</span></td><td class="v ar">مستمر</td><td class="why">Dropdown.</td></tr>
+            <tr><td class="f ar">المنطقة الجغرافية</td><td class="v ar">بغداد</td><td class="why">Dropdown of eleven.</td></tr>
+            <tr><td class="f ar">إحداثيات الموقع</td><td class="v none">leave empty</td><td class="why">—</td></tr>
+            <tr><td class="f ar">نوع التمويل <span class="req">*</span></td><td class="v ar">الموازنة الاتحادية</td><td class="why">Dropdown of ten.</td></tr>
+            <tr><td class="f ar">الكلفة المقررة <span class="req">*</span></td><td class="v">1000000000</td><td class="why">Digits only, no separators. <strong>This becomes <span class="ar">كلفة المشروع المقررة</span> at step 08 — type it exactly.</strong></td></tr>
+            <tr><td class="f ar">الفئة الإنفاقية</td><td class="v ar">تشييد</td><td class="why">Optional dropdown.</td></tr>
+            <tr><td class="f ar">رقم اعتماد الموازنة</td><td class="v none">leave empty</td><td class="why">Optional. May arrive tagged <span class="ar">مقترح</span>.</td></tr>
+            <tr><td class="f ar">أولوية المشروع</td><td class="v ar">عالية</td><td class="why">Optional dropdown.</td></tr>
+            <tr><td class="f ar">وصف المشروع</td><td class="v none">leave empty</td><td class="why">Optional textarea.</td></tr>
+            <tr><td class="f ar">الجامعة / الجهة المستفيدة <span class="req">*</span></td><td class="v ar">جامعة بغداد</td><td class="why"><strong>Forgotten every time.</strong></td></tr>
+            <tr><td class="f ar">الفرع</td><td class="v none">leave empty</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">اسم التشكيل <span class="req">*</span></td><td class="v ar">كلية الهندسة</td><td class="why"><strong>Forgotten every time.</strong></td></tr>
+            <tr><td class="f ar">الهيكل التنظيمي <span class="req">*</span></td><td class="v ar">قسم المشاريع الهندسية</td><td class="why"><strong>Forgotten every time.</strong></td></tr>
+            <tr><td class="f ar">اسم الشركة الاستشارية <span class="req">*</span></td><td class="v ar">دار الهندسة للاستشارات</td><td class="why"><strong>Forgotten every time.</strong></td></tr>
+            <tr><td class="f ar">الجهة المصمِّمة</td><td class="v none">leave empty</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">الجهة المنفّذة</td><td class="v none">leave empty</td><td class="why">Optional here — the contract asks for it and requires it.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Press <span class="ar">حفظ المشروع</span>.</p>
       <div class="note derived">
         <div class="eyebrow">Derived, not typed</div>
         <p>
           The project id <code>PRJ-0001</code> is the next number in one ministry-wide
-          sequence. Fields the system suggested rather than you typing are tagged
-          <span class="ar">مقترح</span>.
+          sequence — you are never asked for it, and it is what every route from here on
+          carries. Fields the system suggested rather than you typing are tagged
+          <span class="ar">مقترح</span>; the tag separates an entered value from a proposed
+          one, it does not lock the field.
+        </p>
+      </div>
+      <div class="note expect">
+        <div class="eyebrow">You should now see</div>
+        <p>
+          The project card at <code>/projects/PRJ-0001/overview</code>. Physical progress,
+          financial progress and CPI are all em dashes — nothing has been contracted, built or
+          paid. <strong>Those three dashes are what the next eight steps turn into numbers</strong>,
+          so look at them now.
         </p>
       </div>
     </div>
@@ -380,18 +537,51 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Add the contract</h3>
       <p class="route">…/contract/new</p>
-      <ul>
-        <li>Id <code>CNT-DEMO-01</code> · <span class="ar">الأعمال المدنية</span></li>
-        <li><span class="ar">مبلغ الإحالة</span> <span class="num">1,000,000,000</span> — leave reserve, supervision and monitoring at zero for now</li>
-        <li>Start <span class="num">2026-01-01</span> → finish <span class="num">2026-12-31</span></li>
-        <li>Contractor, executing party, consultant, and the award letter number and date</li>
-      </ul>
+      <p>
+        Still <code>univ-specialist</code>. Open the project's
+        <span class="ar">العقود</span> tab and press the add button.
+      </p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Field</th><th>Type this</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="f ar">رمز العقد <span class="req">*</span></td><td class="v">CNT-DEMO-01</td><td class="why">You choose this one — it is not generated. Every route for the next seven steps carries it.</td></tr>
+            <tr><td class="f ar">المكوّن <span class="req">*</span></td><td class="v ar">المبنى الرئيسي</td><td class="why"><strong>Required, and not in the older sheet.</strong> Which part of the project this contract builds.</td></tr>
+            <tr><td class="f ar">اسم العقد <span class="req">*</span></td><td class="v ar">الأعمال المدنية</td><td class="why">Do <em>not</em> reuse this as a <span class="ar">باب</span> at step 04.</td></tr>
+            <tr><td class="f ar">اسم العقد (بالإنجليزية)</td><td class="v">Civil works</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">حالة العقد <span class="req">*</span></td><td class="v ar">مستمر</td><td class="why">Dropdown of nine, including <span class="ar">سحب عمل</span> and <span class="ar">تسوية حسابات</span>.</td></tr>
+            <tr><td class="f ar">مبلغ الإحالة <span class="req">*</span></td><td class="v">1000000000</td><td class="why">Digits only. This is the whole contract value for this demo.</td></tr>
+            <tr><td class="f ar">مبلغ الاحتياط</td><td class="v">0</td><td class="why">Leave at zero — a non-zero reserve changes the arithmetic at step 09.</td></tr>
+            <tr><td class="f ar">مبلغ الإشراف</td><td class="v">0</td><td class="why">Same.</td></tr>
+            <tr><td class="f ar">مبلغ المراقبة</td><td class="v">0</td><td class="why">Same.</td></tr>
+            <tr><td class="f ar">تاريخ المباشرة <span class="req">*</span></td><td class="v">2026-01-01</td><td class="why">Matches the first activity in the XER.</td></tr>
+            <tr><td class="f ar">تاريخ الإنجاز التعاقدي <span class="req">*</span></td><td class="v">2026-12-31</td><td class="why">Matches the last. Step 05's impact analysis compares against this.</td></tr>
+            <tr><td class="f ar">اسم المقاول <span class="req">*</span></td><td class="v ar">شركة الفرات للمقاولات</td><td class="why">—</td></tr>
+            <tr><td class="f ar">الجهة المنفّذة <span class="req">*</span></td><td class="v ar">شركة الفرات للمقاولات</td><td class="why">Required here even though it was optional on the project.</td></tr>
+            <tr><td class="f ar">اسم الشركة الاستشارية</td><td class="v ar">دار الهندسة للاستشارات</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">بيانات التواصل</td><td class="v none">leave empty</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">رقم الكتاب</td><td class="v">1204</td><td class="why">Optional — the award letter. Worth filling: it is the paper the contract exists on.</td></tr>
+            <tr><td class="f ar">تاريخ الكتاب</td><td class="v">2025-12-15</td><td class="why">Optional.</td></tr>
+          </tbody>
+        </table>
+      </div>
       <div class="note derived">
         <div class="eyebrow">Derived, not typed</div>
         <p>
-          Contract value is the sum of its cost components, not a field. The project's value is
-          the sum of its contracts' effective values — right now <span class="num">1,000,000,000</span>,
-          because nothing has amended it yet.
+          Contract value is the sum of its cost components, not a field —
+          <span class="num">1,000,000,000</span> + <span class="num">0</span> +
+          <span class="num">0</span> + <span class="num">0</span>. The project's value is the
+          sum of its contracts' effective values, so it now reads
+          <span class="num">1,000,000,000</span> too, because nothing has amended it yet.
+        </p>
+      </div>
+      <div class="note expect">
+        <div class="eyebrow">You should now see</div>
+        <p>
+          One contract row, and the project card's value tile has stopped being a dash.
+          Physical progress and CPI are still dashes. The BOQ, schedule and progress modules
+          will now let you in, because they were gated on a contract existing, not on a
+          permission.
         </p>
       </div>
     </div>
@@ -402,19 +592,98 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Enter the bill of quantities</h3>
       <p class="route">…/boq/CNT-DEMO-01</p>
-      <p>Use <span class="ar">إدخال يدوي</span> and add four items. Type only quantity and rate — everything else follows.</p>
+      <p>
+        Still <code>univ-specialist</code>. The screen asks which contract first — pick
+        <code>CNT-DEMO-01</code> — then press <span class="ar">إدخال يدوي</span> and add four
+        items, one at a time. A drawer opens in three labelled sections:
+        <span class="ar">التصنيف</span>, <span class="ar">بيانات البند</span>,
+        <span class="ar">القيم المحتسبة</span>.
+      </p>
+      <div class="note refuse">
+        <div class="eyebrow">You are not asked for the item code — do not try to type one</div>
+        <p>
+          <span class="ar">رمز البند</span> is shown in the drawer as
+          <span class="ar">يُولَّد تلقائياً</span> and there is no field. The server picks the
+          next code in the bill's own scheme, so a bill that starts empty gets
+          <code>BQ-001</code>, <code>BQ-002</code>, <code>BQ-003</code>, <code>BQ-004</code>
+          — <em>not</em> <code>B-01</code>. The rest of this sheet uses the codes you will
+          actually get. Contract and <span class="ar">المصدر</span> (which reads
+          <span class="ar">إدخال يدوي</span>) are shown beside it, also read-only.
+        </p>
+      </div>
+      <p>Four passes through the drawer. Each row below is one pass:</p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Will become</th><th><span class="ar">الوصف</span> <span class="req">*</span></th><th><span class="ar">الباب</span></th><th><span class="ar">الوحدة</span></th><th class="n"><span class="ar">الكمية التعاقدية</span></th><th class="n"><span class="ar">سعر الوحدة</span></th></tr></thead>
+          <tbody>
+            <tr><td><code>BQ-001</code></td><td class="v ar">أعمال الحفر والأسس</td><td class="v ar">الأعمال الإنشائية</td><td class="v ar">م³</td><td class="v n">4000</td><td class="v n">100000</td></tr>
+            <tr><td><code>BQ-002</code></td><td class="v ar">الخرسانة المسلحة</td><td class="v ar">الأعمال الإنشائية</td><td class="v ar">م³</td><td class="v n">3000</td><td class="v n">100000</td></tr>
+            <tr><td><code>BQ-003</code></td><td class="v ar">أعمال البناء والتشطيب</td><td class="v ar">أعمال العمارة</td><td class="v ar">م²</td><td class="v n">2000</td><td class="v n">100000</td></tr>
+            <tr><td><code>BQ-004</code></td><td class="v ar">الأعمال الكهربائية</td><td class="v ar">الأعمال الكهروميكانيكية</td><td class="v ar">مقطوعية</td><td class="v n">1000</td><td class="v n">100000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <span class="ar">الوحدة</span> is a dropdown, not a text field — the units this bill
+        already uses come first, then the standard list
+        (<span class="ar">م³ · م² · م.ط · عدد · كغم · طن · نقطة · مقطوعية</span>). Quantity and
+        rate take digits only. On a construction contract the drawer stops there; a supply
+        contract adds a fourth section, <span class="ar">بيانات الجهاز</span>, for
+        manufacturer, country, model, serials and warranty — you will not see it here, and
+        that is <code>D-14</code> working.
+      </p>
+      <p>And this is what the four items add up to, none of it typed:</p>
       <div class="tw">
         <table>
-          <thead><tr><th>Code</th><th>Description</th><th>Unit</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th><th class="n">Weight</th></tr></thead>
+          <thead><tr><th>Code</th><th>Description</th><th><span class="ar">الباب</span></th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th><th class="n">Weight</th></tr></thead>
           <tbody>
-            <tr><td><code>B-01</code></td><td class="ar">أعمال الحفر والأسس</td><td>m3</td><td class="n">4,000</td><td class="n">100,000</td><td class="n">400,000,000</td><td class="n">40%</td></tr>
-            <tr><td><code>B-02</code></td><td class="ar">الخرسانة المسلحة</td><td>m3</td><td class="n">3,000</td><td class="n">100,000</td><td class="n">300,000,000</td><td class="n">30%</td></tr>
-            <tr><td><code>B-03</code></td><td class="ar">أعمال البناء والتشطيب</td><td>m2</td><td class="n">2,000</td><td class="n">100,000</td><td class="n">200,000,000</td><td class="n">20%</td></tr>
-            <tr><td><code>B-04</code></td><td class="ar">الأعمال الكهربائية</td><td>ls</td><td class="n">1,000</td><td class="n">100,000</td><td class="n">100,000,000</td><td class="n">10%</td></tr>
+            <tr><td><code>BQ-001</code></td><td class="ar">أعمال الحفر والأسس</td><td class="ar">الأعمال الإنشائية</td><td class="n">4,000</td><td class="n">100,000</td><td class="n">400,000,000</td><td class="n">40%</td></tr>
+            <tr><td><code>BQ-002</code></td><td class="ar">الخرسانة المسلحة</td><td class="ar">الأعمال الإنشائية</td><td class="n">3,000</td><td class="n">100,000</td><td class="n">300,000,000</td><td class="n">30%</td></tr>
+            <tr><td><code>BQ-003</code></td><td class="ar">أعمال البناء والتشطيب</td><td class="ar">أعمال العمارة</td><td class="n">2,000</td><td class="n">100,000</td><td class="n">200,000,000</td><td class="n">20%</td></tr>
+            <tr><td><code>BQ-004</code></td><td class="ar">الأعمال الكهربائية</td><td class="ar">الأعمال الكهروميكانيكية</td><td class="n">1,000</td><td class="n">100,000</td><td class="n">100,000,000</td><td class="n">10%</td></tr>
             <tr class="total"><td colspan="5">Total</td><td class="n">1,000,000,000</td><td class="n">100.00%</td></tr>
           </tbody>
         </table>
       </div>
+
+      <div class="note beat">
+        <div class="eyebrow">How to enter the <span class="ar">الباب</span> — the field that is easy to skip</div>
+        <p>
+          <span class="ar">الباب</span> is a select on the add form and it starts at
+          <span class="ar">— بدون باب —</span>, so a bill entered quickly gets no divisions at
+          all. On <code>BQ-001</code> pick the last option,
+          <span class="ar">+ باب جديد…</span>, and type
+          <span class="ar">الأعمال الإنشائية</span> into the name field that appears. From
+          <code>BQ-002</code> onward the باب is already in the list — pick it, do not retype it,
+          or you will end up with two divisions spelled the same.
+        </p>
+        <p>
+          <strong>Do not reuse the contract's name</strong>
+          (<span class="ar">الأعمال المدنية</span>) as the باب. One باب over all four lines
+          renders a single header carrying <span class="num">100%</span> of the bill, which
+          groups nothing and makes the hierarchy look broken rather than empty.
+        </p>
+      </div>
+
+      <p style="margin-top:18px">
+        The three أبواب are the same three the schedule brings in at step 05 —
+        <code>demo-schedule.xer</code> files its four activities under
+        <span class="ar">الأعمال الإنشائية</span>, <span class="ar">أعمال العمارة</span> and
+        <span class="ar">الأعمال الكهروميكانيكية</span>. Entering them here means the bill and
+        the Gantt read the same structure, and step 06's links run straight down it.
+      </p>
+      <div class="tw">
+        <table>
+          <thead><tr><th><span class="ar">الباب</span></th><th>Lines</th><th class="n">Subtotal</th><th class="n">Weight</th><th>Its activity at step 05</th></tr></thead>
+          <tbody>
+            <tr><td class="ar">الأعمال الإنشائية</td><td><code>BQ-001</code> <code>BQ-002</code></td><td class="n">700,000,000</td><td class="n">70%</td><td><code>A-01</code> <code>A-02</code> · <code>WBS-1</code></td></tr>
+            <tr><td class="ar">أعمال العمارة</td><td><code>BQ-003</code></td><td class="n">200,000,000</td><td class="n">20%</td><td><code>A-03</code> · <code>WBS-2</code></td></tr>
+            <tr><td class="ar">الأعمال الكهروميكانيكية</td><td><code>BQ-004</code></td><td class="n">100,000,000</td><td class="n">10%</td><td><code>A-04</code> · <code>WBS-3</code></td></tr>
+            <tr class="total"><td>Total</td><td>4</td><td class="n">1,000,000,000</td><td class="n">100.00%</td><td>4 activities · 3 WBS parents</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="note derived">
         <div class="eyebrow">Derived, not typed</div>
         <p>
@@ -423,6 +692,31 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
           <span class="num">100.00</span> — never <span class="num">99.99</span>. The
           denominator is the contract's rows, not the project's; totalling the project and then
           filtering is the classic version of this bug.
+        </p>
+        <p>
+          A <span class="ar">باب</span> subtotal is derived the same way and stored nowhere. The
+          header row carries the division's item count, amount, weight, link count and rolled-up
+          progress — but no original quantity and no variance, because a
+          <span class="ar">باب</span> is <em>a label on lines</em>, not a record with figures of
+          its own. Nothing in the database has a division table; grouping is
+          <code>BoqItem.Division</code> and the endpoint's <code>GroupBy</code>.
+        </p>
+      </div>
+
+      <div class="note beat">
+        <div class="eyebrow">What the <span class="ar">الباب</span> buys you on screen</div>
+        <p>
+          The register becomes a collapsible <span class="ar">باب</span> → item grid: click a
+          header to fold its lines away. Sorting then happens <em>inside</em> each
+          <span class="ar">باب</span> and never across them — a heading whose rows sorted out
+          from under it would be a heading over the wrong lines. Divisions appear in
+          first-appearance order, so the order you type them in is the order they read in.
+        </p>
+        <p>
+          The <span class="ar">الباب</span> is optional by design: a line left at
+          <span class="ar">— بدون باب —</span> is still a line, and unfiled rows render after
+          the groups rather than disappearing. If you want to show that, leave
+          <code>BQ-004</code> unfiled, look at the register, then edit it back.
         </p>
       </div>
     </div>
@@ -439,16 +733,108 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
       </p>
       <ul>
         <li>Open <span class="ar">استيراد</span> and drop in <code>docs/demo/demo-schedule.xer</code></li>
-        <li>Format Primavera XER, weight basis cost</li>
-        <li>The wizard parses in the browser — you will see the spinner — then shows the four activities, validates, and reports the impact on the contract's finish date</li>
-        <li>Submit the version, then stop, because you cannot approve it</li>
+        <li>Pick the format <strong>before</strong> the file — the wizard reads the file as the
+          format you chose and never sniffs the extension. Primavera XER, weight basis
+          <span class="ar">الكلفة المدرجة</span>.</li>
+        <li>The wizard parses in the browser — you will see the spinner — then shows the four
+          activities, validates, and reports the impact on the contract's finish date</li>
+        <li><span class="ar">تأكيد وتقديم</span> <strong>exactly once</strong>, then stop,
+          because you cannot approve it</li>
       </ul>
+
+      <div class="note beat">
+        <div class="eyebrow">Nothing will appear on the Gantt — and that is the step working</div>
+        <p>
+          Submitting writes a <em>version</em>. It does not write a single activity. The Gantt
+          stays empty until step 06, and if you go looking for your four activities now you will
+          not find them anywhere: not on the schedule, not in the WBS tree, not in the counts.
+          <strong>This is the most confusing sixty seconds in the demo</strong>, so say what is
+          happening before you click, not after.
+        </p>
+        <p>What the screen says instead — and it says it clearly, so read it aloud:</p>
+      </div>
+      <blockquote>
+        <p class="ar">
+          استُورد الجدول الزمني وينتظر الاعتماد<br>
+          demo-schedule.xer · 4 نشاطاً<br>
+          لا خط أساس نافذ لهذا العقد بعد، والإصدار المقدَّم لا يصير جدولاً حتى يُعتمد. تظهر الأنشطة فور اعتماده.<br>
+          الاعتماد من صلاحية دائرة المهندس المقيم أو مدير المشروع، ولا يعتمده من قدّمه.
+        </p>
+      </blockquote>
+      <div class="note derived">
+        <div class="eyebrow">Two emptinesses, two messages — <code>04 §9</code> on screen</div>
+        <p>
+          The file name and the activity count are printed as the <em>proof it landed</em>, and
+          the last line stands where the <span class="ar">اعتماد</span> button will be once you
+          switch persona. An untouched contract says something different —
+          <span class="ar">«لا جدول زمني لهذا العقد … حمّل بيانات العرض للبدء»</span> — because
+          "nothing was imported" and "the import is waiting for a signature" are not the same
+          emptiness and must not offer the same button.
+        </p>
+        <p>
+          Until <span class="num">2026-09-03</span> this screen printed the empty-database
+          message here, contradicting the pending bar directly above it, and it was the single
+          likeliest way to conclude an import had failed. If you are showing an older build and
+          you see <span class="ar">«حمّل بيانات العرض للبدء»</span> under a warning bar, that is
+          the old bug and not a failed import — do not import again because of it.
+        </p>
+      </div>
+      <div class="note derived">
+        <div class="eyebrow">Submit twice and the first one lapses — a contract holds at most one pending version</div>
+        <p>
+          Since <span class="num">P-230</span>, a new <span class="ar">تأكيد وتقديم</span>
+          <em>lapses</em> the pending version before it, and an approval lapses any other. The
+          reason is the impact figures: the analysis measures the incoming file against the
+          schedule <em>in force</em>, never against another pending version, so two of them
+          would each describe what <em>they</em> would do to the same baseline — and approving
+          one moves that baseline out from under the other's stored
+          <span class="ar">قبل</span> and delta. The invariant is the fix; listing both would
+          have printed two "before" columns quietly describing one schedule.
+        </p>
+        <p>
+          <code>lapsed</code> is a fourth state and deliberately not <code>superseded</code>:
+          الشكل 23's baseline picker is built from <code>approved</code> and
+          <code>superseded</code>, so filing a never-approved version as superseded would put a
+          baseline that never existed into the list. Nothing is deleted and no number is reused.
+        </p>
+        <p>
+          You can check the whole ladder from a terminal, and it is a fair thing to show:
+        </p>
+      </div>
+      <pre><code>curl -s http://localhost:5080/api/projects/PRJ-0001/schedule/CNT-DEMO-01/import/versions</code></pre>
+      <p>
+        Each entry carries its <code>no</code>, its <code>state</code>, the file name, the
+        activity count, and the contract finish before and after. There are four states and
+        two routes through them:
+      </p>
+      <pre><code>submitted → approved → superseded
+submitted → lapsed</code></pre>
+      <p>
+        If <code>state</code> reads <code>submitted</code>, the import worked and is simply
+        waiting for a second person — and there will be exactly one such row.
+      </p>
       <div class="note refuse">
         <div class="eyebrow">Separation of duties — a beat, not a bug</div>
         <p>
           The specialist who submits a baseline may not approve it. Try it and read the refusal
           aloud: the baseline is what slip and penalty are measured against, so the resident
-          engineer owns it.
+          engineer owns it. Two separate rules are in force here and both are checked on the
+          server — the <em>party</em> must be
+          <span class="ar">دائرة المهندس المقيم</span> or
+          <span class="ar">مدير المشروع</span>, <em>and</em> the approver must not be the person
+          who submitted. Signing in as a resident engineer who submitted it themselves still
+          fails, which is the point.
+        </p>
+      </div>
+      <div class="note derived">
+        <div class="eyebrow">What the impact screen is telling you</div>
+        <p>
+          On a first import every row reads <span class="ar">مضاف</span> and the contract finish
+          delta is <span class="num">0</span> — there is no schedule in force to move. The
+          screen earns its place on the <em>second</em> import, where it names every activity
+          whose baseline finish shifts, and every activity the new file omits. An omitted
+          activity is never deleted: it carries bill links, progress and earned value, and the
+          wizard names it so a person decides rather than a file.
         </p>
       </div>
     </div>
@@ -460,9 +846,75 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
       <h3>Approve the baseline, then link the bill to it</h3>
       <p class="route">…/schedule/CNT-DEMO-01 → …/boq/CNT-DEMO-01</p>
       <ul>
-        <li>Switch persona and approve version 1. Four activities and three WBS parents appear on the Gantt.</li>
-        <li>Go back to the bill, open <span class="ar">الربط بالأنشطة</span>, and link each item to its activity at 100%: <code>B-01→A-01</code>, <code>B-02→A-02</code>, <code>B-03→A-03</code>, <code>B-04→A-04</code>.</li>
+        <li>Switch persona. The same panel from step 05 is on screen, but its last line has
+          become an <span class="ar">اعتماد الإصدار</span> button — the sentence naming whose
+          permission it is was standing exactly where the button goes.</li>
+        <li>Approve it. There is exactly one version to approve — a contract holds at most one
+          pending at a time — so there is no number to choose. This is the only action in the
+          whole system that writes <code>Activities.BaselineStart</code> and
+          <code>BaselineFinish</code>.</li>
+        <li>Four activities and three WBS parents appear on the Gantt, and the pending-approval
+          state goes with them. The WBS parents are the same three names you used as
+          <span class="ar">أبواب</span> at step 04 — point at them together.</li>
       </ul>
+      <p>
+        Then go back to the bill and open the <span class="ar">الربط بالأنشطة</span> tab. It is
+        two panels: <span class="ar">بنود الكميات (المصدر)</span> on one side and
+        <span class="ar">الأنشطة المرتبطة (الهدف)</span> on the other. Pick an item on the
+        left, press <span class="ar">إضافة نشاط</span> on the right, choose the activity and
+        set its share. Four items, one activity each, <span class="num">100</span> every time:
+      </p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Pick this item</th><th>Add this activity</th><th class="n">Share</th><th>Which is</th></tr></thead>
+          <tbody>
+            <tr><td class="f"><code>BQ-001</code> <span class="ar">أعمال الحفر والأسس</span></td><td class="v">A-01</td><td class="v n">100</td><td class="why">The whole item earns from one activity.</td></tr>
+            <tr><td class="f"><code>BQ-002</code> <span class="ar">الخرسانة المسلحة</span></td><td class="v">A-02</td><td class="v n">100</td><td class="why">Same.</td></tr>
+            <tr><td class="f"><code>BQ-003</code> <span class="ar">أعمال البناء والتشطيب</span></td><td class="v">A-03</td><td class="v n">100</td><td class="why">Same.</td></tr>
+            <tr><td class="f"><code>BQ-004</code> <span class="ar">الأعمال الكهربائية</span></td><td class="v">A-04</td><td class="v n">100</td><td class="why">Same.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        You do not have to type the <span class="num">100</span>. The
+        <span class="ar">توزيع</span> menu on the item carries
+        <span class="ar">أساس الوزن</span> (<span class="ar">الكلفة</span> or
+        <span class="ar">ساعات العمل</span>) and <span class="ar">توزيع تلقائي</span>, which
+        <span class="ar">يوزّع 100% بنسبة وزن كل نشاط</span>. With one activity per item it
+        lands on <span class="num">100</span> either way — press it once anyway, so the
+        audience sees that the basis is a parameter of the distribution and not a separate
+        setting hidden somewhere else.
+      </p>
+      <div class="note refuse">
+        <div class="eyebrow">Do this before step 07, or step 07 earns nothing</div>
+        <p>
+          Progress is recorded against <em>activities</em>, and an activity linked to nothing
+          moves no bill line. The progress screen says so in a column of its own rather than
+          leaving the cell blank. Record progress before linking and every figure on this sheet
+          stays at zero, with no error to explain why.
+        </p>
+      </div>
+      <div class="note expect">
+        <div class="eyebrow">You should now see</div>
+        <p>
+          Four activities on the Gantt under three WBS parents; the pending-approval state gone;
+          and in the bill, the <span class="ar">الربط</span> column reading
+          <span class="num">1</span> on all four rows with progress still at
+          <span class="num">0%</span>. The contract is now fully described and entirely
+          unstarted — which is exactly where a contract stands on the day it is awarded.
+        </p>
+      </div>
+      <div class="note beat">
+        <div class="eyebrow">Approving writes the plan, and only the plan</div>
+        <p>
+          It sets the id, name, WBS, baseline dates, duration, cost, hours, milestone flag and
+          predecessors. It does not touch progress, actual dates, float, criticality or the
+          forecast finish — those belong to the schedule in force, and an activity that is
+          already <span class="num">82%</span> built stays <span class="num">82%</span> built.
+          A re-import is a re-baseline, not a reset. Everything is at zero right now, so the
+          distinction costs nothing here and matters enormously on a live contract.
+        </p>
+      </div>
       <div class="note derived">
         <div class="eyebrow">Derived, not typed</div>
         <p>
@@ -480,15 +932,39 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Record progress — and watch it roll up</h3>
       <p class="route">…/progress</p>
-      <p>Progress is recorded against activities. Set <code>A-01 → 100%</code>, <code>A-02 → 50%</code>, and leave <code>A-03</code> and <code>A-04</code> at zero. Then go back to the bill of quantities without typing anything else.</p>
+      <p>
+        Still <code>re-dept</code>. Progress is recorded against <em>activities</em>, never
+        against bill lines — that is the whole argument of this step. Find the activity row,
+        press <span class="ar">تعديل</span> at its end, type a whole number from
+        <span class="num">0</span> to <span class="num">100</span> in the
+        <span class="ar">المسجّل</span> cell, and press <span class="ar">حفظ</span>.
+        <kbd>Enter</kbd> saves and <kbd>Esc</kbd> cancels, so four rows take about twenty
+        seconds.
+      </p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Activity</th><th class="n">Type this</th><th>Then</th></tr></thead>
+          <tbody>
+            <tr><td class="f"><code>A-01</code> <span class="ar">أعمال الحفر والأسس</span></td><td class="v n">100</td><td class="why">Save. Status flips to <span class="ar">منجز</span>.</td></tr>
+            <tr><td class="f"><code>A-02</code> <span class="ar">الخرسانة المسلحة</span></td><td class="v n">50</td><td class="why">Save.</td></tr>
+            <tr><td class="f"><code>A-03</code> <span class="ar">أعمال البناء والتشطيب</span></td><td class="v none">do not touch</td><td class="why">Stays at zero.</td></tr>
+            <tr><td class="f"><code>A-04</code> <span class="ar">الأعمال الكهربائية</span></td><td class="v none">do not touch</td><td class="why">Stays at zero.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Before you leave, read the <span class="ar">يغذّي</span> column: each row you edited
+        names the bill line it moves. Now go back to the bill of quantities
+        <strong>without typing anything else</strong>.
+      </p>
       <div class="tw">
         <table>
           <thead><tr><th>Item</th><th class="n">Amount</th><th class="n">Weight</th><th class="n">Progress</th><th class="n">Achieved</th></tr></thead>
           <tbody>
-            <tr><td><code>B-01</code></td><td class="n">400,000,000</td><td class="n">40%</td><td class="n">100%</td><td class="n">400,000,000</td></tr>
-            <tr><td><code>B-02</code></td><td class="n">300,000,000</td><td class="n">30%</td><td class="n">50%</td><td class="n">150,000,000</td></tr>
-            <tr><td><code>B-03</code></td><td class="n">200,000,000</td><td class="n">20%</td><td class="n">0%</td><td class="n">0</td></tr>
-            <tr><td><code>B-04</code></td><td class="n">100,000,000</td><td class="n">10%</td><td class="n">0%</td><td class="n">0</td></tr>
+            <tr><td><code>BQ-001</code></td><td class="n">400,000,000</td><td class="n">40%</td><td class="n">100%</td><td class="n">400,000,000</td></tr>
+            <tr><td><code>BQ-002</code></td><td class="n">300,000,000</td><td class="n">30%</td><td class="n">50%</td><td class="n">150,000,000</td></tr>
+            <tr><td><code>BQ-003</code></td><td class="n">200,000,000</td><td class="n">20%</td><td class="n">0%</td><td class="n">0</td></tr>
+            <tr><td><code>BQ-004</code></td><td class="n">100,000,000</td><td class="n">10%</td><td class="n">0%</td><td class="n">0</td></tr>
             <tr class="total"><td>Contract</td><td class="n">1,000,000,000</td><td class="n">100%</td><td class="n">55%</td><td class="n">550,000,000</td></tr>
           </tbody>
         </table>
@@ -523,13 +999,25 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
         these four figures can be set, by one party. Press <span class="ar">تعديل</span> and enter:
       </p>
       <div class="tw">
-        <table>
-          <thead><tr><th>Field</th><th class="n">Value</th><th>Why this one</th></tr></thead>
+        <table class="io">
+          <thead><tr><th>Field</th><th>Type this</th><th>Why this one</th></tr></thead>
           <tbody>
-            <tr><td class="ar">الكلفة المقررة</td><td class="n">1,000,000,000</td><td>the approved cost — the equation's first term</td></tr>
-            <tr><td class="ar">الكلفة المعدلة</td><td class="n">1,000,000,000</td><td>nothing has amended it yet, so the two match</td></tr>
-            <tr><td class="ar">التخصيص السنوي</td><td class="n">600,000,000</td><td>year <span class="num">2026</span> — deliberately less than the cost, so the ceiling can bite</td></tr>
-            <tr><td class="ar">حالة المناقلة</td><td>—</td><td>leave it</td></tr>
+            <tr><td class="f ar">كلفة المشروع المقررة</td><td class="v">1000000000</td><td class="why">The approved cost — the equation's first term. It may already carry the project's planned cost from step 02; confirm it reads this.</td></tr>
+            <tr><td class="f ar">الكلفة المعدلة <span class="req">*</span></td><td class="v">1000000000</td><td class="why">Nothing has amended it yet, so the two match. <strong>This is the one field the card marks required</strong>, because it is the figure every other screen measures against.</td></tr>
+            <tr><td class="f ar">التخصيص السنوي</td><td class="v">600000000</td><td class="why">Year <span class="num">2026</span>. Deliberately less than the cost, so the ceiling at step 09 can bite.</td></tr>
+            <tr><td class="f ar">حالة المناقلة</td><td class="v none">leave unset</td><td class="why">A dropdown: <span class="ar">لا يوجد · قيد المناقلة · مناقلة معتمدة</span>. Leaving it unset prints <span class="ar">غير متاح</span>, which is honest; picking <span class="ar">لا يوجد</span> would assert a fact nobody checked.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Press <span class="ar">حفظ</span>. Four more figures sit in the same card and stay read-only <em>inside</em> the edit form, because the save would ignore them:</p>
+      <div class="tw">
+        <table class="io">
+          <thead><tr><th>Read-only figure</th><th>Comes from</th></tr></thead>
+          <tbody>
+            <tr><td class="f ar">المصروف السنوي</td><td class="why">Σ payments released this year — still empty until step 10.</td></tr>
+            <tr><td class="f ar">المصروف التراكمي</td><td class="why">Σ payments released, ever. <span class="num">0</span>.</td></tr>
+            <tr><td class="f ar">مبلغ الأمانات</td><td class="why">Retention on <em>paid</em> certificates only.</td></tr>
+            <tr><td class="f ar">نسبة الإنجاز المخطط</td><td class="why">What the baselines say should be done by now.</td></tr>
           </tbody>
         </table>
       </div>
@@ -564,29 +1052,54 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
         least one <span class="ar">ذرعة</span> are required by the server, not just asked for
         by the form.
       </p>
-      <p><strong>Try the ceiling first.</strong> Enter a gross of <span class="num">700,000,000</span> with no deductions and submit:</p>
+      <p>
+        <strong>Try the ceiling first.</strong> Run the wizard once with a gross of
+        <span class="num">700000000</span>, no deductions, all of it on
+        <span class="ar">مبلغ الإحالة</span>, and the same letter and file as below. The
+        annual allocation you set at step 08 is <span class="num">600,000,000</span>, so the
+        registration is refused:
+      </p>
       <blockquote>
         <p class="ar">
           الصرف السنوي يتجاوز التخصيص السنوي.
         </p>
       </blockquote>
-      <p>Now the real one:</p>
+      <p>
+        The check is on the server at <em>submit</em>, so you do have to walk the five steps to
+        reach it. That is the honest shape of the rule — the wizard's job is to collect a
+        complete claim, and the ceiling's job is to refuse one that is complete and still too
+        large.
+      </p>
+      <p>Now the real one, step by step through the wizard:</p>
       <div class="tw">
-        <table>
-          <thead><tr><th>Field</th><th class="n">Value</th></tr></thead>
+        <table class="io">
+          <thead><tr><th>Wizard step</th><th>Field</th><th>Type or pick this</th><th>Notes</th></tr></thead>
           <tbody>
-            <tr><td>Contract</td><td><code>CNT-DEMO-01</code></td></tr>
-            <tr><td class="ar">المبلغ الإجمالي</td><td class="n">550,000,000</td></tr>
-            <tr><td class="ar">الضمانات المحتجزة</td><td class="n">55,000,000</td></tr>
-            <tr><td class="ar">استرداد السلفة</td><td class="n">0</td></tr>
-            <tr class="total"><td class="ar">الصافي</td><td class="n">495,000,000</td></tr>
+            <tr><td class="f ar">العقود المشمولة</td><td class="ar">العقد</td><td class="v">CNT-DEMO-01</td><td class="why">A radio, and there is only one. <span class="ar">المستخلص يُقاس على جدول كميات واحد، فيخص عقداً واحداً.</span></td></tr>
+            <tr><td class="f ar">المبالغ والبنود</td><td class="ar">نوع الدفعة</td><td class="v ar">مستخلص جارٍ</td><td class="why">The three options are <span class="ar">سلفة · مستخلص جارٍ · مستخلص نهائي</span>.</td></tr>
+            <tr><td class="f"></td><td class="ar">المبلغ الإجمالي <span class="req">*</span></td><td class="v">550000000</td><td class="why">Exactly what was earned at step 07.</td></tr>
+            <tr><td class="f"></td><td class="ar">الاستقطاع (الضمان)</td><td class="v">55000000</td><td class="why">A tenth, held until the works are accepted.</td></tr>
+            <tr><td class="f"></td><td class="ar">استرداد السلفة</td><td class="v">0</td><td class="why">No advance was paid.</td></tr>
+            <tr><td class="f"></td><td class="ar">مبلغ الإحالة <span class="req">*</span></td><td class="v">495000000</td><td class="why"><strong>The step also splits the net across the contract's three expense items.</strong> Put all of it on the award item — or leave it and press <span class="ar">أضِف الباقي إلى الإحالة</span>, which does the same thing.</td></tr>
+            <tr><td class="f"></td><td class="ar">مبلغ الاحتياط · مبلغ الإشراف</td><td class="v">0</td><td class="why"><span class="ar">غير موزّع</span> must reach zero before the step will pass.</td></tr>
+            <tr><td class="f ar">كتاب المالية</td><td class="ar">رقم كتاب المالية <span class="req">*</span></td><td class="v">م/2026/418</td><td class="why">Any number — but say it aloud: <strong>this is the paper the money moves on.</strong></td></tr>
+            <tr><td class="f"></td><td class="ar">تاريخ كتاب المالية <span class="req">*</span></td><td class="v">2026-08-15</td><td class="why"><span class="ar">ومن تاريخه تُقاس مهل التدقيق</span> — every desk clock at step 10 starts here (BR-12).</td></tr>
+            <tr><td class="f"></td><td class="ar">ملاحظة</td><td class="v none">leave empty</td><td class="why">Optional.</td></tr>
+            <tr><td class="f ar">ذرعات الأعمال</td><td class="ar">إرفاق ملف <span class="req">*</span></td><td class="v none">any file at all</td><td class="why">At least one is required by the <em>server</em>. Any PDF or image on your machine will do — the demo is about the requirement, not the contents.</td></tr>
+            <tr><td class="f ar">مراجعة</td><td class="ar">تسجيل الدفعة</td><td class="v none">press it</td><td class="why">The review page restates the contract, kind, gross, net, letter number and file count before anything is written.</td></tr>
           </tbody>
         </table>
       </div>
-      <p>
-        Then a finance letter number and date, and one <span class="ar">ذرعة</span> against the
-        measured work. Submit.
-      </p>
+      <div class="note derived">
+        <div class="eyebrow">The net, computed twice on purpose</div>
+        <p>
+          <span class="num">550,000,000</span> − <span class="num">55,000,000</span> −
+          <span class="num">0</span> = <span class="num">495,000,000</span>. The wizard shows
+          it as a preview; the binding figure is computed by the server from the same three
+          fields, so a typed net could never disagree with its own parts. There is no field
+          for it, and that is the point.
+        </p>
+      </div>
       <div class="note derived">
         <div class="eyebrow">Derived, not typed</div>
         <p>
@@ -614,17 +1127,30 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     <div>
       <h3>Walk the three desks</h3>
       <p class="route">…/financial → <span class="ar">مهل التدقيق</span></p>
-      <p>Each desk names the party that holds the file, and only that party may let it go. Release them in order:</p>
+      <p>
+        Open the <span class="ar">مهل التدقيق</span> tab. The card is
+        <span class="ar">مهلة تدقيق السلفة الجارية</span> and it draws all three desks at once,
+        with <span class="ar">المرحلة الحالية</span> marked and a
+        <span class="ar">السقف</span> in days on each. Exactly one button exists on the whole
+        card — <span class="ar">إطلاق المعاملة</span>, on the desk holding the file, and only
+        for the party that holds it. Release them in order:
+      </p>
       <div class="tw">
-        <table>
-          <thead><tr><th>Desk</th><th>Held by</th><th>Persona</th></tr></thead>
+        <table class="io">
+          <thead><tr><th class="n">#</th><th>Desk</th><th>Held by</th><th>Switch to</th><th>Then press</th></tr></thead>
           <tbody>
-            <tr><td class="ar">تدقيق المهندس المقيم</td><td class="ar">دائرة المهندس المقيم</td><td><span class="persona">re-dept</span></td></tr>
-            <tr><td class="ar">تدقيق الدائرة المالية</td><td class="ar">الدائرة المالية</td><td><span class="persona fin">finance-dept</span></td></tr>
-            <tr><td class="ar">تسجيل الدفعة واعتمادها</td><td class="ar">الدائرة المالية</td><td><span class="persona fin">finance-dept</span></td></tr>
+            <tr><td class="n">1</td><td class="ar">تدقيق المهندس المقيم</td><td class="ar">دائرة المهندس المقيم</td><td class="v">re-dept</td><td class="ar why">إطلاق المعاملة</td></tr>
+            <tr><td class="n">2</td><td class="ar">تدقيق الدائرة المالية</td><td class="ar">الدائرة المالية</td><td class="v">finance-dept</td><td class="ar why">إطلاق المعاملة</td></tr>
+            <tr><td class="n">3</td><td class="ar">الصرف</td><td class="ar">الدائرة المالية</td><td class="v">finance-dept</td><td class="ar why">إطلاق المعاملة</td></tr>
           </tbody>
         </table>
       </div>
+      <p>
+        On a desk you do not hold, the button is replaced by
+        <span class="ar">إطلاق المعاملة من المرحلة الحالية يخصّ …</span> naming the party that
+        does. That sentence, not a greyed-out button, is the pattern this whole system uses
+        for a permission you lack.
+      </p>
       <div class="note refuse">
         <div class="eyebrow">The best refusal in the demo</div>
         <p>
@@ -691,7 +1217,79 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
     the finance steps. All of it derived from row counts, none of it a status anyone set.
   </p>
 
+  <h2 class="sec">When the schedule does not appear</h2>
+  <p>
+    This is the one place in the runsheet where a correct system can look like a broken one.
+    Work down the table: the first four rows are the system behaving exactly as designed and
+    need nothing from you but a persona switch, and only the last two are things to act on.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>What you see</th><th>What it means</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="ar">استُورد الجدول الزمني وينتظر الاعتماد</span>, naming your file, Gantt still empty</td>
+          <td>The import worked. It wrote a version, not activities.</td>
+          <td>Switch to <span class="persona">re-dept</span> and approve it — step 06.</td>
+        </tr>
+        <tr>
+          <td>That panel, but no <span class="ar">اعتماد الإصدار</span> button</td>
+          <td>Your persona is not <span class="ar">دائرة المهندس المقيم</span> or <span class="ar">مدير المشروع</span>, or you are the person who submitted.</td>
+          <td>Switch persona. The reason stands exactly where the button goes.</td>
+        </tr>
+        <tr>
+          <td><span class="ar">«لا جدول زمني لهذا العقد … حمّل بيانات العرض للبدء»</span></td>
+          <td>Correct <em>only</em> if no version was ever submitted. Under a pending warning bar it is the pre-2026-09-03 bug.</td>
+          <td>On a current build, import — there is genuinely nothing there. On an older one, ignore it and read the bar.</td>
+        </tr>
+        <tr>
+          <td>An earlier version reading <code>lapsed</code> in the <code>curl</code> above</td>
+          <td>You submitted twice. The second submission lapsed the first, by design. It never appears on screen — the page draws only the pending one.</td>
+          <td>Nothing. Approve the one still <code>submitted</code> — there is only ever one.</td>
+        </tr>
+        <tr>
+          <td>The wizard stops at <span class="ar">التحقق</span> with violations</td>
+          <td>The file failed a check — every violation is listed with its row number.</td>
+          <td>See the four checks below. The server refuses the submission, not just the form.</td>
+        </tr>
+        <tr>
+          <td>The contract picker appears instead of a schedule</td>
+          <td>An activity belongs to one contract, never to a project.</td>
+          <td>Pick <code>CNT-DEMO-01</code>. The refusal is the rule.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The validation refuses a duplicate activity id, a missing or reversed baseline, and — on
+    the cost basis — any non-milestone activity without a positive budgeted cost. A milestone
+    is exempt from the cost check only, never from needing dates. It also flags a predecessor
+    naming no activity in the file. Every violation is reported at once, with its row number,
+    so the file is fixed in one pass rather than one row per upload.
+  </p>
+  <div class="note derived">
+    <div class="eyebrow">The three routes behind this step</div>
+    <p>
+      <code>EP-SCD-04</code> previews and writes nothing. <code>EP-SCD-05</code> writes the
+      version and its rows. <code>EP-SCD-06</code> is the only route in the system that moves a
+      baseline, and it is the only one with a permission of its own. If you ever need to prove
+      an import landed, <code>EP-SCD-07</code> lists the versions — the <code>curl</code> at
+      step 05.
+    </p>
+  </div>
+
   <h2 class="sec">If they ask</h2>
+
+  <div class="qa">
+    <h4>Why does the bill have <span class="ar">أبواب</span> at all?</h4>
+    <p>
+      Because a ministry bill is read by division before it is read by line, and a
+      <span class="ar">باب</span> subtotal is the figure a manager actually quotes —
+      <span class="num">70%</span> of this contract is structural work. It costs one select on
+      the add form and it is stored as a plain label on the item; there is no division table, no
+      division id and no second place for the same total to be wrong in.
+    </p>
+  </div>
 
   <div class="qa">
     <h4>Why is the financial percentage lower than the physical one?</h4>

@@ -149,8 +149,9 @@
           </label>
           <label class="d-form-i">
             <span class="k">{{ lang.t('pay_w_letter_date') }} *</span>
-            <input class="d-cellinput" type="date" [value]="letterDate()"
-                   (input)="letterDate.set($any($event.target).value)" />
+            <epm-date [value]="letterDate()"
+                      [label]="lang.t('pay_w_letter_date')"
+                      (changed)="letterDate.set($event)" />
           </label>
           <label class="d-form-i" style="grid-column: 1 / -1">
             <span class="k">{{ lang.t('pay_w_note') }}</span>

@@ -543,6 +543,22 @@ const STR = {
   con_group_letter:{ ar: 'كتاب الإحالة',                   en: 'Award letter' },
   con_code:        { ar: 'رمز العقد',                      en: 'Contract code' },
   con_code_locked: { ar: 'الرمز هو مفتاح العقد ولا يقبل التعديل بعد الحفظ.', en: 'The code is the contract key and cannot be changed after saving.' },
+  // The contract's OWN name. This form used `inf_nameAr`/`inf_nameEn` — the
+  // project keys — so the field asking for «الأعمال المدنية» was labelled
+  // «اسم المشروع», which reads as though the project has to be named twice.
+  // <epm-date>'s own strings.
+  date_none:       { ar: 'اختر تاريخاً',                   en: 'Pick a date' },
+  date_pick:       { ar: 'التقويم',                        en: 'Calendar' },
+  date_today:      { ar: 'اليوم',                          en: 'Today' },
+  date_clear:      { ar: 'مسح',                            en: 'Clear' },
+  date_prev:       { ar: 'الشهر السابق',                   en: 'Previous month' },
+  date_next:       { ar: 'الشهر التالي',                   en: 'Next month' },
+  date_min_why:    { ar: 'أبكر من الحد المسموح:',          en: 'Earlier than the limit:' },
+  date_max_why:    { ar: 'أبعد من الحد المسموح:',          en: 'Later than the limit:' },
+
+  con_nameAr:      { ar: 'اسم العقد',                      en: 'Contract name' },
+  con_nameEn:      { ar: 'اسم العقد (بالإنجليزية)',       en: 'Contract name (English)' },
+  con_status:      { ar: 'حالة العقد',                     en: 'Contract status' },
   con_component:   { ar: 'المكوّن',                        en: 'Component' },
   con_component_ph:{ ar: 'المكوّن المدني',                 en: 'Civil works' },
   con_award:       { ar: 'مبلغ الإحالة',                   en: 'Award amount' },
@@ -2877,6 +2893,34 @@ export class LangService {
   pick = (ar: string, en: string): string => (this.lang() === 'ar' ? ar : en) || ar || en;
 
   isAr = () => this.lang() === 'ar';
+
+  /**
+   * Month names for `<epm-date>`'s header — the LEVANTINE set Iraq uses
+   * (كانون الثاني … كانون الأول), not the transliterated يناير/فبراير, which is
+   * the Gulf and Egyptian convention and reads as a foreign calendar here.
+   *
+   * These are for NAVIGATING the calendar only. Every date the app PRINTS stays
+   * `yyyy-MM-dd` — `core/format.ts` settled that: a date is a record, not prose.
+   */
+  months = (): string[] => this.isAr()
+    ? ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
+       'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول']
+    : ['January', 'February', 'March', 'April', 'May', 'June',
+       'July', 'August', 'September', 'October', 'November', 'December'];
+
+  /**
+   * Weekday names, Sunday first — the working week here is الأحد → الخميس.
+   *
+   * WRITTEN OUT, not «أحد · اثن · ثلا». Arabic has no accepted one- or
+   * two-letter weekday abbreviation the way English has «Su · Mo»: clipping
+   * «الثلاثاء» to «ثلا» produces a fragment a reader has to decode rather than
+   * recognise, and «اثن» and «أرب» differ by one letter in a row of seven. The
+   * calendar is 380px wide so the full names fit — the panel gives way to the
+   * words, not the other way round.
+   */
+  dows = (): string[] => this.isAr()
+    ? ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   toggle() {
     this.lang.set(this.lang() === 'ar' ? 'en' : 'ar');

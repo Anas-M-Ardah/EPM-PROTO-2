@@ -403,18 +403,44 @@ public static class FinancialsEndpoints
                 })
                 .ToList();
 
-            // The filter offers only years that HAVE a paid certificate: a
-            // dropdown of empty years is a list of ways to see nothing.
-            var years = payments
-                .Where(x => x.Status == "paid" && x.PaidDate != null)
-                .Select(x => x.PaidDate!.Value.Year)
+            // The years the filter offers, and the years an allocation may be
+            // FILED under — one list, because الشكل 18's «تعديل» posts the year
+            // the filter is on and `EP-FIN-04` refuses an allocation without one.
+            //
+            // It used to offer only years with a PAID certificate ("a dropdown of
+            // empty years is a list of ways to see nothing"). True for reading,
+            // wrong for writing: a project whose finance directorate has not yet
+            // released anything has no paid year, so no year could be sent, so the
+            // FIRST allocation of every project was unwritable — and with the
+            // allocation unwritable the annual ceiling could never bind on the
+            // certificate that needed it most. Same reasoning as P-182: **an
+            // absent record is not a reason to refuse the first one.**
+            //
+            // So the project's OWN span is always offered — registration year
+            // through the data date's year (D-06: the project's clock, never the
+            // machine's) — unioned with the years that carry a paid certificate or
+            // a recorded allocation, which may sit outside that span.
+            var openYear = asOf.Year;
+            var firstYear = Math.Min(p.RegistrationYear ?? openYear, openYear);
+
+            var years = Enumerable.Range(firstYear, openYear - firstYear + 1)
+                .Concat(payments
+                    .Where(x => x.Status == "paid" && x.PaidDate != null)
+                    .Select(x => x.PaidDate!.Value.Year))
+                .Concat(allocRows.Select(x => x.Year))
                 .Distinct().OrderByDescending(y => y).ToList();
 
             // ── الشكل 18 — «البيانات المالية المسجّلة» ────────────────────
             // Gathered, never recomputed: each figure is the one جدول الكلف and
             // التخصيص السنوي already print, so the three screens cannot disagree
             // about a number they all call by the same name.
-            var currentYear = year ?? allocRows.FirstOrDefault()?.Year;
+            // «السنة الحالية» — the filter's year, else the newest RECORDED one,
+            // else the year the project's own clock is in. That last fallback is
+            // what makes the card filable before any allocation exists: the tab
+            // posts this year back with the edit, and a null here is what refused
+            // the first save. It is the DATA DATE's year, not the wall clock's,
+            // so D-06 still holds — the project's clock, merely never absent.
+            var currentYear = year ?? allocRows.FirstOrDefault()?.Year ?? asOf.Year;
             var currentAlloc = allocRows.FirstOrDefault(x => x.Year == currentYear);
 
             var lockedYear = currentAlloc is not null

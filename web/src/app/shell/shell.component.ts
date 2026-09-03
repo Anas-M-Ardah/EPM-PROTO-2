@@ -14,6 +14,7 @@ import { ToastService } from '../shared/toast.service';
 import { ToastComponent } from '../shared/toast.component';
 import { PopoverComponent } from '../shared/popover.component';
 import { CommandPaletteComponent, CommandAction } from '../shared/command-palette.component';
+import { PersonaSwitcherComponent } from '../shared/persona-switcher.component';
 import { AppFooterComponent } from './app-footer.component';
 
 interface NavItem {
@@ -85,6 +86,7 @@ function readProject(url: string): string {
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive, IconComponent, StatusPillComponent,
     ToastComponent, PopoverComponent, CommandPaletteComponent, AppFooterComponent,
+    PersonaSwitcherComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './shell.component.html',
@@ -398,6 +400,29 @@ export class ShellComponent {
     this.pickerQuery.set('');
     const ws = this.wsCode();
     this.router.navigate(['/projects', id, mod], { queryParams: ws ? { ws } : {} });
+  }
+
+  /**
+   * A FOCUSED `<input type="number">` TREATS THE WHEEL AS ±STEP, so scrolling a
+   * long form past a money field you have just filled silently edits it. It was
+   * measured on الشكل 5: «الكلفة المقررة» typed as 1,000,000,000, three notches
+   * of ordinary scroll to reach the next section, and 999,999,997 saved — a
+   * valid number, so nothing refused it and nothing marked it.
+   *
+   * This system is a financial record (`CLAUDE.md` §8). A figure that changes
+   * because the page scrolled is the one class of error no reviewer can catch,
+   * since the wrong value looks exactly like the right one.
+   *
+   * Blurring is the remedy rather than `preventDefault()`: the page still
+   * scrolls, which is what the wheel was for. The guard is here, once, because
+   * it belongs to every number field in the app — the award amount, the gross
+   * on a certificate, its retention, the annual allocation — and not one of
+   * them should be edited by a scroll.
+   */
+  @HostListener('document:wheel', ['$event'])
+  onWheel(e: WheelEvent) {
+    const el = document.activeElement as HTMLInputElement | null;
+    if (el?.tagName === 'INPUT' && el.type === 'number' && el.contains(e.target as Node)) el.blur();
   }
 
   /** ⌘K / Ctrl-K anywhere. */

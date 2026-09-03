@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { DrawerComponent } from '../../shared/drawer.component';
+import { PopoverComponent } from '../../shared/popover.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { BoqImportWizard } from './boq-import.wizard';
 import { BoqImportApi } from './boq-import.api';
@@ -87,7 +88,7 @@ interface ShareDraft {
   // under a division, and ungrouped. One template, one definition of a row.
   imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
     SectionComponent, ModuleBarComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard,
-    AmendmentMarkComponent, AmendmentDeltaComponent, AmendmentPanelComponent],
+    AmendmentMarkComponent, AmendmentDeltaComponent, AmendmentPanelComponent, PopoverComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './boq.page.html',
 })

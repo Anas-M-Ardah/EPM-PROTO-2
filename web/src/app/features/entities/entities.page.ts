@@ -13,6 +13,7 @@ import * as fmt from '../../core/format';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { PersonaService } from '../../core/persona';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 import { WorkspacesService } from '../../core/workspaces';
 import { WorkspacesApi } from '../workspaces/workspaces.api';
 import { EntitiesApi } from './entities.api';
@@ -52,7 +53,7 @@ type SortKey = 'name' | 'projectCount' | 'activeCount' | 'value';
   standalone: true,
   imports: [
     IconComponent, TableSkeletonComponent, PageHeadComponent, DrawerComponent,
-    PersonaSwitcherComponent,
+    PersonaSwitcherComponent, SelectComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './entities.page.html',
@@ -262,6 +263,10 @@ export class EntitiesPage {
   canCreate = computed(() => this.persona.current()?.ministryWide === true);
 
   kindOptions = computed(() => this.lookups.list('workspace-kind'));
+
+  /** The same list in `<epm-select>`'s shape — code + the label for this language. */
+  kindSelectOptions = computed<SelectOption[]>(() =>
+    this.kindOptions().map(k => ({ code: k.code, label: this.lang.pick(k.nameAr, k.nameEn) })));
 
   openCreate() {
     this.createError.set(null);
