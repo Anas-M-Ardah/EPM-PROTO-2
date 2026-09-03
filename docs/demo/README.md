@@ -57,8 +57,9 @@ other way round.
 2. **Do not run `load-fixture`.** It is the opposite of this demo — `POST /api/dev/reset`
    only, and let the audience watch the data appear.
 3. **Step 05 will look like it failed.** Submitting the XER writes a *version*, not activities,
-   so the Gantt stays empty until `re-dept` approves it at step 06 — and the empty state
-   underneath the pending bar still prints the empty-database message, which contradicts it.
+   so the Gantt stays empty until `re-dept` approves it at step 06. Since P-229 the screen says
+   so plainly — «استُورد الجدول الزمني وينتظر الاعتماد», with the file name, the activity count
+   and the approval as its button — but a person expecting a Gantt still reads an empty Gantt.
    Submit exactly once: a second submission adds a second pending version and nothing
    supersedes the first. The runsheet's "When the schedule does not appear" section has the
    whole decision table.

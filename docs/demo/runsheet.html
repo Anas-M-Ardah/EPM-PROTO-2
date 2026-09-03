@@ -298,8 +298,8 @@
       <strong>Steps 01–07 carry the original sheet's claim</strong> that the sequence was run
       end to end; steps <strong>01–03 were independently re-run</strong> against the API on
       2026-09-02 and behaved as written. <strong>Step 05 was re-run on 2026-09-03</strong> —
-      the XER parsed, the version was written, and the schedule tab showed the pending bar over
-      an empty Gantt exactly as described. The <span class="ar">أبواب</span> at step 04 and the
+      the XER parsed, the version was written, and the schedule tab showed the pending-approval
+      state over an empty Gantt exactly as described. The <span class="ar">أبواب</span> at step 04 and the
       whole “When the schedule does not appear” section were written from that run.
       <strong>Steps 08–10 have still not been run.</strong> Their fields, permissions, refusals
       and arithmetic are read directly from the endpoints (<code>EP-FIN-02</code>,
@@ -751,24 +751,32 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
           <strong>This is the most confusing sixty seconds in the demo</strong>, so say what is
           happening before you click, not after.
         </p>
-        <p>What you should see instead, at the top of the schedule tab:</p>
+        <p>What the screen says instead — and it says it clearly, so read it aloud:</p>
       </div>
       <blockquote>
         <p class="ar">
-          إصدار جدول زمني بانتظار الاعتماد — demo-schedule.xer · 4 نشاطاً<br>
-          قُدِّم إصدار ولم يُعتمد بعد — الجدول المعروض هو النافذ.<br>
+          استُورد الجدول الزمني وينتظر الاعتماد<br>
+          demo-schedule.xer · 4 نشاطاً<br>
+          لا خط أساس نافذ لهذا العقد بعد، والإصدار المقدَّم لا يصير جدولاً حتى يُعتمد. تظهر الأنشطة فور اعتماده.<br>
           الاعتماد من صلاحية دائرة المهندس المقيم أو مدير المشروع، ولا يعتمده من قدّمه.
         </p>
       </blockquote>
-      <div class="note beat">
-        <div class="eyebrow">Ignore the empty state underneath that bar</div>
+      <div class="note derived">
+        <div class="eyebrow">Two emptinesses, two messages — <code>04 §9</code> on screen</div>
         <p>
-          Below the warning the schedule still prints
-          <span class="ar">«لا جدول زمني لهذا العقد — يُستورد الجدول الزمني من Primavera P6.
-          حمّل بيانات العرض للبدء.»</span> That is the <em>empty-database</em> message and it is
-          wrong here: the database is not empty, it holds a submitted version. The bar above it
-          is the true state. It is a known rough edge, not a failed import — do not go back and
-          import again because of it.
+          The file name and the activity count are printed as the <em>proof it landed</em>, and
+          the last line stands where the <span class="ar">اعتماد</span> button will be once you
+          switch persona. An untouched contract says something different —
+          <span class="ar">«لا جدول زمني لهذا العقد … حمّل بيانات العرض للبدء»</span> — because
+          "nothing was imported" and "the import is waiting for a signature" are not the same
+          emptiness and must not offer the same button.
+        </p>
+        <p>
+          Until <span class="num">2026-09-03</span> this screen printed the empty-database
+          message here, contradicting the pending bar directly above it, and it was the single
+          likeliest way to conclude an import had failed. If you are showing an older build and
+          you see <span class="ar">«حمّل بيانات العرض للبدء»</span> under a warning bar, that is
+          the old bug and not a failed import — do not import again because of it.
         </p>
       </div>
       <div class="note refuse">
@@ -826,15 +834,15 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
       <h3>Approve the baseline, then link the bill to it</h3>
       <p class="route">…/schedule/CNT-DEMO-01 → …/boq/CNT-DEMO-01</p>
       <ul>
-        <li>Switch persona. The warning bar from step 05 is still there, but now it carries a
-          <span class="ar">اعتماد</span> button instead of the sentence explaining whose
-          permission it is.</li>
-        <li>Approve the <strong>highest</strong> version number the bar offers — version
+        <li>Switch persona. The same panel from step 05 is on screen, but its last line has
+          become an <span class="ar">اعتماد الإصدار</span> button — the sentence naming whose
+          permission it is was standing exactly where the button goes.</li>
+        <li>Approve the <strong>highest</strong> version number offered — version
           <span class="num">1</span> if you submitted once, which is what you should have done.
           This is the only action in the whole system that writes
           <code>Activities.BaselineStart</code> and <code>BaselineFinish</code>.</li>
-        <li>Four activities and three WBS parents appear on the Gantt, and the empty state and
-          the warning bar both go. The WBS parents are the same three names you used as
+        <li>Four activities and three WBS parents appear on the Gantt, and the pending-approval
+          state goes with them. The WBS parents are the same three names you used as
           <span class="ar">أبواب</span> at step 04 — point at them together.</li>
       </ul>
       <p>
@@ -877,8 +885,8 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
       <div class="note expect">
         <div class="eyebrow">You should now see</div>
         <p>
-          Four activities on the Gantt under three WBS parents; the pending bar and the empty
-          state both gone; and in the bill, the <span class="ar">الربط</span> column reading
+          Four activities on the Gantt under three WBS parents; the pending-approval state gone;
+          and in the bill, the <span class="ar">الربط</span> column reading
           <span class="num">1</span> on all four rows with progress still at
           <span class="num">0%</span>. The contract is now fully described and entirely
           unstarted — which is exactly where a contract stands on the day it is awarded.
@@ -1199,28 +1207,28 @@ curl -X POST http://localhost:5080/api/dev/reset</code></pre>
 
   <h2 class="sec">When the schedule does not appear</h2>
   <p>
-    This is the one place in the runsheet where a correct system looks like a broken one, and
-    it catches people every time. Work down the table: the first three rows are the system
-    behaving exactly as designed, and only the last two are actual faults.
+    This is the one place in the runsheet where a correct system can look like a broken one.
+    Work down the table: the first two rows are the system behaving exactly as designed, and
+    the rest are things to actually fix.
   </p>
   <div class="tw">
     <table>
       <thead><tr><th>What you see</th><th>What it means</th><th>What to do</th></tr></thead>
       <tbody>
         <tr>
-          <td>Warning bar naming your file, Gantt still empty</td>
+          <td><span class="ar">استُورد الجدول الزمني وينتظر الاعتماد</span>, naming your file, Gantt still empty</td>
           <td>The import worked. It wrote a version, not activities.</td>
           <td>Switch to <span class="persona">re-dept</span> and approve it — step 06.</td>
         </tr>
         <tr>
-          <td>Warning bar, but no <span class="ar">اعتماد</span> button</td>
+          <td>That panel, but no <span class="ar">اعتماد الإصدار</span> button</td>
           <td>Your persona is not <span class="ar">دائرة المهندس المقيم</span> or <span class="ar">مدير المشروع</span>, or you are the person who submitted.</td>
-          <td>Switch persona. The bar prints the reason where the button would be.</td>
+          <td>Switch persona. The reason stands exactly where the button goes.</td>
         </tr>
         <tr>
-          <td><span class="ar">«لا جدول زمني لهذا العقد … حمّل بيانات العرض للبدء»</span> under the bar</td>
-          <td>Wrong message. That is the empty-database text; the database is not empty.</td>
-          <td>Ignore it and read the bar. Known rough edge — do not re-import.</td>
+          <td><span class="ar">«لا جدول زمني لهذا العقد … حمّل بيانات العرض للبدء»</span></td>
+          <td>Correct <em>only</em> if no version was ever submitted. Under a pending warning bar it is the pre-2026-09-03 bug.</td>
+          <td>On a current build, import — there is genuinely nothing there. On an older one, ignore it and read the bar.</td>
         </tr>
         <tr>
           <td>Two versions, both <span class="ar">مقدَّم</span></td>
