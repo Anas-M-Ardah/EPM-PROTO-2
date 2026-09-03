@@ -79,7 +79,11 @@ public record ScheduleImportPreviewResponse(
 /// <summary>
 /// One submitted version, as the register beneath the wizard lists them.
 /// </summary>
-/// <param name="State">submitted · approved · superseded.</param>
+/// <param name="State">
+/// submitted · approved · superseded · lapsed. At most one row in the list is
+/// `submitted`, which is what lets `schedule.page.ts` draw one pending bar —
+/// see `ScheduleImportVersion.State`.
+/// </param>
 public record ScheduleImportVersionDto(
     int Id,
     int No,

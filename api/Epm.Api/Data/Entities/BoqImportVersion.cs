@@ -27,7 +27,20 @@ public class BoqImportVersion
     /// <summary>1-based, per contract. The version's name on screen.</summary>
     public int No { get; set; }
 
-    /// <summary>submitted · approved · rejected. Only `submitted` is written today.</summary>
+    /// <summary>
+    /// submitted · approved · superseded · lapsed. `rejected` was listed here
+    /// while `EP-BOQ-13` did not exist; no route writes it and none of the four
+    /// deletes a row.
+    ///
+    /// `superseded` is a version that WAS the contract's live bill and was
+    /// replaced by a later approval. `lapsed` is one that was never approved
+    /// and was overtaken while still pending, by a newer submission or by an
+    /// approval — it never became the bill.
+    ///
+    /// AT MOST ONE ROW PER CONTRACT IS `submitted` — `EP-BOQ-10` and
+    /// `EP-BOQ-13` both enforce it, because an approval replaces every line the
+    /// other pending version was compared against.
+    /// </summary>
     public string State { get; set; } = "submitted";
 
     /// <summary>

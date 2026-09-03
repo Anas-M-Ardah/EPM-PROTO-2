@@ -317,7 +317,22 @@ export class SchedulePage {
   importOpen = signal(false);
   versions = signal<ScheduleImportVersion[]>([]);
 
-  /** The one awaiting a decision. There is at most one — approving supersedes. */
+  /**
+   * The one awaiting a decision, and there IS at most one — the server keeps it
+   * that way. `EP-SCD-05` lapses an earlier pending version when a newer file
+   * is submitted, and `EP-SCD-06` lapses any other when one is approved, because
+   * a version's impact figures were measured against the baseline in force when
+   * it was submitted and an approval moves that baseline.
+   *
+   * The comment this replaced said «approving supersedes», which was true of
+   * approved versions and of nothing else: submissions accumulated, and the bar
+   * below drew the newest of them while saying nothing about the rest.
+   *
+   * `find` over a list `EP-SCD-07` returns newest-first, so on a database
+   * written before that rule — where a second pending row can still exist — this
+   * is the newest, which is also the one an approval would keep and lapse the
+   * others behind. Nothing else on this page reads a version's state.
+   */
   pendingVersion = computed(() => this.versions().find(v => v.state === 'submitted') ?? null);
 
   /**
