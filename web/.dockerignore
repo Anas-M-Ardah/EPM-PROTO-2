@@ -1,0 +1,12 @@
+# Installed and built in the image, never copied in — copying a Windows
+# node_modules into a Linux image ships the wrong native binaries.
+node_modules/
+dist/
+.angular/
+
+.vscode/
+.idea/
+npm-debug.log*
+
+Dockerfile
+.dockerignore

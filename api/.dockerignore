@@ -1,0 +1,19 @@
+# Build output — the image builds its own.
+**/bin/
+**/obj/
+
+# Visual Studio / editor state
+.vs/
+**/*.user
+**/*.suo
+
+# The test project is not part of the running API image.
+Epm.Domain.Tests/
+
+# Holds a live RunASP connection string with its password. It must not be baked
+# into an image; the Docker stack supplies ConnectionStrings__Epm as an
+# environment variable instead (see docker-compose.yml).
+Epm.Api/appsettings.Production.json
+
+Dockerfile
+.dockerignore

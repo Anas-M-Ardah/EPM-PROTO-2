@@ -32,6 +32,31 @@ curl -X POST http://localhost:5080/api/dev/load-fixture
 The fixture's figures are **illustrative, not ministry data** — see the warning at the top of
 `api/Epm.Api/Features/Dev/Fixture.cs`.
 
+### Or run it in Docker
+
+Three containers — SQL Server, the API, the Angular app behind nginx. No .NET SDK, Node or
+SQL Server installed on the machine.
+
+```bash
+cp .env.example .env && docker compose up --build
+```
+
+Same ports: web on **:4300**, API on **:5080**, and SQL Server published on **:1433** so SSMS
+can attach. The fixture is loaded the same way — the button on the Projects screen, or the
+`curl` above.
+
+A few things worth knowing:
+
+- **`.env` holds the SA password.** It is gitignored; `.env.example` is the template.
+- **nginx serves the app and proxies `/api`**, so the browser sees one origin.
+  `environment.docker.ts` sets `apiUrl` to `''` and `ng build --configuration docker` swaps it
+  in. Nothing in the Docker stack depends on the CORS list in `Program.cs`.
+- **The API container runs as `Development`**, because `/api/dev/reset` and
+  `/api/dev/load-fixture` 404 outside it and the database starts empty. Set
+  `ASPNETCORE_ENVIRONMENT=Production` in `.env` to close them.
+- **Data survives `docker compose down`** in the `mssql-data` volume. `down -v` starts from an
+  empty server; `EnsureCreated()` rebuilds the schema on the next boot.
+
 ---
 
 ## How to trace anything
@@ -93,6 +118,28 @@ web/src/
   app/shell/           command bar, module nav
   app/features/<name>/ <name>.page.ts + .html · .api.ts · .types.ts
 ```
+
+---
+
+## The production connection string
+
+**It is not in the repository, and it must not be put back.** `appsettings.Production.json`
+carries logging and `AllowedHosts` only. The API reads the connection string from
+configuration supplied by the host:
+
+| Where it runs | Where the value is set |
+|---|---|
+| Local dev | `api/Epm.Api/appsettings.Development.json` — local SQL Server, no password |
+| Docker | `ConnectionStrings__Epm` in `docker-compose.yml`, from `.env` |
+| RunASP | the hosting panel's **application settings**, as `ConnectionStrings__Epm` |
+
+The double underscore is how .NET maps an environment variable onto the
+`ConnectionStrings:Epm` configuration key. Environment configuration outranks every
+`appsettings.*.json`, so nothing in the repo can override it.
+
+If it is missing the app fails at startup rather than falling back to a checked-in default.
+That is intentional — see the comment above `AddDbContext` in `Program.cs`, and P-237 in
+`DECISIONS.md` for why.
 
 ---
 

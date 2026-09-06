@@ -1,0 +1,64 @@
+# The whole prototype in three containers: SQL Server, the .NET API, and the
+# Angular app served by nginx.
+#
+#   docker compose up --build     → http://localhost:4300
+#
+# Ports match CLAUDE.md §7 so nothing you read elsewhere in the repo changes:
+# web on 4300, api on 5080. The database is also published on 1433 so SSMS or
+# Azure Data Studio can attach to it.
+
+name: epm
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      # Named volume, so `docker compose down` keeps the data. Use
+      # `down -v` to start from an empty server.
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      # EnsureCreated() runs at API startup and fails hard if SQL Server is not
+      # accepting logins yet; api waits on this check rather than racing it.
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  api:
+    build:
+      context: ./api
+    environment:
+      # Development on purpose: POST /api/dev/reset and /api/dev/load-fixture
+      # return 404 outside it (Features/Dev/DevEndpoints.cs), and the database
+      # starts empty — without them there is nothing to demo. Set
+      # ASPNETCORE_ENVIRONMENT=Production in .env to close them.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_HTTP_PORTS: 8080
+      # Environment configuration outranks appsettings.*.json, so this is the
+      # connection string the app uses whichever environment it runs as.
+      ConnectionStrings__Epm: "Server=db,1433;Database=EpmPrototype;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True;MultipleActiveResultSets=True"
+    ports:
+      - "5080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - "4300:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  mssql-data:
