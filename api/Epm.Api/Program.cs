@@ -30,6 +30,16 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Dev reads this from appsettings.Development.json (local SQL Server). Every
+// other environment supplies it as configuration from OUTSIDE the repository —
+// the environment variable `ConnectionStrings__Epm`. Docker sets it in
+// docker-compose.yml; RunASP sets it in the panel's application settings.
+//
+// It is deliberately absent from appsettings.Production.json: a live password
+// committed there leaked into a public repository once already, and history
+// keeps it forever (DECISIONS.md P-237). Startup failing loudly on a missing
+// connection string is the wanted behaviour — the alternative is a checked-in
+// default that silently works.
 builder.Services.AddDbContext<EpmDb>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("Epm")));
 
