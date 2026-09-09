@@ -5,7 +5,7 @@ import { ChangeOrderRecordResponse } from './change-order-record.types';
 import {
   WizardCreateResponse, WizardDraft, WizardPreviewResponse, WizardSourceResponse,
 } from './change-order-wizard.types';
-import { WorkflowResult } from './change-order-record.types';
+import { LineApprovalInput, WorkflowResult } from './change-order-record.types';
 
 /**
  * Every call SCR-W8's register makes — one, and it reads.
@@ -75,10 +75,17 @@ export class ChangeOrdersApi {
   // `03 §5`'s four decisions, plus resubmit. The endpoint re-resolves BR-14
   // from the persona header and refuses anything the relation does not allow —
   // the page hiding a control is courtesy, not the rule.
-  decide(projectId: string, no: string, decision: string, note: string | null) {
+  //
+  // `approvals`/`approvedDays` (P-252) are read only when the stage being
+  // approved is 3 (تثبيت الأسعار) — لجنة تثبيت الأسعار's own entry of the
+  // order's approved value, required then since stage 3 never skips.
+  decide(
+    projectId: string, no: string, decision: string, note: string | null,
+    approvals?: LineApprovalInput[], approvedDays?: number | null,
+  ) {
     return this.api.post<WorkflowResult>(
       `/api/projects/${encodeURIComponent(projectId)}/change-orders/${encodeURIComponent(no)}/decisions`,
-      { decision, note });
+      { decision, note, approvals: approvals ?? null, approvedDays: approvedDays ?? null });
   }
 
   // [EP-WFL-02] POST /api/projects/{id}/change-orders/{no}/external/{partyId}

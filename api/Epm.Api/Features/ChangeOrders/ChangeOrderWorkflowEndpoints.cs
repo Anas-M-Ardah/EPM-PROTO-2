@@ -31,7 +31,31 @@ namespace Epm.Api.Features.ChangeOrders;
 public static class ChangeOrderWorkflowEndpoints
 {
     /// <param name="Note">Required for `return`, `reject` and `cancel` (`03 §5`).</param>
-    public record DecisionInput(string Decision, string? Note);
+    /// <param name="Approvals">
+    /// P-252 — لجنة تثبيت الأسعار's own entry, honored only when the stage
+    /// being decided is 3 and the decision is `approve`. Required then, at
+    /// least one line: a stage-3 approval with nothing entered is the
+    /// "computed guess" `02 §6` forbids, in a different shape.
+    /// </param>
+    /// <param name="ApprovedDays">
+    /// Stage 3 only, as with <see cref="Approvals"/>. Days are an ORDER-level
+    /// figure, not a per-line one (unlike value), so this is separate from
+    /// <see cref="Approvals"/> rather than folded into it. Defaults to the
+    /// requested days when the committee makes no change.
+    /// </param>
+    public record DecisionInput(
+        string Decision, string? Note,
+        IReadOnlyList<LineApproval>? Approvals = null, int? ApprovedDays = null);
+
+    /// <summary>
+    /// One line's committee-entered figures — mirrors `ChangeOrderLine`'s own
+    /// `Approved*` columns exactly, so the endpoint just copies them across.
+    /// Keyed by the BOQ item's <see cref="Code"/> — the same identity
+    /// `ChangeOrderRecordDto`'s `RecordLine.Code` already exposes to the
+    /// Angular page and every other tab on this record addresses a line by,
+    /// never the internal `ChangeOrderLine.Id` the frontend is never handed.
+    /// </summary>
+    public record LineApproval(string Code, decimal? DeltaQty, decimal? Rate, decimal? ExcessRate);
 
     /// <param name="State">`in` وردت · `back` أُعيد · `na` غير مطلوب (`03 §3`).</param>
     /// <param name="LetterNo">
@@ -104,6 +128,54 @@ public static class ChangeOrderWorkflowEndpoints
             {
                 var plan = Plan(order, stages);
                 var t = WorkflowMachine.Decide(current!.StageNo, input.Decision, plan);
+
+                // ── P-252 — لجنة تثبيت الأسعار's decision IS the approved
+                // value (`02 §6`), on every order, never a computed guess.
+                // Checked before anything else is written so a rejected
+                // stage-3 approval leaves no partial state behind.
+                if (input.Decision == "approve" && current.StageNo == 3)
+                {
+                    if (input.Approvals is not { Count: > 0 })
+                        return Results.UnprocessableEntity(new
+                        {
+                            message = "يجب إدخال القيمة المعتمدة من لجنة تثبيت الأسعار قبل اعتماد هذه المرحلة",
+                            field = "approvals",
+                        });
+
+                    var lines = await db.ChangeOrderLines
+                        .Where(l => l.ChangeOrderId == order.Id).ToListAsync();
+                    var items = await db.BoqItems
+                        .Where(i => i.ContractId == order.ContractId).ToListAsync();
+                    var itemById = items.ToDictionary(i => i.Id);
+                    var lineByCode = lines.ToDictionary(l =>
+                        itemById.TryGetValue(l.BoqItemId, out var it) ? it.Code : "—");
+
+                    foreach (var a in input.Approvals)
+                    {
+                        if (!lineByCode.TryGetValue(a.Code, out var line)) continue;
+
+                        line.ApprovedDeltaQty = a.DeltaQty;
+                        line.ApprovedRate = a.Rate;
+                        line.ApprovedExcessRate = a.ExcessRate;
+                    }
+
+                    // Same Line/Column/Net pattern ChangeOrdersEndpoints.cs
+                    // uses for the contractor's and RE department's own
+                    // columns (`:225-244,304-305`) — the approved column is
+                    // computed the identical way, off the figures just
+                    // written above.
+                    var domainLines = lines.ToDictionary(l => l.Id, l => new ChangeOrderRecord.Line(
+                        itemById.TryGetValue(l.BoqItemId, out var it) ? it.Code : "—",
+                        l.ChangeType, l.ContractedQty, l.BeforeQty, l.BeforeRate, l.BeforeAmount,
+                        order.Type == "supply"));
+
+                    var approvedCols = lines.Select(l => ChangeOrderRecord.For(
+                        domainLines[l.Id],
+                        new ChangeOrderRecord.Party(l.ApprovedDeltaQty, l.ApprovedRate, l.ApprovedExcessRate)));
+
+                    order.ApprovedValue = ChangeOrderRecord.Net(approvedCols);
+                    order.ApprovedDays = input.ApprovedDays ?? order.RequestedDays;
+                }
 
                 current.Decision = input.Decision;
                 current.DecisionNote = input.Note;

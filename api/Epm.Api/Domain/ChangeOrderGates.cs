@@ -38,7 +38,16 @@ public static class ChangeOrderGates
 
     public record Activity(string ActivityId, string ContractId);
 
-    public record Order(string ContractId, IReadOnlyList<Line> Lines, IReadOnlyList<Activity> Activities);
+    /// <param name="IsSupply">
+    /// The order's own type. `02 §5` fixes supply prices to the contract and
+    /// the letter of credit, so a supply order has no party with the standing
+    /// to move one — `rate` is refused here rather than merely left off the
+    /// wizard's own menu, since a menu is the client's word and this is the
+    /// server's (`05 §5`).
+    /// </param>
+    public record Order(
+        string ContractId, IReadOnlyList<Line> Lines, IReadOnlyList<Activity> Activities,
+        bool IsSupply = false);
 
     public record Issue(string Gate, string? Ref, string MsgAr, string MsgEn);
 
@@ -58,6 +67,17 @@ public static class ChangeOrderGates
             if (l.ContractId != order.ContractId)
                 issues.Add(new("cross-contract", l.Code,
                     "بند خارج العقد المختار", "Line outside the selected contract"));
+
+            // BR-05 has no tier on a supply contract because there is no rate
+            // to fix (`Domain/ChangeOrderRecord`); `rate` goes further and is
+            // refused outright — a party proposing a NEW unit rate on a line
+            // whose price is fixed by contract and letter of credit is not a
+            // smaller version of the works case, it is a request nobody may
+            // grant.
+            if (l.ChangeType == "rate" && order.IsSupply)
+                issues.Add(new("supply-no-rate", l.Code,
+                    "أسعار الفقرات التجهيزية مثبَّتة بالعقد وخطاب الاعتماد — لا يجوز تعديل السعر",
+                    "Supply-item rates are fixed by the contract and the letter of credit — the rate may not be changed"));
 
             if (l.ChangeType == "dec")
             {

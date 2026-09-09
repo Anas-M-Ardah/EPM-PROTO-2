@@ -124,6 +124,11 @@ export class ChangeOrderWizard {
 
   private changed = new Subject<void>();
 
+  /** D-14 — an `equipment` project may raise only a supply order; every
+   *  other type offers both, `engineering` first (the prototype's own
+   *  `KINDS`, `vo-wizard.jsx:39`). */
+  isSupplyProject = computed(() => this.source()?.projectType === 'equipment');
+
   contract = computed<WizardContract | null>(() =>
     this.source()?.contracts.find(c => c.id === this.ckey()) ?? null);
 
@@ -440,6 +445,11 @@ export class ChangeOrderWizard {
         this.source.set(s);
         this.party.set(s.parties[0] ?? '');
         this.incomingDate.set(s.dataDate ?? '');
+        // D-14 / the prototype's own `KINDS` — an equipment project raises
+        // only a supply order, and the type step reads that from the project
+        // rather than leaving both buttons up for a project that can only
+        // ever submit one of them.
+        if (s.projectType === 'equipment') this.type.set('supply');
         // One contract, or the one we were opened from: `03 §8` still shows the
         // selector, but there is nothing to decide.
         const only = s.contracts.length === 1 ? s.contracts[0].id : null;

@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { SectionComponent } from '../../shared/section.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { LangService } from '../../core/lang';
@@ -12,7 +13,7 @@ import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { DocumentsApi } from './documents.api';
-import { DocumentRow, DocumentsResponse, RevisionRow } from './documents.types';
+import { DocumentRow, DocumentsResponse, RevisionInput, RevisionRow } from './documents.types';
 
 /**
  * SCR-W12 — الوثائق والمخططات · **ملحق الشكل 46**.
@@ -32,7 +33,7 @@ import { DocumentRow, DocumentsResponse, RevisionRow } from './documents.types';
 @Component({
   selector: 'epm-documents-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent, TableSkeletonComponent],
+  imports: [IconComponent, SectionComponent, TableSkeletonComponent, PanelHeadComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './documents.page.html',
 })
@@ -41,7 +42,8 @@ export class DocumentsPage {
   private route = inject(ActivatedRoute);
   lang = inject(LangService);
   lookups = inject(LookupsService);
-  /** «رفع وثيقة» · «رفع مراجعة» · downloading are demo stubs and say so. */
+  /** Downloading a revision is a demo stub and says so — no bytes are ever
+   *  stored (`DocumentRevision.cs`), so a real download has nothing to serve. */
   toast = inject(ToastService);
   fmt = fmt;
 
@@ -66,6 +68,102 @@ export class DocumentsPage {
    * only the two that carry data are selectable here.
    */
   panelTab = signal<'revisions' | 'details'>('revisions');
+
+  // ── P-253 — «رفع وثيقة» · «رفع مراجعة», made real ───────────────────────
+  //
+  // Neither this app's own reference nor the ministry spec describes a
+  // "register a brand-new document" screen — only project-modules.jsx's own
+  // real `upload(id)` function, which adds a REVISION to a document that
+  // already exists. So the top-level button is a PICKER onto that same flow,
+  // never a form for a new document code.
+
+  /** True while the top-level button's document picker is open. */
+  pickingDocument = signal(false);
+  /** True while the upload form is open in an already-open document's drawer. */
+  uploadingRevision = signal(false);
+
+  revIssuedOn = signal('');
+  revIssuer = signal('');
+  revDescriptionAr = signal('');
+  revDescriptionEn = signal('');
+  revTransmittalNo = signal('');
+  revFile = signal<File | null>(null);
+  revSaving = signal(false);
+  revError = signal<string | null>(null);
+
+  /** الشكل 46's own transmittal scheme (`project-modules.jsx:2172`), generalised
+   *  project-wide rather than per-document to cut collisions — still just a
+   *  suggestion, never silently used if the reviewer changes it. */
+  private suggestTransmittal(): string {
+    return 'TR-' + (2900 + (this.data()?.revisionCount ?? 0));
+  }
+
+  startUpload(code: string) {
+    this.pickingDocument.set(false);
+    if (this.open() !== code) this.toggleOpen(code);
+    this.beginRevisionUpload();
+  }
+
+  /** The in-drawer «رفع مراجعة» button — the document is already open. */
+  beginRevisionUpload() {
+    this.panelTab.set('revisions');
+    this.revIssuedOn.set(this.data()?.dataDate ?? '');
+    this.revIssuer.set('');
+    this.revDescriptionAr.set('');
+    this.revDescriptionEn.set('');
+    this.revTransmittalNo.set(this.suggestTransmittal());
+    this.revFile.set(null);
+    this.revError.set(null);
+    this.uploadingRevision.set(true);
+  }
+
+  cancelUpload() {
+    this.uploadingRevision.set(false);
+    this.revError.set(null);
+  }
+
+  onRevFile(ev: Event) {
+    const el = ev.target as HTMLInputElement;
+    const picked = el.files?.[0] ?? null;
+    this.revFile.set(picked);
+    el.value = '';
+  }
+
+  submitRevision() {
+    const doc = this.opened();
+    const file = this.revFile();
+    if (!doc || this.revSaving()) return;
+
+    if (!this.revIssuer().trim() || !this.revTransmittalNo().trim() || !file) {
+      this.revError.set(this.lang.t('doc_upload_err'));
+      return;
+    }
+
+    this.revSaving.set(true);
+    this.revError.set(null);
+
+    const body: RevisionInput = {
+      issuedOn: this.revIssuedOn() || null,
+      issuer: this.revIssuer().trim(),
+      descriptionAr: this.revDescriptionAr().trim() || null,
+      descriptionEn: this.revDescriptionEn().trim() || null,
+      transmittalNo: this.revTransmittalNo().trim(),
+      fileName: file.name,
+    };
+
+    this.api.uploadRevision(this.projectId(), doc.code, body).subscribe({
+      next: r => {
+        this.revSaving.set(false);
+        this.uploadingRevision.set(false);
+        this.toast.show(this.lang.t('doc_upload_ok').replace('{no}', String(r.revisionNo)));
+        this.load();
+      },
+      error: e => {
+        this.revSaving.set(false);
+        this.revError.set(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
+  }
 
   rows = computed(() => this.data()?.rows ?? []);
   folders = computed(() => this.data()?.folders ?? []);
@@ -133,6 +231,7 @@ export class DocumentsPage {
   toggleOpen(code: string) {
     this.open.update(v => (v === code ? null : code));
     this.panelTab.set('revisions');
+    this.uploadingRevision.set(false);
   }
 
   onRowKey(e: KeyboardEvent, code: string) {

@@ -28,13 +28,21 @@ public static class ChangeOrderRecord
 {
     /// <param name="ContractedQty">D-01 — the ORIGINAL quantity the 20% is measured against.</param>
     /// <param name="BeforeQty">What the line stood at when the order was raised.</param>
+    /// <param name="IsSupply">
+    /// The ORDER's own type, not the line's — a bill has one kind (D-14) so
+    /// every line on it agrees. `02 §5`'s whole tier is a construction-contract
+    /// rule: a supply unit rate is fixed by the contract and the letter of
+    /// credit before anything ships, so there is no rate to fix here and no
+    /// portion of a quantity change that could carry one.
+    /// </param>
     public record Line(
         string Code,
         string ChangeType,
         decimal ContractedQty,
         decimal BeforeQty,
         decimal BeforeRate,
-        decimal BeforeAmount);
+        decimal BeforeAmount,
+        bool IsSupply = false);
 
     /// <param name="RateForExcess">
     /// The rate this party proposes for the quantity beyond 20%. Null on a line
@@ -69,8 +77,23 @@ public static class ChangeOrderRecord
 
         switch (l.ChangeType)
         {
-            // BR-05 — and ONLY here. A rate change, a cancellation and a
-            // redistribution do not measure themselves against 20% (02 §5).
+            // BR-05 — and ONLY here, and only off the contract. A rate change,
+            // a cancellation and a redistribution never measured themselves
+            // against 20% (02 §5); a SUPPLY quantity change joins them now —
+            // its rate is catalogue/LC-fixed, so the whole delta prices at the
+            // original rate and none of it can trip a threshold that does not
+            // apply to it.
+            case "inc" when l.IsSupply:
+            case "dec" when l.IsSupply:
+            {
+                var delta = Math.Abs(p.DeltaQty ?? 0m);
+                var qtyAfter = l.ChangeType == "dec" ? l.BeforeQty - delta : l.BeforeQty + delta;
+                var atCost = delta * l.BeforeRate;
+                var after = l.ChangeType == "dec" ? l.BeforeAmount - atCost : l.BeforeAmount + atCost;
+
+                return new(qtyAfter, null, after, after - l.BeforeAmount, 0m, delta, 0m, false);
+            }
+
             case "inc":
             case "dec":
             {

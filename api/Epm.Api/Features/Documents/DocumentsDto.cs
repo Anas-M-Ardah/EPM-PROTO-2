@@ -44,6 +44,15 @@ public record DocumentRow(
 /// <param name="Code">`all` for «كل الوثائق», otherwise the discipline code.</param>
 public record DisciplineFolder(string Code, int Count);
 
+/// <summary>
+/// P-253 — `EP-DOC-02`'s body. Mirrors the reference's own real `upload(id)`
+/// (`project-modules.jsx:2161-2174`) field-for-field: a new file is always a
+/// NEW revision, never a replacement in place.
+/// </summary>
+public record RevisionInput(
+    string? IssuedOn, string Issuer, string? DescriptionAr, string? DescriptionEn,
+    string TransmittalNo, string FileName);
+
 public record DocumentsResponse(
     string ProjectId,
     string ProjectNameAr,

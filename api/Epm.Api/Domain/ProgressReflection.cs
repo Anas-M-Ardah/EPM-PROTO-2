@@ -31,6 +31,28 @@ public static class ProgressReflection
     }
 
     /// <summary>
+    /// BR-04 on a SUPPLY bill (D-14 · 06 §3). A supply line has no schedule
+    /// activity to link — it earns from its own receipts instead
+    /// (`Domain/SupplyStatus.ReceivedPct`), against the SAME line, the SAME
+    /// amount and the SAME effective quantity `For` uses. `progress` here IS
+    /// the received percentage — there is no share to weight it by, because
+    /// the whole line is one thing received or not, not a bill split across
+    /// several activities each earning a fraction of it.
+    ///
+    /// The formulas below are `For`'s own — achieved = amount × progress ÷
+    /// 100, achievedQty = effectiveQty × progress ÷ 100 — so `Rollup` and
+    /// every screen built on a `Result` reads a supply line exactly like a
+    /// works one, and the value-weighted contract/project physical % this
+    /// produces is `Σ(received × price) ÷ Σ(contracted × price)` written the
+    /// other way round (02 §4).
+    /// </summary>
+    public static Result ForSupply(decimal receivedPct, decimal amount, decimal effectiveQty)
+    {
+        var achieved = amount * receivedPct / 100m;
+        return new Result(receivedPct, achieved, effectiveQty * receivedPct / 100m, amount - achieved);
+    }
+
+    /// <summary>
     /// 02 §4's rollup — "contract executed value = Σ achievedAmount of its BOQ
     /// items", and the percentage that goes with it.
     ///

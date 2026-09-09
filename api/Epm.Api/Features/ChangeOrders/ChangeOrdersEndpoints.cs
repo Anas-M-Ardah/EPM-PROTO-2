@@ -181,6 +181,19 @@ public static class ChangeOrdersEndpoints
             // ── the parts, one query each (CLAUDE.md §3.3) ────────────────
             var lines = await db.ChangeOrderLines.AsNoTracking()
                 .Where(l => l.ChangeOrderId == o.Id).OrderBy(l => l.Id).ToListAsync();
+            var lineIds = lines.Select(l => l.Id).ToList();
+            // الشكل 58 — beneficiary transfers, on a `redist` line of a SUPPLY
+            // order. Written by the wizard (EP-WIZ-03), never read back until
+            // now: the record page's own `redistribution` below is the OTHER
+            // kind — BOQ line to BOQ line — and this table is what a redist
+            // line on a supply contract actually carries instead.
+            var transfers = await db.ChangeOrderRedistributions.AsNoTracking()
+                .Where(t => lineIds.Contains(t.ChangeOrderLineId)).OrderBy(t => t.Id).ToListAsync();
+            // Beneficiary names, only on the orders that actually name one —
+            // a works order's contract never queries this table at all.
+            var benName = transfers.Count > 0
+                ? await db.Workspaces.AsNoTracking().ToDictionaryAsync(w => w.Code)
+                : [];
             var coActs = await db.ChangeOrderActivities.AsNoTracking()
                 .Where(a => a.ChangeOrderId == o.Id).OrderBy(a => a.Id).ToListAsync();
             var stageRows = await db.ChangeOrderStages.AsNoTracking()
@@ -213,7 +226,8 @@ public static class ChangeOrdersEndpoints
                 l => l.Id,
                 l => new ChangeOrderRecord.Line(
                     itemById.TryGetValue(l.BoqItemId, out var it) ? it.Code : "—",
-                    l.ChangeType, l.ContractedQty, l.BeforeQty, l.BeforeRate, l.BeforeAmount));
+                    l.ChangeType, l.ContractedQty, l.BeforeQty, l.BeforeRate, l.BeforeAmount,
+                    o.Type == "supply"));
 
             ChangeOrderRecord.Column Col(ChangeOrderLine l, decimal? d, decimal? rate, decimal? excess)
                 => ChangeOrderRecord.For(domainLines[l.Id], new(d, rate, excess));
@@ -284,7 +298,8 @@ public static class ChangeOrdersEndpoints
                     C(contractorCols[l.Id], W(Weights(contractorCols), code)),
                     C(reDeptCols[l.Id], W(wProposed, code)),
                     C(approvedCols[l.Id], W(wApproved, code)),
-                    C(appliedCols[l.Id], W(wApplied, code)));
+                    C(appliedCols[l.Id], W(wApplied, code)),
+                    l.ReDeptDeltaQty, l.ReDeptNewRate, l.ReDeptExcessRate);
             }).ToList();
 
             var netContractor = ChangeOrderRecord.Net(contractorCols.Values);
@@ -339,6 +354,20 @@ public static class ChangeOrdersEndpoints
                     tgt?.Code, tgt?.DescriptionAr, tgt?.DescriptionEn,
                     l.DrawnQty ?? 0m, l.DistributedQty ?? 0m,
                     (l.DistributedQty ?? 0m) - (l.DrawnQty ?? 0m), 0m, l.ApplyStatus);
+            }).ToList();
+
+            // ── الشكل 58 — التحويل بين الجهات المستفيدة ─────────────────
+            var beneficiaryTransfers = transfers.Select(t =>
+            {
+                var line = lines.First(l => l.Id == t.ChangeOrderLineId);
+                var item = itemById.TryGetValue(line.BoqItemId, out var i) ? i : null;
+                var from = benName.GetValueOrDefault(t.FromBeneficiaryCode);
+                var to = benName.GetValueOrDefault(t.ToBeneficiaryCode);
+                return new RecordBeneficiaryTransfer(
+                    item?.Code ?? "—", item?.DescriptionAr ?? "—", item?.DescriptionEn ?? "—",
+                    t.FromBeneficiaryCode, from?.NameAr ?? t.FromBeneficiaryCode, from?.NameEn ?? t.FromBeneficiaryCode,
+                    t.ToBeneficiaryCode, to?.NameAr ?? t.ToBeneficiaryCode, to?.NameEn ?? t.ToBeneficiaryCode,
+                    t.Qty, t.FromQtyBefore, t.ToQtyBefore, t.AppliedQty);
             }).ToList();
 
             // ── الشكل 32 — الأثر الزمني ────────────────────────────────────
@@ -585,6 +614,7 @@ public static class ChangeOrdersEndpoints
                 exceptions, card,
                 preInputs, impact, contractImpact, decision, applySteps,
                 recordLines, netContractor, netReDept, netApproved, weights, redistribution,
+                beneficiaryTransfers,
                 time, recordStages, transaction, attachments, auditRows, siblings));
         });
     }

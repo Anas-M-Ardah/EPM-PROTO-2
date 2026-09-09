@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { PopoverComponent } from '../../shared/popover.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
@@ -86,7 +87,7 @@ interface ShareDraft {
   // NgTemplateOutlet: one BOQ line renders in three states (reading, inline
   // edit, delete confirm) and is used from two places in the grid — grouped
   // under a division, and ungrouped. One template, one definition of a row.
-  imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent,
+  imports: [NgTemplateOutlet, IconComponent, DrawerComponent, TableSkeletonComponent, PanelHeadComponent,
     SectionComponent, ModuleBarComponent, SelectComponent, PersonaSwitcherComponent, BoqImportWizard,
     AmendmentMarkComponent, AmendmentDeltaComponent, AmendmentPanelComponent, PopoverComponent],
   encapsulation: ViewEncapsulation.None,
@@ -324,7 +325,16 @@ export class BoqPage {
   basis = signal<'cost' | 'mh'>('cost');
   shareDraft = signal<ShareDraft[] | null>(null);
   queueFilter = signal('');
+  /**
+   * «بحث بالرمز أو الوصف» on the assignment queue — ملحق الشكل 12 lists a
+   * search among this screen's functions and `boq-assign.jsx:16` has one. The
+   * facets narrow by STATE; a bill of two hundred lines also needs to be
+   * narrowed by name, and the register next door already is.
+   */
+  queueQuery = signal('');
   picker = signal(false);
+  /** The picker's own search — `boq-assign.jsx:23`, `.boq-picker-s`. */
+  pickerQuery = signal('');
   /** A5-rest — «توزيع», the `.d-actmenu` that holds the basis and the action. */
   distMenu = signal(false);
 
@@ -518,8 +528,9 @@ export class BoqPage {
     this.startEdit(r);
   }
 
-  /** The six tabs, in the plate's order. */
-  readonly cardTabs = [
+  /** The six tabs, in the plate's order. `alloc` drops on a supply bill —
+   *  the same reason the register's own assignment tab does (D-14). */
+  readonly cardTabsAll = [
     { k: 'general', label: 'boq_card_general' },
     { k: 'alloc', label: 'boq_card_alloc' },
     { k: 'dist', label: 'boq_card_dist' },
@@ -527,6 +538,8 @@ export class BoqPage {
     { k: 'cost', label: 'boq_card_cost' },
     { k: 'log', label: 'boq_card_log' },
   ] as const;
+  cardTabs = computed(() =>
+    this.isSupplyBill() ? this.cardTabsAll.filter(t => t.k !== 'alloc') : this.cardTabsAll);
 
   toggleCol(k: string) {
     this.cols.update(c => ({ ...c, [k]: !c[k] }));
@@ -568,8 +581,11 @@ export class BoqPage {
 
   queue = computed(() => {
     const f = this.queueFilter();
+    const q = this.queueQuery().trim().toLowerCase();
     const items = this.asn()?.items ?? [];
-    return f ? items.filter(i => i.coverage === f) : items;
+    return items.filter(i =>
+      (!f || i.coverage === f)
+      && (!q || `${i.code} ${i.descriptionAr} ${i.descriptionEn}`.toLowerCase().includes(q)));
   });
 
   active = computed<BoqAllocation | undefined>(() =>
@@ -607,8 +623,52 @@ export class BoqPage {
   /** Activities not yet linked, and never a milestone (02 §2). */
   pickable = computed(() => {
     const used = new Set(this.activeRows().map(r => r.activityId));
-    return (this.asn()?.activities ?? []).filter(a => !a.isMilestone && !used.has(a.activityId));
+    const q = this.pickerQuery().trim().toLowerCase();
+    return (this.asn()?.activities ?? []).filter(a =>
+      !a.isMilestone && !used.has(a.activityId)
+      // The WBS name is searchable too: a planner looking for "the façade
+      // activity" knows the node it sits under, not its P6 id.
+      && (!q || `${a.activityId} ${a.nameAr} ${a.nameEn} ${a.wbsNames}`.toLowerCase().includes(q)));
   });
+
+  /**
+   * ── THE ALLOCATION BAR (`boq-assign.jsx:172`, `.boq-segbar`) ───────────
+   * One coloured segment per linked activity, a hatched remainder, and a rule
+   * at 100% when the line is over-allocated. Every class here has shipped in
+   * `styles/boq.css` since Phase 1 and nothing emitted it: coverage was a
+   * «المتبقي» chip and a number, which states the shortfall without showing
+   * WHICH activity holds what — the one question the editor exists to answer.
+   *
+   * Display geometry only — the one thing a page may compute (CLAUDE.md §3.1).
+   */
+  segColor(index: number): string { return `var(--seg-${(index % 6) + 1})`; }
+
+  /**
+   * The bar's own scale. Over 100% the segments are squeezed so the whole
+   * total still fits, and `.boq-limit` marks where 100 fell — which is how an
+   * over-allocation READS as an over-allocation rather than as a full bar.
+   */
+  segScale = computed(() => 100 / Math.max(this.draftTotal(), 100));
+
+  segWidth(index: number): number {
+    const pct = parseFloat(this.activeRows()[index]?.pct ?? '0') || 0;
+    return pct * this.segScale() / 100;
+  }
+
+  /**
+   * «إكمال المتبقي» — set this row to whatever is unallocated, leaving the
+   * others alone (`boq-assign.jsx:63`). The common move when one activity's
+   * share is fixed and another takes the rest, and it is arithmetic on the
+   * user's own boxes, not a business figure: the binding shares come back from
+   * the server on save, exactly as `draftTotal` does.
+   */
+  fillRemainder(index: number) {
+    const rows = this.activeRows();
+    const others = rows.reduce(
+      (sum, r, i) => sum + (i === index ? 0 : (parseFloat(r.pct) || 0)), 0);
+    const left = Math.max(0, Math.round((100 - others) * 10) / 10);
+    this.shareDraft.set(rows.map((r, i) => i === index ? { ...r, pct: String(left) } : r));
+  }
 
   activityWeight(activityId: string): number {
     const a = this.asn()?.activities.find(x => x.activityId === activityId);
@@ -1396,6 +1456,7 @@ export class BoqPage {
     this.shareDraft.set(null);
     this.activeCode.set(code);
     this.picker.set(false);
+    this.pickerQuery.set('');
   }
 
   /**
@@ -1428,6 +1489,7 @@ export class BoqPage {
     const left = Math.max(0, Math.round((100 - this.draftTotal()) * 10) / 10);
     this.shareDraft.set([...this.activeRows(), { activityId, pct: String(left) }]);
     this.picker.set(false);
+    this.pickerQuery.set('');
   }
 
   /**
@@ -1516,6 +1578,10 @@ export class BoqPage {
       case 'full': return 'completed';
       case 'partial': return 'ongoing';
       case 'over': return 'delayed';
+      // D-14 — a supply line's row. Neutral rather than the works states
+      // above it, or `unassigned`'s own pill below: "not applicable" is not
+      // "not yet assigned".
+      case 'na': return 'withdrawn';
       default: return 'cancelled';
     }
   }

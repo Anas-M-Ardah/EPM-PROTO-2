@@ -109,13 +109,19 @@
           {{ lang.t('boq_tab_register') }}
           <span class="n"><bdi>{{ reg()?.totals?.itemCount ?? 0 }}</bdi></span>
         </button>
-        <button type="button" role="tab" class="d-tab" [class.on]="view() === 'assign'"
-                [attr.aria-selected]="view() === 'assign'" (click)="setView('assign')">
-          {{ lang.t('boq_tab_assign') }}
-          @if (coverageCount('over')) {
-            <span class="n"><bdi>{{ coverageCount('over') }}</bdi></span>
-          }
-        </button>
+        <!-- D-14 — a supply bill has no activity to assign a line to (the
+             prototype's own supply module has three facets and no assignment
+             view at all); EP-BOQ-07 now refuses this route on one, so the tab
+             that would only ever 400 is not offered. -->
+        @if (!isSupplyBill()) {
+          <button type="button" role="tab" class="d-tab" [class.on]="view() === 'assign'"
+                  [attr.aria-selected]="view() === 'assign'" (click)="setView('assign')">
+            {{ lang.t('boq_tab_assign') }}
+            @if (coverageCount('over')) {
+              <span class="n"><bdi>{{ coverageCount('over') }}</bdi></span>
+            }
+          </button>
+        }
       </ng-container>
 
       <ng-container actions>
@@ -636,6 +642,21 @@
                   </span>
                 </div>
 
+                <!-- «بحث بالرمز أو الوصف» — ملحق الشكل 12 lists it among this
+                     screen's functions and `boq-assign.jsx:16` draws it. The
+                     facets below narrow by STATE; this narrows by name, which
+                     is the only way through a bill of two hundred lines. -->
+                <div class="d-toolbar">
+                  <div class="d-field">
+                    <epm-icon name="search" [size]="16" />
+                    <input type="search" class="epm-bare-input"
+                           [placeholder]="lang.t('boq_search')"
+                           [attr.aria-label]="lang.t('boq_search')"
+                           [value]="queueQuery()"
+                           (input)="queueQuery.set($any($event.target).value)" />
+                  </div>
+                </div>
+
                 <div class="d-facets" role="group" [attr.aria-label]="lang.t('boq_col_coverage')">
                   <button type="button" [class.on]="queueFilter() === ''"
                           [attr.aria-pressed]="queueFilter() === ''" (click)="queueFilter.set('')">
@@ -685,7 +706,7 @@
 
               <!-- the editor -->
               @if (active(); as a) {
-                <div class="d-tablewrap">
+                <div class="d-tablewrap" id="boq-editor">
                   <div class="d-toolbar">
                     <span class="d-cell-sub">
                       <bdi class="mono">{{ a.code }}</bdi> · {{ description(a) }}
@@ -696,6 +717,70 @@
                       <em>{{ lang.t('boq_asn_remaining') }}</em>
                       <b class="num"><bdi>{{ (100 - draftTotal()).toFixed(1) }}%</bdi></b>
                     </span>
+                  </div>
+
+                  <!-- ══ THE ALLOCATION BAR — `boq-assign.jsx:172` ═════════════
+                       One coloured segment per linked activity, a hatched
+                       remainder, and a rule at 100% when the line is over. The
+                       chip above says HOW MUCH is unallocated; this says WHICH
+                       activity holds what, which is the question the editor
+                       exists to answer and the reason the reference draws both.
+
+                       Every class here — `.d-yalloc`, `.boq-segbar`, `.boq-seg`,
+                       `.boq-seg-rem`, `.boq-limit`, `.boq-legend` — has shipped
+                       in `styles/boq.css` since Phase 1 with nothing emitting
+                       it (STRUCTURE-GAP A5). No CSS was added. -->
+                  <div class="d-yalloc">
+                    <div class="ah">
+                      <span class="k">{{ lang.t('boq_asn_allocated') }}</span>
+                      @if (draftOver()) {
+                        <span class="over">{{ lang.t('boq_asn_exceeds') }}
+                          <bdi dir="ltr">{{ (draftTotal() - 100).toFixed(1) }}%</bdi></span>
+                      } @else if (draftTotal() >= 99.5) {
+                        <span class="full">{{ lang.t('boq_asn_balanced') }}</span>
+                      } @else if (draftTotal() <= 0) {
+                        <span class="none">{{ coverageLabel('unassigned') }}</span>
+                      } @else {
+                        <span class="partial">
+                          <bdi dir="ltr">{{ (100 - draftTotal()).toFixed(1) }}%</bdi>
+                          {{ lang.t('boq_asn_unallocated') }}</span>
+                      }
+                      <b class="num"><bdi>{{ draftTotal().toFixed(1) }}%</bdi></b>
+                    </div>
+
+                    <div class="boq-segbar" role="img"
+                         [attr.aria-label]="lang.t('boq_asn_allocated')">
+                      @for (r of activeRows(); track $index) {
+                        <div class="boq-seg"
+                             [style.width.%]="segWidth($index) * 100"
+                             [style.background]="segColor($index)"
+                             [title]="r.activityId + ' · ' + r.pct + '%'"></div>
+                      }
+                      @if (draftTotal() < 99.5) {
+                        <div class="boq-seg-rem" style="flex: 1"></div>
+                      }
+                      @if (draftOver()) {
+                        <div class="boq-limit" [style.insetInlineStart.%]="segScale() * 100"></div>
+                      }
+                    </div>
+
+                    <div class="af boq-legend">
+                      @for (r of activeRows(); track $index) {
+                        <span>
+                          <em><span class="sw" [style.background]="segColor($index)"></span>
+                            <bdi>{{ r.activityId }}</bdi></em>
+                          <b class="num"><bdi>{{ (+r.pct || 0).toFixed(1) }}%</bdi></b>
+                        </span>
+                      }
+                      @if (draftTotal() < 99.5) {
+                        <span>
+                          <em><span class="sw hatch"></span>{{ lang.t('boq_asn_unallocated') }}</em>
+                          <b class="num">
+                            <bdi>{{ (100 - draftTotal() > 0 ? 100 - draftTotal() : 0).toFixed(1) }}%</bdi>
+                          </b>
+                        </span>
+                      }
+                    </div>
                   </div>
 
                   @if (a.isManual) {
@@ -793,6 +878,17 @@
                       @if (picker()) {
                         <div class="boq-menu-scrim" (click)="picker.set(false)"></div>
                         <div class="boq-colmenu" role="menu" style="width: 320px">
+                          <!-- `.boq-picker-s` — `boq-assign.jsx:23`'s own search
+                               row. A contract with forty activities makes the
+                               bare list a scroll hunt, and the planner already
+                               knows the id or the WBS node they are after. -->
+                          <div class="boq-picker-s">
+                            <epm-icon name="search" [size]="15" />
+                            <input type="search" [placeholder]="lang.t('boq_asn_find_act')"
+                                   [attr.aria-label]="lang.t('boq_asn_find_act')"
+                                   [value]="pickerQuery()"
+                                   (input)="pickerQuery.set($any($event.target).value)" />
+                          </div>
                           @for (act of pickable(); track act.activityId) {
                             <button type="button" class="row" role="menuitem"
                                     (click)="addShare(act.activityId)">
@@ -801,6 +897,9 @@
                               <span class="sp"></span>
                               <span class="mono"><bdi>{{ fmt.pct(activityWeight(act.activityId)) }}</bdi></span>
                             </button>
+                          }
+                          @if (pickable().length === 0) {
+                            <span class="d-cell-sub pad">{{ lang.t('boq_nofilter_t') }}</span>
                           }
                         </div>
                       }
@@ -850,6 +949,18 @@
                                          [value]="r.pct"
                                          (input)="setShare($index, $any($event.target).value, $any($event.target))" />
                                   <i>%</i>
+                                  <!-- «إكمال المتبقي» — `boq-assign.jsx:63`, and
+                                       the affordance sits in the cell it acts
+                                       on. The common move when one share is
+                                       fixed by contract and another takes what
+                                       is left; typing 47.3 by hand is how a
+                                       line ends up at 99.9. -->
+                                  <button type="button" class="fill"
+                                          [title]="lang.t('boq_asn_fill')"
+                                          [attr.aria-label]="lang.t('boq_asn_fill')"
+                                          (click)="fillRemainder($index)">
+                                    <epm-icon name="functions" [size]="13" />
+                                  </button>
                                 </span>
                                 <div class="d-cell-sub">
                                   {{ lang.t('boq_asn_abs_wt') }}
@@ -922,20 +1033,14 @@
       @if (!addOpen() && cardRow(); as r) {
         <div class="d-pz8">
           <div class="d-rpane">
-            <div class="rp-h">
-              <div class="tx">
-                <div class="r1">
-                  <span class="code"><bdi>{{ r.code }}</bdi></span>
-                  <span class="d-pill" [class]="coverageClass(r.coverage)">
-                    {{ coverageLabel(r.coverage) }}
-                  </span>
-                </div>
-                <b>{{ description(r) }}</b>
-                <span class="sub">
-                  {{ lang.t('boq_card_source') }}:
-                  {{ r.source === 'manual' ? lang.t('boq_manual') : lang.t('boq_card_imported') }}
-                </span>
-              </div>
+            <div epmPanelHead [code]="r.code" [title]="description(r)">
+              <span badge class="d-pill" [class]="coverageClass(r.coverage)">
+                {{ coverageLabel(r.coverage) }}
+              </span>
+              <span sub>
+                {{ lang.t('boq_card_source') }}:
+                {{ r.source === 'manual' ? lang.t('boq_manual') : lang.t('boq_card_imported') }}
+              </span>
               <div class="acts">
                 <button type="button" class="d-icon-btn sm"
                         [attr.aria-label]="lang.t('boq_card_edit')" (click)="editFromCard()">
@@ -949,7 +1054,7 @@
             </div>
 
             <div class="rp-tabs" role="tablist">
-              @for (t of cardTabs; track t.k) {
+              @for (t of cardTabs(); track t.k) {
                 <button type="button" role="tab" [class.on]="cardTab() === t.k"
                         [attr.aria-selected]="cardTab() === t.k" (click)="cardTab.set(t.k)">
                   {{ lang.t($any(t.label)) }}
@@ -1111,11 +1216,9 @@
     @if (addOpen()) {
       <div class="d-pz8">
         <div class="d-rpane">
-          <div class="rp-h">
-            <div class="tx">
-              <b>{{ isSupplyBill() ? lang.t('boq_add_title_supply') : lang.t('boq_add_title') }}</b>
-              <span class="sub">{{ contractLabel() }}</span>
-            </div>
+          <div epmPanelHead
+               [title]="isSupplyBill() ? lang.t('boq_add_title_supply') : lang.t('boq_add_title')">
+            <span sub>{{ contractLabel() }}</span>
             <div class="acts">
               <button type="button" class="d-icon-btn sm"
                       [attr.aria-label]="lang.t('scd_rec_close')" (click)="closeAdd()">
@@ -1651,10 +1754,12 @@
                     (click)="rowMenu.set(''); openDistribution(r.code)">
               <epm-icon name="apartment" [size]="15" />{{ lang.t('boq_distribute') }}
             </button>
-            <button type="button" role="menuitem"
-                    (click)="rowMenu.set(''); activeCode.set(r.code); setView('assign')">
-              <epm-icon name="account_tree" [size]="15" />{{ lang.t('boq_assign_row') }}
-            </button>
+            @if (!isSupplyBill()) {
+              <button type="button" role="menuitem"
+                      (click)="rowMenu.set(''); activeCode.set(r.code); setView('assign')">
+                <epm-icon name="account_tree" [size]="15" />{{ lang.t('boq_assign_row') }}
+              </button>
+            }
             <button type="button" role="menuitem" (click)="rowMenu.set(''); startEdit(r)">
               <epm-icon name="edit" [size]="15" />{{ lang.t('boq_edit') }}
             </button>

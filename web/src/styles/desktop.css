@@ -1614,6 +1614,31 @@ select:focus-visible, input:focus-visible, textarea:focus-visible {
 .d-gantt.cols-compact .d-gantt-cellinfo .c:nth-child(9) { display: none; }
 .d-gantt.cols-compact .d-gantt-resize { display: none; }
 
+/* 20c — THE INFO COLUMNS DID NOT LINE UP WITH THEIR OWN HEADERS (P-246).
+
+   `.d-gantt-cellinfo` is `flex: none` — it sizes to its own content — and its
+   nine tracks are `minmax(Npx, Nfr)`. `fr` distributes the space a container
+   HAS, so two blocks of different widths resolve the same template to
+   different columns. Every data row came out at 594.4px, but the header at
+   619.8px, because `#20a` above makes header labels WRAP (`white-space:
+   normal` + 6px vertical padding) and wrapping raises its min-content width.
+
+   The 25.4px difference was then split across nine flexible tracks and
+   accumulated left to right: the date columns landed 85.70px in the header
+   against 81px in the rows, so «البداية الفعلية» sat 22px away from the dates
+   underneath it. On a nine-column grid of near-identical dates that is not a
+   cosmetic wobble — it is not being able to tell which date is which.
+
+   Fixed tracks make the resolution deterministic: the same nine widths for
+   every row regardless of what any of them contains. The total (600px) is
+   within 6px of what the data rows already resolved to, so nothing else on
+   the screen moves. `04 §5`'s nine columns and their order are untouched —
+   this changes only how their widths are computed. */
+.d-gantt-cellinfo {
+  grid-template-columns: 58px 82px 82px 82px 82px 52px 58px 52px 52px; }
+.d-gantt.cols-compact .d-gantt-cellinfo {
+  grid-template-columns: 58px 82px 82px 58px; }
+
 /* #8 — structural hairlines move to --outline (3.03:1). --outline-variant
    (1.42:1 on white, 1.20:1 on canvas) stays for decorative separation only. */
 /* KPI grids are separate cards on transparent canvas — no strip background (design standards v1.1 §21) */
@@ -2393,7 +2418,23 @@ button.d-amd-mark.pend:hover { background: color-mix(in srgb, var(--status-suspe
 .d-pbody.no-aside { grid-template-columns: minmax(0, 1fr); }
 .d-pbody > .d-pz8 { border-inline-start: 1px solid var(--stroke-default); background: var(--surface-container-lowest);
   min-height: 0; overflow-y: auto; }
-@media (max-width: 1180px) { .d-pbody { grid-template-columns: minmax(0, 1fr); } .d-pbody > .d-pz8 { display: none; } }
+/* Below 1180px the docked 320px column has nowhere to go — this used to be
+   `display: none`, which took the record (ملحق الشكل 21's own slider among
+   them) out of every one of the 19 pages built on `.d-pbody` with no
+   replacement and no explanation (P-244). A record is secondary detail, and
+   `§6` puts secondary detail in a drawer, not in nothing: below the
+   breakpoint `.d-pz8` becomes that drawer — the SAME fixed-overlay, slide-in
+   treatment `.d-drawer` already uses elsewhere, reusing its keyframe and its
+   RTL-aware direction so the two read as one pattern. It takes the full
+   viewport rather than docking at 440px, because there is no scrim element in
+   any of the 19 templates to dim what is behind a narrower panel — full-bleed
+   needs none, since nothing is left showing behind it. */
+@media (max-width: 1180px) {
+  .d-pbody { grid-template-columns: minmax(0, 1fr); }
+  .d-pbody > .d-pz8 { position: fixed; inset: 0; z-index: 161; border-inline-start: none;
+    animation: dDrawerIn var(--dur) var(--ease-standard); }
+}
+@media (max-width: 1180px) and (prefers-reduced-motion: reduce) { .d-pbody > .d-pz8 { animation: none; } }
 /* an aside docked by the frame supplies its own chrome — drop the card border */
 .d-pbody > .d-pz8 > .d-arail { height: 100%; }
 
@@ -2815,6 +2856,16 @@ button.d-amd-mark.pend:hover { background: color-mix(in srgb, var(--status-suspe
 
 .d-rpane > .rp-b { flex: 1; min-height: 0; overflow-y: auto;
   padding: var(--space-12) var(--space-16); display: flex; flex-direction: column; gap: var(--space-16); }
+/* Same rule, same reason, as `.d-pz7 > *` above: a flex item's automatic
+   min-height resolves to 0 the moment it has `overflow` other than `visible`
+   — `.d-card-sub` sets `overflow: hidden`, so any record section built on it
+   (`.scd-prog` among them) had nothing stopping the column from shrinking it
+   to a sliver once the record's total content ran past the panel's visible
+   height, while its overflow:visible siblings correctly refused to shrink
+   and the deficit landed entirely on the one section least able to survive
+   it. `flex: 0 0 auto` restores its content height; `.rp-b`'s own
+   `overflow-y: auto` is what makes the panel scroll instead. */
+.d-rpane > .rp-b > * { flex: 0 0 auto; }
 .d-rpane > .rp-f { display: flex; gap: var(--space-8); padding: var(--space-12) var(--space-16);
   border-top: 1px solid var(--stroke-subtle); background: var(--bg-subtle); }
 .d-rpane > .rp-f .d-btn { flex: 1; justify-content: center; }
@@ -2848,6 +2899,24 @@ button.d-amd-mark.pend:hover { background: color-mix(in srgb, var(--status-suspe
   box-shadow: none; background: var(--bg-subtle); }
 /* Cairo's glyph box needs the next line-height step at fs-300 */
 .d-rpane > .rp-h > .tx { line-height: var(--lh-400); }
+
+/* 20d — THE ACTIVITY CARD RAN ITS NAME INTO ITS STATUS (P-247).
+
+   The base rule (:2815) makes `.tx` a flex COLUMN with a `--space-2` gap, so
+   its three children — `.r1` (id + criticality ring), `<b>` (the name) and
+   `.sub` (the status) — stack. The «header is title + actions only» override
+   above flattens it to `display: block` for the drawers whose `.tx` really is
+   just a title, and there `<b>` and `.sub` fall back to being inline siblings
+   with nothing between them: SCR-W5's activity card rendered
+   «التهيئة وتسوية الموقعمكتمل» as one word. `.sub` also inherited the title's
+   `font-weight: 600`, so the status read as part of the name rather than as a
+   note under it.
+
+   `.sub` goes back to its own line at its own weight. The override's ellipsis
+   and `nowrap` still apply, now per line rather than to both at once, and a
+   `.tx` that carries no `.sub` is untouched — which is every other drawer. */
+.d-rpane > .rp-h > .tx > .sub {
+  display: block; font-weight: var(--fw-regular); }
 
 /* ---- chrome/content boundary ---------------------------------------
    Z2 + Z6 + Z5 are one fixed chrome slab (none of them scroll). Divide
@@ -2978,6 +3047,26 @@ button.d-amd-mark.pend:hover { background: color-mix(in srgb, var(--status-suspe
 .d-fsheet-recon .tm.bad .d-money > b { color: var(--alloc-over-fg); }
 .d-fsheet-recon .pc { font-style: normal; font-size: var(--fs-100); line-height: var(--lh-200);
   color: var(--fg-subtle); margin-inline-start: var(--space-4); }
+
+/* `.scd-prog` already has a full, deliberate ruleset — `web/src/styles.css`,
+   ملحق الشكل 21's own section. This file's near-identical block (added, then
+   reverted, in the same session) was a duplicate read off the wrong grep: it
+   set `display: flex; flex-direction: column` on `.scd-prog` ITSELF, which
+   the original never does — the container stays block level, and only `.hd` /
+   `.ft` are flex rows, spaced with `margin-block-*` rather than a column
+   `gap`. The duplicate's `flex-direction: column` on the parent collapsed the
+   panel to ~26px (a `<input type="range">` sized as a column flex item does
+   not report the height the block-level layout expects) and clipped
+   everything below it through `.d-card-sub`'s own `overflow: hidden` — a
+   genuinely invisible slider, not merely an unstyled one. Two style sheets
+   defining the same class is `grep before you write a rule` (§3.7) failing
+   on a search scoped to `styles/*.css` and missing `styles.css` itself; the
+   fix is not writing a third rule here but not writing a second one at all.
+
+   The two `.d-cell-sub.note` rows on `progress.page.html` (the same icon+text
+   pattern, one class short of matching `.scd-prog > .note`) are still
+   unstyled — `.d-cell-sub` alone is a font-size and a colour — and belong to
+   that page's own review-panel pass, not this one. */
 
 /* Z7 — the matrix. Column groups over two header tiers, identity frozen. */
 /* the sheet scrolls inside its own frame, both ways: that is what keeps

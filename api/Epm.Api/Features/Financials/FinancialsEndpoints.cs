@@ -454,7 +454,30 @@ public static class FinancialsEndpoints
                 p.PlannedCost is null ? null : M(p.PlannedCost.Value),
                 p.RevisedCost is null ? null : M(p.RevisedCost.Value),
                 currentAlloc is null ? null : M(currentAlloc.Amount),
-                currentAlloc is null ? null : totals.SpentYear,
+                // ── «المصروف السنوي» IS THE CEILING'S OWN FIGURE (P-244) ────
+                // NOT `totals.SpentYear`, which follows الشكل 14's «مرشح السنة»
+                // and therefore reads ALL-TIME spend whenever the filter is off
+                // — which is how the screen loads. The cost table can do that:
+                // it relabels its column «الصرف» when no year is chosen. This
+                // card cannot, because its label is fixed and, more to the
+                // point, because this figure is the one `PaymentCertificate
+                // .Ceilings` measures a certificate against.
+                //
+                // So it is read HERE from the same function the rule reads —
+                // `SpentIn(lines, currentYear)` — and the year filter moves it
+                // only by moving `currentYear`. Before this, a finance user
+                // reading the card saw a spend of 86,700,000 against an
+                // allocation of 120,000,000 while the rule was working from
+                // 52,700,000: the screen said 33,300,000 of headroom where
+                // there was 67,300,000, and a certificate the card implied
+                // would be refused registered without complaint.
+                currentAlloc is null
+                    ? null
+                    : M(PaymentCertificate.SpentIn(
+                        payments.Select(x => new PaymentCertificate.Line(
+                            x.Kind, x.Status, x.NetAmount, x.RetentionAmount,
+                            x.AdvanceRecovery, x.PaidDate?.Year)).ToList(),
+                        currentYear)),
                 totals.Disbursed,
                 totals.RetentionHeld,
                 p.TransferState,

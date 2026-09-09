@@ -63,6 +63,18 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     public DbSet<ScheduleImportVersion> ScheduleImportVersions => Set<ScheduleImportVersion>();
     public DbSet<ScheduleImportVersionItem> ScheduleImportVersionItems => Set<ScheduleImportVersionItem>();
 
+    // ── المسار 6 — تحديث الإنجاز واعتماده ─────────────────────────────────
+    // The third table of this shape, and it is registered beside the other two
+    // because it is the same argument a third time: `Activities.ProgressPct` is
+    // read by BR-04, BR-11, every BOQ line's executed %, every contract
+    // roll-up and the project's physical %, so a person does not write it — a
+    // reading is submitted, reviewed, and only an approval moves the column.
+    public DbSet<ProgressReading> ProgressReadings => Set<ProgressReading>();
+    public DbSet<ProgressReadingEvidence> ProgressReadingEvidence => Set<ProgressReadingEvidence>();
+
+    // المسار 7 — إغلاق فترة الإنجاز. One row per project per reporting period.
+    public DbSet<AccomplishmentPeriod> AccomplishmentPeriods => Set<AccomplishmentPeriod>();
+
     // ── الشكل 17 — مهل التدقيق ────────────────────────────────────────────
     // One row per DESK a certificate sits at. The route is data, not columns:
     // a ministry that adds a stage adds rows (P-97).
@@ -257,6 +269,11 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
         b.Entity<Activity>().HasKey(x => x.Id);
         b.Entity<ScheduleImportVersion>().HasKey(x => x.Id);
         b.Entity<ScheduleImportVersionItem>().HasKey(x => x.Id);
+        // Its real identity is (ContractId, ActivityId, No), and the "at most
+        // one submitted per activity" rule that goes with it is compared in
+        // ProgressEndpoints where the message sits beside it (P-01).
+        b.Entity<ProgressReading>().HasKey(x => x.Id);
+        b.Entity<ProgressReadingEvidence>().HasKey(x => x.Id);
 
         // Money vs quantity/percentage precision. Applied to every registered
         // entity automatically so no page has to remember it.

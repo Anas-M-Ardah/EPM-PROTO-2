@@ -118,15 +118,18 @@ public class ChangeOrderWizardTests
         Assert.All(full, s => Assert.True(s.Active));
         Assert.Equal(6, full.Count);
 
-        // Neither condition holds → the same six rows, two of them SKIPPED and
-        // each carrying its reason (`03 §2`). They are never dropped.
+        // Neither condition holds → the same six rows, ONE of them SKIPPED and
+        // carrying its reason (`03 §2`). Stage 3 never skips (P-252) — 02 §6
+        // makes the approved value the pricing committee's decision on every
+        // order, so it still runs to confirm the value, just with no rate to
+        // fix.
         var bare = WorkflowMachine.Plan(tripsThreshold: false, needsEndorsement: false);
         Assert.Equal(6, bare.Count);
-        Assert.Equal(4, bare.Count(s => s.Active));
+        Assert.Equal(5, bare.Count(s => s.Active));
         Assert.All(bare.Where(s => !s.Active), s => Assert.False(string.IsNullOrWhiteSpace(s.SkipAr)));
 
-        // The two conditional ones are 3 and 4, and no other.
-        Assert.Equal([3, 4], bare.Where(s => !s.Active).Select(s => s.Def.No));
+        // The only conditional one is 4.
+        Assert.Equal([4], bare.Where(s => !s.Active).Select(s => s.Def.No));
     }
 
     [Fact]

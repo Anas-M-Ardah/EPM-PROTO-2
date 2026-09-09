@@ -40,9 +40,16 @@ namespace Epm.Api.Features.ChangeOrders;
 /// </summary>
 public static class ChangeOrderWizardEndpoints
 {
-    /// <summary>`03 §1` — who an official letter can arrive from.</summary>
-    private static readonly string[] Parties =
-        ["المقاول", "الاستشاري المصمم والمدقق", "الجهة المستفيدة", "دائرة المهندس المقيم"];
+    /// <summary>
+    /// `03 §1` — who an official letter can arrive from. D-14: a supply order
+    /// has no resident engineer and no contractor — المجهز requests, and
+    /// لجنة الفحص والاستلام is the party that reviews and signs, the same swap
+    /// `Domain/WorkflowMachine.StagesFor` makes for the stage owners. Ported
+    /// from the prototype's own `voTerms(p, lang).parties` (`model.js:722`).
+    /// </summary>
+    private static string[] PartiesFor(string projectType) => projectType == "equipment"
+        ? ["المجهز", "لجنة الفحص والاستلام", "الجهة المستفيدة", "الاستشاري"]
+        : ["المقاول", "الاستشاري المصمم والمدقق", "الجهة المستفيدة", "دائرة المهندس المقيم"];
 
     public static void MapChangeOrderWizardEndpoints(this WebApplication app)
     {
@@ -137,8 +144,8 @@ public static class ChangeOrderWizardEndpoints
             }
 
             return Results.Ok(new WizardSourceResponse(
-                p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
-                persona.Id, persona.Party, Parties,
+                p.Id, p.NameAr, p.NameEn, p.Type, p.DataDate?.ToString("yyyy-MM-dd"),
+                persona.Id, persona.Party, PartiesFor(p.Type),
                 beneficiaries.Select(x => new WizardAllocation(x.Code, x.NameAr, x.NameEn, 0m)).ToList(),
                 model));
         });
@@ -185,6 +192,24 @@ public static class ChangeOrderWizardEndpoints
                 .FirstOrDefaultAsync(c => c.ProjectId == projectId && c.Id == draft.ContractId);
             if (contract is null)
                 return Results.NotFound(new { message = $"contract {draft.ContractId} not on {projectId}" });
+
+            // D-14 — an equipment project has one order kind, and the wizard
+            // no longer offers the other (`change-order.wizard.html`'s own
+            // type step). A caller that sends it anyway — a stale client, a
+            // direct request — is refused here rather than accepted into an
+            // engineering order a supply project cannot carry.
+            var wantsSupply = draft.Type == "supply";
+            var isEquipment = p.Type == "equipment";
+            if (wantsSupply != isEquipment)
+                return Results.BadRequest(new
+                {
+                    messageAr = isEquipment
+                        ? "مشاريع التجهيز لا تُصدر إلا أوامر تجهيز."
+                        : "هذا المشروع لا يُصدر أوامر تجهيز.",
+                    messageEn = isEquipment
+                        ? "Equipment-supply projects raise only supply orders."
+                        : "This project does not raise supply orders.",
+                });
 
             var submitting = kind == "submit";
             var preview = await Preview(db, contract, draft);
@@ -448,7 +473,7 @@ public static class ChangeOrderWizardEndpoints
             var executed = Q(d.Progress.AchievedQty);
             var domainLine = new ChangeOrderRecord.Line(
                 item.Code, input.ChangeType, item.OriginalQty, item.OriginalQty,
-                item.UnitRate, M(item.OriginalQty * item.UnitRate));
+                item.UnitRate, M(item.OriginalQty * item.UnitRate), draft.Type == "supply");
 
             // ONE function, twice — and it is the same one the record page uses.
             var con = ChangeOrderRecord.For(domainLine,
@@ -524,7 +549,8 @@ public static class ChangeOrderWizardEndpoints
         // these are the backstop, and they are what the 422 lists.
         var issues = ChangeOrderGates.Validate(new ChangeOrderGates.Order(
             contract.Id, gateLines,
-            draft.Activities.Select(a => new ChangeOrderGates.Activity(a.ActivityId, contract.Id)).ToList()));
+            draft.Activities.Select(a => new ChangeOrderGates.Activity(a.ActivityId, contract.Id)).ToList(),
+            draft.Type == "supply"));
 
         // BR-01 over the RE department's column, on every line of the contract.
         var afterByCode = derived.ToDictionary(x => x.Item.Code, x => M(x.Line.Amount));

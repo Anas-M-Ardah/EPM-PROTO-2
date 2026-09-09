@@ -609,6 +609,9 @@ public static class Fixture
         // الشكل 19 — «تعديل كلفة أو تخصيص», with its before value.
         FinancialEdits(db);
 
+        // المسار 6 — قراءات الإنجاز، واحدة في كل حالة.
+        ProgressReadings(db);
+
         // ── next pages append their fixture rows here ────────────────────
 
         db.SaveChanges();
@@ -1399,7 +1402,15 @@ public static class Fixture
             // not find it. Recorded in P-160.
             new()
             {
-                No = "VO-06", ContractId = "CNT-0279-EM", Type = "supply",
+                // Retyped `engineering` (was `supply`, P-159's own mistake —
+                // see BoqKind's doc comment on the same fixture pair): a rate
+                // change reviewed by دائرة المهندس المقيم and fixed by لجنة
+                // تثبيت الأسعار is what an ENGINEERING order looks like on this
+                // system (D-14 · 02 §5) — a supply order may not carry `rate`
+                // at all (`Domain/ChangeOrderGates`), and has no resident
+                // engineer to own it. Every other field already reads that way
+                // — `ResponsibleParty` was always دائرة المهندس المقيم.
+                No = "VO-06", ContractId = "CNT-0279-EM", Type = "engineering",
                 TitleAr = "تغيير مواصفة لوحات التوزيع",
                 TitleEn = "Change of the distribution board specification",
                 Justification = "عدم توفر المواصفة المتعاقد عليها لدى المجهّز.",
@@ -1435,7 +1446,8 @@ public static class Fixture
             // electromechanical contract, so the register still spans both.
             new()
             {
-                No = "VO-07", ContractId = "CNT-0279-EM", Type = "supply",
+                // Retyped `engineering`, same reason as VO-06 above.
+                No = "VO-07", ContractId = "CNT-0279-EM", Type = "engineering",
                 TitleAr = "زيادة عدد وحدات التكييف",
                 TitleEn = "Increase in the number of HVAC units",
                 Justification = "توسعة قاعة المختبرات بعد تعديل التصميم الداخلي.",
@@ -1448,6 +1460,37 @@ public static class Fixture
                 // equals it exactly (the same rule VO-02's comment states).
                 RequestedValue = 7_311_500m, RequestedDays = 0,
                 CreatedByUserId = "user.re-dept", CreatedAt = DateTime.UtcNow,
+            },
+
+            // VO-08 — the first REAL supply order (finding F of the parity
+            // review): a beneficiary redistribution on CNT-0439, راسمة الأشكال
+            // 57–60. ITM-006's own distribution (السجل: ub 75 · nu 56 · tu 65 =
+            // 196) moves 10 servers from ub to tu after جامعة التكنولوجية
+            // expanded its server room — قيمة العقد لا تتغيّر, فلا صافي أثر
+            // ولا حاجة لتثبيت أسعار: المجهّز يطلب, لجنة الفحص والاستلام تراجع
+            // وتنفّذ, لا دائرة مهندس مقيم على هذا العقد.
+            new()
+            {
+                No = "VO-08", ContractId = "CNT-0439", Type = "supply",
+                TitleAr = "إعادة توزيع خوادم الشبكة بين الجهات المستفيدة",
+                TitleEn = "Redistribution of network servers among beneficiaries",
+                Justification = "توسعة غرفة الخوادم في الجامعة التكنولوجية بعد زيادة الطلب على الحوسبة.",
+                ResponsibleParty = "لجنة الفحص والاستلام",
+                IncomingNo = "0212/2026", IncomingDate = Ago(20),
+                // المجهّز requests; there is no resident engineer and no
+                // design consultant on a pure supply contract to write a
+                // second letter (`Domain/OrderTerms`'s `PartiesFor`).
+                ContractorLetterNo = "0198/2026", ContractorLetterDate = Ago(27),
+                Lifecycle = "closed",
+                // إعادة التوزيع لا تُغيّر قيمة العقد ولا الكمية المتعاقدة —
+                // الشكل 59: «الحالي 111 · المقترح 111 · الأثر 0» — فلا قيمة
+                // مطلوبة ولا معتمدة هنا، والقيمة الوحيدة المتحركة هي توزيع
+                // الفقرة بين الجهات (`ChangeOrderRedistribution` أدناه).
+                RequestedDays = 0, ApprovedDays = 0, AppliedDays = 0,
+                DecisionDate = Ago(6), ApprovingAuthority = "لجنة الفحص والاستلام",
+                DecisionReason = "الموافقة على إعادة توزيع الفقرة بين الجهات المستفيدة دون أثر مالي.",
+                WeightRecalcState = "done",
+                CreatedByUserId = "user.inspection", CreatedAt = DateTime.UtcNow,
             },
         };
 
@@ -1492,9 +1535,11 @@ public static class Fixture
         ChangeOrderStage St(string no, int n, string status,
             int? sentAgo = null, int? actionedAgo = null,
             bool applicable = true, string? skip = null, string? decision = null,
-            string? decidedBy = null, string? note = null)
+            string? decidedBy = null, string? note = null, bool supply = false)
         {
-            var def = WorkflowMachine.Stages[n - 1];
+            // الشكل 60 — a supply order's stages 1 and 6 belong to لجنة الفحص
+            // والاستلام, not دائرة المهندس المقيم (WorkflowMachine.StagesFor).
+            var def = (supply ? WorkflowMachine.StagesFor(true) : WorkflowMachine.Stages)[n - 1];
             return new()
             {
                 ChangeOrderId = byNo[no], StageNo = def.No, NameAr = def.Ar, NameEn = def.En,
@@ -1597,6 +1642,21 @@ public static class Fixture
             St("VO-07", 4, "pending"),
             St("VO-07", 5, "pending"),
             St("VO-07", 6, "pending"),
+
+            // VO-08 — closed, all six planned, stage 3 the only one skipped:
+            // a redistribution never trips BR-05 (`Domain/ChangeOrderRecord`),
+            // so there is no excess quantity for لجنة تثبيت الأسعار to price.
+            // `supply: true` on every row — لجنة الفحص والاستلام owns stages
+            // 1 and 6, not دائرة المهندس المقيم, the same swap الشكل 60 draws.
+            St("VO-08", 1, "done", 20, 18, decision: "approve", supply: true),
+            St("VO-08", 2, "done", 18, 14, decision: "approve", supply: true),
+            St("VO-08", 3, "pending", applicable: false,
+                skip: "إعادة توزيع لا تُغيّر الكمية المتعاقدة — لا تنطبق مرحلة تثبيت الأسعار.",
+                supply: true),
+            St("VO-08", 4, "done", 14, 10, decision: "approve", supply: true),
+            St("VO-08", 5, "done", 10, 6, decision: "approve",
+                decidedBy: "user.senior-mgmt", supply: true),
+            St("VO-08", 6, "done", 6, 3, decision: "approve", supply: true),
         };
 
         db.ChangeOrderStages.AddRange(stages);
@@ -1733,8 +1793,39 @@ public static class Fixture
                 BeforeQty = 6m, BeforeRate = 7_311_500m, BeforeAmount = 43_869_000m,
                 ContractorDeltaQty = 2m, ReDeptDeltaQty = 1m,
                 ApplyStatus = "todo",
+            },
+
+            // VO-08 · ITM-006 (CNT-0439) — a beneficiary redistribution, not a
+            // quantity change: BeforeQty/BeforeAmount stand exactly as
+            // contracted, and neither proposal column carries a delta,
+            // because الشكل 59's own point is «الأثر 0».
+            new ChangeOrderLine
+            {
+                ChangeOrderId = byNo["VO-08"], BoqItemId = boq["CNT-0439|ITM-006"], ChangeType = "redist",
+                ContractedQty = 196m, ExecutedQty = 118m,
+                BeforeQty = 196m, BeforeRate = 985_875m, BeforeAmount = 193_231_500m,
+                ApplyStatus = "done",
             }
         );
+
+        // Flat tables, no navigation properties (CLAUDE.md §3.3) — the
+        // redistribution row below needs VO-08's line's REAL id, which SQL
+        // Server has not assigned yet. Save first, the same way every other
+        // FK in this method is resolved off an already-committed dictionary.
+        db.SaveChanges();
+
+        // ── الشكل 58 — التحويل بين الجهات المستفيدة (VO-08 · ITM-006) ─────
+        // 10 servers, ub → tu: 75/65 before, 65/75 after. Applied at closure,
+        // so `AppliedQty` is written — `Domain/SupplyRedistribution.Nets` reads
+        // this row to print the same net the record page shows.
+        db.ChangeOrderRedistributions.Add(new ChangeOrderRedistribution
+        {
+            ChangeOrderLineId = db.ChangeOrderLines
+                .First(l => l.ChangeOrderId == byNo["VO-08"] && l.BoqItemId == boq["CNT-0439|ITM-006"]).Id,
+            FromBeneficiaryCode = "ub", ToBeneficiaryCode = "tu", Qty = 10m,
+            FromQtyBefore = 75m, ToQtyBefore = 65m, AppliedQty = 10m,
+        });
+        db.SaveChanges();
 
         // ── THE BANDS THE APPLIED ORDERS WROTE (02 §5 · 03 §9 step 3) ─────
         //
@@ -2422,7 +2513,21 @@ public static class Fixture
             R("R11", "موعد حسم لجنة التمديد", "Extension committee decision date",
                 "قبل المهلة القانونية", "Before the statutory deadline", "warning", true, false, "weekly", 240),
             R("R12", "تجاوز مهلة تدقيق المعاملة", "Audit desk SLA breached",
-                "تجاوز سقف مرحلة التدقيق", "Past the audit stage ceiling", "critical", true, true, "daily", 48));
+                "تجاوز سقف مرحلة التدقيق", "Past the audit stage ceiling", "critical", true, true, "daily", 48),
+
+            // ── المسار 5's own «التنبيهات» ───────────────────────────────
+            // «بنود غير مخصَّصة على أنشطة · تجاوز في التخصيص». Both states are
+            // already computed — `allocation-coverage` classifies every line as
+            // unassigned/partial/full/over — and both were visible ONLY as
+            // facets on SCR-W4's own screen, which is to say only to someone
+            // already standing on it. An unassigned line earns nothing however
+            // much work is done against the activities that ought to feed it,
+            // and المسار 5 ends «تغطية كاملة تسمح باشتقاق الإنجاز والقيمة
+            // المكتسبة» — so the gap is worth raising, not just displaying.
+            R("R13", "بنود كميات غير مخصَّصة على أنشطة", "BOQ lines not assigned to activities",
+                "حالة التخصيص = غير مخصَّص", "Coverage = unassigned", "warning", true, false, "weekly", 120),
+            R("R14", "تجاوز في تخصيص بند على الأنشطة", "BOQ line over-allocated to activities",
+                "مجموع الحصص > 100%", "Σ shares > 100%", "critical", true, false, "daily", 48));
 
         db.SaveChanges();
     }
@@ -2716,6 +2821,88 @@ public static class Fixture
             // the first of these.
             E("PRJ-0148", "revisedCost", null, "80000000", "62000000", new DateOnly(2026, 4, 21)),
             E("PRJ-0148", "transferState", null, "none", "in-progress", new DateOnly(2026, 4, 21)));
+    }
+
+    /// <summary>
+    /// قراءات الإنجاز — المسار 6.
+    ///
+    /// ONE ROW IN EACH STATE, because the review section has four things to
+    /// say and a fixture that seeds only approvals shows one of them. The
+    /// pending row is the one that matters: switch to `user.re-dept` and there
+    /// is a decision waiting, which is what makes the separation of duties
+    /// demonstrable rather than merely documented.
+    ///
+    /// THE APPROVED ROW MATCHES THE ACTIVITY IT MOVED. `A6` sits at 45% in the
+    /// activity seed above, so its approved reading is 38 → 45: a reading whose
+    /// `ProgressPct` disagreed with the column it is supposed to have written
+    /// would make the register a liar on first paint.
+    ///
+    /// The pending one proposes a number and the activity still holds the old
+    /// one — that is the whole visible difference this track makes, and it is
+    /// only visible if the fixture leaves them apart.
+    ///
+    /// Illustrative, not ministry data — like every figure in this file.
+    /// </summary>
+    private static void ProgressReadings(EpmDb db)
+    {
+        static ProgressReading R(string contractId, string activityId, int no, string state,
+            decimal previous, decimal proposed, string note, string at,
+            string? reviewedAt = null, string reviewNote = "") => new()
+        {
+            ContractId = contractId, ActivityId = activityId, No = no, State = state,
+            ProgressPct = proposed, PreviousPct = previous, Note = note,
+            // القسم المصدر — الشكل 25's own two sources.
+            ActorId = "user.univ-specialist", ActorName = Personas.MasterNameAr,
+            ActorRole = "المستخدم المختص في الجامعة", ActorParty = "الجامعة / التشكيل",
+            At = DateOnly.Parse(at),
+            // إدارة المشاريع, by P-157's resolution of the lane.
+            ReviewerId = reviewedAt is null ? "" : "user.re-dept",
+            ReviewerName = reviewedAt is null ? "" : Personas.MasterNameAr,
+            ReviewerRole = reviewedAt is null ? "" : "مهندس مقيم",
+            ReviewerParty = reviewedAt is null ? "" : "دائرة المهندس المقيم",
+            ReviewedAt = reviewedAt is null ? null : DateOnly.Parse(reviewedAt),
+            ReviewNote = reviewNote,
+        };
+
+        db.ProgressReadings.AddRange(
+            // Approved — and A6 carries the 45% this reading put there.
+            R("CNT-0279", "A6", 1, "approved", 38m, 45m,
+                "صبّ القواطع في الطابقين الأول والثاني", "2026-07-06", "2026-07-09"),
+
+            // Returned — the reason is the content of the decision (step 6أ),
+            // and A7 still stands at the 20% it stood at.
+            R("CNT-0279", "A7", 2, "returned", 20m, 34m,
+                "إكساء الطابق الأرضي", "2026-07-20", "2026-07-23",
+                "الذرعة المرفقة تغطي الطابق الأرضي فقط — يرجى إرفاق ذرعة الطابق الأول قبل إعادة التقديم."),
+
+            // Pending — A5 stands at 60%, and nothing derived has moved.
+            R("CNT-0279", "A5", 3, "submitted", 60m, 72m,
+                "إنجاز أسقف الطابق الثاني", "2026-07-28"));
+
+        db.SaveChanges();
+
+        // الأدلة المؤيدة hang off GENERATED keys, so they are built from the
+        // ids that came back — the same reason `PaymentFiles` is its own method.
+        var byActivity = db.ProgressReadings
+            .Where(r => r.ContractId == "CNT-0279")
+            .ToDictionary(r => r.ActivityId, r => r.Id);
+
+        static ProgressReadingEvidence F(int readingId, string titleAr, string titleEn,
+            string fileName, long size) => new()
+        {
+            ReadingId = readingId, TitleAr = titleAr, TitleEn = titleEn,
+            FileName = fileName, SizeBytes = size,
+        };
+
+        db.ProgressReadingEvidence.AddRange(
+            F(byActivity["A6"], "ذرعة الأعمال المنجزة", "Measurement sheet",
+                "A6-measurement-2026-07.pdf", 188_416),
+            F(byActivity["A7"], "ذرعة الأعمال المنجزة", "Measurement sheet",
+                "A7-measurement-2026-07.pdf", 142_336),
+            F(byActivity["A5"], "ذرعة الأعمال المنجزة", "Measurement sheet",
+                "A5-measurement-2026-07.pdf", 205_824),
+            F(byActivity["A5"], "صور الموقع", "Site photographs",
+                "A5-site-photos-2026-07.zip", 3_407_872));
     }
 
     /// <summary>

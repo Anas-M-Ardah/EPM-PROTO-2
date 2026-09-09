@@ -96,6 +96,11 @@
       <button type="button" class="d-btn sm" (click)="exportPdf()">
         <epm-icon name="download" [size]="15" />{{ lang.t('prg_export_pdf') }}
       </button>
+      @if (!editing_mode()) {
+        <button type="button" class="d-btn sm" (click)="openPeriodsPanel()">
+          <epm-icon name="event_repeat" [size]="15" />{{ lang.t('prg_periods_btn') }}
+        </button>
+      }
       @if (editing_mode()) {
         <button type="button" class="d-btn sm primary" (click)="editing_mode.set(false)">
           <epm-icon name="chevron_right" [size]="15" />{{ lang.t('prg_back_to_read') }}
@@ -324,6 +329,132 @@
             </div>
           </div>
 
+          <!-- §7 — «يُفصل صراحةً بين صلاحية الإدخال وصلاحية الاعتماد». The bar
+               states WHY the rows carry no button rather than hiding the fact,
+               the same way SCR-W4's import bar does for the specialist who may
+               not approve (P-157). -->
+          @if (!canSubmit()) {
+            <div class="d-msgbar info">
+              <epm-icon name="info" [size]="16" class="mgi" />
+              <div class="mtx"><span class="mbody">{{ lang.t('prg_no_submit') }}</span></div>
+            </div>
+          }
+
+          <!-- ══ المسار 6 · STAGE 2 — «قرار المراجعة» ═══════════════════════
+               ABOVE the editor, not below it and not on another screen: the
+               reviewer's whole job on this page is these rows, and a decision
+               queue underneath two dense tables is a queue nobody finds.
+
+               §7 — «يُفصل صراحةً بين صلاحية الإدخال وصلاحية الاعتماد». A
+               capacity that may not decide is told so rather than shown a
+               section with dead buttons, exactly as SCR-W4's import bar does. -->
+          @if (pending().length) {
+            <epm-field-group [title]="lang.t('prg_pending_t').replace('{n}', '' + pending().length)"
+                             [sub]="lang.t('prg_pending_b')">
+              @if (!canReview()) {
+                <div class="d-msgbar info">
+                  <epm-icon name="info" [size]="16" class="mgi" />
+                  <div class="mtx"><span class="mbody">{{ lang.t('prg_no_review') }}</span></div>
+                </div>
+              }
+
+              @for (r of pending(); track r.id) {
+                <div class="d-card-sub">
+                  <div class="d-form-grid">
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('scd_wbs_activity') }}</span>
+                      <span class="v">
+                        <bdi class="mono">{{ r.activityId }}</bdi> · {{ lang.pick(r.activityNameAr, r.activityNameEn) }}
+                      </span>
+                    </div>
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('prg_reading_move') }}</span>
+                      <!-- «القراءة السابقة محفوظة» — the pair, so a reviewer
+                           decides on a MOVE and not on a bare number. -->
+                      <span class="v num">
+                        <bdi>{{ fmt.pct(r.previousPct, 0) }}</bdi> ←
+                        <bdi class="d-cell-strong">{{ fmt.pct(r.progressPct, 0) }}</bdi>
+                      </span>
+                    </div>
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('prg_reading_by') }}</span>
+                      <span class="v">{{ r.actorParty }} · {{ r.actorRole }}</span>
+                    </div>
+                    <div class="d-form-i">
+                      <span class="k">{{ lang.t('prg_updates_at') }}</span>
+                      <span class="v"><bdi>{{ fmt.date(r.at) }}</bdi></span>
+                    </div>
+                  </div>
+
+                  @if (r.note) {
+                    <div class="d-cell-sub note">
+                      <epm-icon name="edit" [size]="12" />
+                      <span>{{ r.note }}</span>
+                    </div>
+                  }
+
+                  <!-- الأدلة المؤيدة — step 2's other half, and the reason the
+                       review is a review rather than an initial on a number. -->
+                  @if (r.evidence.length) {
+                    <table class="d-line-table">
+                      <thead><tr>
+                        <th>{{ lang.t('prg_evidence') }}</th>
+                        <th class="r" style="width: 110px">{{ lang.t('pay_w_size') }}</th>
+                      </tr></thead>
+                      <tbody>
+                        @for (f of r.evidence; track f.fileName) {
+                          <tr>
+                            <td>{{ lang.pick(f.titleAr, f.titleEn) }}
+                              <div class="d-cell-sub"><bdi class="mono">{{ f.fileName }}</bdi></div>
+                            </td>
+                            <td class="r mono d-cell-sub"><bdi>{{ size(f.sizeBytes) }}</bdi></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <div class="d-cell-sub note">
+                      <epm-icon name="warning" [size]="12" />
+                      <span>{{ lang.t('prg_evidence_none') }}</span>
+                    </div>
+                  }
+
+                  @if (canReview()) {
+                    @if (returning() === r.id) {
+                      <!-- A RETURN WITHOUT A REASON CANNOT BE ACTED ON, so the
+                           field is required and the button stays disabled until
+                           it holds something — prevent, do not report (§6). -->
+                      <div class="d-form-i">
+                        <span class="k">{{ lang.t('prg_return_why') }}</span>
+                        <input class="d-form-input" [attr.aria-label]="lang.t('prg_return_why')"
+                               [value]="returnNote()"
+                               (input)="returnNote.set($any($event.target).value)" />
+                      </div>
+                      <div class="d-rowacts">
+                        <button type="button" class="d-btn sm primary"
+                                [disabled]="!returnNote().trim() || saving() === r.activityId"
+                                (click)="sendBack(r)">{{ lang.t('prg_send_back') }}</button>
+                        <button type="button" class="d-btn sm ghost"
+                                (click)="cancelReturn()">{{ lang.t('cancel') }}</button>
+                      </div>
+                    } @else {
+                      <div class="d-rowacts">
+                        <button type="button" class="d-btn sm primary"
+                                [disabled]="saving() === r.activityId" (click)="approve(r)">
+                          <epm-icon name="check_circle" [size]="14" />{{ lang.t('prg_approve') }}
+                        </button>
+                        <button type="button" class="d-btn sm"
+                                [disabled]="saving() === r.activityId" (click)="startReturn(r)">
+                          {{ lang.t('prg_send_back') }}
+                        </button>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </epm-field-group>
+          }
+
           <div class="d-tablewrap"><table class="d-table" style="min-width: 1080px">
             <thead>
               <tr>
@@ -358,7 +489,11 @@
                   </td>
                   <td class="r mono d-cell-sub"><bdi>{{ fmt.pct(a.plannedPct, 0) }}</bdi></td>
 
-                  <!-- reported -->
+                  <!-- reported — THE READING IN FORCE, and beneath it the one
+                       awaiting a decision. Keeping the two apart in one cell is
+                       the whole visible difference المسار 6's review makes: the
+                       bar is what has been earned, the pill is what somebody has
+                       proposed and nobody has accepted. -->
                   <td class="r">
                     @if (editing() === a.activityId) {
                       <input class="prg-input num" type="number" min="0" max="100" step="1"
@@ -366,13 +501,19 @@
                              [attr.aria-invalid]="!!draftError()"
                              [value]="draft()"
                              (input)="draft.set($any($event.target).value)"
-                             (keydown.enter)="save(a)"
+                             (keydown.enter)="submit(a)"
                              (keydown.escape)="cancelEdit()" />
                     } @else {
                       <div class="d-progress">
                         <span class="t"><span [style.width.%]="a.progressPct"></span></span>
                         <span class="pc"><bdi>{{ fmt.pct(a.progressPct, 0) }}</bdi></span>
                       </div>
+                      @if (a.pendingPct !== null) {
+                        <div class="d-cell-sub">
+                          <span class="d-pill ongoing">{{ lang.t('prg_pending') }}</span>
+                          <bdi class="num">{{ fmt.pct(a.pendingPct, 0) }}</bdi>
+                        </div>
+                      }
                     }
                   </td>
 
@@ -389,27 +530,91 @@
 
                   <td class="r">
                     @if (editing() === a.activityId) {
+                      <!-- «إرسال للمراجعة», not «حفظ»: what this button does is
+                           put a reading in front of a reviewer, and a label
+                           reading "save" would promise the old behaviour. -->
                       <button type="button" class="d-btn sm primary"
                               [disabled]="!!draftError() || saving() === a.activityId"
-                              (click)="save(a)">{{ lang.t('boq_save') }}</button>
+                              (click)="submit(a)">{{ lang.t('prg_submit') }}</button>
                       <button type="button" class="d-btn sm ghost"
                               (click)="cancelEdit()">{{ lang.t('boq_cancel') }}</button>
-                    } @else {
-                      <button type="button" class="d-btn sm" (click)="startEdit(a)">
+                    } @else if (canSubmit()) {
+                      <!-- An activity whose reading is already in review takes no
+                           second one until it is decided: EP-PRG-02 would lapse
+                           the first, and offering that silently is how a
+                           reviewer ends up deciding on a withdrawn number. -->
+                      <button type="button" class="d-btn sm"
+                              [disabled]="a.pendingReadingId !== null" (click)="startEdit(a)">
                         {{ lang.t('boq_edit') }}
                       </button>
                     }
                   </td>
                 </tr>
 
-                <!-- The reason a save is refused, in the row that would be
-                     saved (04 §9 — prevent, then explain). -->
+                <!-- The reason a submission is refused, in the row that would be
+                     submitted (04 §9 — prevent, then explain). -->
                 @if (editing() === a.activityId && draftError()) {
                   <tr class="d-vow-sub">
                     <td [attr.colspan]="manyContracts() ? 9 : 8">
                       <span class="d-inline-err">
                         <epm-icon name="error" [size]="14" />{{ draftError() }}
                       </span>
+                    </td>
+                  </tr>
+                }
+
+                <!-- ══ «ما يدخله المستخدم» — المسار 6 step 2 ══════════════════
+                     The note and the evidence travel WITH the percentage, in the
+                     row being submitted, because they are what the reviewer at
+                     step 6 decides on. A separate dialog would let a reading be
+                     sent with neither and nobody notice until the decision. -->
+                @if (editing() === a.activityId) {
+                  <tr class="d-vow-sub">
+                    <td [attr.colspan]="manyContracts() ? 9 : 8">
+                      <div class="d-form-i">
+                        <span class="k">{{ lang.t('prg_reading_note') }}</span>
+                        <input class="d-form-input" [attr.aria-label]="lang.t('prg_reading_note')"
+                               [value]="note()" (input)="note.set($any($event.target).value)" />
+                      </div>
+
+                      @if (evidence().length) {
+                        <table class="d-line-table">
+                          <thead><tr>
+                            <th>{{ lang.t('pay_w_file') }}</th>
+                            <th class="r" style="width: 110px">{{ lang.t('pay_w_size') }}</th>
+                            <th style="width: 44px"></th>
+                          </tr></thead>
+                          <tbody>
+                            @for (f of evidence(); track f.fileName + $index) {
+                              <tr>
+                                <td class="mono"><bdi>{{ f.fileName }}</bdi></td>
+                                <td class="r mono"><bdi>{{ size(f.sizeBytes) }}</bdi></td>
+                                <td>
+                                  <button type="button" class="d-icon-btn sm"
+                                          [attr.aria-label]="lang.t('prg_evidence_remove')"
+                                          (click)="removeEvidence($index)">
+                                    <epm-icon name="delete" [size]="15" />
+                                  </button>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      } @else {
+                        <span class="d-cell-sub">{{ lang.t('prg_evidence_none') }}</span>
+                      }
+
+                      <div class="d-rowacts">
+                        <!-- NO FILE IS STORED (CLAUDE.md §4) — the picker reads
+                             the name and size and sends those; the bytes never
+                             leave the browser. -->
+                        <label class="d-btn sm">
+                          <epm-icon name="attach_file" [size]="15" />{{ lang.t('prg_evidence_add') }}
+                          <input type="file" multiple class="epm-sr-only"
+                                 [attr.aria-label]="lang.t('prg_evidence_add')"
+                                 (change)="addEvidence($any($event.target))" />
+                        </label>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -516,6 +721,68 @@
               }
             </tbody>
           </table></div>
+
+          <!-- ══ سجل القراءات — المسار 6's own record ═══════════════════════
+               Every reading, decided or not. The approved rows are the same
+               fact الشكل 25's «تحديثات الإنجاز» prints from the contract log —
+               this is the per-ACTIVITY view of it, which is the granularity a
+               person arguing about one number needs, and it carries the two
+               states that never reach the summary at all: a return with its
+               reason, and a submission that lapsed. -->
+          @if (readings().length) {
+            <epm-field-group [title]="lang.t('prg_readings_t')" [sub]="lang.t('prg_readings_b')">
+              <div class="d-tablewrap"><table class="d-table" style="min-width: 1040px">
+                <thead>
+                  <tr>
+                    <th style="width: 70px">{{ lang.t('prg_reading_no') }}</th>
+                    <th>{{ lang.t('scd_wbs_activity') }}</th>
+                    <th class="r" style="width: 130px">{{ lang.t('prg_reading_move') }}</th>
+                    <th style="width: 120px">{{ lang.t('scd_col_status') }}</th>
+                    <th>{{ lang.t('prg_reading_by') }}</th>
+                    <th style="width: 110px">{{ lang.t('prg_updates_at') }}</th>
+                    <th>{{ lang.t('prg_reading_decided') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of readings(); track r.id) {
+                    <tr>
+                      <td class="mono d-cell-sub"><bdi>{{ r.no }}</bdi></td>
+                      <td>
+                        <span class="mono d-cell-sub"><bdi>{{ r.activityId }}</bdi></span>
+                        <div>{{ lang.pick(r.activityNameAr, r.activityNameEn) }}</div>
+                      </td>
+                      <td class="r mono">
+                        <bdi>{{ fmt.pct(r.previousPct, 0) }}</bdi> ←
+                        <bdi class="d-cell-strong">{{ fmt.pct(r.progressPct, 0) }}</bdi>
+                      </td>
+                      <td>
+                        <span class="d-pill" [class]="readingStateClass(r.state)">
+                          {{ readingStateLabel(r.state) }}
+                        </span>
+                      </td>
+                      <td>
+                        {{ r.actorParty }}
+                        <div class="d-cell-sub">{{ r.actorRole }}</div>
+                      </td>
+                      <td><bdi>{{ fmt.date(r.at) }}</bdi></td>
+                      <!-- WHO DECIDED, AND WHAT THEY SAID. A returned reading
+                           whose reason is not on the row is a decision nobody
+                           can act on — step 6أ's ملاحظات are its content. -->
+                      <td>
+                        @if (r.reviewedAt) {
+                          {{ r.reviewerParty }}
+                          <div class="d-cell-sub"><bdi>{{ fmt.date(r.reviewedAt) }}</bdi></div>
+                          @if (r.reviewNote) { <div class="d-cell-sub">{{ r.reviewNote }}</div> }
+                        } @else {
+                          <span class="d-cell-sub">—</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table></div>
+            </epm-field-group>
+          }
         } @else if (view() === 'wbs') {
           <!-- ══ الشكل 26 — الإنجاز حسب هيكل التجزئة ═══════════════════════
                «محسوب صعودًا من الأنشطة، لا يُدخل يدويًا». There is no input on
@@ -822,6 +1089,71 @@
      Every rule behind the four tabs, in the one place a reader who doubts a
      figure will look. A drawer and not a tooltip: these are paragraphs, and
      `05 §6` wants the rule readable where the figure is read, not hovered. -->
+@if (periodsOpen()) {
+  <epm-drawer [title]="lang.t('prg_periods_title')" [hasFooter]="true"
+              [closeLabel]="lang.t('amd_close')" (closed)="periodsOpen.set(false)">
+    @if (periodsLoading()) {
+      <p class="d-cell-sub">{{ lang.t('loading') }}</p>
+    }
+    @if (!periodsLoading() && openPeriod(); as op) {
+      <div class="d-drawer-grp">
+        <span class="lbl">{{ lang.t('prg_period_open_t') }}</span>
+        <div class="d-form-i"><span class="k">{{ lang.t('prg_period_no') }}</span>
+          <span class="v mono"><bdi>{{ op.periodNo }}</bdi></span></div>
+        <div class="d-form-i"><span class="k">{{ lang.t('prg_period_opened') }}</span>
+          <span class="v mono"><bdi>{{ fmt.date(op.openedOn) }}</bdi></span></div>
+      </div>
+
+      @if (periods()?.canClose) {
+        <div class="d-drawer-grp">
+          <div class="d-form-field">
+            <label for="period-new-date">{{ lang.t('prg_period_new_date') }}<span class="req" aria-hidden="true">*</span></label>
+            <input id="period-new-date" type="date" class="d-form-input"
+                   [class.bad]="!!closeError() && !newDataDate()"
+                   [value]="newDataDate()" (input)="newDataDate.set($any($event.target).value)" />
+          </div>
+          @if (closeError()) { <span class="d-form-err">{{ closeError() }}</span> }
+          <button type="button" class="d-btn primary" style="width: 100%"
+                  [disabled]="closingPeriod()" (click)="submitClosePeriod()">
+            <epm-icon name="lock" [size]="15" />{{ lang.t('prg_period_close_btn') }}
+          </button>
+        </div>
+      } @else {
+        <div class="d-msgbar info">
+          <epm-icon name="lock" [size]="16" />
+          <span>{{ lang.t('prg_period_no_cap') }}</span>
+        </div>
+      }
+
+      <epm-section [title]="lang.t('prg_period_log_t')">
+        @if (closedPeriods().length === 0) {
+          <p class="d-cell-sub">{{ lang.t('prg_period_log_empty') }}</p>
+        } @else {
+          @for (cp of closedPeriods(); track cp.id) {
+            <div class="d-vo-ext">
+              <div class="row">
+                <div class="tx">
+                  <b><bdi>{{ lang.t('prg_period_no') }} {{ cp.periodNo }}</bdi></b>
+                  <span>{{ lang.t('prg_period_closed_by') }} {{ cp.closedByParty }}</span>
+                  <span class="mono">
+                    {{ lang.t('prg_phys_short') }} <bdi>{{ fmt.pct(cp.physicalPct, 0) }}</bdi> ·
+                    {{ lang.t('prg_fin_short') }} <bdi>{{ fmt.pct(cp.financialPct, 0) }}</bdi> ·
+                    CPI <bdi>{{ cp.cpi ?? '—' }}</bdi> · SPI <bdi>{{ cp.spi ?? '—' }}</bdi>
+                  </span>
+                </div>
+                <span class="mono"><bdi>{{ fmt.date(cp.closedOn) }}</bdi></span>
+              </div>
+            </div>
+          }
+        }
+      </epm-section>
+    }
+    <ng-container footer>
+      <button type="button" class="d-btn" (click)="periodsOpen.set(false)">{{ lang.t('amd_close') }}</button>
+    </ng-container>
+  </epm-drawer>
+}
+
 @if (howOpen()) {
   <epm-drawer [title]="lang.t('prg_how_title')" [hasFooter]="true"
               [closeLabel]="lang.t('amd_close')" (closed)="howOpen.set(false)">

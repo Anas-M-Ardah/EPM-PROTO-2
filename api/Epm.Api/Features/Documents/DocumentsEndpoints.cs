@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
@@ -118,6 +119,66 @@ public static class DocumentsEndpoints
                         .Select(x => new DocumentRevisions.Revision(x.No, x.Status)).ToList())
                     .ToList()),
                 folders, statuses, rows));
+        });
+
+        // [EP-DOC-02] POST /api/projects/{projectId}/documents/{code}/revisions
+        // web: documents.api.ts uploadRevision() → documents.page.ts
+        // spec: ملحق الشكل 46 | rules: DocumentRevisions
+        // tables: Documents · DocumentRevisions *(written)*
+        //
+        // P-253 — «رفع مراجعة» made real. Keyed by CODE, not the internal row
+        // id: `DocumentRow` never carries one (CLAUDE.md §2's DTO/TS parity),
+        // and every other tab on this register already addresses a document by
+        // its code. No `Personas.cs` capacity is document-shaped — open to any
+        // authenticated persona for this pass, recorded as an open question.
+        //
+        // A NEW FILE IS ALWAYS A NEW REVISION (`ملحق الشكل 46`'s own notice:
+        // «كل ملف جديد يُنشئ مراجعة جديدة؛ المراجعة السابقة تبقى في السجل
+        // معلَّمة كملغاة»). There is no "replace this revision" endpoint and
+        // there must not be one.
+        app.MapPost("/api/projects/{projectId}/documents/{code}/revisions",
+            async (EpmDb db, HttpContext ctx, string projectId, string code, RevisionInput input) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
+
+            var doc = await db.Documents.FirstOrDefaultAsync(d => d.ProjectId == projectId && d.Code == code);
+            if (doc is null) return Results.NotFound(new { message = $"document {code} not found on {projectId}" });
+
+            if (string.IsNullOrWhiteSpace(input.Issuer) || string.IsNullOrWhiteSpace(input.TransmittalNo)
+                || string.IsNullOrWhiteSpace(input.FileName))
+                return Results.UnprocessableEntity(new
+                {
+                    message = "جهة الإصدار ورقم التحويل والملف إلزامية لرفع مراجعة",
+                });
+
+            if (!DateOnly.TryParse(input.IssuedOn, out var issuedOn))
+                issuedOn = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+            var existing = await db.DocumentRevisions
+                .Where(r => r.DocumentId == doc.Id).Select(r => r.No).ToListAsync();
+            var no = existing.Count == 0 ? 1 : existing.Max() + 1;
+
+            db.DocumentRevisions.Add(new DocumentRevision
+            {
+                DocumentId = doc.Id,
+                No = no,
+                IssuedOn = issuedOn,
+                Issuer = input.Issuer.Trim(),
+                DescriptionAr = input.DescriptionAr?.Trim() ?? "",
+                DescriptionEn = input.DescriptionEn?.Trim() ?? "",
+                TransmittalNo = input.TransmittalNo.Trim(),
+                FileName = input.FileName.Trim(),
+                // The new revision is always DRAFT — reissuing a drawing reopens
+                // its review, exactly as an R1 that was approved and an R2 that
+                // supersedes it are two different facts (DocumentRevisions.cs).
+                Status = "draft",
+            });
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { documentCode = doc.Code, revisionNo = no });
         });
     }
 }

@@ -71,6 +71,14 @@ export interface ScheduleRow {
   remainingValue: number;
   /** «الأثر المالي» — D-15 on this activity; null unless it has slipped. */
   delayCost: number | null;
+  /**
+   * الشكل 21's link row — «بنود الكميات المرتبطة بالنشاط». The other direction
+   * of BR-03's link: SCR-W4 shows an item's activities, and this is an
+   * activity's items. Empty on a WBS node, and empty on an activity that is
+   * linked to nothing — which is real work that earns nothing, so the panel
+   * says so rather than rendering an empty list.
+   */
+  boqCodes: string[] | null;
 }
 
 export interface ScheduleAmendmentSource {

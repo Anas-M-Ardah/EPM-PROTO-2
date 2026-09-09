@@ -745,17 +745,11 @@
       @if (selectedRow(); as a) {
         <div class="d-pz8">
           <div class="d-rpane">
-            <div class="rp-h">
-              <div class="tx">
-                <div class="r1">
-                  <span class="code"><bdi>{{ a.id }}</bdi></span>
-                  @if (a.isCritical) {
-                    <span class="d-crit-dot" [title]="lang.t('scd_critical')"></span>
-                  }
-                </div>
-                <b>{{ name(a) }}</b>
-                <span class="sub">{{ statusLabel(a.status) }}</span>
-              </div>
+            <div epmPanelHead [code]="a.id" [title]="name(a)">
+              @if (a.isCritical) {
+                <span badge class="d-crit-dot" [title]="lang.t('scd_critical')"></span>
+              }
+              <span sub>{{ statusLabel(a.status) }}</span>
               <div class="acts">
                 <button type="button" class="d-icon-btn sm" [attr.aria-label]="lang.t('scd_rec_close')"
                         (click)="selected.set('')">
@@ -827,7 +821,7 @@
                    A MILESTONE HAS NO SLIDER. `EP-PRG-02` refuses anything but
                    0 or 100 on one, and a control that offers 47 only to have it
                    rejected is the "prevent invalid input" rule (§6) inverted. -->
-              @if (!a.isMilestone) {
+              @if (!a.isMilestone && canSubmitReading()) {
                 <div class="d-card-sub scd-prog">
                   <div class="hd">
                     <b>{{ lang.t('scd_prog_update') }}</b>
@@ -848,20 +842,32 @@
                       <button type="button" class="d-btn sm" [disabled]="savingPct()"
                               (click)="draftPct.set(null)">{{ lang.t('cancel') }}</button>
                     }
+                    <!-- «إرسال للمراجعة» — المسار 6 puts the write on the far
+                         side of «قرار المراجعة», so this button submits a
+                         reading and the label says which act it is. -->
                     <button type="button" class="d-btn sm primary"
-                            [disabled]="!dirty(a) || savingPct()" (click)="saveProgress(a)">
+                            [disabled]="!dirty(a) || savingPct()" (click)="submitReading(a)">
                       <epm-icon name="check" [size]="14" />
-                      {{ savingPct() ? lang.t('saving') : lang.t('scd_prog_save') }}
+                      {{ savingPct() ? lang.t('saving') : lang.t('prg_submit') }}
                     </button>
                   </div>
 
-                  <!-- الشكل 21's own sentence, and it is the reason the panel is
-                       here rather than on a form: «يُرحّل إلى تجميع كل مستويات
-                       هيكل التجزئة والمشروع تلقائيًا». -->
+                  <!-- الشكل 21's own sentence — and it now names the step that
+                       makes the roll-up happen. The rollup IS automatic; what
+                       precedes it is a decision, and a panel that implied the
+                       slider alone moved the project would be the pre-المسار-6
+                       behaviour described in the plate's words. -->
                   <div class="d-cell-sub note">
                     <epm-icon name="functions" [size]="12" />
                     <span>{{ lang.t('scd_prog_rollup') }}</span>
                   </div>
+                </div>
+              } @else if (!a.isMilestone) {
+                <!-- The capacity that may not submit is told why rather than
+                     shown a slider that would be refused (§7, P-157). -->
+                <div class="d-msgbar info">
+                  <epm-icon name="info" [size]="16" />
+                  <div><span>{{ lang.t('prg_no_submit') }}</span></div>
                 </div>
               }
 
@@ -941,13 +947,38 @@
                 </div>
               }
 
-              <!-- الشكل 21's own link row — `.d-recl`, copied and uncalled. -->
+              <!-- ══ الشكل 21's own link row — «بنود الكميات المرتبطة» ══════
+                   THE OTHER DIRECTION OF BR-03, and the one no screen answered:
+                   SCR-W4 shows an item's activities, and this shows an
+                   activity's items. It was a `toast.demo` placeholder, which
+                   made the one question a person standing on the Gantt actually
+                   asks — «what does moving this activity earn?» — unanswerable
+                   without leaving the screen.
+
+                   The codes are the SAME ones SCR-W6's «يغذّي البنود» column
+                   prints, off one derivation (P-54). -->
+              @if (a.boqCodes && a.boqCodes.length) {
+                <div class="d-form-i">
+                  <span class="k">{{ lang.t('prg_feeds') }}</span>
+                  <span class="v mono"><bdi>{{ a.boqCodes.join(' · ') }}</bdi></span>
+                </div>
+              } @else if (!a.isMilestone) {
+                <!-- An activity linked to nothing earns nothing however much
+                     work is recorded against it, and the panel says so rather
+                     than leaving the row blank (the same sentence SCR-W6 uses).
+
+                     A MILESTONE IS EXCLUDED, and this is not a shortcut: `02 §2`
+                     gives it zero basis and keeps it out of allocation
+                     altogether, so «go and link it» would be advice for
+                     something the BOQ screen refuses to do — `EP-BOQ-08` rejects
+                     a link to a milestone by name. -->
+                <div class="d-msgbar warning">
+                  <epm-icon name="warning" [size]="16" />
+                  <div><span>{{ lang.t('scd_feeds_none') }}</span></div>
+                </div>
+              }
+
               <div class="d-recl">
-                <button type="button" class="d-btn sm ghost"
-                        (click)="toast.demo('بنود الكميات المرتبطة بالنشاط ' + a.id,
-                                            'BOQ items linked to ' + a.id)">
-                  <epm-icon name="list_alt" [size]="14" />{{ lang.t('mod_boq') }}
-                </button>
                 <button type="button" class="d-btn sm ghost"
                         (click)="toast.demo('عناصر النموذج المرتبطة بالنشاط ' + a.id,
                                             'Model objects linked to ' + a.id)">

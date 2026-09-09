@@ -488,7 +488,9 @@ public static class BoqEndpoints
             async (EpmDb db, HttpContext http, string projectId, string contractId, string? basis) =>
         {
             var ctx = await Load(db, http, projectId, contractId);
-            return ctx.Error ?? Results.Ok(await Assignment(db, ctx, basis == "mh" ? "mh" : "cost"));
+            if (ctx.Error is not null) return ctx.Error;
+            if (AssignmentRefusal(ctx.Project.Type) is { } refusal) return refusal;
+            return Results.Ok(await Assignment(db, ctx, basis == "mh" ? "mh" : "cost"));
         });
 
         // [EP-BOQ-08] PUT /api/projects/{projectId}/boq/{contractId}/items/{code}/allocation
@@ -503,6 +505,7 @@ public static class BoqEndpoints
         {
             var ctx = await Load(db, http, projectId, contractId);
             if (ctx.Error is not null) return ctx.Error;
+            if (AssignmentRefusal(ctx.Project.Type) is { } refusal) return refusal;
 
             var item = await db.BoqItems.AsNoTracking()
                 .FirstOrDefaultAsync(i => i.ContractId == contractId && i.Code == code);
@@ -753,7 +756,13 @@ public static class BoqEndpoints
                 d.Item.Code, d.Item.DescriptionAr, d.Item.DescriptionEn, d.Item.Unit,
                 d.Item.Division, d.Item.DivisionName, d.Item.Source,
                 Q(d.Item.OriginalQty), Q(d.Line.Qty), M(d.Line.Rate), M(d.Line.Amount),
-                d.Weight, Q(d.SharesTotal), Q(d.AssignedWeight), d.Links.Count, d.Coverage,
+                d.Weight, Q(d.SharesTotal), Q(d.AssignedWeight), d.Links.Count,
+                // A supply line is never "unassigned" — assignment is not a
+                // concept a supply bill has (D-14). `Derive`'s own `Coverage`
+                // stays the natural `Allocation.CoverageStatus([])` answer for
+                // every OTHER caller of it; only the register prints it, and
+                // only the register needs to say the column does not apply.
+                kind == BoqKind.Supply ? "na" : d.Coverage,
                 Q(d.Progress.Progress), M(d.Progress.AchievedAmount), Q(d.Progress.AchievedQty),
                 Q(d.Distribution.Distributed), Q(d.Distribution.Remaining), d.Distribution.State,
                 d.Line.MultiRate,
@@ -808,7 +817,13 @@ public static class BoqEndpoints
             ctx.Project.Id, ctx.Project.NameAr, ctx.Project.NameEn,
             ctx.Contract.Id, ctx.Contract.NameAr, ctx.Contract.NameEn,
             rows, divisions, totals,
-            Counts(model.Select(d => d.Coverage), ["unassigned", "full", "partial", "over"]),
+            // Empty rather than `{ unassigned: N }` on a supply bill — a chip
+            // row of coverage counts is itself a claim that coverage applies
+            // here, and `04 §9` says a figure that cannot be derived is left
+            // out, not zeroed.
+            kind == BoqKind.Supply
+                ? new Dictionary<string, int>()
+                : Counts(model.Select(d => d.Coverage), ["unassigned", "full", "partial", "over"]),
             Counts(model.Select(d => d.Distribution.State), ["none", "partial", "full", "over"]),
             // "Now" is the project data date, never DateTime.Now (D-06).
             ctx.Project.DataDate?.ToString("yyyy-MM-dd") ?? "",
@@ -1194,10 +1209,33 @@ public static class BoqEndpoints
 
         var ids = items.Select(i => i.Id).ToList();
 
+        // D-14 — BR-04 reads differently on a supply bill (below), so every
+        // caller of this one shared function needs the kind, not just
+        // `Register` and `Assignment`, which already had `ctx.Project` for it.
+        // One more query, same shape as the others on this page, rather than
+        // widening the signature ten call sites deep for what the contract
+        // itself already answers.
+        var projectType = await db.Contracts.AsNoTracking()
+            .Where(c => c.Id == contractId)
+            .Join(db.Projects.AsNoTracking(), c => c.ProjectId, p => p.Id, (c, p) => p.Type)
+            .FirstOrDefaultAsync();
+        var kind = BoqKind.ForProjectType(projectType ?? "");
+
         var bands = await db.BoqRateBands.AsNoTracking()
             .Where(b => ids.Contains(b.BoqItemId)).OrderBy(b => b.Seq).ToListAsync();
         var links = await db.BoqActivityLinks.AsNoTracking()
             .Where(l => ids.Contains(l.BoqItemId)).OrderBy(l => l.Id).ToListAsync();
+        // الكمية المستلمة — Σ the WAREHOUSE receipts (المسار 11). Only fetched
+        // on a supply bill, the same guard `Register`'s own copy of this query
+        // uses, and the SAME figure `BoqSupplyDetail.ReceivedPct` prints —
+        // BR-04 and the register's own receipt column read one number.
+        var received = kind == BoqKind.Supply
+            ? (await db.SupplyReceipts.AsNoTracking()
+                    .Where(r => r.Kind == Domain.SupplyReceipts.Warehouse && ids.Contains(r.BoqItemId))
+                    .ToListAsync())
+                .GroupBy(r => r.BoqItemId)
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.Qty))
+            : [];
         var dists = await db.BoqDistributions.AsNoTracking()
             .Where(d => ids.Contains(d.BoqItemId)).ToListAsync();
         var activities = await db.Activities.AsNoTracking()
@@ -1252,9 +1290,17 @@ public static class BoqEndpoints
             var shares = derivedLinks.Select(l => l.SharePct).ToList();
             var sharesTotal = shares.Sum();
 
-            var progress = ProgressReflection.For(
-                derivedLinks.Select(l => new ProgressReflection.Link(l.SharePct, l.Activity.ProgressPct)).ToList(),
-                line.Amount, line.Qty);
+            // D-14 — a supply line earns from its own receipts, never from an
+            // activity link (there is none to have): `ForSupply` reads the
+            // SAME warehouse-received figure the register's own receipt column
+            // prints, so the two can never disagree.
+            var progress = kind == BoqKind.Supply
+                ? ProgressReflection.ForSupply(
+                    SupplyStatus.ReceivedPct(line.Qty, received.GetValueOrDefault(i.Id)),
+                    line.Amount, line.Qty)
+                : ProgressReflection.For(
+                    derivedLinks.Select(l => new ProgressReflection.Link(l.SharePct, l.Activity.ProgressPct)).ToList(),
+                    line.Amount, line.Qty);
 
             var distribution = Distribution.For(
                 line.Qty,
@@ -1269,6 +1315,23 @@ public static class BoqEndpoints
 
         return derived;
     }
+
+    /// <summary>
+    /// EP-BOQ-07 / EP-BOQ-08 — a supply bill has no activity to assign a line
+    /// to (D-14: the prototype's own `DModSupplyBOQ` has three facets and no
+    /// assignment view at all), so the screen behind these routes is refused
+    /// rather than rendered empty or accepting a save nothing will ever read.
+    /// `BoqKind.None`'s refusal is for a bill that cannot exist; this is for a
+    /// bill that exists and simply does not have this ONE view.
+    /// </summary>
+    private static IResult? AssignmentRefusal(string projectType) =>
+        BoqKind.ForProjectType(projectType) == BoqKind.Supply
+            ? Results.BadRequest(new
+            {
+                messageAr = "لا يوجد ربط بالأنشطة في مشاريع التجهيز — الفقرات التجهيزية تُحسب من الاستلامات.",
+                messageEn = "Equipment-supply projects have no activity assignment — supply items progress from receipts.",
+            })
+            : null;
 
     private static List<TierSplit.Band> BandsOf(IEnumerable<BoqRateBand> all, int boqItemId) =>
         all.Where(b => b.BoqItemId == boqItemId)

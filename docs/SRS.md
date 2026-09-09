@@ -456,6 +456,10 @@ Eight cross-portfolio screens (`04 §2`).
 | FR-BOQ-11 | Per BOQ item: linked activities with absolute weight, allocation %, assigned amount and status | 🔨 |
 | FR-BOQ-12 | Allocation is **manually overridable and saved per item**, with a reset that restores the computed value | 🔨 |
 | FR-BOQ-13 | Coverage counters for full / partial / over / unassigned | 🔨 |
+| FR-BOQ-13a | **A coverage bar per item** — one segment per linked activity, a hatched unallocated remainder, and a rule at 100% when the line is over-allocated, with a legend naming each activity's share | 🔨 |
+| FR-BOQ-13b | Search the queue **بالرمز أو الوصف**, and search the activity picker by id, name or WBS node | 🔨 |
+| FR-BOQ-13c | **«إكمال المتبقي»** on each share — sets the row to what is unallocated and leaves the others alone | 🔨 |
+| FR-BOQ-13d | **A re-import preserves the links of every line whose code survives it**; a dropped line loses its own (P-242) | 🔨 |
 
 ### 7.4 Schedule tab
 
@@ -467,12 +471,18 @@ Eight cross-portfolio screens (`04 §2`).
 | FR-SCD-04 | Data-date line and milestone diamonds as graphic tokens | `04 §5` | 🔨 |
 | FR-SCD-05 | WBS tree shows **both** relative and absolute weight per node | `04 §5`, BR-02 | 🔨 |
 | FR-SCD-06 | Below 1280px a column picker defaults to 4 essential columns | `04 §5` | 🔨 |
+| FR-SCD-07 | The activity card names **the BOQ lines the activity feeds** — the other direction of BR-03's link — and says so plainly when there are none. A milestone is excluded, since `02 §2` keeps it out of allocation | ملحق الشكل 21, P-241 | 🔨 |
 
 ### 7.5 Progress and Financials
 
 | ID | Requirement | Source | Status |
 |---|---|---|---|
-| FR-PRG-01 | Changing an activity's progress updates BOQ progress, achieved quantity and achieved amount **live** | `02 §4`, BR-04 | 🔨 |
+| FR-PRG-01 | An **approved** reading updates BOQ progress, achieved quantity and achieved amount, and rolls up to contract and project — with the reflection table showing where it lands | `02 §4`, BR-04 | 🔨 |
+| FR-PRG-02 | **A progress reading is submitted, not saved** (المسار 6 steps 2–5): a percentage, an optional note and its الأدلة المؤيدة, from «القسم المصدر». Nothing derived moves on submission | المسار 6, P-238 | 🔨 |
+| FR-PRG-03 | Validation on submission: 0–100 · a milestone takes only 0 or 100 · **the reading may not fall below the one in force**, nor equal it | المسار 6 step 4, P-240 | 🔨 |
+| FR-PRG-04 | **إدارة المشاريع approves or returns** (steps 6–7). An approval moves the percentage and records the reading **باسم القسم المصدر** on the contract log; a return files its reason and leaves the reading in force untouched | المسار 6, P-238/P-239 | 🔨 |
+| FR-PRG-05 | The submitter may not decide on their own reading; one pending reading per activity, a second lapsing the first | `03 §7`, P-239 | 🔨 |
+| FR-PRG-06 | A register of every reading — activity, from→to, state, source department, decision and its reason | الشكل 25, P-238 | 🔨 |
 | FR-FIN-01 | Budget / disbursed / advances / retention / due, and a payments register | `04 §3` | 🔨 |
 | FR-FIN-02 | EVM (CPI/SPI/EAC/VAC) presented as **diagnostics** — never headline figures, never coloured by threshold | `02 §11`, `05 §7.9` | 🔨 |
 

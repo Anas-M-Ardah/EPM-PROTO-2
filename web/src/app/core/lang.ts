@@ -1172,6 +1172,13 @@ const STR = {
   boq_asn_abs_wt:  { ar: 'وزن مطلق',                       en: 'abs. wt' },
   boq_asn_total:   { ar: 'المجموع',                        en: 'Total' },
   boq_asn_remaining:{ ar: 'المتبقي',                       en: 'Remaining' },
+  // ── the allocation bar (`boq-assign.jsx:172`) ──────────────────────────
+  boq_asn_allocated:{ ar: 'نسبة الإسناد',                  en: 'Allocated' },
+  boq_asn_balanced: { ar: 'متوازن — 100%',                 en: 'balanced — 100%' },
+  boq_asn_exceeds:  { ar: 'يتجاوز بـ',                     en: 'exceeds by' },
+  boq_asn_unallocated:{ ar: 'غير مُسنَد',                   en: 'unallocated' },
+  boq_asn_fill:     { ar: 'إكمال المتبقي',                 en: 'Fill the remainder' },
+  boq_asn_find_act: { ar: 'بحث عن نشاط…',                  en: 'Search activities…' },
   boq_asn_none_t:  { ar: 'لا أنشطة مرتبطة',                en: 'No linked activities' },
   boq_asn_none_b:  { ar: 'أضف نشاطاً لبدء الإسناد — القيمة غير المُسنَدة لا تُكتسب أبداً.',
                      en: 'Add an activity to start — an unallocated amount is never earned.' },
@@ -1644,8 +1651,16 @@ const STR = {
   scd_prog_remaining: { ar: 'المتبقي:',                    en: 'Remaining:' },
   scd_prog_saved:     { ar: 'حُدِّث الإنجاز — أُعيد حساب التجميع',
                         en: 'Progress saved — rollup recalculated' },
-  scd_prog_rollup:    { ar: 'يُرحَّل إلى تجميع كل مستويات هيكل التجزئة والمشروع تلقائياً.',
-                        en: 'Rolls up through every WBS level to the project automatically.' },
+  // المسار 6 — الشكل 21's own sentence, with the step that precedes it named.
+  // The rollup IS automatic; what it waits on is «قرار المراجعة», and a panel
+  // that implied the slider alone moved the project would be the pre-track
+  // behaviour described in the plate's words.
+  scd_prog_rollup:    { ar: 'عند اعتماد القراءة يُرحَّل الإنجاز إلى تجميع كل مستويات هيكل التجزئة والمشروع تلقائياً.',
+                        en: 'Once the reading is approved it rolls up through every WBS level to the project automatically.' },
+  // الشكل 21's link row, when the link is not there. Same sentence SCR-W6's
+  // reflection warning makes, from the activity's side.
+  scd_feeds_none:     { ar: 'هذا النشاط غير مرتبط بأي بند كميات — إنجازه لا يكسب قيمة. يُربط من شاشة جدول الكميات › الربط بالأنشطة.',
+                        en: 'This activity is linked to no BOQ line — its progress earns nothing. Link it on the BOQ screen › activity assignment.' },
   scd_prog_delivery:  { ar: 'أثر التسليم على إنجاز المشروع',
                         en: 'Delivery impact on project finish' },
   scd_prog_fin:       { ar: 'الأثر المالي',                en: 'Financial impact' },
@@ -1691,6 +1706,23 @@ const STR = {
   prg_export_pdf:  { ar: 'تصدير PDF',                       en: 'Export PDF' },
   prg_update:      { ar: 'تحديث نسبة الإنجاز',              en: 'Update progress' },
   prg_back_to_read:{ ar: 'العودة إلى القراءة',              en: 'Back to reading' },
+
+  /* المسار 7 — إغلاق فترة الإنجاز */
+  prg_periods_btn: { ar: 'فترات الإنجاز',                    en: 'Accomplishment periods' },
+  prg_periods_title: { ar: 'إغلاق فترة الإنجاز',             en: 'Close the accomplishment period' },
+  prg_period_open_t: { ar: 'الفترة المفتوحة',                en: 'Open period' },
+  prg_period_no:   { ar: 'الفترة',                           en: 'Period' },
+  prg_period_opened: { ar: 'فُتحت في',                       en: 'Opened on' },
+  prg_period_new_date: { ar: 'تاريخ البيانات الجديد',        en: 'New data date' },
+  prg_period_close_btn: { ar: 'إغلاق الفترة',                en: 'Close the period' },
+  prg_period_err_date: { ar: 'أدخلوا تاريخ البيانات الجديد.', en: 'Enter the new data date.' },
+  prg_period_closed_ok: { ar: 'أُغلقت الفترة وفُتحت فترة جديدة، وتحدَّث تاريخ البيانات',
+                           en: 'The period closed, a new one opened, and the data date moved' },
+  prg_period_no_cap: { ar: 'لا صلاحية لإغلاق الفترة بهذه الصفة — الصلاحية لدائرة المهندس المقيم أو مدير المشروع.',
+                        en: 'This capacity may not close the period — that belongs to the RE department or the project manager.' },
+  prg_period_log_t: { ar: 'سجل الفترات المقفلة',             en: 'Closed-period log' },
+  prg_period_log_empty: { ar: 'لا فترات مقفلة بعد',          en: 'No periods closed yet' },
+  prg_period_closed_by: { ar: 'أقفلها',                      en: 'Closed by' },
 
   /* الشكل 25 — «تحديثات الإنجاز (واردة من الأقسام)» */
   prg_updates:     { ar: 'تحديثات الإنجاز (واردة من الأقسام)', en: 'Progress updates (received from departments)' },
@@ -1909,10 +1941,13 @@ const STR = {
   prg_cpi_over:    { ar: 'تجاوز في الكلفة',                 en: 'over cost' },
   prg_cpi_within:  { ar: 'الكلفة ضمن الحدود',               en: 'cost within limits' },
 
-  prg_edit_t:      { ar: 'الإنجاز يُدخَل هنا، وينعكس مباشرةً على بنود الكميات',
-                     en: 'Progress is entered here, and reflects straight onto the BOQ' },
-  prg_edit_b:      { ar: 'كل صف يذكر البنود التي يغذّيها قبل تعديله، وجدول الانعكاس أسفله يُظهر أين تهبط النسبة فور تغييرها.',
-                     en: 'Each row names the lines it feeds before you touch it, and the reflection table beneath shows where the percentage lands the moment it changes.' },
+  // المسار 6 — the sentence had to change with the track. Progress no longer
+  // reflects «مباشرةً»: a submission is a reading, and the reflection table
+  // below shows where an APPROVAL will land it.
+  prg_edit_t:      { ar: 'القراءة تُدخَل هنا وتُرسَل للمراجعة — والاعتماد وحده يحرّك بنود الكميات',
+                     en: 'A reading is entered here and sent for review — only an approval moves the BOQ' },
+  prg_edit_b:      { ar: 'كل صف يذكر البنود التي يغذّيها قبل تعديله، وجدول الانعكاس أسفله يُظهر أين تهبط النسبة عند اعتمادها.',
+                     en: 'Each row names the lines it feeds before you touch it, and the reflection table beneath shows where the percentage lands once it is approved.' },
   prg_feeds:       { ar: 'يغذّي البنود',                     en: 'Feeds' },
   prg_feeds_none:  { ar: 'غير مرتبط ببند',                  en: 'linked to no line' },
 
@@ -1934,9 +1969,55 @@ const STR = {
   prg_err_milestone: { ar: 'الحَدَث الفارق إمّا متحقق (100) أو غير متحقق (0).',
                        en: 'A milestone is either reached (100) or not (0).' },
   prg_err_save:    { ar: 'تعذّر حفظ الإنجاز.',              en: 'Could not save the progress.' },
+  // المسار 6 step 4 — «ولا تقل عن القراءة السابقة». Both figures are named:
+  // a refusal that says only "invalid" leaves the person unable to see which
+  // of the two numbers is the wrong one.
+  prg_err_regress: { ar: 'القراءة {n} أقل من القراءة السابقة {p} — لا يُسجَّل تراجع في الإنجاز.',
+                     en: 'A reading of {n} is below the reading in force {p} — progress may not be walked back.' },
+  prg_err_same:    { ar: 'القراءة تساوي القراءة السابقة — لا جديد لإرساله.',
+                     en: 'The reading equals the one in force — there is nothing to submit.' },
   prg_saved_reflected: { ar: 'انعكس على {n} من بنود الكميات',
                          en: 'reflected onto {n} BOQ line(s)' },
   prg_saved_unlinked: { ar: 'حُفظ — لا بند مرتبط به',        en: 'saved — no line is linked to it' },
+
+  // ── المسار 6 — قراءة الإنجاز واعتمادها ─────────────────────────────────
+  // The track's two lanes, in the words it uses for them. «إرسال للمراجعة» is
+  // deliberately not «حفظ»: what the source department does is put a reading
+  // in front of a reviewer, and nothing derived moves until step 7.
+  prg_submit:      { ar: 'إرسال للمراجعة',                  en: 'Submit for review' },
+  prg_submitted:   { ar: 'أُرسلت القراءة للمراجعة — لم تتغيّر أي نسبة بعد',
+                     en: 'the reading was submitted — no percentage has moved yet' },
+  prg_returned:    { ar: 'أُعيدت القراءة بملاحظات',          en: 'the reading was returned with notes' },
+  prg_reading_note: { ar: 'ملاحظة القسم المصدر (اختيارية)',  en: 'Source-department note (optional)' },
+  prg_evidence:    { ar: 'الأدلة المؤيدة',                  en: 'Supporting evidence' },
+  prg_evidence_add: { ar: 'إرفاق دليل',                     en: 'Attach evidence' },
+  prg_evidence_none: { ar: 'لا أدلة مرفقة — الذرعة أو صور الموقع تُسنِد القراءة أمام المراجع.',
+                       en: 'No evidence attached — a measurement sheet or site photos support the reading at review.' },
+  prg_evidence_remove: { ar: 'إزالة الدليل',                en: 'Remove evidence' },
+
+  prg_pending:     { ar: 'قيد المراجعة',                    en: 'Under review' },
+  prg_pending_t:   { ar: 'قراءات بانتظار القرار ({n})',      en: 'Readings awaiting a decision ({n})' },
+  prg_pending_b:   { ar: 'كل قراءة تحمل القسم المصدر وأدلته والنسبة السابقة — والاعتماد وحده يحرّك النسبة.',
+                     en: 'Each reading carries its source department, its evidence and the previous reading — and only an approval moves a percentage.' },
+  prg_pending_none: { ar: 'لا قراءات بانتظار القرار.',       en: 'No readings are awaiting a decision.' },
+  prg_reading_move: { ar: 'من ← إلى',                       en: 'From → to' },
+  prg_approve:     { ar: 'اعتماد القراءة',                  en: 'Approve the reading' },
+  prg_send_back:   { ar: 'إعادة بملاحظات',                  en: 'Return with notes' },
+  prg_return_why:  { ar: 'سبب الإعادة — مطلوب',             en: 'Reason for the return — required' },
+  prg_readings_t:  { ar: 'سجل القراءات',                    en: 'Reading register' },
+  prg_readings_b:  { ar: 'كل قراءة قُدِّمت على هذا المشروع، ومن بتّ فيها.',
+                     en: 'Every reading submitted on this project, and who decided on it.' },
+  prg_reading_no:  { ar: 'القراءة',                         en: 'Reading' },
+  prg_reading_by:  { ar: 'القسم المصدر',                    en: 'Source department' },
+  prg_reading_decided: { ar: 'القرار',                      en: 'Decision' },
+  // §7 — «يُفصل صراحةً بين صلاحية الإدخال وصلاحية الاعتماد». The bar states
+  // WHY there is no button rather than hiding it, the same way SCR-W4's
+  // import bar does for the specialist who may not approve.
+  prg_no_submit:   { ar: 'إدخال قراءة الإنجاز من صلاحية القسم المصدر — الجامعة/التشكيل أو الدائرة المالية.',
+                     en: 'Recording a progress reading belongs to the source department.' },
+  prg_no_review:   { ar: 'اعتماد القراءة من صلاحية إدارة المشاريع — المهندس المقيم أو مدير المشروع.',
+                     en: 'Deciding on a reading belongs to the project-management lane.' },
+  prg_own_reading: { ar: 'لا يُبتّ في القراءة من قدّمها.',    en: 'The person who submitted a reading may not decide on it.' },
 
   // ── SCR-W7 Financials (Phase 4.4) ──────────────────────────────────────
   // ── الشكل 14 — جدول الكلف ──────────────────────────────────────────────
@@ -2235,6 +2316,10 @@ const STR = {
 
   chg_party_contractor: { ar: 'مقترح المقاول',              en: 'Contractor proposal' },
   chg_party_redept: { ar: 'مقترح دائرة المهندس المقيم',     en: 'RE department proposal' },
+  // D-14 — the same two columns on a SUPPLY order. المجهز requests; لجنة
+  // الفحص والاستلام reviews, in place of المقاول and دائرة المهندس المقيم.
+  chg_party_supplier: { ar: 'مقترح المجهز',                 en: 'Supplier proposal' },
+  chg_party_inspection: { ar: 'مقترح لجنة الفحص والاستلام', en: 'Inspection & receipt committee proposal' },
   chg_party_approved: { ar: 'المعتمد',                      en: 'Approved' },
   chg_applied:     { ar: 'المطبق',                          en: 'Applied' },
   chg_proposed:    { ar: 'المقترح',                         en: 'Proposed' },
@@ -2273,6 +2358,13 @@ const STR = {
   chg_col_target:  { ar: 'البند الهدف',                     en: 'Target item' },
   chg_col_drawn:   { ar: 'المسحوبة',                        en: 'Drawn' },
   chg_col_added:   { ar: 'المضافة',                         en: 'Added' },
+  // الشكل 58 — the OTHER redistribution, beneficiary to beneficiary within
+  // one supply line (`Domain.ChangeOrderRedistribution`'s own doc comment).
+  chg_sec_transfers: { ar: 'التحويل بين الجهات المستفيدة',  en: 'Beneficiary transfer' },
+  chg_col_ben_from: { ar: 'من الجهة',                       en: 'From' },
+  chg_col_ben_to:   { ar: 'إلى الجهة',                      en: 'To' },
+  chg_col_qty_moved:{ ar: 'الكمية المنقولة',                en: 'Quantity moved' },
+  chg_col_ben_before:{ ar: 'الرصيد قبل النقل',              en: 'Balance before' },
   chg_col_actid:   { ar: 'معرّف النشاط',                    en: 'Activity ID' },
   chg_col_actname: { ar: 'اسم النشاط',                      en: 'Activity name' },
   chg_col_change:  { ar: 'نوع التغيير',                     en: 'Change type' },
@@ -2538,6 +2630,17 @@ const STR = {
   chg_d_submit:    { ar: 'تنفيذ القرار',                    en: 'Submit the decision' },
   chg_d_resubmit:  { ar: 'إعادة الإرسال بعد التعديل',       en: 'Resubmit after revision' },
   chg_d_apply:     { ar: 'تطبيق الأمر وإصدار الملحق',       en: 'Apply the order and issue the addendum' },
+
+  // ── P-252 — لجنة تثبيت الأسعار's own entry, stage 3 only ─────────────
+  chg_d_appr_t:    { ar: 'القيمة المعتمدة (لجنة التسعير)',  en: 'Approved value (pricing committee)' },
+  chg_d_appr_b:    { ar: 'مبدئياً مقترح دائرة المهندس المقيم لكل بند — عدّلوها ثم أرسلوا القرار. القيمة المعتمدة لا تُشتق تلقائياً؛ هذا الاعتماد هو مصدرها الوحيد.',
+                     en: 'Pre-filled from the RE department’s proposal per line — edit and submit. The approved value is never derived automatically; this is its only source.' },
+  chg_d_appr_qty:  { ar: 'التغيّر المعتمد',                 en: 'Approved delta' },
+  chg_d_appr_rate: { ar: 'السعر المعتمد',                   en: 'Approved rate' },
+  chg_d_appr_ex:   { ar: 'سعر الزائد المعتمد',              en: 'Approved excess rate' },
+  chg_d_appr_days: { ar: 'الأيام المعتمدة',                 en: 'Approved days' },
+  chg_d_appr_err:  { ar: 'أدخلوا قيمة معتمدة واحدة على الأقل قبل اعتماد هذه المرحلة.',
+                     en: 'Enter at least one approved figure before approving this stage.' },
 
   chg_c_forward:   { ar: 'تُحال إلى «{s}» — {o}.',           en: 'Forwarded to “{s}” — {o}.' },
   chg_c_complete:  { ar: 'يكتمل المسار ويصبح الأمر معتمداً — ولا يتغيّر العقد بعد.',
@@ -2861,6 +2964,22 @@ const STR = {
   doc_notab_t:     { ar: 'المعاينة والتأشيرات غير مُفعَّلتين',  en: 'Preview and stamps are not enabled' },
   doc_notab_b:     { ar: 'لا تُحفَظ محتويات الملفات في هذا النموذج، ولا يسجّل أي مسار تأشيرة بعد — والشكل 46 يعرض التبويبين، فذُكرا هنا بدل تركهما فارغين.',
                      en: 'File contents are not stored in this prototype and no flow records a stamp yet — الشكل 46 shows both tabs, so they are named here rather than left empty.' },
+
+  // ── P-253 — رفع مراجعة, made real ─────────────────────────────────────
+  doc_pick_t:      { ar: 'اختر الوثيقة',                    en: 'Choose the document' },
+  doc_pick_ph:     { ar: '— اختر وثيقة —',                  en: '— choose a document —' },
+  doc_pick_cancel: { ar: 'إلغاء',                            en: 'Cancel' },
+  doc_rev_date:    { ar: 'تاريخ الإصدار',                    en: 'Issue date' },
+  doc_rev_issuer:  { ar: 'جهة الإصدار',                      en: 'Issuer' },
+  doc_rev_desc:    { ar: 'وصف المراجعة',                     en: 'Revision description' },
+  doc_rev_transmittal: { ar: 'رقم التحويل',                  en: 'Transmittal no.' },
+  doc_rev_file:    { ar: 'الملف',                            en: 'File' },
+  doc_rev_file_none: { ar: 'لم يُختر ملف',                   en: 'No file chosen' },
+  doc_upload_submit: { ar: 'رفع المراجعة',                   en: 'Upload the revision' },
+  doc_upload_err:  { ar: 'جهة الإصدار ورقم التحويل والملف إلزامية.',
+                     en: 'Issuer, transmittal no. and file are required.' },
+  doc_upload_ok:   { ar: 'أُضيفت المراجعة R{no} — المراجعة السابقة محفوظة ومعلَّمة كملغاة',
+                     en: 'Revision R{no} added — the previous one is kept and marked superseded' },
   doc_empty_t:     { ar: 'لا وثائق مسجّلة على هذا المشروع',  en: 'No documents recorded on this project' },
   doc_empty_b:     { ar: 'تُرفَع الوثيقة برقمها وتخصصها، ثم تتراكم مراجعاتها دون أن يُستبدل أي إصدار.',
                      en: 'A document is uploaded with its number and discipline, and its revisions then accumulate without any issue being replaced.' },

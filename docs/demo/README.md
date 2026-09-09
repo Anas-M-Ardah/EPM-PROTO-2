@@ -1,67 +1,57 @@
-# docs/demo — the build-from-zero demo
+# docs/demo — the data plan
 
-A manual runsheet: start from an empty database and build one project up to recorded
-progress and a disbursed payment certificate, so every figure on screen has a visible
-origin. Nothing is loaded from a fixture; nothing is typed twice.
+`runsheet.html` gives the exact data needed to click through all 14 of the ministry's workflow
+tracks (`docs/WORKFLOW-TRACKS.md`) in the running app — persona, route, field values, nothing
+else. It replaced an earlier prose-heavy, single-path version on 2026-09-08.
 
 | File | What it is |
 |---|---|
-| [`runsheet.html`](runsheet.html) | the runsheet itself — open it in a browser, or read it as source |
-| [`demo-schedule.xer`](demo-schedule.xer) | the Primavera XER imported at step 05 — four activities, costs matching the BOQ |
+| [`runsheet.html`](runsheet.html) | the data plan — open it in a browser, sidebar navigates by track |
+| [`demo-boq.xlsx`](demo-boq.xlsx) | the works project's four BOQ lines as a workbook, for demoing the `Excel file` import door instead of typing them |
+| [`demo-schedule.xer`](demo-schedule.xer) | the Primavera XER for the works project's schedule — four activities, costs matching the BOQ |
+| [`../BOQ-PARITY-LEDGER.html`](../BOQ-PARITY-LEDGER.html) | companion sheet — where the BOQ and project-type flows still diverge from the source prototype |
 
 Published copy: <https://claude.ai/code/artifact/bbffae9d-45dd-4667-adb9-9097e51ec00d>
 (`runsheet.html` is the source of that page; edit here and republish, never the other way).
-Supersedes an earlier published copy at `f62cfe20-b73c-4e8c-8ac6-22b085995bb0`, which predates
-the أبواب at step 04 and the schedule-import section.
 
-## The shape of it
+## Two scenarios, not ten steps
 
-Ten steps in two acts, across four personas:
+| Scenario | Command | Reaches |
+|---|---|---|
+| **Act A** — `المشاريع الإنشائية`, built live | `POST /api/dev/reset` | Tracks 1 2 3 4 5 6 8 9(works) 14 |
+| **Act B** — `مشاريع التجهيز`, fixture | `reset` then `POST /api/dev/load-fixture` | Tracks 3(supply) 9(supply) 10 11 12 13 |
 
-```
-01 workspace     senior-mgmt
-02 project       univ-specialist
-03 contract      univ-specialist
-04 BOQ           univ-specialist
-05 schedule      univ-specialist
-06 approve+link  re-dept
-07 progress      re-dept            → lands on 55%
-                 ─────────────────────────────────
-08 budget        finance-dept       switches the ceilings on
-09 certificate   re-dept            net 495,000,000, still pending
-10 three desks   re-dept → finance-dept → finance-dept
-                                    → CPI resolves to 1.11
-```
+Never mix them in one sitting — `reset` drops the fixture's `PRJ-0439` along with everything
+else. **Track 7 (closing a progress period) has no data plan** — the action does not exist in
+the app; see the runsheet's own flagged section rather than approximating it.
 
-The demo's whole argument is that both landing figures are checkable in the head:
-`(40 × 100%) + (30 × 50%) = 55%`, and `550,000,000 ÷ 495,000,000 = 1.11`.
+## What's new since the prose version
 
-## Verification status — read this before presenting
+The old runsheet only reached 8 of the 14 tracks (roughly steps 01–10 plus a supply-project
+tour). Getting to full coverage needed:
 
-- **Steps 01–07** carry the original sheet's claim that the sequence was run end to end.
-  **01–03 were independently re-run** against the API on 2026-09-02 and behaved as written.
-- **Steps 08–10 have not been run.** Their fields, personas, refusals and arithmetic are
-  read from `EP-FIN-02` / `EP-FIN-03` / `EP-FIN-04`, `Domain/PaymentCertificate.Ceilings`
-  and `Domain/EarnedValue` — the rules say those figures should appear, but nobody has
-  watched them appear.
+- **A second contract**, `CNT-DEMO-02`, so a from-scratch works-side change order (Track 9)
+  has somewhere to run without perturbing `CNT-DEMO-01`'s progress/certificate arithmetic.
+- **Two new personas**, `co-committee` and `rate-committee` — Track 9's six stages are owned
+  by three distinct parties, not one; `re-dept` alone can only clear stages 1 and 6.
+- **A distribution step** on the fixture's `PRJ-0439` (Track 10) — the item `ITM-007` is left
+  deliberately undistributed in the fixture for exactly this.
+- **Documents and Alerts** (Tracks 12, 13) turned out to be real screens with only partial
+  backends — read-only for documents (upload is a demo stub, no approve endpoint exists),
+  view-and-acknowledge for alerts (no automatic rule evaluation or escalation exists). The
+  runsheet says so plainly rather than promising a live create-and-approve flow that isn't there.
+- **The portfolio dashboard** (Track 14) is real and derives live SPI/CPI from Act A's own
+  data — the separate report *catalog* is mostly stub (3 of 12 reports wired, nothing can be
+  "run"). The runsheet points at the dashboard, not the catalog.
+- **Track 7 turned out not to exist at all** — no close/lock/open-next-period action anywhere
+  in the codebase. Flagged as unavailable rather than worked around.
 
-Rehearse the finance act once, and correct the sheet from the screen rather than the
-other way round.
+## Verification status
 
-## Three things that will bite
-
-1. **Use workspace code `ub` or `sp`.** Which workspaces `univ-specialist` holds is fixed
-   in code, because the screen that would assign them is the Administration module, which
-   is out of scope (`07 §8`). A workspace with a fresh code has nobody able to create a
-   project in it.
-2. **Do not run `load-fixture`.** It is the opposite of this demo — `POST /api/dev/reset`
-   only, and let the audience watch the data appear.
-3. **Step 05 will look like it failed.** Submitting the XER writes a *version*, not activities,
-   so the Gantt stays empty until `re-dept` approves it at step 06. Since P-229 the screen says
-   so plainly — «استُورد الجدول الزمني وينتظر الاعتماد», with the file name, the activity count
-   and the approval as its button — but a person expecting a Gantt still reads an empty Gantt.
-   Submitting twice is harmless since P-230 — the second lapses the first, and a contract
-   holds at most one pending version — but it still only ever gets you one thing to approve.
-   The runsheet's "When the schedule does not appear" section has the whole decision table.
+Tracks 1–6, 8, and Act B's 3/11/9(supply) carry over from a version that was run end to end
+against the live app (see prior commits of this file for exact dates). **Track 9(works), 10,
+12, 13, and 14 are new as of 2026-09-08** — verified against the source code (endpoint names,
+domain rules, exact field names, persona IDs) but not yet click-tested end to end. The runsheet
+flags each one; trust the screen over a figure if they disagree.
 
 Figures throughout are illustrative, not ministry data.

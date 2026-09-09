@@ -68,6 +68,18 @@ public record ProgressEvm(
 /// This activity's own planned figure (P-53), so the row explains its share of
 /// the project-level gap rather than only contributing to it.
 /// </param>
+/// <param name="ProgressPct">
+/// The reading IN FORCE — what an approval put here. Never what somebody has
+/// submitted and nobody has decided on: that is <paramref name="PendingPct"/>,
+/// and keeping the two apart on the row is the whole visible difference
+/// المسار 6's review stage makes.
+/// </param>
+/// <param name="PendingReadingId">
+/// The reading awaiting a decision on this activity, or null. Projected onto
+/// the row rather than left for the page to join, because §3.1 gives Angular
+/// no arithmetic and a join is where two screens start disagreeing about which
+/// reading is current.
+/// </param>
 public record ProgressActivityDto(
     string ActivityId,
     string NameAr,
@@ -84,7 +96,56 @@ public record ProgressActivityDto(
     bool IsCritical,
     string? BaselineStart,
     string? BaselineFinish,
-    IReadOnlyList<string> BoqCodes);
+    IReadOnlyList<string> BoqCodes,
+    int? PendingReadingId,
+    decimal? PendingPct);
+
+// ── المسار 6 — قراءات الإنجاز ─────────────────────────────────────────────
+
+/// <summary>
+/// One supporting document behind a reading — «الأدلة المؤيدة» of step 2.
+/// Metadata only, like every other attachment in this prototype.
+/// </summary>
+public record ProgressEvidenceDto(
+    string TitleAr,
+    string TitleEn,
+    string FileName,
+    long SizeBytes);
+
+/// <param name="State">
+/// Lookup `progress-reading-state` — submitted · approved · returned · lapsed.
+/// </param>
+/// <param name="PreviousPct">
+/// The reading in force when this one was submitted. STORED on the row, so a
+/// returned reading still says what it proposed to move away FROM after a later
+/// reading has moved the activity («القراءة السابقة محفوظة»).
+/// </param>
+/// <param name="ActorParty">
+/// القسم المصدر. It is what الشكل 25's «المصدر» column prints, and what the
+/// contract-log event an approval writes is attributed to — step 7's
+/// «وتسجيلها باسم القسم المصدر».
+/// </param>
+public record ProgressReadingDto(
+    int Id,
+    int No,
+    string ContractId,
+    string ActivityId,
+    string ActivityNameAr,
+    string ActivityNameEn,
+    string State,
+    decimal ProgressPct,
+    decimal PreviousPct,
+    string Note,
+    string ActorName,
+    string ActorRole,
+    string ActorParty,
+    string At,
+    string ReviewerName,
+    string ReviewerRole,
+    string ReviewerParty,
+    string? ReviewedAt,
+    string ReviewNote,
+    IReadOnlyList<ProgressEvidenceDto> Evidence);
 
 /// <param name="Progress">BR-04 — the allocation-weighted mean of the linked activities.</param>
 /// <param name="AchievedAmount">`02 §4`: amount × progress ÷ 100.</param>
@@ -357,6 +418,11 @@ public record ProgressTileStates(
 /// whose last endorsed update is three months behind its data date is telling
 /// a reader something the percentages cannot.
 /// </param>
+/// <param name="Readings">
+/// المسار 6's readings, newest first. Pending ones are what the review stage
+/// acts on; decided ones are the record of who moved every percentage on this
+/// project, on whose evidence, and who released it.
+/// </param>
 public record ProgressResponse(
     string ProjectId,
     string ProjectNameAr,
@@ -375,7 +441,28 @@ public record ProgressResponse(
     string DefaultPeriod,
     string? LastUpdateAt,
     ProgressTileStates TileStates,
-    IReadOnlyList<ProgressCurvePeriodDto> Curve);
+    IReadOnlyList<ProgressCurvePeriodDto> Curve,
+    IReadOnlyList<ProgressReadingDto> Readings);
 
 /// <param name="ProgressPct">0…100. Anything outside it is refused, not clamped (04 §9).</param>
-public record UpdateProgressRequest(decimal ProgressPct);
+/// <param name="Note">
+/// «ما يدخله المستخدم» — what the source department says it did. Optional: the
+/// evidence carries the argument and a forced note would be filled with a dot.
+/// </param>
+/// <param name="Evidence">الأدلة المؤيدة — step 2's other half.</param>
+public record UpdateProgressRequest(
+    decimal ProgressPct,
+    string? Note,
+    IReadOnlyList<ProgressEvidenceInput>? Evidence);
+
+public record ProgressEvidenceInput(
+    string TitleAr,
+    string TitleEn,
+    string FileName,
+    long SizeBytes);
+
+/// <param name="Note">
+/// REQUIRED — step 6أ is «إعادة بملاحظات», and the ملاحظات are the content of
+/// the decision. `EP-PRG-04` refuses a blank one.
+/// </param>
+public record ReturnReadingRequest(string? Note);

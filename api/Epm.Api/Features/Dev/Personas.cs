@@ -97,8 +97,11 @@ public static class Personas
         // NOT `user.project-manager` below — that is مدير المشروع, a role
         // INSIDE one project, not the entity's data-entry specialist.
         //
-        // The track's REVIEWER persona (إدارة المشاريع) was removed with the
-        // approval workflow: with no review step there was nothing for it to do.
+        // This capacity SUBMITS on المسار 6 as well as المسار 1 — it is the
+        // track's «القسم المصدر». It never reviews: the lane the track calls
+        // «إدارة المشاريع» resolves to `user.re-dept` / `user.project-manager`
+        // by P-157's answer, and `CanSubmitProgressReading` and
+        // `CanReviewProgressReading` are disjoint by construction.
         new("user.univ-specialist", MasterNameAr, MasterNameEn,
             "الجامعة / التشكيل", "المستخدم المختص في الجامعة", "University specialist", false,
             // `sp` — المديرية العامة للتجهيز والمشتريات, where PRJ-0439 lives.
@@ -179,10 +182,14 @@ public static class Personas
     /// Matched on Party rather than on Id so the check reads as the business
     /// rule it is, and so a second university persona would inherit it.
     ///
-    /// This is the ONLY project capacity left. Its counterpart —
-    /// `CanReviewProjects`, for إدارة المشاريع — went with the approval
-    /// workflow, and with it §7's «يُفصل صراحةً بين صلاحية الإدخال وصلاحية
-    /// الاعتماد»: there is no approval capacity to separate input from.
+    /// This is the only project-DEFINITION capacity. Its counterpart —
+    /// `CanReviewProjects`, for إدارة المشاريع — went with المسار 1's approval
+    /// workflow and has not come back; project definition is still a single
+    /// act. §7's «يُفصل صراحةً بين صلاحية الإدخال وصلاحية الاعتماد» is honoured
+    /// on the three tracks that DO have a review — the bill (`CanApproveBoqImport`),
+    /// the baseline (`EP-SCD-06`) and now the progress reading
+    /// (<see cref="CanReviewProgressReading"/>) — and this capacity is refused
+    /// on all three.
     /// </summary>
     public static bool CanDefineProjects(this Persona p) => p.Party == "الجامعة / التشكيل";
 
@@ -203,6 +210,44 @@ public static class Personas
     /// DECISION on a line, not the bill as a document. Flagged in DECISIONS.
     /// </summary>
     public static bool CanApproveBoqImport(this Persona p) =>
+        p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
+
+    /// <summary>
+    /// المسار 6 steps 1–5 — «القسم المصدر (تخطيط / مالية)» submits a reading.
+    ///
+    /// The track's stage-1 lane is named for the DEPARTMENT THE FIGURE COMES
+    /// FROM, and §7 gives «إدخال وتحديث المشاريع والعقود والإنجاز» to الجامعة /
+    /// التشكيل. الشكل 25's own updates table shows the two sources it expects —
+    /// «الموقف المالي» and «الجدول الزمني» — which is the same split: the
+    /// specialist reports the works, the financial directorate reports the
+    /// money side of the same period.
+    ///
+    /// دائرة المهندس المقيم is deliberately NOT accepted, and it is the one
+    /// exclusion worth stating: the resident engineer measures the works, and
+    /// on this track it holds the REVIEW (see
+    /// <see cref="CanReviewProgressReading"/>). A capacity on both sides would
+    /// make step 6 a formality, which is the separation `03 §7` asks for —
+    /// «يُفصل صراحةً بين صلاحية الإدخال وصلاحية الاعتماد».
+    /// </summary>
+    public static bool CanSubmitProgressReading(this Persona p) =>
+        p.Party is "الجامعة / التشكيل" or "الدائرة المالية";
+
+    /// <summary>
+    /// المسار 6 steps 6–7 — «قرار المراجعة» then «اعتماد القراءة وتسجيلها باسم
+    /// القسم المصدر», the lane the track calls «إدارة المشاريع».
+    ///
+    /// SAME RESOLUTION AS `CanApproveBoqImport`, and deliberately the same one:
+    /// P-157 already settled that `03 §7`'s persona list has no party literally
+    /// called «إدارة المشاريع», and answered it with دائرة المهندس المقيم —
+    /// who supervises the works a reading measures — and مدير المشروع, who owns
+    /// the contract. Resolving the same phrase two different ways in one
+    /// codebase would make the ambiguity worse, not better.
+    ///
+    /// The person-level check is separate and lives in `EP-PRG-03`: this is
+    /// about the CAPACITY, and «لا يعتمد القراءة من قدّمها» is about the
+    /// individual. Both are needed, exactly as on `EP-SCD-06`.
+    /// </summary>
+    public static bool CanReviewProgressReading(this Persona p) =>
         p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
 
     /// <summary>

@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
 import { FieldGroupComponent } from '../../shared/field-group.component';
@@ -49,7 +50,7 @@ import {
   standalone: true,
   imports: [
     IconComponent, StatusPillComponent, SectionComponent, TableSkeletonComponent,
-    FieldGroupComponent, FieldGridComponent,
+    FieldGroupComponent, FieldGridComponent, PanelHeadComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './contract.page.html',

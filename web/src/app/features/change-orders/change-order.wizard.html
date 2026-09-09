@@ -109,15 +109,20 @@
             </div>
           </epm-section>
 
-          <!-- TWO TYPE CARDS AND NO MORE (`03 §8` step 1). -->
+          <!-- TWO TYPE CARDS, OR ONE (`03 §8` step 1). An equipment project
+               raises only a supply order (D-14) — the same reason its wizard
+               has no resident engineer to name later — so the engineering
+               card is not offered rather than offered and refused on submit. -->
           <epm-section [title]="lang.t('chg_w_sec_type')" icon="engineering">
             <div class="d-vow-types">
-              <button type="button" class="d-vow-type" [class.on]="type() === 'engineering'"
-                      [attr.aria-pressed]="type() === 'engineering'" (click)="type.set('engineering')">
-                <epm-icon name="engineering" [size]="17" />
-                <b>{{ lang.t('chg_w_type_eng') }}</b>
-                @if (type() === 'engineering') { <epm-icon name="check" [size]="15" /> }
-              </button>
+              @if (!isSupplyProject()) {
+                <button type="button" class="d-vow-type" [class.on]="type() === 'engineering'"
+                        [attr.aria-pressed]="type() === 'engineering'" (click)="type.set('engineering')">
+                  <epm-icon name="engineering" [size]="17" />
+                  <b>{{ lang.t('chg_w_type_eng') }}</b>
+                  @if (type() === 'engineering') { <epm-icon name="check" [size]="15" /> }
+                </button>
+              }
               <button type="button" class="d-vow-type" [class.on]="type() === 'supply'"
                       [attr.aria-pressed]="type() === 'supply'" (click)="type.set('supply')">
                 <epm-icon name="inbox" [size]="17" />

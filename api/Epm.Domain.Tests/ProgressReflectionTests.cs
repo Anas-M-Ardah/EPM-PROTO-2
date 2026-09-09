@@ -64,4 +64,40 @@ public class ProgressReflectionTests
     [Fact]
     public void A_contract_with_no_value_rolls_up_to_zero_rather_than_dividing()
         => Assert.Equal(0m, ProgressReflection.Rollup(0m, 0m));
+
+    // ── D-14 — BR-04 on a supply bill ────────────────────────────────────
+    // PRJ-0439 · ITM-006 (فقرة تجهيزية, الشكل 50/56): 196 contracted, 118
+    // received, rate 985,875. No activity link exists on a supply contract —
+    // the whole line earns from its own receipts, never a link sum.
+    [Fact]
+    public void Supply_progress_reads_the_received_percentage_not_a_link_sum()
+    {
+        var pct = SupplyStatus.ReceivedPct(196m, 118m);
+        var r = ProgressReflection.ForSupply(pct, 193_231_500m, 196m);
+
+        // 985,875 × 118 — the amount, and the whole point of the worked
+        // example: exact, not merely close.
+        Assert.Equal(116_333_250m, r.AchievedAmount);
+        Assert.Equal(118m, r.AchievedQty);
+        Assert.Equal(193_231_500m - 116_333_250m, r.RemainingValue);
+    }
+
+    [Fact]
+    public void Supply_progress_at_zero_receipts_is_zero()
+    {
+        var r = ProgressReflection.ForSupply(0m, 10_000_000m, 100m);
+
+        Assert.Equal(0m, r.Progress);
+        Assert.Equal(0m, r.AchievedAmount);
+        Assert.Equal(10_000_000m, r.RemainingValue);
+    }
+
+    [Fact]
+    public void Supply_progress_fully_received_is_the_whole_amount()
+    {
+        var r = ProgressReflection.ForSupply(100m, 10_000_000m, 100m);
+
+        Assert.Equal(10_000_000m, r.AchievedAmount);
+        Assert.Equal(0m, r.RemainingValue);
+    }
 }

@@ -3,6 +3,8 @@ using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Boq;
+// المسار 6's two capacities — `CanSubmitProgressReading` / `CanReviewProgressReading`.
+using Epm.Api.Features.Dev;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Progress;
@@ -57,25 +59,44 @@ public static class ProgressEndpoints
         });
 
         // [EP-PRG-02] PUT /api/projects/{projectId}/progress/activities/{activityId}
-        // web: progress/progress.api.ts saveProgress() → progress.page.ts
-        // spec: 02 §4 | rules: BR-04 + P-53 | tables: Activities (WRITTEN)
+        // web: progress/progress.api.ts submitReading() → progress.page.ts · schedule.page.ts
+        // spec: المسار 6 steps 2–5 · 02 §4 | rules: Domain/ProgressReview + P-53
+        // tables: ProgressReadings (WRITTEN) · ProgressReadingEvidence (WRITTEN)
+        //         · Activities (READ ONLY)
         //
-        // THE ONLY WRITE ON THIS SCREEN, and the one `07 §M3` names: "change an
-        // activity's progress, watch BOQ progress, achieved quantity and
-        // achieved amount update".
+        // THIS ROUTE NO LONGER MOVES `Activities.ProgressPct`. المسار 6 ends its
+        // first stage at «حفظ التحديث وإرساله للمراجعة» and puts the write on
+        // the far side of «قرار المراجعة» — so a submission writes a READING and
+        // touches the activity not at all. `EP-PRG-03` is the write.
+        //
+        // ONE WRITE PATH, TWO ENTRY POINTS, STILL (P-192). SCR-W5's ملحق الشكل 21
+        // panel and SCR-W6's editor both call this one method, so the two screens
+        // cannot submit a reading on different terms.
         app.MapPut("/api/projects/{projectId}/progress/activities/{activityId}",
             async (EpmDb db, HttpContext http, string projectId, string activityId, UpdateProgressRequest body) =>
         {
+            var persona = (Persona)http.Items["user"]!;
+
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
             if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return denied;
+
+            // المسار 6 stage 1 is «القسم المصدر». The capacity is checked before
+            // anything is read, so a persona that cannot submit is told why
+            // rather than being shown a validation error about its percentage.
+            if (!persona.CanSubmitProgressReading())
+                return Results.Json(new
+                {
+                    messageAr = "إدخال قراءة الإنجاز من صلاحية القسم المصدر (الجامعة/التشكيل أو الدائرة المالية).",
+                    messageEn = "Recording a progress reading belongs to the source department.",
+                }, statusCode: StatusCodes.Status403Forbidden);
 
             var contractIds = await db.Contracts.AsNoTracking()
                 .Where(c => c.ProjectId == projectId).Select(c => c.Id).ToListAsync();
 
             // SCOPE, CHECKED HERE WHERE IT CAN BE READ (P-01). An activity of
             // another project's contract is a 404, not a silent no-op.
-            var a = await db.Activities
+            var a = await db.Activities.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.ActivityId == activityId && contractIds.Contains(x.ContractId));
             if (a is null)
                 return Results.NotFound(new
@@ -83,44 +104,275 @@ public static class ProgressEndpoints
                     message = $"activity {activityId} not found in project {projectId}",
                 });
 
-            // REFUSED, NOT CLAMPED. Silently turning 140 into 100 would record a
-            // number nobody typed against a person's name (04 §9).
-            if (body.ProgressPct < 0m || body.ProgressPct > 100m)
-                return Results.BadRequest(new
-                {
-                    message = "progress must be between 0 and 100",
-                    messageAr = "نسبة الإنجاز يجب أن تكون بين صفر ومئة",
-                });
+            // THE TRACK'S OWN STEP 4, in one call: range, milestone, and
+            // «لا تقل عن القراءة السابقة». The floor is the reading IN FORCE,
+            // which is the activity's own column — not the last row in this
+            // table, because a returned or lapsed reading never took effect.
+            if (ProgressReview.Refuse(body.ProgressPct, a.ProgressPct, a.IsMilestone) is { } refusal)
+                return Results.BadRequest(new { messageAr = refusal.Ar, messageEn = refusal.En });
 
-            // A MILESTONE IS REACHED OR IT IS NOT. `02 §2` gives it zero basis
-            // and excludes it from every denominator, so a milestone at 45%
-            // would be a number that earns nothing and means nothing.
-            if (a.IsMilestone && body.ProgressPct is not (0m or 100m))
-                return Results.BadRequest(new
-                {
-                    message = "a milestone is either reached (100) or not (0)",
-                    messageAr = "الحَدَث الفارق إمّا متحقق (100) أو غير متحقق (0)",
-                });
+            // ONE PENDING PER ACTIVITY. A second submission is a correction of
+            // the first — EP-SCD-05's resolution, for the same reason: a reading
+            // nobody has looked at yet is withdrawn by being replaced, not
+            // queued behind its own replacement.
+            var pending = await db.ProgressReadings
+                .Where(r => r.ContractId == a.ContractId
+                         && r.ActivityId == activityId
+                         && r.State == ProgressReview.Submitted)
+                .ToListAsync();
+            foreach (var r in pending) r.State = ProgressReview.Lapsed;
 
-            a.ProgressPct = body.ProgressPct;
-            // The stored column P6 exports, kept from contradicting the
-            // percentage printed beside it (P-53).
-            a.RemainingDuration = PlannedProgress.RemainingDuration(
-                a.OriginalDuration, body.ProgressPct, a.IsMilestone);
+            var no = await db.ProgressReadings
+                .Where(r => r.ContractId == a.ContractId)
+                .CountAsync() + 1;
 
+            var reading = new ProgressReading
+            {
+                ContractId = a.ContractId,
+                ActivityId = activityId,
+                No = no,
+                State = ProgressReview.Submitted,
+                ProgressPct = body.ProgressPct,
+                // «القراءة السابقة محفوظة» — stored now, because the activity's
+                // own column will have moved by the time anyone reads this row.
+                PreviousPct = a.ProgressPct,
+                Note = body.Note?.Trim() ?? "",
+                ActorId = persona.Id,
+                ActorName = persona.NameAr,
+                ActorRole = persona.RoleAr,
+                ActorParty = persona.Party,
+                // D-06 — "now" is the project data date, never DateTime.Now.
+                At = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            };
+            db.ProgressReadings.Add(reading);
             await db.SaveChangesAsync();
 
+            // الأدلة المؤيدة — step 2's other half. Metadata only, as everywhere
+            // else in this prototype: the row is what the panel prints.
+            if (body.Evidence is { Count: > 0 })
+            {
+                db.ProgressReadingEvidence.AddRange(body.Evidence.Select(e => new ProgressReadingEvidence
+                {
+                    ReadingId = reading.Id,
+                    TitleAr = e.TitleAr,
+                    TitleEn = e.TitleEn,
+                    FileName = e.FileName,
+                    SizeBytes = e.SizeBytes,
+                }));
+                await db.SaveChangesAsync();
+            }
+
             // THE WHOLE MODEL COMES BACK, not the row that changed — the same
-            // reason SCR-W4 returns its whole register. One activity's progress
-            // moves every BOQ line it is linked to, every contract roll-up above
-            // those, the project's physical %, and with it EV, SPI and CPI.
+            // reason SCR-W4 returns its whole register. Nothing derived has
+            // moved yet, and that is the point the screen has to be able to
+            // show: the reading is in the register, the percentages are not.
+            return Results.Ok(await Build(db, projectId));
+        });
+
+        // [EP-PRG-03] POST /api/projects/{projectId}/progress/readings/{id}/approve
+        // web: progress/progress.api.ts approveReading() → progress.page.ts
+        // spec: المسار 6 steps 6–7 · 02 §4 | rules: BR-04 + P-53
+        // tables: ProgressReadings · Activities (WRITTEN) · ContractActivityEvents (WRITTEN)
+        //
+        // THE ONE ROUTE IN THE SYSTEM THAT MOVES `Activities.ProgressPct`, and
+        // with it every BOQ line the activity is linked to, every contract
+        // roll-up above those, the project's physical % and BR-11's indices.
+        app.MapPost("/api/projects/{projectId}/progress/readings/{id:int}/approve",
+            async (EpmDb db, HttpContext http, string projectId, int id) =>
+        {
+            var ctx = await LoadReading(db, http, projectId, id);
+            if (ctx.Error is not null) return ctx.Error;
+            var (reading, activity, persona, project) = (ctx.Reading!, ctx.Activity!, ctx.Persona!, ctx.Project!);
+
+            // THE SUBMITTER MAY NOT APPROVE THEIR OWN. The capacity check in
+            // LoadReading is about the ROLE; this is about the person, and both
+            // are needed — the same pair `EP-SCD-06` keeps.
+            if (reading.ActorId == persona.Id)
+                return Results.Json(new
+                {
+                    messageAr = "لا يعتمد القراءة من قدّمها.",
+                    messageEn = "The person who submitted a reading may not approve it.",
+                }, statusCode: StatusCodes.Status403Forbidden);
+
+            var at = project.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+            reading.State = ProgressReview.Approved;
+            reading.ReviewerId = persona.Id;
+            reading.ReviewerName = persona.NameAr;
+            reading.ReviewerRole = persona.RoleAr;
+            reading.ReviewerParty = persona.Party;
+            reading.ReviewedAt = at;
+
+            activity.ProgressPct = reading.ProgressPct;
+            // The stored column P6 exports, kept from contradicting the
+            // percentage printed beside it (P-53).
+            activity.RemainingDuration = PlannedProgress.RemainingDuration(
+                activity.OriginalDuration, reading.ProgressPct, activity.IsMilestone);
+
+            // ── «وتسجيلها باسم القسم المصدر» ─────────────────────────────
+            // Step 7 says it in as many words, so the log event carries the
+            // SUBMITTER's party and not the reviewer's. This is also what puts a
+            // row in الشكل 25's «تحديثات الإنجاز (واردة من الأقسام)» and a point
+            // on SCR-W1's actual curve: both read `Action == "progress"` off this
+            // table, and before this route existed nothing ever wrote one.
+            //
+            // The figure recorded is the CONTRACT's physical %, not the
+            // activity's — that is what the series is a series of, and what
+            // `Domain/ProgressSeries` reads back out of it.
+            var before = await ContractPhysical(db, activity.ContractId);
+            await db.SaveChangesAsync();
+            var after = await ContractPhysical(db, activity.ContractId);
+
+            db.ContractActivityEvents.Add(new ContractActivityEvent
+            {
+                ContractId = activity.ContractId,
+                Action = "progress",
+                Source = "user",
+                Field = "physicalPct",
+                Before = before.ToString("0.##"),
+                After = after.ToString("0.##"),
+                RefId = activity.ActivityId,
+                Note = reading.Note.Length > 0 ? reading.Note : null,
+                ActorId = reading.ActorId,
+                ActorName = reading.ActorName,
+                ActorRole = reading.ActorRole,
+                ActorParty = reading.ActorParty,
+                At = at,
+            });
+            await db.SaveChangesAsync();
+
+            return Results.Ok(await Build(db, projectId));
+        });
+
+        // [EP-PRG-04] POST /api/projects/{projectId}/progress/readings/{id}/return
+        // web: progress/progress.api.ts returnReading() → progress.page.ts
+        // spec: المسار 6 step 6أ | rules: — | tables: ProgressReadings
+        //
+        // «إعادة بملاحظات — القراءة السابقة محفوظة». Nothing derived moves: the
+        // activity keeps the reading in force, which is what makes this a
+        // decision rather than an edit.
+        app.MapPost("/api/projects/{projectId}/progress/readings/{id:int}/return",
+            async (EpmDb db, HttpContext http, string projectId, int id, ReturnReadingRequest body) =>
+        {
+            var ctx = await LoadReading(db, http, projectId, id);
+            if (ctx.Error is not null) return ctx.Error;
+            var (reading, persona, project) = (ctx.Reading!, ctx.Persona!, ctx.Project!);
+
+            if (reading.ActorId == persona.Id)
+                return Results.Json(new
+                {
+                    messageAr = "لا يُبتّ في القراءة من قدّمها.",
+                    messageEn = "The person who submitted a reading may not decide on it.",
+                }, statusCode: StatusCodes.Status403Forbidden);
+
+            // A RETURN WITHOUT A REASON CANNOT BE ACTED ON. The track's step 6أ
+            // is «إعادة بملاحظات», and the ملاحظات are the whole content of the
+            // decision — a blank one sends the file back saying nothing.
+            var note = body.Note?.Trim() ?? "";
+            if (note.Length == 0)
+                return Results.BadRequest(new
+                {
+                    messageAr = "سبب الإعادة مطلوب — القراءة تعود بملاحظات.",
+                    messageEn = "A reason is required — a reading is returned with notes.",
+                });
+
+            reading.State = ProgressReview.Returned;
+            reading.ReviewNote = note;
+            reading.ReviewerId = persona.Id;
+            reading.ReviewerName = persona.NameAr;
+            reading.ReviewerRole = persona.RoleAr;
+            reading.ReviewerParty = persona.Party;
+            reading.ReviewedAt = project.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+            await db.SaveChangesAsync();
             return Results.Ok(await Build(db, projectId));
         });
     }
 
+    // ── what both review routes need before they may decide ──────────────
+
+    private sealed record ReadingCtx(
+        IResult? Error,
+        ProgressReading? Reading,
+        Activity? Activity,
+        Persona? Persona,
+        Project? Project);
+
+    /// <summary>
+    /// Project scope, review capacity, the reading, and the activity it moves —
+    /// resolved once so `EP-PRG-03` and `EP-PRG-04` cannot disagree about who
+    /// may decide or about what a decidable reading is.
+    /// </summary>
+    private static async Task<ReadingCtx> LoadReading(
+        EpmDb db, HttpContext http, string projectId, int id)
+    {
+        static ReadingCtx Fail(IResult r) => new(r, null, null, null, null);
+
+        var persona = (Persona)http.Items["user"]!;
+
+        var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+        if (p is null) return Fail(Results.NotFound(new { message = $"project {projectId} not found" }));
+        if (WorkspaceScope.Deny(http, p.WorkspaceCode) is { } denied) return Fail(denied);
+
+        if (!persona.CanReviewProgressReading())
+            return Fail(Results.Json(new
+            {
+                messageAr = "اعتماد قراءة الإنجاز من صلاحية إدارة المشاريع (المهندس المقيم أو مدير المشروع).",
+                messageEn = "Deciding on a progress reading belongs to the project-management lane.",
+            }, statusCode: StatusCodes.Status403Forbidden));
+
+        var contractIds = await db.Contracts.AsNoTracking()
+            .Where(c => c.ProjectId == projectId).Select(c => c.Id).ToListAsync();
+
+        var reading = await db.ProgressReadings
+            .FirstOrDefaultAsync(r => r.Id == id && contractIds.Contains(r.ContractId));
+        if (reading is null)
+            return Fail(Results.NotFound(new { message = $"reading {id} not found in project {projectId}" }));
+
+        // A DECIDED READING IS A RECORD. Re-approving one would write the same
+        // percentage a second time and put a second row on the contract log.
+        if (!ProgressReview.IsPending(reading.State))
+            return Fail(Results.BadRequest(new
+            {
+                messageAr = $"القراءة رقم {reading.No} ليست قيد المراجعة.",
+                messageEn = $"Reading {reading.No} is not awaiting a decision.",
+            }));
+
+        var activity = await db.Activities
+            .FirstOrDefaultAsync(x => x.ActivityId == reading.ActivityId
+                                   && x.ContractId == reading.ContractId);
+        if (activity is null)
+            return Fail(Results.NotFound(new
+            {
+                message = $"activity {reading.ActivityId} no longer exists on {reading.ContractId}",
+            }));
+
+        return new ReadingCtx(null, reading, activity, persona, p);
+    }
+
+    /// <summary>
+    /// One contract's physical %, by the same route the headline takes: BR-04
+    /// reflection onto the bill, then `ProgressReflection.Rollup` of executed
+    /// over billed. Read twice around the save so the log event can carry the
+    /// before→after pair الشكل 11 asks for.
+    /// </summary>
+    private static async Task<decimal> ContractPhysical(EpmDb db, string contractId)
+    {
+        var model = await BoqEndpoints.Derive(db, contractId, "cost");
+        var billed = model.Sum(d => d.Line.Amount);
+        var executed = model.Sum(d => d.Progress.AchievedAmount);
+        return ProgressReflection.Rollup(billed, executed);
+    }
+
     // ── the model ────────────────────────────────────────────────────────
 
-    private static async Task<ProgressResponse?> Build(EpmDb db, string projectId)
+    /// <summary>
+    /// `internal` rather than `private` so `AccomplishmentPeriodEndpoints.cs`
+    /// (Track 7 — إغلاق فترة الإنجاز) can read `Headline`/`Evm` off the exact
+    /// same computation this screen shows, instead of a second derivation that
+    /// could disagree with it (P-54's own argument, one file over).
+    /// </summary>
+    internal static async Task<ProgressResponse?> Build(EpmDb db, string projectId)
     {
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
         if (p is null) return null;
@@ -139,6 +391,22 @@ public static class ProgressEndpoints
         var allActivities = await db.Activities.AsNoTracking()
             .Where(a => ids.Contains(a.ContractId))
             .OrderBy(a => a.ContractId).ThenBy(a => a.ActivityId).ToListAsync();
+
+        // ── المسار 6 — the readings, and the pending one per activity ────
+        // Read once for the whole project: the register below prints them all,
+        // and the activity rows carry the pending one so the editor can draw
+        // «قيد المراجعة» without joining anything in the browser.
+        var allReadings = await db.ProgressReadings.AsNoTracking()
+            .Where(r => ids.Contains(r.ContractId))
+            .OrderByDescending(r => r.At).ThenByDescending(r => r.No)
+            .ToListAsync();
+        var readingIds = allReadings.Select(r => r.Id).ToList();
+        var allEvidence = await db.ProgressReadingEvidence.AsNoTracking()
+            .Where(e => readingIds.Contains(e.ReadingId)).OrderBy(e => e.Id).ToListAsync();
+
+        var pendingByActivity = allReadings
+            .Where(r => ProgressReview.IsPending(r.State))
+            .ToDictionary(r => r.ContractId + "|" + r.ActivityId);
 
         var activityRows = new List<ProgressActivityDto>();
         var boqRows = new List<ProgressBoqDto>();
@@ -189,6 +457,8 @@ public static class ProgressEndpoints
                 plannedWeighted += a.IsMilestone ? 0m : a.BudgetedCost * actPlanned / 100m;
                 plannedBasis += a.IsMilestone ? 0m : a.BudgetedCost;
 
+                var pending = pendingByActivity.GetValueOrDefault(c.Id + "|" + a.ActivityId);
+
                 activityRows.Add(new ProgressActivityDto(
                     a.ActivityId, a.NameAr, a.NameEn, c.Id, a.WbsPath, a.Status,
                     Q(a.ProgressPct), Q(actPlanned), Q(weight),
@@ -196,7 +466,9 @@ public static class ProgressEndpoints
                     a.IsMilestone, a.IsCritical,
                     a.BaselineStart?.ToString("yyyy-MM-dd"),
                     a.BaselineFinish?.ToString("yyyy-MM-dd"),
-                    feeds.TryGetValue(a.ActivityId, out var codes) ? codes : []));
+                    feeds.TryGetValue(a.ActivityId, out var codes) ? codes : [],
+                    pending?.Id,
+                    pending is null ? null : Q(pending.ProgressPct)));
             }
 
             foreach (var d in derived)
@@ -504,6 +776,26 @@ public static class ProgressEndpoints
                 Q(r.PhysicalDelta), Q(r.FinancialDelta)))
             .ToList();
 
+        // المسار 6's register. The activity's NAME travels with the reading so
+        // the review section reads as sentences about work rather than about
+        // ids — the activity may also have been renamed by a re-baseline since,
+        // and the current name is the one a reviewer can recognise.
+        var readingRows = allReadings.Select(r =>
+        {
+            var act = allActivities.FirstOrDefault(
+                x => x.ContractId == r.ContractId && x.ActivityId == r.ActivityId);
+            return new ProgressReadingDto(
+                r.Id, r.No, r.ContractId, r.ActivityId,
+                act?.NameAr ?? r.ActivityId, act?.NameEn ?? r.ActivityId,
+                r.State, Q(r.ProgressPct), Q(r.PreviousPct), r.Note,
+                r.ActorName, r.ActorRole, r.ActorParty, r.At.ToString("yyyy-MM-dd"),
+                r.ReviewerName, r.ReviewerRole, r.ReviewerParty,
+                r.ReviewedAt?.ToString("yyyy-MM-dd"), r.ReviewNote,
+                allEvidence.Where(e => e.ReadingId == r.Id)
+                    .Select(e => new ProgressEvidenceDto(e.TitleAr, e.TitleEn, e.FileName, e.SizeBytes))
+                    .ToList());
+        }).ToList();
+
         return new ProgressResponse(
             p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
             new ProgressHeadline(
@@ -542,7 +834,8 @@ public static class ProgressEndpoints
                 TileThreshold.DelayCost(delayCost),
                 TileThreshold.NegativeFloat(scheduleRisk.NegativeFloat),
                 TileThreshold.AtRisk(atRisk.Count)),
-            curve);
+            curve,
+            readingRows);
     }
 
     /// <summary>
