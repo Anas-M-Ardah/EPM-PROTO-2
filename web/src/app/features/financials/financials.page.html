@@ -926,17 +926,11 @@
       @if (selectedLetter(); as l) {
         <div class="d-pz8">
           <div class="d-rpane">
-            <div class="rp-h">
-              <div class="tx">
-                <div class="r1">
-                  <span class="code"><bdi>{{ l.letterNo }}</bdi></span>
-                  @for (st of l.statuses; track st) {
-                    <epm-status-pill kind="payment-status" [code]="st" />
-                  }
-                </div>
-                <b>{{ lang.t('fin_pay_letter') }}</b>
-                <span class="sub"><bdi>{{ fmt.date(l.letterDate) }}</bdi></span>
-              </div>
+            <div epmPanelHead [code]="l.letterNo" [title]="lang.t('fin_pay_letter')">
+              @for (st of l.statuses; track st) {
+                <epm-status-pill badge kind="payment-status" [code]="st" />
+              }
+              <span sub><bdi>{{ fmt.date(l.letterDate) }}</bdi></span>
               <div class="acts">
                 <button type="button" class="d-icon-btn sm"
                         [attr.aria-label]="lang.t('scd_rec_close')" (click)="openLetter.set('')">

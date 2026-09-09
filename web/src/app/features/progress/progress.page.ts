@@ -6,6 +6,7 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { DrawerComponent } from '../../shared/drawer.component';
+import { SectionComponent } from '../../shared/section.component';
 import { TileComponent, TileDir, TileState } from '../../shared/tile.component';
 import { FieldGroupComponent } from '../../shared/field-group.component';
 import { SelectComponent, SelectOption } from '../../shared/select.component';
@@ -14,8 +15,13 @@ import { LangService, StrKey } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
+import { PersonaService } from '../../core/persona';
 import { ProgressApi } from './progress.api';
-import { ProgressActivity, ProgressBoq, ProgressResponse } from './progress.types';
+import {
+  ProgressActivity, ProgressBoq, ProgressEvidence, ProgressReading, ProgressResponse,
+} from './progress.types';
+import { AccomplishmentPeriodApi } from './accomplishment-period.api';
+import { AccomplishmentPeriodsResponse } from './accomplishment-period.types';
 
 /**
  * SCR-W6 — the project workspace Progress module (`04 §3`, `02 §4`).
@@ -63,17 +69,77 @@ import { ProgressActivity, ProgressBoq, ProgressResponse } from './progress.type
   selector: 'epm-progress-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, DrawerComponent,
-    TileComponent, FieldGroupComponent, SelectComponent, SCurveComponent, RouterLink],
+    TileComponent, FieldGroupComponent, SelectComponent, SCurveComponent, RouterLink, SectionComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './progress.page.html',
 })
 export class ProgressPage {
   private api = inject(ProgressApi);
+  private periodApi = inject(AccomplishmentPeriodApi);
   private route = inject(ActivatedRoute);
+  private persona = inject(PersonaService);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   toast = inject(ToastService);
   fmt = fmt;
+
+  // ── المسار 7 — إغلاق فترة الإنجاز ────────────────────────────────────────
+  periodsOpen = signal(false);
+  periods = signal<AccomplishmentPeriodsResponse | null>(null);
+  periodsLoading = signal(false);
+  openPeriod = computed(() => this.periods()?.periods.find(p => p.status === 'open') ?? null);
+  closedPeriods = computed(() => this.periods()?.periods.filter(p => p.status === 'closed') ?? []);
+
+  newDataDate = signal('');
+  closingPeriod = signal(false);
+  closeError = signal<string | null>(null);
+
+  loadPeriods() {
+    const pid = this.projectId();
+    if (!pid) return;
+    this.periodsLoading.set(true);
+    this.periodApi.list(pid).subscribe({
+      next: r => {
+        this.periods.set(r);
+        this.periodsLoading.set(false);
+        this.newDataDate.set('');
+      },
+      error: () => this.periodsLoading.set(false),
+    });
+  }
+
+  openPeriodsPanel() {
+    this.periodsOpen.set(true);
+    this.closeError.set(null);
+    this.loadPeriods();
+  }
+
+  submitClosePeriod() {
+    const pid = this.projectId();
+    const period = this.openPeriod();
+    if (!pid || !period || this.closingPeriod()) return;
+
+    if (!this.newDataDate()) {
+      this.closeError.set(this.lang.t('prg_period_err_date'));
+      return;
+    }
+
+    this.closingPeriod.set(true);
+    this.closeError.set(null);
+
+    this.periodApi.close(pid, period.id, this.newDataDate()).subscribe({
+      next: () => {
+        this.closingPeriod.set(false);
+        this.toast.show(this.lang.t('prg_period_closed_ok'));
+        this.loadPeriods();
+        this.load();
+      },
+      error: e => {
+        this.closingPeriod.set(false);
+        this.closeError.set(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
+  }
 
   projectId = signal('');
   data = signal<ProgressResponse | null>(null);
@@ -385,20 +451,76 @@ export class ProgressPage {
     return a.boqCodes.length ? a.boqCodes.join(' · ') : '';
   }
 
+  // ── المسار 6 · stage 1 — القسم المصدر submits ─────────────────────────
+
+  /**
+   * MIRRORS `Personas.CanSubmitProgressReading`. The rule is the server's and
+   * is enforced there; this is what decides whether the button is drawn, and
+   * the two are kept character-for-character alike so a capacity that would be
+   * refused is never offered — `04 §9` prefers preventing to reporting.
+   */
+  canSubmit = computed(() => {
+    const party = this.persona.current()?.party;
+    return party === 'الجامعة / التشكيل' || party === 'الدائرة المالية';
+  });
+
+  /** MIRRORS `Personas.CanReviewProgressReading` — P-157's lane, same as the bill's. */
+  canReview = computed(() => {
+    const party = this.persona.current()?.party;
+    return party === 'دائرة المهندس المقيم' || party === 'مدير المشروع';
+  });
+
+  /** «ما يدخله المستخدم» — the note and the evidence that travel with a reading. */
+  note = signal('');
+  evidence = signal<ProgressEvidence[]>([]);
+
   startEdit(a: ProgressActivity) {
     this.editing.set(a.activityId);
     this.draft.set(String(a.progressPct));
+    this.note.set('');
+    this.evidence.set([]);
   }
 
   cancelEdit() {
     this.editing.set('');
     this.draft.set('');
+    this.note.set('');
+    this.evidence.set([]);
+  }
+
+  /**
+   * الأدلة المؤيدة. NO FILE IS STORED ANYWHERE (CLAUDE.md §4) — the row is the
+   * metadata the panel prints, which is what every other attachment in this
+   * prototype is. The picker reads the name and size off the chosen file and
+   * sends those; the bytes never leave the browser.
+   */
+  addEvidence(input: HTMLInputElement) {
+    const files = Array.from(input.files ?? []);
+    if (!files.length) return;
+    this.evidence.update(list => [
+      ...list,
+      ...files.map(f => ({
+        titleAr: f.name, titleEn: f.name, fileName: f.name, sizeBytes: f.size,
+      })),
+    ]);
+    // Cleared so the same file can be picked again after being removed —
+    // an <input type=file> fires nothing when its value does not change.
+    input.value = '';
+  }
+
+  removeEvidence(index: number) {
+    this.evidence.update(list => list.filter((_, i) => i !== index));
   }
 
   /**
    * Blocked BEFORE the request, with the reason — `04 §9` prefers preventing
-   * invalid input to reporting it afterwards. The endpoint checks the same two
-   * things again, because a rule that lives only in the browser is not a rule.
+   * invalid input to reporting it afterwards. `Domain/ProgressReview.Refuse`
+   * checks the same four things again, because a rule that lives only in the
+   * browser is not a rule.
+   *
+   * THE FOURTH IS المسار 6's OWN: «ولا تقل عن القراءة السابقة». The floor is
+   * the reading IN FORCE — `a.progressPct` — never the pending one, which by
+   * definition nobody has accepted.
    */
   draftError = computed(() => {
     const raw = this.draft().trim();
@@ -411,35 +533,138 @@ export class ProgressPage {
     const a = this.activities().find(x => x.activityId === this.editing());
     if (a?.isMilestone && n !== 0 && n !== 100) return this.lang.t('prg_err_milestone');
 
+    if (a && n < a.progressPct) {
+      return this.lang.t('prg_err_regress')
+        .replace('{n}', fmt.pct(n, 0))
+        .replace('{p}', fmt.pct(a.progressPct, 0));
+    }
+    if (a && n === a.progressPct) return this.lang.t('prg_err_same');
+
     return '';
   });
 
-  save(a: ProgressActivity) {
+  /**
+   * المسار 6 step 5 — «حفظ التحديث وإرساله للمراجعة».
+   *
+   * NOTHING DERIVED MOVES HERE, and the confirmation says so rather than
+   * naming lines that have not been touched: what the person just did is put a
+   * reading in front of a reviewer, and a toast claiming the bill had followed
+   * would be the old behaviour described in new words.
+   */
+  submit(a: ProgressActivity) {
     if (this.draftError()) return;
 
     const next = Number(this.draft().trim());
-    if (next === a.progressPct) { this.cancelEdit(); return; }
 
     this.saving.set(a.activityId);
-    this.api.saveProgress(this.projectId(), a.activityId, next).subscribe({
+    this.api.submitReading(
+      this.projectId(), a.activityId, next, this.note().trim(), this.evidence(),
+    ).subscribe({
       next: d => {
         this.data.set(d);
         this.saving.set('');
         this.cancelEdit();
-        // What actually moved, named — the point of the screen is the
-        // consequence, so the confirmation states it rather than saying "saved".
-        const moved = a.boqCodes.length
-          ? this.lang.t('prg_saved_reflected').replace('{n}', String(a.boqCodes.length))
-          : this.lang.t('prg_saved_unlinked');
-        this.toast.show(`${a.activityId} — ${moved}`);
+        this.toast.show(`${a.activityId} — ${this.lang.t('prg_submitted')}`);
       },
       error: e => {
         this.saving.set('');
-        this.toast.show(e?.error?.messageAr && this.lang.isAr()
-          ? e.error.messageAr
-          : e?.error?.message ?? this.lang.t('prg_err_save'));
+        this.toast.show(this.message(e));
       },
     });
+  }
+
+  // ── المسار 6 · stage 2 — إدارة المشاريع decides ───────────────────────
+
+  /** Readings still awaiting a decision, newest first — what stage 2 acts on. */
+  pending = computed(() => this.readings().filter(r => r.state === 'submitted'));
+
+  readings = computed(() => this.data()?.readings ?? []);
+
+  /** «إعادة بملاحظات» — the reading being returned, and the reason. */
+  returning = signal(0);
+  returnNote = signal('');
+
+  startReturn(r: ProgressReading) {
+    this.returning.set(r.id);
+    this.returnNote.set('');
+  }
+
+  cancelReturn() {
+    this.returning.set(0);
+    this.returnNote.set('');
+  }
+
+  /**
+   * Step 7 — «اعتماد القراءة». THE ONE ACTION IN THIS COMPONENT THAT MOVES A
+   * PERCENTAGE, so it is the one whose confirmation names the consequence: the
+   * BOQ lines the activity feeds have just followed it.
+   */
+  approve(r: ProgressReading) {
+    if (this.saving()) return;
+    this.saving.set(r.activityId);
+    this.api.approveReading(this.projectId(), r.id).subscribe({
+      next: d => {
+        this.data.set(d);
+        this.saving.set('');
+        const a = d.activities.find(x => x.activityId === r.activityId);
+        const moved = a && a.boqCodes.length
+          ? this.lang.t('prg_saved_reflected').replace('{n}', String(a.boqCodes.length))
+          : this.lang.t('prg_saved_unlinked');
+        this.toast.show(`${r.activityId} — ${moved}`);
+      },
+      error: e => { this.saving.set(''); this.toast.show(this.message(e)); },
+    });
+  }
+
+  /** Step 6أ — «إعادة بملاحظات». The activity keeps the reading in force. */
+  sendBack(r: ProgressReading) {
+    const note = this.returnNote().trim();
+    if (!note || this.saving()) return;
+    this.saving.set(r.activityId);
+    this.api.returnReading(this.projectId(), r.id, note).subscribe({
+      next: d => {
+        this.data.set(d);
+        this.saving.set('');
+        this.cancelReturn();
+        this.toast.show(`${r.activityId} — ${this.lang.t('prg_returned')}`);
+      },
+      error: e => { this.saving.set(''); this.toast.show(this.message(e)); },
+    });
+  }
+
+  /**
+   * The server's own words when it has them. Both messages travel on every
+   * refusal this feature makes, so the reason a person sees is the reason the
+   * rule gave — never a generic "could not save".
+   */
+  private message(e: { error?: { messageAr?: string; messageEn?: string; message?: string } }) {
+    const err = e?.error;
+    if (this.lang.isAr() && err?.messageAr) return err.messageAr;
+    return err?.messageEn ?? err?.message ?? this.lang.t('prg_err_save');
+  }
+
+  readingStateLabel(code: string): string {
+    return code ? this.lookups.label('progress-reading-state', code) : '';
+  }
+
+  /** Same three bands `payment.wizard.ts` prints its attachment sizes in. */
+  size(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  }
+
+  /**
+   * The reference's own class map, the same one coverage uses on SCR-W4: the
+   * label always travels with the colour (CLAUDE.md §6).
+   */
+  readingStateClass(code: string): string {
+    switch (code) {
+      case 'approved': return 'completed';
+      case 'submitted': return 'ongoing';
+      case 'returned': return 'delayed';
+      default: return 'cancelled';
+    }
   }
 
   toggleLine(code: string) {

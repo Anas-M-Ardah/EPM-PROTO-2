@@ -7,8 +7,9 @@ public class ChangeOrderGatesTests
 {
     private static ChangeOrderGates.Order Order(
         IReadOnlyList<ChangeOrderGates.Line>? lines = null,
-        IReadOnlyList<ChangeOrderGates.Activity>? acts = null)
-        => new("CNT-0279-EM", lines ?? [], acts ?? []);
+        IReadOnlyList<ChangeOrderGates.Activity>? acts = null,
+        bool supply = false)
+        => new("CNT-0279-EM", lines ?? [], acts ?? [], supply);
 
     [Fact]
     public void Worked_example_decrease_30_against_remaining_10_is_blocked()
@@ -104,4 +105,21 @@ public class ChangeOrderGatesTests
         => Assert.True(ChangeOrderGates.CanSubmit(Order([
             new("BQ-002", "CNT-0279-EM", "inc", 100m, 40m, 30m, 30m),
         ])));
+
+    // ── D-14 · 02 §5 — a supply order may not change a unit rate ─────────
+    [Fact]
+    public void A_rate_change_on_a_supply_order_is_refused()
+    {
+        var issues = ChangeOrderGates.Validate(Order([
+            new("ITM-006", "CNT-0279-EM", "rate", 196m, 118m, 0m, 0m),
+        ], supply: true));
+
+        Assert.Contains(issues, i => i.Gate == "supply-no-rate");
+    }
+
+    [Fact]
+    public void The_same_rate_change_is_fine_on_an_engineering_order()
+        => Assert.DoesNotContain(ChangeOrderGates.Validate(Order([
+            new("BQ-002", "CNT-0279-EM", "rate", 196m, 118m, 0m, 0m),
+        ])), i => i.Gate == "supply-no-rate");
 }

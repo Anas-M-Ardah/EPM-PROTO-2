@@ -1067,15 +1067,10 @@
       @if (selectedPayment(); as p) {
         <div class="d-pz8">
           <div class="d-rpane">
-            <div class="rp-h">
-              <div class="tx">
-                <div class="r1">
-                  <span class="code"><bdi>{{ lang.t('con_pay_no_short') }} {{ p.no }}</bdi></span>
-                  <epm-status-pill kind="payment-status" [code]="p.status" />
-                </div>
-                <b>{{ lookups.label('payment-kind', p.kind) }}</b>
-                <span class="sub"><bdi>{{ p.financeLetterNo }}</bdi></span>
-              </div>
+            <div epmPanelHead [code]="lang.t('con_pay_no_short') + ' ' + p.no"
+                 [title]="lookups.label('payment-kind', p.kind)">
+              <epm-status-pill badge kind="payment-status" [code]="p.status" />
+              <span sub><bdi>{{ p.financeLetterNo }}</bdi></span>
               <div class="acts">
                 <!-- «قابلة للتصغير» — the header stays, the body folds. The
                      table beside it is the reason: a reader comparing rows

@@ -108,7 +108,21 @@ public record ScheduleRowDto(
     /// slip. Null on a milestone (no duration, so no daily rate — the same
     /// exclusion الشكل 23 makes) and on anything that has not slipped.
     /// </summary>
-    decimal? DelayCost = null);
+    decimal? DelayCost = null,
+    /// <summary>
+    /// الشكل 21's own link row — «بنود الكميات المرتبطة بالنشاط». The BOQ lines
+    /// this activity feeds, which is the OTHER direction of BR-03's link and
+    /// the one no screen answered: SCR-W4 shows an item's activities, and until
+    /// now an activity's items were a `toast.demo` placeholder.
+    ///
+    /// Read off the SAME `BoqEndpoints.Derive` SCR-W6's editor names its
+    /// «يغذّي البنود» column from, so the Gantt and the progress screen cannot
+    /// list different lines for one activity.
+    ///
+    /// Always empty on a WBS node: a link is made to an ACTIVITY, and a node is
+    /// the span of what is beneath it.
+    /// </summary>
+    IReadOnlyList<string>? BoqCodes = null);
 
 public record ScheduleAmendmentSource(string No, bool IsApplied);
 

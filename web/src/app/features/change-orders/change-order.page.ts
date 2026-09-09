@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
 import { DrawerComponent } from '../../shared/drawer.component';
@@ -51,7 +52,7 @@ import {
 @Component({
   selector: 'epm-change-order-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SectionComponent, DrawerComponent, TableSkeletonComponent,
+  imports: [IconComponent, StatusPillComponent, SectionComponent, DrawerComponent, TableSkeletonComponent, PanelHeadComponent,
             PersonaSwitcherComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-order.page.html',
@@ -107,6 +108,29 @@ export class ChangeOrderPage {
   decisionTouched = signal(false);
   deciding = signal(false);
 
+  /** The stage this viewer would be acting on right now, applicable and open. */
+  currentStage = computed(() => {
+    const d = this.data();
+    return d?.stages.find(s => s.applicable && (s.status === 'active' || s.breached)) ?? null;
+  });
+
+  /**
+   * P-252 — تثبيت الأسعار never skips, and approving it is the only place
+   * `ApprovedValue` is ever written. `chooseDecision` pre-fills
+   * `lineApprovals` from each line's RE-department proposal; the committee
+   * edits from there before submitting.
+   */
+  isStage3Approve = computed(() =>
+    this.currentStage()?.stageNo === 3 && this.decision() === 'approve');
+
+  /** Lines لجنة تثبيت الأسعار is ruling on — every line the RE department proposed something for. */
+  approvalLines = computed(() => (this.data()?.lines ?? [])
+    .filter(l => l.reDeptDeltaQty !== null || l.reDeptNewRate !== null));
+
+  /** code → the committee's editable entry, seeded from the RE department's own proposal. */
+  lineApprovals = signal<Record<string, { deltaQty: number | null; rate: number | null; excessRate: number | null }>>({});
+  approvedDaysInput = signal<number | null>(null);
+
   /** The external party whose outcome is being recorded, and its letter. */
   recording = signal<RecordExternalParty | null>(null);
   recordingStage = signal<RecordStage | null>(null);
@@ -125,7 +149,7 @@ export class ChangeOrderPage {
     const d = this.data();
     if (!d || !d.relation.canAct) return [];
 
-    const current = d.stages.find(s => s.applicable && (s.status === 'active' || s.breached));
+    const current = this.currentStage();
     const externalsOut = (current?.external ?? []).some(x => x.state === 'wait');
 
     switch (d.lifecycle) {
@@ -200,26 +224,63 @@ export class ChangeOrderPage {
   chooseDecision(key: string) {
     this.decision.set(key || null);
     this.decisionTouched.set(false);
+
+    // P-252 — seed the committee's entry from the RE department's own
+    // proposal the moment stage 3's approval is chosen; they edit from there.
+    if (key === 'approve' && this.currentStage()?.stageNo === 3) {
+      const seed: Record<string, { deltaQty: number | null; rate: number | null; excessRate: number | null }> = {};
+      for (const l of this.approvalLines()) {
+        seed[l.code] = { deltaQty: l.reDeptDeltaQty, rate: l.reDeptNewRate, excessRate: l.reDeptExcessRate };
+      }
+      this.lineApprovals.set(seed);
+      this.approvedDaysInput.set(this.data()?.impact.requestedDays ?? null);
+    }
   }
+
+  setLineApproval(code: string, field: 'deltaQty' | 'rate' | 'excessRate', raw: string) {
+    const value = raw.trim() === '' ? null : Number(raw);
+    this.lineApprovals.update(m => {
+      const base = m[code] ?? { deltaQty: null, rate: null, excessRate: null };
+      return { ...m, [code]: { ...base, [field]: value } };
+    });
+  }
+
+  setApprovedDays(raw: string) {
+    this.approvedDaysInput.set(raw.trim() === '' ? null : Number(raw));
+  }
+
+  /** P-252 — a stage-3 approval with nothing entered is refused server-side too. */
+  approvalsMissing = computed(() => this.isStage3Approve() && this.approvalLines().length === 0);
 
   submitDecision() {
     const key = this.chosen()?.key;
     if (!key || this.deciding()) return;
 
     if (this.noteMissing()) { this.decisionTouched.set(true); return; }
+    if (this.approvalsMissing()) { this.decisionTouched.set(true); return; }
 
     this.deciding.set(true);
     const note = this.decisionNote().trim() || null;
 
+    const approvals = this.isStage3Approve()
+      ? this.approvalLines().map(l => {
+          const a = this.lineApprovals()[l.code] ?? { deltaQty: null, rate: null, excessRate: null };
+          return { code: l.code, deltaQty: a.deltaQty, rate: a.rate, excessRate: a.excessRate };
+        })
+      : undefined;
+    const approvedDays = this.isStage3Approve() ? this.approvedDaysInput() : undefined;
+
     const call = key === 'apply'
       ? this.api.apply(this.projectId(), this.no())
-      : this.api.decide(this.projectId(), this.no(), key, note);
+      : this.api.decide(this.projectId(), this.no(), key, note, approvals, approvedDays);
 
     call.subscribe({
       next: r => {
         this.deciding.set(false);
         this.decision.set(null);
         this.decisionNote.set('');
+        this.lineApprovals.set({});
+        this.approvedDaysInput.set(null);
         this.toast.show(r.message);
         this.load();
       },
@@ -425,13 +486,23 @@ export class ChangeOrderPage {
     return key === 'contractor' ? l.contractor : key === 'reDept' ? l.reDept : l.approved;
   }
 
+  /** D-14 — المجهز requests, لجنة الفحص والاستلام reviews, in place of
+   *  المقاول and دائرة المهندس المقيم (`Domain`'s own `PartiesFor`, ported
+   *  from the prototype's `voTerms`, `model.js:722`). */
+  isSupply = computed(() => this.data()?.type === 'supply');
+  requesterLabel = computed(() => this.lang.t(this.isSupply() ? 'chg_party_supplier' : 'chg_party_contractor'));
+  reviewerLabel = computed(() => this.lang.t(this.isSupply() ? 'chg_party_inspection' : 'chg_party_redept'));
+
   /**
-   * The rate column's header. `02 §5` gives the 20% tier to quantity changes
-   * only, so on an order that changes RATES the column is the unit rate itself
-   * and says so — the reference switches the same header for supply orders
-   * (`vo-record.jsx`: `isSupply ? 'سعر الوحدة' : 'سعر الزائد'`).
+   * The rate column's header. A supply order has no 20% tier and no excess
+   * rate at all — its unit rate is fixed by the contract and the letter of
+   * credit — so its header says that FIRST (`vo-record.jsx`:
+   * `isSupply ? 'سعر الوحدة' : 'سعر الزائد'`). Only once an order is known to
+   * be engineering does whether every one of its lines is a `rate` change
+   * decide between the two.
    */
   rateHeader = computed(() => {
+    if (this.isSupply()) return this.lang.t('chg_col_unit_rate');
     const lines = this.data()?.lines ?? [];
     const allRate = lines.length > 0 && lines.every(l => l.changeType === 'rate');
     return this.lang.t(allRate ? 'chg_col_unit_rate' : 'chg_col_excess_rate');

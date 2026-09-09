@@ -34,6 +34,13 @@ public record RecordColumn(
 
 /// <param name="Threshold">20% of the ORIGINAL quantity (D-01) — the plate's «حد 20% = …».</param>
 /// <param name="ApplyStatus">na · todo · wip · done · fail, per line (`03 §9` tab 2).</param>
+/// <param name="ReDeptDeltaQty">
+/// P-252 — the RE department's RAW proposed delta, RATE AND EXCESS RATE
+/// (never <see cref="ReDept"/>'s derived `QtyAfter`/`RateShown`), passed
+/// through unchanged so the stage-3 decision panel has a starting point to
+/// pre-fill لجنة تثبيت الأسعار's own editable entry from. Not itself the
+/// approved value — `02 §6` still requires the committee's own decision.
+/// </param>
 public record RecordLine(
     string Code,
     string DescriptionAr,
@@ -50,7 +57,10 @@ public record RecordLine(
     RecordColumn Contractor,
     RecordColumn ReDept,
     RecordColumn Approved,
-    RecordColumn Applied);
+    RecordColumn Applied,
+    decimal? ReDeptDeltaQty,
+    decimal? ReDeptNewRate,
+    decimal? ReDeptExcessRate);
 
 /// <param name="Delta">Approved − before once approved, proposed − before until then.</param>
 public record RecordWeightRow(
@@ -86,6 +96,35 @@ public record RecordRedistribution(
     decimal Difference,
     decimal Money,
     string ApplyStatus);
+
+/// <summary>
+/// الشكل 58 — one beneficiary-to-beneficiary transfer on a supply order's
+/// `redist` line. NOT <see cref="RecordRedistribution"/> above: that is a BOQ
+/// line moving quantity to another BOQ line, this is one line's own quantity
+/// moving between the WORKSPACES that hold it (`Data/Entities/
+/// ChangeOrderRedistribution`'s own doc comment states the difference). A
+/// `redist` line on a supply order carries rows of THIS shape; a `redist` line
+/// on a works order carries rows of the other.
+/// </summary>
+/// <param name="AppliedQty">
+/// Null until the order is applied (§5.2) — the wizard writes `Qty` as the
+/// PROPOSAL and this column only once ChangeOrderApply has moved it, so a
+/// pending order shows what would move and an applied one shows what did.
+/// </param>
+public record RecordBeneficiaryTransfer(
+    string LineCode,
+    string LineDescriptionAr,
+    string LineDescriptionEn,
+    string FromCode,
+    string FromNameAr,
+    string FromNameEn,
+    string ToCode,
+    string ToNameAr,
+    string ToNameEn,
+    decimal Qty,
+    decimal FromQtyBefore,
+    decimal ToQtyBefore,
+    decimal? AppliedQty);
 
 /// <param name="AnalysisDays">
 /// What the schedule analysis concluded. NOT the requested days and NOT the
@@ -328,6 +367,7 @@ public record ChangeOrderRecordResponse(
     decimal? NetApproved,
     RecordWeightImpact Weights,
     IReadOnlyList<RecordRedistribution> Redistribution,
+    IReadOnlyList<RecordBeneficiaryTransfer> BeneficiaryTransfers,
 
     RecordTimeImpact Time,
 

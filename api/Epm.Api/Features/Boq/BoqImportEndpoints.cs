@@ -1,4 +1,5 @@
 using Epm.Api.Data;
+using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
 using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
@@ -288,6 +289,33 @@ public static class BoqImportEndpoints
                     codes = bandedCodes,
                 });
 
+            // ── THE LINKS OF EVERY LINE THAT SURVIVES ────────────────────
+            // Read BEFORE the delete and re-created after it, keyed by the
+            // line's CODE — which is the identity a bill line has across two
+            // versions of the same bill (`BoqItem.Id` is a surrogate and every
+            // row here is about to get a new one).
+            //
+            // WHY THIS IS NOT OPTIONAL. A link is a statement that this
+            // activity delivers this line, made by a person on SCR-W4's
+            // الربط بالأنشطة screen. Dropping every one of them because a
+            // spreadsheet re-stated the same four lines would silently take
+            // BR-04 to zero on the whole contract: the progress screen would
+            // read «غير مرتبط ببند» on every activity, every earned value
+            // would fall to nil, and there is no error anywhere to explain it.
+            // The schedule's own re-import refuses to lose an activity for
+            // exactly this reason (`EP-SCD-06`), and this is its counterpart.
+            //
+            // A line the sheet DROPS still loses its links, and must: the line
+            // is gone and a link to nothing is not a fact worth keeping. That
+            // is what الشكل 13's «مقارنة» step counts and names before this
+            // route is ever called.
+            var survivingCodes = rows.Select(r => r.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var keptLinks = await db.BoqActivityLinks.AsNoTracking()
+                .Join(db.BoqItems.AsNoTracking().Where(i => i.ContractId == contractId),
+                    l => l.BoqItemId, i => i.Id, (l, i) => new { i.Code, l.ActivityId, l.SharePct, l.IsManual })
+                .Where(x => survivingCodes.Contains(x.Code))
+                .ToListAsync();
+
             // The dependants of every line that is going away. No foreign keys,
             // so nothing cascades — the rows have to be named (P-01).
             db.BoqDistributions.RemoveRange(
@@ -315,6 +343,30 @@ public static class BoqImportEndpoints
                 OriginalQty = r.Qty,
                 UnitRate = r.Rate,
             }));
+
+            // ── AND THE SURVIVING LINES GET THEIR LINKS BACK ─────────────
+            // Saved first so the new rows have their generated ids, then the
+            // links are re-created against them by code. An activity that has
+            // since left the contract is dropped rather than re-linked: a link
+            // to an activity that is not there earns nothing and would show as
+            // a phantom contributor on the reflection table.
+            await db.SaveChangesAsync();
+
+            var newIdByCode = await db.BoqItems.AsNoTracking()
+                .Where(i => i.ContractId == contractId)
+                .ToDictionaryAsync(i => i.Code, i => i.Id, StringComparer.OrdinalIgnoreCase);
+            var liveActivityIds = await db.Activities.AsNoTracking()
+                .Where(a => a.ContractId == contractId).Select(a => a.Id).ToListAsync();
+
+            db.BoqActivityLinks.AddRange(keptLinks
+                .Where(x => newIdByCode.ContainsKey(x.Code) && liveActivityIds.Contains(x.ActivityId))
+                .Select(x => new BoqActivityLink
+                {
+                    BoqItemId = newIdByCode[x.Code],
+                    ActivityId = x.ActivityId,
+                    SharePct = x.SharePct,
+                    IsManual = x.IsManual,
+                }));
 
             // ── WHAT THIS APPROVAL DOES TO THE OTHER VERSIONS ────────────
             // Every previously approved version stops being the contract's

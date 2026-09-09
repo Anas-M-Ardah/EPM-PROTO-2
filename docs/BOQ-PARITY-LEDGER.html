@@ -1,0 +1,943 @@
+<title>BOQ Parity Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+  /* ── tokens ───────────────────────────────────────────────────────────
+     Identical to docs/demo/runsheet.html, which takes them from the
+     product's own web/src/styles/tokens.css. This sheet is that sheet's
+     companion and must read as the same document family. */
+  :root {
+    --ground:    #ffffff;
+    --surface:   #f6f7f9;
+    --surface-2: #f1f3f5;
+    --ink:       #1d2127;
+    --ink-soft:  #565e69;
+    --ink-faint: #8b94a1;
+    --rule:      #e1e5ea;
+    --rule-firm: #cdd4dc;
+    --accent:    #1f5cdb;
+    --accent-sf: #e9f0fd;
+    --good:      #177d48;
+    --good-sf:   #e8f6ee;
+    --warn:      #9a6b05;
+    --warn-sf:   #fff6e3;
+    --bad:       #c22b2e;
+    --bad-sf:    #fdecec;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #14171b;
+      --surface:   #1a1e23;
+      --surface-2: #20252b;
+      --ink:       #e9ecf1;
+      --ink-soft:  #a7b0bc;
+      --ink-faint: #78828f;
+      --rule:      #2a3037;
+      --rule-firm: #3a424b;
+      --accent:    #6e9af1;
+      --accent-sf: #17233a;
+      --good:      #4caf7d;
+      --good-sf:   #14261d;
+      --warn:      #d6a43a;
+      --warn-sf:   #2a2213;
+      --bad:       #e86b6e;
+      --bad-sf:    #2c1719;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:    #14171b;
+    --surface:   #1a1e23;
+    --surface-2: #20252b;
+    --ink:       #e9ecf1;
+    --ink-soft:  #a7b0bc;
+    --ink-faint: #78828f;
+    --rule:      #2a3037;
+    --rule-firm: #3a424b;
+    --accent:    #6e9af1;
+    --accent-sf: #17233a;
+    --good:      #4caf7d;
+    --good-sf:   #14261d;
+    --warn:      #d6a43a;
+    --warn-sf:   #2a2213;
+    --bad:       #e86b6e;
+    --bad-sf:    #2c1719;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet { max-width: 940px; margin: 0 auto; padding: 56px 28px 96px; }
+
+  /* Arabic terms of art keep Cairo so they shape correctly beside Latin text. */
+  .ar { font-family: Cairo, "IBM Plex Sans", sans-serif; }
+  .num, code, kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* ── masthead ─────────────────────────────────────────────────────── */
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 28px; margin-bottom: 40px; }
+  .mast h1 {
+    font-size: clamp(34px, 6vw, 52px); line-height: 1.04; margin: 12px 0 16px;
+    font-weight: 700; letter-spacing: -.022em; text-wrap: balance;
+  }
+  .mast .lede { font-size: 18px; color: var(--ink-soft); max-width: 64ch; margin: 0; }
+
+  /* ── the headline contradiction ───────────────────────────────────── */
+  .figure-box {
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: 28px 30px; margin: 36px 0;
+  }
+  .figure-box h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; }
+  .figure-box p { margin: 0 0 20px; color: var(--ink-soft); font-size: 15px; max-width: 62ch; }
+  .maths {
+    display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: baseline;
+    font-family: "IBM Plex Mono", monospace; font-size: 17px;
+    padding-top: 18px; border-top: 1px solid var(--rule);
+  }
+  .maths b { font-size: 26px; font-weight: 600; color: var(--accent); }
+  .maths b.zero { color: var(--bad); }
+
+  .verify {
+    border: 1px solid var(--rule); border-top: 3px solid var(--warn);
+    padding: 20px 24px; margin: 32px 0; background: var(--ground);
+  }
+  .verify .eyebrow { color: var(--warn); }
+  .verify p { margin: 8px 0 0; font-size: 14.5px; color: var(--ink-soft); max-width: 70ch; }
+  .verify strong { color: var(--ink); font-weight: 600; }
+
+  h2.sec {
+    font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 56px 0 18px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  p { max-width: 70ch; }
+
+  /* ── tables ───────────────────────────────────────────────────────── */
+  .tw { overflow-x: auto; margin: 18px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 460px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; border-bottom-color: var(--rule-firm);
+  }
+  td.n, th.n { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; padding-right: 0; padding-left: 18px; }
+  td.n + td, th.n + th { padding-left: 18px; }
+  tr.total td { font-weight: 600; border-bottom: none; border-top: 2px solid var(--rule-firm); }
+  td.ok { color: var(--good); font-weight: 600; }
+
+  /* ── the ledger ───────────────────────────────────────────────────
+     One finding per entry. The left rail carries the letter the plan
+     table refers back to, how badly it bites, and — the field this
+     document exists for — whether the claim was watched happen or read
+     out of the source. */
+  .div { display: grid; grid-template-columns: 108px 1fr; gap: 0 26px; padding: 30px 0; border-top: 1px solid var(--rule); }
+  .div > div { min-width: 0; }
+  .div:first-of-type { border-top: 2px solid var(--ink); }
+  .div-rail { position: sticky; top: 20px; align-self: start; }
+  .div-id {
+    font-family: "IBM Plex Mono", monospace; font-size: 30px; font-weight: 500;
+    color: var(--ink-faint); line-height: 1; letter-spacing: -.02em;
+  }
+  .chip {
+    display: block; width: fit-content;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    padding: 3px 8px; border-radius: 3px; font-weight: 500; white-space: nowrap;
+    margin-top: 10px;
+  }
+  .chip.blocks { background: var(--bad-sf); color: var(--bad); }
+  .chip.flow   { background: var(--warn-sf); color: var(--warn); }
+  .chip.state  { background: var(--accent-sf); color: var(--accent); }
+  .chip.seen   { background: var(--good-sf); color: var(--good); }
+  .chip.read   { background: var(--surface-2); color: var(--ink-soft); }
+
+  .div h3 { font-size: 20px; margin: 0 0 10px; font-weight: 600; letter-spacing: -.012em; text-wrap: balance; }
+  .div p { font-size: 15px; margin: 0 0 12px; }
+
+  /* Prototype against ours: two lanes, hairline between, no boxes. */
+  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin: 16px 0; }
+  .lane { border-top: 1px solid var(--rule-firm); padding-top: 10px; }
+  .lane + .lane { border-top-color: var(--bad); }
+  .lane .eyebrow { display: block; margin-bottom: 6px; }
+  .lane:first-child .eyebrow { color: var(--ink-faint); }
+  .lane + .lane .eyebrow { color: var(--bad); }
+  .lane p { font-size: 14px; color: var(--ink-soft); margin: 0 0 8px; max-width: none; }
+  .lane code { font-size: 12.5px; }
+  @media (max-width: 720px) { .lanes { grid-template-columns: 1fr; gap: 14px; } }
+
+  .fix { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--rule-firm); }
+  .fix .eyebrow { color: var(--accent); }
+  .fix p { margin: 6px 0 0; font-size: 14px; color: var(--ink-soft); max-width: 68ch; }
+  .fix ul { margin: 8px 0 0; padding-left: 20px; }
+  .fix li { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; max-width: 66ch; }
+  .fix li::marker { color: var(--ink-faint); }
+
+  .note { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--rule-firm); }
+  .note p { margin: 6px 0 0; font-size: 14px; color: var(--ink-soft); max-width: 66ch; }
+  .note.derived .eyebrow { color: var(--accent); }
+  .note.refuse  .eyebrow { color: var(--bad); }
+  .note.beat    .eyebrow { color: var(--warn); }
+
+  blockquote {
+    margin: 14px 0 0; padding: 14px 18px; background: var(--surface);
+    border-left: 2px solid var(--rule-firm); font-size: 15px; color: var(--ink);
+  }
+  blockquote p { margin: 0; max-width: 62ch; font-size: 15px; }
+
+  code {
+    font-size: 13px; background: var(--surface-2); padding: 1.5px 6px;
+    border-radius: 3px; color: var(--ink); border: 1px solid var(--rule);
+  }
+
+  ol.plan { counter-reset: pass; list-style: none; padding: 0; margin: 18px 0 0; }
+  ol.plan > li {
+    counter-increment: pass; border-top: 1px solid var(--rule); padding: 22px 0 22px 52px;
+    position: relative; max-width: none;
+  }
+  ol.plan > li::before {
+    content: "Pass " counter(pass); position: absolute; left: 0; top: 24px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    color: var(--ink-faint); letter-spacing: .06em; writing-mode: vertical-rl;
+    transform: rotate(180deg); white-space: nowrap;
+  }
+  ol.plan h4 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+  ol.plan p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-soft); }
+  ol.plan .refs { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-faint); }
+
+  footer {
+    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--rule);
+    font-size: 13px; color: var(--ink-faint); max-width: 72ch;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (max-width: 640px) {
+    .sheet { padding: 36px 18px 64px; }
+    .div { grid-template-columns: 1fr; gap: 12px; }
+    .div-rail { position: static; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .div-rail .chip { margin-top: 0; }
+    .div-id { font-size: 22px; }
+    ol.plan > li { padding-left: 0; padding-top: 40px; }
+    ol.plan > li::before { writing-mode: horizontal-tb; transform: none; top: 18px; }
+  }
+  @media print { .div-rail { position: static; } .sheet { max-width: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="eyebrow">Parity review · prototype → full stack · 2026-09-07</div>
+    <h1>BOQ Parity Ledger</h1>
+    <p class="lede">
+      Where the bill of quantities in this build agrees with the prototype at
+      <code>infinite-azaiton.github.io/epm</code>, where it does not, and the order to fix it
+      in. The arithmetic already matches. What does not match is everything the
+      <em>project type</em> is supposed to change.
+    </p>
+  </header>
+
+  <div class="figure-box">
+    <h2>One project says both of these about itself, right now</h2>
+    <p>
+      <code>PRJ-0439</code> — <span class="ar">تجهيز الأجهزة المختبرية العلمية</span>, the
+      fixture's only <code>equipment</code> project. Its supply register reports seven line
+      items and <span class="num">505</span> of <span class="num">762</span> devices received.
+      Its progress screen and its project card report nothing at all, because on this build
+      progress can only arrive through a schedule activity, and a delivery of microscopes has
+      no activities.
+    </p>
+    <div class="maths">
+      <span>Σ(amount × received %) ÷ Σ amount =</span> <b>63.56%</b>
+      <span style="color:var(--ink-faint)">|</span>
+      <span>what the card reports =</span> <b class="zero">0%</b>
+    </div>
+  </div>
+
+  <div class="verify">
+    <div class="eyebrow">What was watched, and what was read</div>
+    <p>
+      Every finding below carries one of two stamps. <strong>Verified</strong> means the claim
+      was produced by the running stack on 2026-09-07 — <code>docker compose up db api</code>,
+      <code>POST /api/dev/reset</code>, <code>POST /api/dev/load-fixture</code>, then the
+      endpoint the finding names. <strong>Read</strong> means it comes from the source of both
+      sides and has not been watched happen. The figures in the box above are verified:
+      <code>GET /api/projects/PRJ-0439/boq/CNT-0439</code> returns <code>progress: 0</code> on
+      every row beside a <code>receivedPct</code> between <span class="num">57</span> and
+      <span class="num">85.6</span>, and <code>GET /api/projects/PRJ-0439/progress</code>
+      returns <code>headline.physical: 0</code>.
+    </p>
+  </div>
+
+  <h2 class="sec">Which prototype is the source of truth</h2>
+  <p>
+    There are three, and they disagree in small ways. Naming them once here saves the argument
+    later.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Source</th><th>What it is</th><th>Standing</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>app/*.jsx</code> at the repo root</td>
+          <td>The React prototype the GitHub Pages link actually serves. BOQ lives in
+            <code>project-modules.jsx:801</code> (<code>DModBOQ</code>) and <code>:980</code>
+            (<code>DBOQAssignment</code>); supply lives in <code>supply-items.jsx</code>; the
+            type gate is <code>model.js:695</code> (<code>modulesFor</code>) and
+            <code>:722</code> (<code>voTerms</code>).</td>
+          <td><strong>The flow and the conditionals.</strong> When a behaviour is in question,
+            this wins.</td>
+        </tr>
+        <tr>
+          <td><code>Claude-Design-Handoff/</code></td>
+          <td>The written spec — <code>02-BUSINESS-RULES.md</code> is BR-01 … BR-12. Present in
+            this repository as <code>docs/spec/</code>.</td>
+          <td><strong>The rules and the rounding.</strong> Where it is more precise than the
+            prototype it wins: <span class="ar">§1</span> requires weights to sum to exactly
+            <span class="num">100.00</span>, which the prototype's whole-percent
+            <code>boqWeights</code> cannot promise.</td>
+        </tr>
+        <tr>
+          <td><code>docs/spec/reference/app/boq-*.jsx</code></td>
+          <td>Four files — <code>boq-register</code>, <code>boq-assign</code>,
+            <code>boq-workspace</code>, <code>boq-data.js</code> — that exist in this repository
+            and <strong>not</strong> in the public prototype. A later design revamp.</td>
+          <td>Screen level only: columns, drawers, saved views. Never cite it for a rule that
+            contradicts the two above.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note beat">
+    <div class="eyebrow">The one place they conflict on logic</div>
+    <p>
+      <code>boq-data.js</code> sets allocation tolerance at
+      <code>{ OVER: 100.05, FULL: 99.95 }</code>; the live prototype uses
+      <code>Math.abs(sumShare − 100) &lt; 0.5</code>. This build follows the live prototype and
+      <code>Domain/Allocation.CoverageStatus</code> says so in its own comment. Leave it.
+    </p>
+  </div>
+
+  <h2 class="sec">What already matches — do not touch it</h2>
+  <p>
+    The BOQ arithmetic was ported faithfully and holds. Checked, not assumed:
+    <code>GET /api/projects/PRJ-0279/boq/CNT-0279</code> returns weights summing to
+    <span class="num">100.00</span> and a bill progress of <span class="num">56.64%</span> off
+    the same link table the prototype's <code>computeBOQGroups</code> would read.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Behaviour</th><th>Prototype</th><th>This build</th><th class="n">Same?</th></tr></thead>
+      <tbody>
+        <tr><td>Item weight</td><td><code>amount ÷ Σ amounts</code>, largest remainder</td><td><code>Domain/BoqWeights.ForContract</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Auto allocation share</td><td><code>absWt ÷ Σ absWt × 100</code></td><td><code>Domain/Allocation.Shares</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Coverage bands</td><td><code>|Σ−100| &lt; 0.5</code> full · <code>&lt;100</code> partial · <code>&gt;100</code> over · no links unassigned</td><td><code>Domain/Allocation.CoverageStatus</code></td><td class="n ok">yes</td></tr>
+        <tr><td>BOQ progress</td><td><code>Σ(share ÷ 100 × activityPct)</code> — <em>not</em> divided by Σ shares</td><td><code>Domain/ProgressReflection.For</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Achieved amount · qty · remaining</td><td><code>amount × progress ÷ 100</code></td><td>the same function</td><td class="n ok">yes</td></tr>
+        <tr><td>Cost ⇄ man-hours basis toggle</td><td><code>basis</code> state, <code>wMHAbs</code> fallback</td><td><code>BoqAssignmentResponse.Basis</code> · <code>ManHoursAvailable</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Manual override per item, reset to automatic</td><td><code>allocOverrides[boqNo]</code></td><td><code>BoqAllocationSave.Reset</code> · <code>IsManual</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Register <span class="ar">نسبة التنفيذ</span> is the assignment figure</td><td>one <code>groups</code> array feeds both views</td><td>one <code>Derive</code> feeds both endpoints</td><td class="n ok">yes</td></tr>
+        <tr><td>Supply status ladder</td><td><code>received → partial → supplied → pending</code>, order-sensitive</td><td><code>Domain/SupplyStatus.Of</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Module rail on a supply project</td><td><code>model</code> dropped, <code>boq</code> keeps its id and relabels</td><td><code>web/…/project-modules.ts modulesFor</code></td><td class="n ok">yes</td></tr>
+        <tr><td>Supply facets</td><td>items · receipts · inquiry, inside the one module</td><td><code>supply.page.ts view</code> signal</td><td class="n ok">yes</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note derived">
+    <div class="eyebrow">Two places this build is deliberately stricter</div>
+    <p>
+      The register is <strong>contract-scoped</strong> and its weight denominator is the
+      contract's rows; the live prototype's <code>DModBOQ</code> renders <code>d.boq</code>
+      whole and divides by the project. <span class="ar">02 §1</span> is explicit that the
+      denominator is the contract's, and names the project-wide version as the classic bug. The
+      divergence is correct and stays.
+    </p>
+    <p>
+      Receipts carry two ceilings — warehouse against what is still owed, preliminary against
+      what has actually arrived (<code>Domain/SupplyReceipts</code>). The prototype has no
+      ceiling at all. Keep ours.
+    </p>
+  </div>
+
+  <h2 class="sec">The divergence ledger</h2>
+  <p>
+    Ten findings, worst first. The letters are what the plan underneath refers to, so passes can
+    be reordered without renumbering anything.
+  </p>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">A</div>
+      <span class="chip blocks">blocks the demo</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>A supply project reports 0% physical progress everywhere</h3>
+      <p>
+        This is the finding the rest of the sheet is downstream of. Physical progress on this
+        build has exactly one route — a schedule activity's percentage, reflected onto a bill
+        line through a link, rolled up by value. A supply project has no activities and no
+        links, so every figure on that route is zero while the receipts screen beside it is two
+        thirds full.
+      </p>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>model.js:57</code> intercepts every project's completion and branches on
+            type. Supply earns by <em>value-weighted receipts</em> —
+            <code>Σ(received × price) ÷ Σ(contracted × price)</code> — with a plain quantity
+            ratio as the fallback for items predating the price attribute. The construction
+            S-curve is never consulted.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>Domain/ProgressReflection</code> is the only source and it reads
+            <code>BoqActivityLinks</code>. <code>ProgressEndpoints.ContractPhysical</code>, the
+            project rollup, <code>PortfolioBand</code> and the EVM tiles all sit on top of it.
+            <code>BoqKind</code> is never asked.</p>
+        </div>
+      </div>
+      <blockquote>
+        <p>
+          Verified: the register returns <code>progress: 0</code> and
+          <code>achievedAmount: 0</code> on all seven items and in <code>totals</code>; the
+          progress headline returns <code>physical: 0</code>; the portfolio row returns
+          <code>physicalPct: null</code>. The correct figure from that same payload is
+          <span class="num">63.56%</span> by value, or <span class="num">66.27%</span> as a
+          plain device count.
+        </p>
+      </blockquote>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Make BR-04 kind-aware in <em>one</em> place so nothing downstream changes. A supply
+          line's progress is <code>SupplyStatus.ReceivedPct(effectiveQty, receivedQty)</code> —
+          a figure this build already computes and already prints on the same row. Feed that
+          into the existing <code>ProgressReflection.Result</code> instead of the link sum, and
+          <code>Rollup</code> produces the contract, project and portfolio figures untouched.
+        </p>
+        <p>
+          Value weighting then falls out for free: <code>Rollup</code> is already
+          <code>Σ achieved ÷ Σ amount</code>, which is the prototype's
+          <code>Σ(received × price) ÷ Σ(contracted × price)</code> written the other way round.
+          Do not add a second rollup.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">B</div>
+      <span class="chip blocks">blocks the demo</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>Every supply line reads <span class="ar">غير مخصص</span>, on a bill where assignment is not the mechanism</h3>
+      <p>
+        The supply register carries the works bill's coverage vocabulary. With no links on any
+        line all seven come back <code>unassigned</code> and the status counter says so — which
+        reads as seven unfinished setup tasks rather than as a column that does not apply to
+        this kind of bill.
+      </p>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>DModSupplyBOQ</code> has three facets — <span class="ar">الفقرات
+            التجهيزية</span>, <span class="ar">الاستلامات</span>,
+            <span class="ar">استعلام الفقرات</span> — and <strong>no assignment view at
+            all</strong>. Coverage is not a concept a supply bill has.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>Coverage</code>, <code>SharesTotal</code>, <code>AssignedWeight</code> and
+            <code>Links</code> are computed on both kinds. <code>CountByCoverage</code> comes
+            back <code>{ unassigned: 7 }</code>, and the assignment endpoint answers
+            <code>200</code> on the supply contract with <code>0</code> activities.</p>
+        </div>
+      </div>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <ul>
+          <li>On <code>kind == supply</code> send <code>Coverage: "na"</code> and an empty
+            <code>CountByCoverage</code>, so the register drops the chips rather than printing a
+            zeroed set of them. <code>04 §9</code>'s rule — a figure that cannot be derived says
+            so — applies to a column as much as to a tile.</li>
+          <li>Refuse <code>EP-BOQ-07</code> on a supply bill with the bilingual shape
+            <code>BoqKind.Unsupported</code> already establishes, instead of returning an empty
+            success.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">C</div>
+      <span class="chip blocks">blocks the demo</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>The 20% rule and <span class="ar">لجنة تثبيت الأسعار</span> are applied to supply orders</h3>
+      <p>
+        The wizard already tells the user this rule does not apply —
+        <code>chg_w_tier_supply</code> reads <span class="ar">«أسعار الفقرات التجهيزية مثبَّتة
+        بالعقد وخطاب الاعتماد، فلا تنطبق قاعدة الـ20% ولا لجنة تثبيت الأسعار»</span>. The server
+        then applies it anyway. A screen that states a rule and a chain that contradicts it is
+        worse than either alone.
+      </p>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>vo-wizard.jsx:107</code> —
+            <code>tiered = !isSupply &amp;&amp; (chg === 'inc' || chg === 'dec')</code>.
+            <code>:222</code> — <code>needsRate = !isSupply &amp;&amp; (anyExceeds || …)</code>,
+            and the rate-fixing stage is spliced into the chain only when that is true.
+            <code>model.js:731</code> sets <code>hasRateRule: false</code> for supply
+            outright.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>ChangeOrderRecord.For</code> splits on <code>inc</code> / <code>dec</code>
+            with no knowledge of the order's type, so <code>LinesOverTier</code> can be non-zero
+            on a supply order, and <code>WorkflowMachine.Plan</code> then marks
+            <span class="ar">تثبيت الأسعار</span> applicable.</p>
+        </div>
+      </div>
+      <blockquote>
+        <p>
+          Verified on <code>VO-06</code> (<code>type: "supply"</code>): <code>stages[2]</code>
+          is <span class="ar">تثبيت الأسعار</span> with <code>applicable: true</code>, a
+          recorded decision, and the note <span class="ar">«تثبّت سعر الكمية الزائدة عن
+          20%»</span>.
+        </p>
+      </blockquote>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Thread one boolean; do not duplicate the arithmetic.
+          <code>TierSplit.AppliesTo(changeType)</code> becomes
+          <code>AppliesTo(changeType, isSupply)</code> and returns <code>false</code> for supply;
+          <code>ChangeOrderRecord.Line</code> carries the flag so <code>For</code> takes the
+          untiered branch — the same branch <code>rate</code>, <code>del</code> and
+          <code>redist</code> already take. <code>LinesOverTier</code> is then zero by
+          construction and <code>Plan</code> skips the stage with its existing reason string.
+          Nothing else moves.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">D</div>
+      <span class="chip blocks">blocks the demo</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>A supply order can change a unit rate — the API accepts it and the fixture ships one</h3>
+      <p>
+        Supply prices are fixed by the contract and the letter of credit. No party has the
+        standing to move one inside a change order, which is why the prototype removes the
+        control rather than validating it afterwards.
+      </p>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>vo-wizard.jsx:57</code> —
+            <code>CHG_USE = isSupply ? CHG.filter(c =&gt; c[0] !== 'rate') : CHG</code>. Four
+            change types on a supply order, five on an engineering one.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p>The Angular wizard filters the same way
+            (<code>change-order.wizard.ts:138</code>) — but the filter is client-side only.
+            <code>VO-06</code>, seeded <code>type: "supply"</code>, carries a line
+            <code>BQ-002</code> with <code>changeType: "rate"</code> and a rate moved from
+            <span class="num">14,032,750</span> to <span class="num">14,345,250</span>.</p>
+        </div>
+      </div>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <ul>
+          <li>Refuse <code>rate</code> lines on a supply order in
+            <code>ChangeOrderGates</code>, where the other cross-type refusals already live.
+            <code>05 §5</code>'s rule is that a refusal is server-side or it is decoration.</li>
+          <li>Re-seed <code>VO-06</code> and <code>VO-07</code>. They sit on
+            <code>CNT-0279-EM</code>, a contract inside a <code>construction</code> project, so
+            the honest correction is to retype them <code>engineering</code> — which is what
+            they are — and let finding F supply a real supply order.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">E</div>
+      <span class="chip flow">wrong flow</span>
+      <span class="chip read">read</span>
+    </div>
+    <div>
+      <h3>The wizard offers an engineering order on an equipment project</h3>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>vo-wizard.jsx:76</code> — on a supply project <code>KINDS</code> holds a
+            single entry and <code>kind</code> initialises to <code>'supply'</code>. The choice
+            does not exist, because the project already made it.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>type = signal('engineering')</code> unconditionally, and both buttons render
+            on every project. An <code>equipment</code> project can raise an engineering order
+            with a resident engineer it does not have.</p>
+        </div>
+      </div>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Derive the offered set from the project type in the wizard's source payload, not in
+          the component: <code>equipment</code> → <code>supply</code> only, preselected;
+          <code>construction</code> → both, default <code>engineering</code>. Server side,
+          refuse a mismatched <code>type</code> on submit. This is the same shape as
+          <code>BoqKind.ForProjectType</code> and should sit beside it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">F</div>
+      <span class="chip flow">wrong flow</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>There is no supply change order on the supply project</h3>
+      <p>
+        <span class="ar">الأشكال 57–60</span> name their contract — <code>CNT-0439-EM</code>,
+        <span class="ar">عقد التركيب والتشغيل</span>. The fixture creates that contract and its
+        comment says the order is raised against it. No order was written.
+      </p>
+      <blockquote>
+        <p>
+          Verified: <code>GET /api/projects/PRJ-0439/change-orders</code> returns
+          <code>rows: []</code> and every lifecycle group at <code>count: 0</code>. The only
+          <code>supply</code>-typed orders in the whole fixture belong to a construction
+          project.
+        </p>
+      </blockquote>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Seed <span class="ar">الأشكال 57–60</span>'s order on <code>CNT-0439-EM</code> with a
+          <code>redist</code> line moving devices between beneficiaries — the change type only a
+          supply order has, and the one that proves findings C, D and G in a single click. Its
+          chain should show five stages with <span class="ar">تثبيت الأسعار</span> skipped and
+          its reason stated.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">G</div>
+      <span class="chip flow">wrong flow</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>A supply order still names a resident engineer</h3>
+      <p>
+        There is no resident engineer on a pure supply contract. The reviewing party is
+        <span class="ar">لجنة الفحص والاستلام</span> and the requesting party is
+        <span class="ar">المجهز</span>, not <span class="ar">المقاول</span>. Half of this is
+        ported.
+      </p>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>model.js:722 voTerms</code> is a single function returning the whole
+            vocabulary per type — <code>requester</code>, <code>reviewer</code>,
+            <code>techParty</code>, <code>stage1Note</code>, <code>execNote</code>,
+            <code>parties</code>, <code>typeLabel</code>. Every type-dependent string in the
+            wizard and the record reads from it, so none can be missed.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>WorkflowMachine.StagesFor(supply)</code> swaps the two <em>stage owners</em>
+            correctly — and that is all. <code>VO-06</code> returns
+            <code>responsibleParty: "دائرة المهندس المقيم"</code>. The proposal columns are the
+            fixed strings <code>chg_party_contractor</code>
+            (<span class="ar">مقترح المقاول</span>) and <code>chg_party_redept</code>, with no
+            supply variant. The rate column header switches on "every line is a rate change"
+            rather than on the order's type.</p>
+        </div>
+      </div>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Port <code>voTerms</code> whole, as <code>Domain/OrderTerms.For(isSupply)</code>, and
+          send it on the record and wizard payloads. One function is the point: it is what makes
+          a missed string impossible rather than merely unlikely — the same reason
+          <code>BoqKind</code> is a map and not an <code>if</code> in an endpoint. Angular then
+          reads these labels from the payload instead of from <code>lang.ts</code> constants,
+          because they are a rule, not copy.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">H</div>
+      <span class="chip flow">wrong flow</span>
+      <span class="chip read">read</span>
+    </div>
+    <div>
+      <h3>The progress tab shows a construction screen on a supply project</h3>
+      <div class="lanes">
+        <div class="lane">
+          <span class="eyebrow">Prototype</span>
+          <p><code>DModSupplyProgress</code> is its own screen: four figures
+            (<span class="ar">نسبة الاستلام</span> as physical,
+            <span class="ar">نسبة التجهيز</span>, financial, item count), a per-item receipt
+            table, and a callout saying dates and the critical path live in the Schedule tab
+            instead.</p>
+        </div>
+        <div class="lane">
+          <span class="eyebrow">This build</span>
+          <p><code>desktop-workspace.jsx</code>'s
+            <code>p.type === 'supply' ? DModSupplyProgress : DModProgress</code> branch was not
+            ported. An equipment project gets the S-curve, the EVM tiles, the WBS rollup and the
+            activity table — all reading zero, per finding A.</p>
+        </div>
+      </div>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Once A lands the headline figures stop being zero and this becomes cosmetic rather
+          than misleading — which is why it is sequenced after A and not before it. The screen
+          still needs its supply variant: drop the activity and WBS panels, add
+          <span class="ar">نسبة التجهيز</span> beside <span class="ar">نسبة الاستلام</span>, and
+          state where the delivery programme is read.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">I</div>
+      <span class="chip state">state it, don't build it</span>
+      <span class="chip seen">verified</span>
+    </div>
+    <div>
+      <h3>The supply project has no delivery programme</h3>
+      <p>
+        The prototype runs supply through the <em>same</em> schedule engine — Gantt, float,
+        baseline against forecast — over a procurement activity set:
+        <span class="ar">الإحالة والتعاقد</span> → <span class="ar">فتح الاعتماد المستندي</span>
+        → <span class="ar">التصنيع</span> → <span class="ar">الشحن</span> →
+        <span class="ar">التخليص الكمركي</span> → <span class="ar">الاستلام المخزني</span> →
+        <span class="ar">الفحص</span> → <span class="ar">التوزيع</span> →
+        <span class="ar">الاستلام النهائي</span>, with its own milestones. The difference is the
+        activity set, not the engine.
+      </p>
+      <p>
+        This build seeds no activities on <code>CNT-0439</code>, so the tab is empty and the
+        <code>delayDays: 46</code> on its progress headline comes from contract dates alone.
+        Defensible — the import path is the one step 05 of the runsheet demonstrates — but it
+        has to be said out loud rather than discovered on screen.
+      </p>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          Either a second XER beside <code>docs/demo/demo-schedule.xer</code> carrying the nine
+          procurement activities, or an explicit line in the runsheet and on the tab's empty
+          state. The XER is a day; the sentence is an hour. Ship the sentence for this demo.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="div">
+    <div class="div-rail">
+      <div class="div-id">J</div>
+      <span class="chip state">state it, don't build it</span>
+      <span class="chip read">read</span>
+    </div>
+    <div>
+      <h3>The third project type has no project to prove it</h3>
+      <p>
+        <code>BoqKind.ForProjectType("design-studies")</code> returns <code>none</code> and
+        <code>Unsupported</code> carries a written bilingual refusal —
+        <span class="ar">«مشاريع التصنيف (التصاميم والدراسات الفنية) لا تملك حساب كميات في هذه
+        المرحلة»</span>. No fixture project is typed that way, so the refusal has never been
+        rendered.
+      </p>
+      <p>
+        This is the client's own three-way split (<code>D-13</code>), narrower than the
+        prototype's eight display types and its single behavioural <code>supply</code> boolean.
+        The mapping is sound — <code>construction</code> ↔ construction, <code>equipment</code>
+        ↔ supply — and the third is genuinely new, which is exactly why somebody should look at
+        its empty state before a client does.
+      </p>
+      <div class="fix">
+        <div class="eyebrow">The fix</div>
+        <p>
+          One fixture project typed <code>design-studies</code> with a contract and no bill. A
+          dozen lines, and the only way to see the refusal <code>BoqKind</code> was written to
+          produce.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="sec">The plan</h2>
+  <p>
+    Five passes. The order is not preference: A unblocks H, C unblocks F, and F is the only
+    thing that lets anyone <em>watch</em> C and G behave. Each pass ends with the runsheet
+    updated for what it changed, rather than a batch at the end.
+  </p>
+
+  <ol class="plan">
+    <li>
+      <h4>Make progress kind-aware — finding A</h4>
+      <p>
+        The whole supply story is downstream of this one branch. Add the supply route into
+        <code>Domain/ProgressReflection</code>, feed it the received quantity the register
+        already carries, and change nothing else — <code>Rollup</code>,
+        <code>ContractPhysical</code>, the project rollup, <code>PortfolioBand</code> and the
+        EVM tiles all keep reading the same shape. Prove it with a domain test carrying the
+        fixture's own seven items and the answer <span class="num">63.56</span>, inline, the way
+        <code>Epm.Domain.Tests</code> already carries <span class="ar">02</span>'s worked
+        examples.
+      </p>
+      <p class="refs">Domain/ProgressReflection · Features/Boq/BoqEndpoints Derive · Features/Progress/ProgressEndpoints · Domain/PortfolioBand · Features/Projects/ProjectsEndpoints</p>
+    </li>
+    <li>
+      <h4>Stop the works vocabulary appearing on a supply bill — finding B</h4>
+      <p>
+        Coverage becomes <code>na</code> on <code>kind == supply</code>, the counter empties, and
+        <code>EP-BOQ-07</code> refuses with the bilingual reason
+        <code>BoqKind.Unsupported</code> already models. Small — and it is what stops the
+        register contradicting the screen next to it.
+      </p>
+      <p class="refs">Features/Boq/BoqDto (Coverage · CountByCoverage) · Features/Boq/BoqEndpoints · web/…/boq.page</p>
+    </li>
+    <li>
+      <h4>Gate the change-order rules by type — findings C, D, E</h4>
+      <p>
+        One boolean threaded from the order's type into <code>TierSplit.AppliesTo</code> and
+        <code>ChangeOrderRecord.For</code>; <code>rate</code> refused on supply in
+        <code>ChangeOrderGates</code>; the wizard's offered types derived from the project type
+        and enforced on submit. <code>WorkflowMachine.Plan</code> needs no change — it already
+        skips a stage it is told is not needed, and this is what stops telling it wrongly.
+      </p>
+      <p class="refs">Domain/TierSplit · Domain/ChangeOrderRecord · Domain/ChangeOrderGates · Features/ChangeOrders/ChangeOrderWizardEndpoints · web/…/change-order.wizard.ts</p>
+    </li>
+    <li>
+      <h4>Port <code>voTerms</code> whole — finding G</h4>
+      <p>
+        <code>Domain/OrderTerms.For(isSupply)</code>, returning the requester, the reviewer, the
+        technical party, the two stage notes and the type label, sent on the record and wizard
+        payloads. Angular reads the labels from the payload. Doing it as one function is the
+        point: a missed string becomes impossible rather than unlikely.
+      </p>
+      <p class="refs">Domain/OrderTerms (new) · Domain/WorkflowMachine StagesFor · Features/ChangeOrders/* · web/…/change-order.page.ts</p>
+    </li>
+    <li>
+      <h4>Give the fixture something to demo — findings D, F, J</h4>
+      <p>
+        <span class="ar">الأشكال 57–60</span>'s order on <code>CNT-0439-EM</code>, with a
+        beneficiary redistribution and a chain that visibly skips
+        <span class="ar">تثبيت الأسعار</span> with its reason. <code>VO-06</code> and
+        <code>VO-07</code> retyped <code>engineering</code>. One <code>design-studies</code>
+        project so its refusal can be seen once.
+      </p>
+      <p class="refs">Features/Dev/Fixture.cs — SupplyItems · ChangeOrders</p>
+    </li>
+  </ol>
+
+  <div class="note refuse">
+    <div class="eyebrow">Until pass 1 lands, do not open a supply project in front of a client</div>
+    <p>
+      The register is correct and the receipts screen is correct; the card and the progress tab
+      say the project has not started. No narration survives being asked about that, and "the
+      supply path is next week's demo" is a much better sentence than the one that follows the
+      question.
+    </p>
+  </div>
+
+  <h2 class="sec">What this changes in the runsheet</h2>
+  <p>
+    <code>docs/demo/runsheet.html</code> builds one <code>construction</code> project from zero
+    and never mentions that a second type exists, beyond a single aside at step 04. It now
+    carries a section naming the fork, and step 02's project-type row warns that the choice is
+    not cosmetic. Nothing in the ten steps changed — the construction path is the path that was
+    verified, and it still behaves as written.
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Where</th><th>What was added</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Step 02 — <span class="ar">نوع المشروع</span></td>
+          <td>A refusal note: pick <span class="ar">المشاريع الإنشائية</span> and nothing else,
+            with what the other two do.</td>
+          <td>The row listed all three as if they were interchangeable. They fork the rail, the
+            bill, the progress engine and the change-order rules.</td>
+        </tr>
+        <tr>
+          <td>Step 04 — the <code>D-14</code> aside</td>
+          <td>Expanded from one sentence about a fourth drawer section into what the whole
+            supply bill does differently.</td>
+          <td>It was the sheet's only mention of the fork, and it undersold it as a form
+            difference.</td>
+        </tr>
+        <tr>
+          <td>New section — "When the project is a supply project"</td>
+          <td>The fork table, the three things that work today, the four that do not, and the
+            verified 0% figure with its reason.</td>
+          <td>Somebody will open <code>PRJ-0439</code> from the portfolio during a demo. This is
+            the page they need to have read first.</td>
+        </tr>
+        <tr>
+          <td>"If they ask"</td>
+          <td>Two questions: why a supply project has no <span class="ar">أبواب</span> or
+            activity links, and whether the 20% rule applies to equipment.</td>
+          <td>Both were asked during this review and neither had an answer written down.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    Findings A · B · C · D · F · G · I verified against the running stack on 2026-09-07
+    (<code>docker compose up db api</code> · <code>dev/reset</code> ·
+    <code>dev/load-fixture</code>, six projects). Findings E · H · J read from
+    <code>app/*.jsx</code> at <code>github.com/infinite-azaiton/epm</code>
+    <code>c0ae13f</code> and from this repository's source, and not yet watched. Prototype line
+    references are that commit's. Companion to <code>docs/demo/runsheet.html</code>. Figures are
+    illustrative, not ministry data.
+  </footer>
+
+</div>

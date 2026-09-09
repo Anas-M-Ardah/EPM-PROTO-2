@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SectionComponent } from '../../shared/section.component';
 import { ModuleBarComponent } from '../../shared/module-bar.component';
@@ -54,7 +55,7 @@ import { FinancialRecordsInput, FinancialsAuditStage, FinancialsResponse } from 
 @Component({
   selector: 'epm-financials-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, TableSkeletonComponent,
+  imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, PanelHeadComponent,
     SectionComponent, ModuleBarComponent, FieldGroupComponent, FieldGridComponent, PaymentWizard],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './financials.page.html',

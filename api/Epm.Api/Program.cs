@@ -110,6 +110,7 @@ app.MapScheduleEndpoints();
 app.MapScheduleImportEndpoints();
 app.MapSupplyEndpoints();
 app.MapProgressEndpoints();
+app.MapAccomplishmentPeriodEndpoints();
 app.MapFinancialsEndpoints();
 app.MapChangeOrdersEndpoints();
 app.MapChangeOrderWizardEndpoints();

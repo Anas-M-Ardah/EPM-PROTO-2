@@ -48,6 +48,50 @@ export interface ProgressActivity {
   baselineFinish: string | null;
   /** The BOQ lines this activity feeds. Empty = its progress earns nothing. */
   boqCodes: string[];
+  /**
+   * The reading awaiting a decision on this activity, or null (المسار 6).
+   * `progressPct` above is the reading IN FORCE — what an approval put there —
+   * and these two are kept apart on the row because that separation IS the
+   * review stage as far as the screen is concerned.
+   */
+  pendingReadingId: number | null;
+  pendingPct: number | null;
+}
+
+/** «الأدلة المؤيدة» — metadata only, like every attachment in this prototype. */
+export interface ProgressEvidence {
+  titleAr: string;
+  titleEn: string;
+  fileName: string;
+  sizeBytes: number;
+}
+
+/** One قراءة إنجاز — المسار 6. */
+export interface ProgressReading {
+  id: number;
+  no: number;
+  contractId: string;
+  activityId: string;
+  activityNameAr: string;
+  activityNameEn: string;
+  /** Lookup `progress-reading-state` — submitted · approved · returned · lapsed. */
+  state: string;
+  progressPct: number;
+  /** The reading in force when this one was submitted («القراءة السابقة محفوظة»). */
+  previousPct: number;
+  note: string;
+  actorName: string;
+  actorRole: string;
+  /** القسم المصدر — what الشكل 25's «المصدر» prints. */
+  actorParty: string;
+  at: string;
+  reviewerName: string;
+  reviewerRole: string;
+  reviewerParty: string;
+  reviewedAt: string | null;
+  /** «إعادة بملاحظات» — the content of a return decision. */
+  reviewNote: string;
+  evidence: ProgressEvidence[];
 }
 
 export interface ProgressContributor {
@@ -239,6 +283,12 @@ export interface ProgressResponse {
    * Shaped to `CurvePeriod` in `shared/scurve.component.ts`, member for member.
    */
   curve: ProgressCurvePeriod[];
+  /**
+   * المسار 6's readings, newest first. Pending ones are what the review stage
+   * acts on; decided ones are the record of who moved every percentage on this
+   * project, on whose evidence, and who released it.
+   */
+  readings: ProgressReading[];
 }
 
 export interface ProgressCurvePeriod {

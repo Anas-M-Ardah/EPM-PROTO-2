@@ -2,6 +2,7 @@ using Epm.Api.Data;
 using Epm.Api.Features.Workspaces;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
+using Epm.Api.Features.Boq;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Schedule;
@@ -120,7 +121,19 @@ public static class ScheduleEndpoints
             // activity row. The same trade SCR-W4 makes on the bill.
             var marks = await Marks(db, contractId);
 
-            var rows = Build(activities, Basis, contractTotal, p.DataDate, marks);
+            // الشكل 21's link row — the BOQ lines each activity feeds. Read off
+            // the SAME derivation SCR-W4's register and SCR-W6's editor use, so
+            // three screens cannot name different lines for one activity (P-54).
+            var feeds = new Dictionary<string, List<string>>();
+            foreach (var d in await BoqEndpoints.Derive(db, contractId, "cost"))
+                foreach (var link in d.Links)
+                {
+                    if (!feeds.TryGetValue(link.Activity.ActivityId, out var list))
+                        feeds[link.Activity.ActivityId] = list = [];
+                    list.Add(d.Item.Code);
+                }
+
+            var rows = Build(activities, Basis, contractTotal, p.DataDate, marks, feeds);
 
             var acts = activities.Where(a => !a.IsMilestone).ToList();
             var achieved = acts.Sum(a => Basis(a) * a.ProgressPct / 100m);
@@ -290,7 +303,8 @@ public static class ScheduleEndpoints
     /// </summary>
     private static List<ScheduleRowDto> Build(
         List<Activity> activities, Func<Activity, decimal> basis, decimal contractTotal, DateOnly? dataDate,
-        IReadOnlyDictionary<int, ScheduleAmendmentMark> marks)
+        IReadOnlyDictionary<int, ScheduleAmendmentMark> marks,
+        IReadOnlyDictionary<string, List<string>> feeds)
     {
         // path → display name, discovered from the activities that live under it
         var nodeNames = new Dictionary<string, string>();
@@ -375,21 +389,23 @@ public static class ScheduleEndpoints
             // divisor and would make every activity's relative weight equal its
             // absolute one, which is `02 §2`'s example collapsing to nothing.
             foreach (var a in mine.OrderBy(a => a.ActivityId, StringComparer.Ordinal))
-                rows.Add(Row(a, basis, contractTotal, g.Total, level + 1, marks.GetValueOrDefault(a.Id)));
+                rows.Add(Row(a, basis, contractTotal, g.Total, level + 1,
+                    marks.GetValueOrDefault(a.Id), feeds.GetValueOrDefault(a.ActivityId) ?? []));
         }
 
         // Activities filed under no WBS node at all. They follow the tree rather
         // than vanish — an unclassified activity is still work in the contract.
         foreach (var a in activities.Where(a => string.IsNullOrWhiteSpace(a.WbsPath))
                                     .OrderBy(a => a.ActivityId, StringComparer.Ordinal))
-            rows.Add(Row(a, basis, contractTotal, contractTotal, 1, marks.GetValueOrDefault(a.Id)));
+            rows.Add(Row(a, basis, contractTotal, contractTotal, 1,
+                marks.GetValueOrDefault(a.Id), feeds.GetValueOrDefault(a.ActivityId) ?? []));
 
         return rows;
     }
 
     private static ScheduleRowDto Row(
         Activity a, Func<Activity, decimal> basis, decimal contractTotal, decimal parentTotal, int level,
-        ScheduleAmendmentMark? mark)
+        ScheduleAmendmentMark? mark, IReadOnlyList<string> boqCodes)
     {
         var w = ScheduleWeights.For(basis(a), contractTotal, parentTotal);
 
@@ -416,7 +432,7 @@ public static class ScheduleEndpoints
             M(a.BudgetedCost), a.Calendar, a.Predecessors,
             slip,
             mark,
-            earned, M(a.BudgetedCost) - earned, delayCost);
+            earned, M(a.BudgetedCost) - earned, delayCost, boqCodes);
     }
 
     // ── ROADMAP 4.5 · 04 §6 — which orders touched which activity ────────

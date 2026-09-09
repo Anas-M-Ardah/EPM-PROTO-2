@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
+import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
@@ -59,7 +60,7 @@ interface MonthCol { label: string; year: string; }
 @Component({
   selector: 'epm-schedule-page',
   standalone: true,
-  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
+  imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent, PanelHeadComponent,
     AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './schedule.page.html',
@@ -690,24 +691,47 @@ export class SchedulePage {
     return a.isMilestone ? 0 : Math.round(a.originalDuration * (1 - this.pctOf(a) / 100));
   }
 
-  saveProgress(a: ScheduleRow) {
+  /**
+   * MIRRORS `Personas.CanSubmitProgressReading`, the same way SCR-W6 does.
+   * A capacity that would be refused is never offered a slider — `04 §9`
+   * prefers preventing to reporting, and this panel's whole argument is that
+   * the consequence is visible BEFORE the write.
+   */
+  canSubmitReading = computed(() => {
+    const party = this.persona.current()?.party;
+    return party === 'الجامعة / التشكيل' || party === 'الدائرة المالية';
+  });
+
+  /**
+   * المسار 6 step 5 — «حفظ التحديث وإرساله للمراجعة».
+   *
+   * SUBMITS a reading; it does not move the activity. The panel above still
+   * previews the consequence, which is what ملحق الشكل 21 asks of it — what
+   * changed is that the consequence now lands when إدارة المشاريع approves,
+   * and the toast says so rather than claiming the roll-up has moved.
+   *
+   * It goes through SCR-W6's OWN client method (P-192), so the two screens
+   * cannot submit a reading on different terms.
+   */
+  submitReading(a: ScheduleRow) {
     const pct = this.draftPct();
     if (pct === null || this.savingPct()) return;
 
     this.savingPct.set(true);
-    this.progressApi.saveProgress(this.projectId(), a.id, pct).subscribe({
+    this.progressApi.submitReading(this.projectId(), a.id, pct, '', []).subscribe({
       next: () => {
         this.savingPct.set(false);
         this.draftPct.set(null);
         // EP-PRG-02 answers with SCR-W6's model, which is not this screen's.
-        // Re-read the schedule so the roll-up, the strip and Z10 all move.
+        // Re-read the schedule so the pending state on the row appears.
         this.fetch(this.effectiveContractId());
-        this.toast.show(`${a.id} — ${this.lang.t('scd_prog_saved')}`);
+        this.toast.show(`${a.id} — ${this.lang.t('prg_submitted')}`);
       },
       error: e => {
         this.savingPct.set(false);
         this.toast.show(e?.error?.messageAr && this.lang.isAr()
-          ? e.error.messageAr : (e?.error?.message ?? this.lang.t('error_t')));
+          ? e.error.messageAr
+          : (e?.error?.messageEn ?? e?.error?.message ?? this.lang.t('error_t')));
       },
     });
   }

@@ -38,6 +38,14 @@ export interface RecordLine {
   reDept: RecordColumn;
   approved: RecordColumn;
   applied: RecordColumn;
+  /**
+   * P-252 — the RE department's RAW proposal, never `reDept`'s derived
+   * `qtyAfter`/`rateShown`. Used only to pre-fill لجنة تثبيت الأسعار's own
+   * editable stage-3 entry — not itself the approved value.
+   */
+  reDeptDeltaQty: number | null;
+  reDeptNewRate: number | null;
+  reDeptExcessRate: number | null;
 }
 
 export interface RecordWeightRow {
@@ -72,6 +80,27 @@ export interface RecordRedistribution {
   difference: number;
   money: number;
   applyStatus: string;
+}
+
+/** الشكل 58 — a beneficiary-to-beneficiary transfer on a supply order's
+ *  `redist` line. NOT {@link RecordRedistribution} above — that is BOQ line
+ *  to BOQ line; this is one line's quantity moving between the workspaces
+ *  that hold it. */
+export interface RecordBeneficiaryTransfer {
+  lineCode: string;
+  lineDescriptionAr: string;
+  lineDescriptionEn: string;
+  fromCode: string;
+  fromNameAr: string;
+  fromNameEn: string;
+  toCode: string;
+  toNameAr: string;
+  toNameEn: string;
+  qty: number;
+  fromQtyBefore: number;
+  toQtyBefore: number;
+  /** Null until the order is applied. */
+  appliedQty: number | null;
 }
 
 export interface RecordActivity {
@@ -294,6 +323,7 @@ export interface ChangeOrderRecordResponse {
   netApproved: number | null;
   weights: RecordWeightImpact;
   redistribution: RecordRedistribution[];
+  beneficiaryTransfers: RecordBeneficiaryTransfer[];
 
   time: RecordTimeImpact;
 
@@ -304,6 +334,19 @@ export interface ChangeOrderRecordResponse {
   audit: RecordAuditEntry[];
   /** الشكل 30's «منتقي الأمر». */
   siblings: RecordSibling[];
+}
+
+/**
+ * P-252 — لجنة تثبيت الأسعار's own per-line entry, sent to `EP-WFL-01` only
+ * when approving stage 3. Identical to
+ * ChangeOrderWorkflowEndpoints.LineApproval (CLAUDE.md §2). Keyed by
+ * `code` — the same identity {@link RecordLine.code} already carries.
+ */
+export interface LineApprovalInput {
+  code: string;
+  deltaQty: number | null;
+  rate: number | null;
+  excessRate: number | null;
 }
 
 /**

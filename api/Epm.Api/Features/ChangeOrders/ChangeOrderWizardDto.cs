@@ -76,10 +76,17 @@ public record WizardContract(
     IReadOnlyList<WizardActivity> Activities);
 
 /// <param name="Parties">`03 §1`'s originators — who the official letter came from.</param>
+/// <param name="ProjectType">
+/// `construction` · `equipment` · `design-studies` (D-13). What the wizard
+/// offers as its «النوع» step reads this, not a choice: an `equipment` project
+/// raises only a supply order, the way the prototype's own `KINDS` array holds
+/// one entry on a supply project rather than a disabled second button.
+/// </param>
 public record WizardSourceResponse(
     string ProjectId,
     string ProjectNameAr,
     string ProjectNameEn,
+    string ProjectType,
     string? DataDate,
     string ViewerId,
     string ViewerParty,

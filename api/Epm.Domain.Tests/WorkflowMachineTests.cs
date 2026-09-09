@@ -17,31 +17,31 @@ public class WorkflowMachineTests
 
         Assert.Equal(6, plan.Count);
 
-        var rateFixing = plan.Single(p => p.Def.No == 3);
-        Assert.False(rateFixing.Active);
-        Assert.Equal("No line exceeded 20%", rateFixing.SkipEn);
-
         var endorsement = plan.Single(p => p.Def.No == 4);
         Assert.False(endorsement.Active);
         Assert.NotNull(endorsement.SkipAr);
     }
 
     [Fact]
-    public void Rate_fixing_appears_only_when_a_line_trips_20_percent()
+    public void Rate_fixing_stage_never_skips_only_the_rate_sub_task_is_conditional()
     {
-        Assert.False(WorkflowMachine.Plan(false, false).Single(p => p.Def.No == 3).Active);
+        // P-252 — 02 §6 makes the approved value the pricing committee's
+        // decision on every order, so stage 3 always runs; tripsThreshold
+        // only changes whether it ALSO fixes an excess rate.
+        Assert.True(WorkflowMachine.Plan(false, false).Single(p => p.Def.No == 3).Active);
         Assert.True(WorkflowMachine.Plan(true, false).Single(p => p.Def.No == 3).Active);
     }
 
     [Fact]
     public void Approving_skips_over_inactive_stages()
     {
-        // With 3 and 4 skipped, stage 2 advances straight to stage 5.
+        // With 4 skipped (no endorsement needed), stage 2 advances straight
+        // to stage 3 — which now always runs — then on to 5.
         var plan = WorkflowMachine.Plan(false, false);
         var t = WorkflowMachine.Decide(2, "approve", plan);
 
         Assert.Equal("pending", t.Lifecycle);
-        Assert.Equal(5, t.StageNo);
+        Assert.Equal(3, t.StageNo);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class WorkflowMachineTests
         var t = WorkflowMachine.Decide(5, "return", plan);
 
         Assert.Equal("returned", t.Lifecycle);
-        Assert.Equal(2, t.StageNo);   // 3 and 4 are skipped
+        Assert.Equal(3, t.StageNo);   // only 4 is skipped — 3 never is (P-252)
     }
 
     [Fact]

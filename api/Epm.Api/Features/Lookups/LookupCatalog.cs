@@ -342,6 +342,22 @@ public static class LookupCatalog
         yield return L("allocation-coverage", "full",       "مخصص بالكامل",     "Fully assigned");
         yield return L("allocation-coverage", "partial",    "مخصص جزئياً",      "Partially assigned");
         yield return L("allocation-coverage", "over",       "تخصيص زائد",       "Over-assigned");
+        // D-14 — a supply line's row (BoqRow.Coverage). Not one of 06 §11's
+        // four states: assignment is not a concept a supply bill has, so the
+        // register prints this rather than a work-bill state that would claim
+        // one.
+        yield return L("allocation-coverage", "na",         "لا ينطبق",         "Not applicable");
+
+        // ── المسار 6 — حالة قراءة الإنجاز (ProgressReading.State) ─────────
+        // The track's own four outcomes. `returned` is step 6أ — a decision
+        // that was «not yet», with its reason on the row; `lapsed` is a reading
+        // nobody ever decided on, overtaken by a newer submission on the same
+        // activity. Two different facts, so two codes (see ProgressReading).
+        sort = 0;
+        yield return L("progress-reading-state", "submitted", "قيد المراجعة",   "Under review");
+        yield return L("progress-reading-state", "approved",  "معتمدة",         "Approved");
+        yield return L("progress-reading-state", "returned",  "أُعيدت بملاحظات", "Returned with notes");
+        yield return L("progress-reading-state", "lapsed",    "لاغية",          "Lapsed");
 
         // ── الشكل 50 — حالة الفقرة التجهيزية (Domain/SupplyStatus) ────────
         // The plate's own five chips, and its own words: «مستلم بالكامل ·

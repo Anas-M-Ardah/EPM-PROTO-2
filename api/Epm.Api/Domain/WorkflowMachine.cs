@@ -3,14 +3,17 @@ namespace Epm.Api.Domain;
 /// <summary>
 /// BR-13 · 03 §2, §5, §6 — the six-stage change-order workflow.
 ///
-/// rule: exactly six system-owned stages, each with one owning party. Two are
-///       CONDITIONAL: rate fixing only if a line trips 20% (BR-05), endorsement
-///       only if endorsement or funding is needed.
+/// rule: exactly six system-owned stages, each with one owning party. One is
+///       CONDITIONAL — endorsement, only if endorsement or funding is needed.
+///       Stage 3 (rate fixing) is NEVER skipped (P-252): `02 §6` makes the
+///       approved value the pricing committee's decision on every order, with
+///       no other stage able to produce it, so `tripsThreshold` only changes
+///       whether stage 3 also fixes an excess rate — never whether it runs.
 /// spec: skipped stages are LISTED EXPLICITLY WITH THE REASON, never silently
 ///       omitted (03 §2). Four decisions: approve advances · reject terminates ·
 ///       return goes back with history retained · cancel terminates.
-/// example: no line over 20%, no endorsement needed → 6 stages of which 2 are
-///          marked skipped, and approving at stage 2 advances to stage 5.
+/// example: no line over 20%, no endorsement needed → 6 stages of which 1 is
+///          marked skipped, and approving at stage 2 advances to stage 3.
 ///
 /// External parties are STATUSES INSIDE a stage, not stages (D-10, 03 §3). A
 /// stage with a pending external party cannot be completed.
@@ -40,8 +43,8 @@ public static class WorkflowMachine
             "Reviews the request and prepares the forms; returns it to the resident engineer if incomplete."),
 
         new(3, "تثبيت الأسعار", "Rate fixing", "لجنة تثبيت الأسعار", "Rate-fixing committee", "exceeds20",
-            "تثبّت سعر الكمية الزائدة عن 20%، ثم تعيد القرار إلى لجنة أوامر الغيار.",
-            "Fixes the rate for quantity beyond 20%, then returns the decision to the change-order committee."),
+            "تثبّت القيمة المعتمدة؛ إن تجاوز بند 20% تثبّت أيضاً سعر الكمية الزائدة، ثم تعيد القرار إلى لجنة أوامر الغيار.",
+            "Fixes the approved value; when a line exceeds 20% it also fixes the excess-quantity rate, then returns the decision to the change-order committee."),
 
         new(4, "المصادقة والتخصيص", "Endorsement & allocation", "لجنة أوامر الغيار", "Change-order committee", "needsEndorsement",
             "يُرفع محضر إلى الوزير مع الموافقات الخارجية المطلوبة.",
@@ -80,14 +83,24 @@ public static class WorkflowMachine
     /// <summary>
     /// The chain for one order. Returns ALL SIX — a skipped stage is marked
     /// with its reason, never dropped (03 §2).
+    ///
+    /// ── STAGE 3 IS NEVER SKIPPED (P-252) ─────────────────────────────────
+    /// `02 §5` conditions the RATE-FIXING decision on a line tripping 20% —
+    /// that part of `tripsThreshold` is unchanged, and the endpoint still
+    /// reads it per line. But `02 §6` is separately explicit that the
+    /// APPROVED VALUE itself is always "the pricing committee's decision,
+    /// entered during financial review", with no fallback for an order where
+    /// nothing trips — and no other stage in the six is committee-owned or
+    /// pricing-flavored. Skipping stage 3 there left every non-tripping order
+    /// (the common case) with no stage able to produce `ApprovedValue` at
+    /// all, which is why `EP-WFL-03` refused to apply it forever. So stage 3
+    /// always runs; when nothing trips, its job is lighter — confirm the
+    /// value, no rate to fix — but it is still the committee's own decision.
     /// </summary>
     public static IReadOnlyList<PlannedStage> Plan(
         bool tripsThreshold, bool needsEndorsement, bool supply = false)
         => StagesFor(supply).Select(s => s.Condition switch
         {
-            "exceeds20" when !tripsThreshold =>
-                new PlannedStage(s, false, "لم يتجاوز أي بند 20%", "No line exceeded 20%"),
-
             "needsEndorsement" when !needsEndorsement =>
                 new PlannedStage(s, false, "لا حاجة للمصادقة أو التخصيص", "No endorsement or funding needed"),
 

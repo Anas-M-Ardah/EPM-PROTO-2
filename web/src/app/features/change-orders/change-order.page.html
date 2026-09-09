@@ -194,9 +194,9 @@
           <epm-section [title]="lang.t('chg_sec_impact')" icon="functions"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
+              <div class="d-form-i"><span class="k">{{ requesterLabel() }}</span>
                 <span class="v num"><bdi>{{ fmt.delta(d.impact.contractorValue) }}</bdi></span></div>
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_redept') }}</span>
+              <div class="d-form-i"><span class="k">{{ reviewerLabel() }}</span>
                 <span class="v num"><bdi>{{ fmt.delta(d.impact.reDeptValue) }}</bdi></span></div>
               <!-- 02 §6 — the approved value comes only from the pricing
                    committee. Until it exists the cell says where it comes from
@@ -271,12 +271,12 @@
           <epm-section [title]="lang.t('chg_sec_decision')" icon="gavel"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
+              <div class="d-form-i"><span class="k">{{ requesterLabel() }}</span>
                 <span class="v num">
                   <bdi>{{ fmt.delta(d.decision.contractorValue) }}</bdi> ·
                   <bdi>{{ dayText(d.decision.contractorDays) }}</bdi>
                 </span></div>
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_redept') }}</span>
+              <div class="d-form-i"><span class="k">{{ reviewerLabel() }}</span>
                 <span class="v num">
                   <bdi>{{ fmt.delta(d.decision.reDeptValue) }}</bdi> ·
                   <bdi>{{ dayText(d.decision.reDeptDays) }}</bdi>
@@ -558,6 +558,49 @@
                         <td class="r mono"><bdi>{{ fmt.money(r.money) }}</bdi></td>
                         <td><span class="d-pill {{ applyClass(r.applyStatus) }}">
                           {{ applyLabel(r.applyStatus) }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <div class="d-pager calcnote">
+                  <epm-icon name="functions" [size]="14" />
+                  <span>{{ lang.t('chg_redist_zero') }}</span>
+                </div>
+              </epm-section>
+            }
+
+            <!-- الشكل 58 — beneficiary-to-beneficiary transfers on a SUPPLY
+                 order's `redist` line. The OTHER redistribution table above
+                 this one moves quantity between BOQ lines; this one moves one
+                 line's own quantity between the workspaces that hold it. -->
+            @if (d.beneficiaryTransfers.length) {
+              <epm-section [title]="lang.t('chg_sec_transfers')" icon="swap_horiz"
+                           [collapsible]="true" [defaultOpen]="true" [flush]="true">
+                <table class="d-line-table">
+                  <thead>
+                    <tr>
+                      <th style="min-width: 140px">{{ lang.t('chg_col_code') }}</th>
+                      <th style="min-width: 160px">{{ lang.t('chg_col_ben_from') }}</th>
+                      <th style="min-width: 160px">{{ lang.t('chg_col_ben_to') }}</th>
+                      <th style="width: 120px" class="r">{{ lang.t('chg_col_qty_moved') }}</th>
+                      <th style="width: 130px" class="r">{{ lang.t('chg_col_ben_before') }}</th>
+                      <th style="width: 120px">{{ lang.t('chg_col_applied') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (t of d.beneficiaryTransfers; track $index) {
+                      <tr>
+                        <td><bdi class="mono">{{ t.lineCode }}</bdi>
+                          <div class="d-cell-sub">{{ lang.pick(t.lineDescriptionAr, t.lineDescriptionEn) }}</div></td>
+                        <td><bdi class="mono">{{ t.fromCode }}</bdi>
+                          <div class="d-cell-sub">{{ lang.pick(t.fromNameAr, t.fromNameEn) }}</div></td>
+                        <td><bdi class="mono">{{ t.toCode }}</bdi>
+                          <div class="d-cell-sub">{{ lang.pick(t.toNameAr, t.toNameEn) }}</div></td>
+                        <td class="r mono"><bdi>{{ fmt.qty(t.qty) }}</bdi></td>
+                        <td class="r mono d-cell-sub">
+                          <bdi>{{ fmt.qty(t.fromQtyBefore) }}</bdi> → <bdi>{{ fmt.qty(t.toQtyBefore) }}</bdi></td>
+                        <td><span class="d-pill {{ applyClass(t.appliedQty !== null ? 'done' : 'todo') }}">
+                          {{ applyLabel(t.appliedQty !== null ? 'done' : 'todo') }}</span></td>
                       </tr>
                     }
                   </tbody>
@@ -877,6 +920,58 @@
                 </div>
               </div>
 
+              <!-- P-252 — تثبيت الأسعار never skips (`02 §6`): the committee's
+                   own entry is the ONLY source of the approved value, so this
+                   panel appears whenever that stage's approval is chosen and
+                   is required, not optional decoration. -->
+              @if (isStage3Approve()) {
+                <div class="d-msgbar info">
+                  <epm-icon name="difference" [size]="16" />
+                  <div>
+                    <b>{{ lang.t('chg_d_appr_t') }}</b>
+                    <span>{{ lang.t('chg_d_appr_b') }}</span>
+                  </div>
+                </div>
+
+                @for (l of approvalLines(); track l.code) {
+                  <div class="d-form-grid f-full">
+                    <div class="d-form-i"><span class="k mono"><bdi>{{ l.code }}</bdi></span>
+                      <span class="v">{{ lang.pick(l.descriptionAr, l.descriptionEn) }}</span></div>
+                    <div class="d-form-field">
+                      <label [for]="'appr-qty-' + l.code">{{ lang.t('chg_d_appr_qty') }}</label>
+                      <input [id]="'appr-qty-' + l.code" type="number" class="d-form-input" inputmode="decimal"
+                             [value]="lineApprovals()[l.code].deltaQty ?? ''"
+                             (input)="setLineApproval(l.code, 'deltaQty', $any($event.target).value)" />
+                    </div>
+                    <div class="d-form-field">
+                      <label [for]="'appr-rate-' + l.code">{{ lang.t('chg_d_appr_rate') }}</label>
+                      <input [id]="'appr-rate-' + l.code" type="number" class="d-form-input" inputmode="decimal"
+                             [value]="lineApprovals()[l.code].rate ?? ''"
+                             (input)="setLineApproval(l.code, 'rate', $any($event.target).value)" />
+                    </div>
+                    @if (l.reDept.tripsThreshold) {
+                      <div class="d-form-field">
+                        <label [for]="'appr-ex-' + l.code">{{ lang.t('chg_d_appr_ex') }}</label>
+                        <input [id]="'appr-ex-' + l.code" type="number" class="d-form-input" inputmode="decimal"
+                               [value]="lineApprovals()[l.code].excessRate ?? ''"
+                               (input)="setLineApproval(l.code, 'excessRate', $any($event.target).value)" />
+                      </div>
+                    }
+                  </div>
+                }
+
+                <div class="d-form-field f-full">
+                  <label for="appr-days">{{ lang.t('chg_d_appr_days') }}</label>
+                  <input id="appr-days" type="number" class="d-form-input" inputmode="numeric"
+                         [value]="approvedDaysInput() ?? ''"
+                         (input)="setApprovedDays($any($event.target).value)" />
+                </div>
+
+                @if (decisionTouched() && approvalsMissing()) {
+                  <span class="d-form-err">{{ lang.t('chg_d_appr_err') }}</span>
+                }
+              }
+
               <div class="d-l14-decfoot">
                 <button type="button" class="d-btn sm"
                         [disabled]="!decision() && !decisionNote()"
@@ -1030,15 +1125,9 @@
            one of these up. -->
       <div class="d-pz8">
         <div class="d-rpane">
-          <div class="rp-h">
-            <div class="tx">
-              <div class="r1">
-                <span class="code"><bdi>{{ d.no }}</bdi></span>
-                <epm-status-pill kind="co-lifecycle" [code]="d.card.lifecycle" />
-              </div>
-              <b>{{ lang.t('chg_card') }}</b>
-              <span class="sub">{{ stageLabel() }} · <bdi>{{ dayText(d.card.ageDays) }}</bdi></span>
-            </div>
+          <div epmPanelHead [code]="d.no" [title]="lang.t('chg_card')">
+            <epm-status-pill badge kind="co-lifecycle" [code]="d.card.lifecycle" />
+            <span sub>{{ stageLabel() }} · <bdi>{{ dayText(d.card.ageDays) }}</bdi></span>
           </div>
 
           <div class="rp-b">

@@ -53,10 +53,24 @@
         <epm-icon name="filter_list" [size]="13" />{{ lang.t('doc_latest_only') }}
       </button>
 
-      <button type="button" class="d-btn sm primary"
-              (click)="toast.demo('رفع وثيقة', 'Upload a document')">
-        <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload') }}
-      </button>
+      @if (pickingDocument()) {
+        <label class="d-form-field" style="margin: 0">
+          <span class="sr-only">{{ lang.t('doc_pick_t') }}</span>
+          <select class="d-form-input sm" (change)="$any($event.target).value && startUpload($any($event.target).value)">
+            <option value="">{{ lang.t('doc_pick_ph') }}</option>
+            @for (r of rows(); track r.code) {
+              <option [value]="r.code"><bdi>{{ r.code }}</bdi> — {{ title(r) }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="d-btn sm" (click)="pickingDocument.set(false)">
+          {{ lang.t('doc_pick_cancel') }}
+        </button>
+      } @else {
+        <button type="button" class="d-btn sm primary" (click)="pickingDocument.set(true)">
+          <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload') }}
+        </button>
+      }
     </div>
 
     <!-- The detail panel is Z8, and the body is `no-aside` until a row is
@@ -227,15 +241,9 @@
       @if (opened(); as doc) {
         <div class="d-pz8">
           <div class="d-rpane">
-            <div class="rp-h">
-              <div class="tx">
-                <div class="r1">
-                  <span class="code"><bdi>{{ doc.code }}</bdi></span>
-                  <span class="d-pill {{ statusClass(doc.status) }}">{{ statusLabel(doc.status) }}</span>
-                </div>
-                <b>{{ title(doc) }}</b>
-                <span class="sub">{{ disciplineLabel(doc.discipline) }} · {{ doc.issuer }}</span>
-              </div>
+            <div epmPanelHead [code]="doc.code" [title]="title(doc)">
+              <span badge class="d-pill {{ statusClass(doc.status) }}">{{ statusLabel(doc.status) }}</span>
+              <span sub>{{ disciplineLabel(doc.discipline) }} · {{ doc.issuer }}</span>
               <div class="acts">
                 <button type="button" class="d-icon-btn sm"
                         [attr.aria-label]="lang.t('scd_rec_close')" (click)="open.set(null)">
@@ -300,10 +308,58 @@
                   }
                 </epm-section>
 
-                <button type="button" class="d-btn primary" style="width: 100%"
-                        (click)="toast.demo('رفع مراجعة', 'Upload a revision')">
-                  <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload_rev') }}
-                </button>
+                @if (uploadingRevision()) {
+                  <epm-section [title]="lang.t('doc_upload_rev')">
+                    <div class="d-form-grid">
+                      <div class="d-form-field">
+                        <label for="rev-date">{{ lang.t('doc_rev_date') }}</label>
+                        <input id="rev-date" type="date" class="d-form-input"
+                               [value]="revIssuedOn()" (input)="revIssuedOn.set($any($event.target).value)" />
+                      </div>
+                      <div class="d-form-field">
+                        <label for="rev-issuer">{{ lang.t('doc_rev_issuer') }}<span class="req" aria-hidden="true">*</span></label>
+                        <input id="rev-issuer" type="text" class="d-form-input"
+                               [class.bad]="revError() && !revIssuer().trim()"
+                               [value]="revIssuer()" (input)="revIssuer.set($any($event.target).value)" />
+                      </div>
+                      <div class="d-form-field">
+                        <label for="rev-transmittal">{{ lang.t('doc_rev_transmittal') }}<span class="req" aria-hidden="true">*</span></label>
+                        <input id="rev-transmittal" type="text" class="d-form-input mono"
+                               [class.bad]="revError() && !revTransmittalNo().trim()"
+                               [value]="revTransmittalNo()" (input)="revTransmittalNo.set($any($event.target).value)" />
+                      </div>
+                      <div class="d-form-field f-full">
+                        <label for="rev-desc">{{ lang.t('doc_rev_desc') }}</label>
+                        <input id="rev-desc" type="text" class="d-form-input"
+                               [value]="revDescriptionAr()" (input)="revDescriptionAr.set($any($event.target).value)" />
+                      </div>
+                      <div class="d-form-field f-full">
+                        <label for="rev-file">{{ lang.t('doc_rev_file') }}<span class="req" aria-hidden="true">*</span></label>
+                        <input id="rev-file" type="file" (change)="onRevFile($event)" />
+                        <span class="d-cell-sub">{{ revFile()?.name ?? lang.t('doc_rev_file_none') }}</span>
+                      </div>
+                    </div>
+
+                    @if (revError()) {
+                      <span class="d-form-err">{{ revError() }}</span>
+                    }
+
+                    <div class="d-l14-decfoot">
+                      <button type="button" class="d-btn sm" [disabled]="revSaving()" (click)="cancelUpload()">
+                        {{ lang.t('doc_pick_cancel') }}
+                      </button>
+                      <span class="sp"></span>
+                      <button type="button" class="d-btn sm primary" [disabled]="revSaving()" (click)="submitRevision()">
+                        <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload_submit') }}
+                      </button>
+                    </div>
+                  </epm-section>
+                } @else {
+                  <button type="button" class="d-btn primary" style="width: 100%"
+                          (click)="beginRevisionUpload()">
+                    <epm-icon name="upload_file" [size]="15" />{{ lang.t('doc_upload_rev') }}
+                  </button>
+                }
               }
 
               @if (panelTab() === 'details') {

@@ -39,6 +39,19 @@ export interface DisciplineFolder {
   count: number;
 }
 
+/**
+ * P-253 — `EP-DOC-02`'s body. Identical to
+ * api/Epm.Api/Features/Documents/DocumentsDto.cs's `RevisionInput`.
+ */
+export interface RevisionInput {
+  issuedOn: string | null;
+  issuer: string;
+  descriptionAr: string | null;
+  descriptionEn: string | null;
+  transmittalNo: string;
+  fileName: string;
+}
+
 export interface DocumentsResponse {
   projectId: string;
   projectNameAr: string;

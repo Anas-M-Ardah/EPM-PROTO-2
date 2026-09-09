@@ -71,6 +71,9 @@ export interface WizardSourceResponse {
   projectId: string;
   projectNameAr: string;
   projectNameEn: string;
+  /** `construction` · `equipment` · `design-studies` (D-13) — which order
+   *  kind the wizard's own "النوع" step may offer. */
+  projectType: string;
   dataDate: string | null;
   viewerId: string;
   viewerParty: string;
