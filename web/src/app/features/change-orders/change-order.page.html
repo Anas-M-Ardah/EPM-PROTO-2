@@ -64,11 +64,26 @@
            different set of actions to a different صفة (BR-14 · P-126). -->
       <epm-persona-switcher />
 
-      <!-- الشكل 30's «منتقي الأمر» — move between the project's orders
-           without going back to the register. It NAVIGATES: the record is a
-           route, so the back button then walks the orders a reader actually
-           opened, which a signal swap would not. -->
-      @if (siblings().length > 1) {
+      <!-- `04 §8` — focus mode's header controls REPLACE the sibling picker
+           while a queue is active (`vo-record.jsx:993-998`): the docked pane
+           below carries the queue itself, so the header only steps through
+           it. -->
+      @if (focusActive()) {
+        <div class="d-vow-f">
+          <button type="button" class="d-btn sm" [disabled]="focusIndex() <= 0" (click)="goPrev()"
+                  [attr.aria-label]="lang.t('chg_focus_prev')">
+            <epm-icon [name]="lang.isAr() ? 'chevron_right' : 'chevron_left'" [size]="16" />
+          </button>
+          <span class="d-ctxnum num"><bdi>{{ focusIndex() + 1 }} / {{ focusTotal() }}</bdi></span>
+          <button type="button" class="d-btn sm" [disabled]="focusIndex() >= focusTotal() - 1" (click)="goNext()"
+                  [attr.aria-label]="lang.t('chg_focus_next')">
+            <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
+          </button>
+          <button type="button" class="d-btn sm ghost" (click)="exitFocus()">
+            <epm-icon name="close" [size]="14" />{{ lang.t('chg_focus_exit') }}
+          </button>
+        </div>
+      } @else if (siblings().length > 1) {
         <label class="d-field">
           <span class="epm-sr-only">{{ lang.t('chg_picker') }}</span>
           <!-- `[selected]` on the OPTION, not `[value]` on the select:
@@ -85,9 +100,13 @@
         </label>
       }
 
-            <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
-        <epm-icon name="download" [size]="15" />{{ lang.t('chg_print') }}
-      </button>
+      <!-- `vo-record.jsx:1002` — Print only when the order is closed; Export
+           is always available. -->
+      @if (d.lifecycle === 'closed') {
+        <button type="button" class="d-btn sm" (click)="toast.demo('طباعة البطاقة', 'Print record')">
+          <epm-icon name="download" [size]="15" />{{ lang.t('chg_print') }}
+        </button>
+      }
       <button type="button" class="d-btn sm" (click)="toast.demo('تصدير البطاقة', 'Export record')">
         <epm-icon name="download" [size]="15" />{{ lang.t('chg_export') }}
       </button>
@@ -845,6 +864,36 @@
                     }
                   </div>
                 </li>
+
+                <!-- `vo-record.jsx:1373-1388` — the escalation is its own
+                     entry, in sequence, naming the assignee it left as well
+                     as the one it reached. Reuses fields already on the
+                     stage (`ownerParty`, `elapsedDays`, `slaDays`) — nothing
+                     new to fetch. -->
+                @if (s.breached) {
+                  <li class="esc">
+                    <span class="ic"><epm-icon name="priority_high" [size]="14" /></span>
+                    <div class="bd">
+                      <div class="hd">
+                        <b>{{ lang.t('chg_esc_t') }}</b>
+                        <span class="d-pill stalled">{{ lang.t('chg_esc_pill') }}</span>
+                        <span class="sp"></span>
+                        <span class="d-cell-sub num"><bdi>{{ s.elapsedDays }} / {{ s.slaDays }}</bdi> {{ lang.t('scd_days') }}</span>
+                      </div>
+                      <div class="who">
+                        {{ lang.t('chg_esc_from') }} <b>{{ lang.pick(s.ownerParty, s.ownerPartyEn) }}</b>
+                        {{ lang.t('chg_esc_to') }} <b>{{ lang.t('chg_esc_manager') }}</b>
+                      </div>
+                      <div class="d-msgbar danger">
+                        <epm-icon name="warning" [size]="16" class="mgi" />
+                        <div class="mtx">
+                          <b class="mtitle">{{ lang.t('chg_esc_moved_t') }}</b>
+                          <span class="mbody">{{ escalationNote(s) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                }
               }
             </ol>
           </epm-section>
@@ -1023,7 +1072,7 @@
               <span>{{ lang.t('chg_nofiles_b') }}</span>
             </div>
           } @else {
-            <div class="d-tablewrap"><table class="d-table" style="min-width: 980px">
+            <div class="d-vow-tw"><table class="d-line-table">
               <thead>
                 <tr>
                   <th>{{ lang.t('chg_col_file') }}</th>
@@ -1125,12 +1174,47 @@
            one of these up. -->
       <div class="d-pz8">
         <div class="d-rpane">
-          <div epmPanelHead [code]="d.no" [title]="lang.t('chg_card')">
-            <epm-status-pill badge kind="co-lifecycle" [code]="d.card.lifecycle" />
-            <span sub>{{ stageLabel() }} · <bdi>{{ dayText(d.card.ageDays) }}</bdi></span>
+          <div epmPanelHead [code]="d.no"
+               [title]="focusActive() && paneTab() === 'queue' ? lang.t('chg_focus_queue_t') : lang.t('chg_card')">
+            @if (!focusActive() || paneTab() === 'facts') {
+              <epm-status-pill badge kind="co-lifecycle" [code]="d.card.lifecycle" />
+            }
+            @if (!focusActive() || paneTab() === 'facts') {
+              <span sub>{{ stageLabel() }} · <bdi>{{ dayText(d.card.ageDays) }}</bdi></span>
+            }
           </div>
 
           <div class="rp-b">
+            <!-- `04 §8` — "split queue + work pane": in focus mode the SAME
+                 docked pane carries either الشكل 30's facts (as always) or
+                 the queue, never both at once — matching
+                 `vo-record.jsx:1007-1035`'s single-surface `paneTab`. -->
+            @if (focusActive()) {
+              <div class="d-vow-tabs">
+                <button type="button" class="d-vow-tab" [class.on]="paneTab() === 'facts'"
+                        (click)="paneTab.set('facts')">{{ lang.t('chg_card') }}</button>
+                <button type="button" class="d-vow-tab" [class.on]="paneTab() === 'queue'"
+                        (click)="paneTab.set('queue')">
+                  {{ lang.t('chg_focus_queue_t') }}<span class="n"><bdi>{{ focusTotal() }}</bdi></span>
+                </button>
+              </div>
+            }
+
+            @if (focusActive() && paneTab() === 'queue') {
+              <div class="d-vo-queue-b">
+                @for (q of focusQueueList(); track q.no) {
+                  <button type="button" class="d-vo-qitem" [class.on]="q.no === no()" (click)="jumpTo(q.no)">
+                    <div class="t"><span class="code"><bdi>{{ q.no }}</bdi></span>
+                      <span class="tx">{{ lang.pick(q.titleAr, q.titleEn) }}</span></div>
+                  </button>
+                }
+                @if (!focusQueueList().length) {
+                  <div class="d-cell-sub">{{ lang.t('chg_focus_none') }}</div>
+                }
+              </div>
+            }
+
+            @if (!focusActive() || paneTab() === 'facts') {
             <epm-section [boxed]="true" [title]="lang.t('chg_card_value')">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_card_requested') }}</span>
@@ -1194,6 +1278,7 @@
                   <span class="v">{{ d.decision.authority || '—' }}</span></div>
               </div>
             </epm-section>
+            }
           </div>
         </div>
       </div>

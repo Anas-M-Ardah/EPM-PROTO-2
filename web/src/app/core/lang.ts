@@ -2245,6 +2245,14 @@ const STR = {
   chg_record_soon_b: { ar: 'بطاقة الأمر تعرض الملخص والكميات والأثر الزمني والمسار والمرفقات والسجل. اتخاذ القرار وتطبيق الأمر يأتيان مع محرّك المراحل.',
                        en: 'The record carries the summary, the quantities, the time impact, the path, the attachments and the log. Taking a decision and applying the order arrive with the stage machine.' },
 
+  // `04 §8` — «Focus mode (split queue + work pane) for the awaiting-me set».
+  chg_focus_mode:  { ar: 'وضع الإنجاز',                     en: 'Focus mode' },
+  chg_focus_exit:  { ar: 'إنهاء وضع الإنجاز',                en: 'Exit focus mode' },
+  chg_focus_prev:  { ar: 'السابق',                          en: 'Previous' },
+  chg_focus_next:  { ar: 'التالي',                          en: 'Next' },
+  chg_focus_queue_t: { ar: 'بانتظار إجرائك',                en: 'Awaiting you' },
+  chg_focus_none:  { ar: 'لا شيء بانتظارك.',                en: 'Nothing awaits you.' },
+
   // ── SCR-W8 · بطاقة الأمر التغييري — ملحق الأشكال 30–34, `03 §9` ──────
   chg_back:        { ar: 'السجل',                           en: 'Register' },
   chg_picker:      { ar: 'منتقي الأمر',                      en: 'Order picker' },
@@ -2411,6 +2419,19 @@ const STR = {
   chg_external:    { ar: 'أطراف خارجية',                    en: 'External parties' },
   chg_ext_note:    { ar: 'أطراف خارجية — تُسجَّل قراراتها بموجب كتاب رسمي',
                      en: 'External parties — their decisions recorded against an official letter' },
+
+  // `vo-record.jsx:1373-1388` — the trail's own escalation entry for a
+  // breached stage. «المستوى الإداري الأعلى» is the reference's fixed
+  // escalation target (`MANAGER`, `:564`), not a stored role.
+  chg_esc_t:       { ar: 'تصعيد تلقائي',                    en: 'Automatic escalation' },
+  chg_esc_pill:    { ar: 'تجاوز السقف',                     en: 'SLA breached' },
+  chg_esc_from:    { ar: 'من',                              en: 'from' },
+  chg_esc_to:      { ar: 'إلى',                             en: 'to' },
+  chg_esc_manager: { ar: 'المستوى الإداري الأعلى',           en: 'Senior manager' },
+  chg_esc_moved_t: { ar: 'انتقلت صلاحية البتّ',              en: 'Authority moved' },
+  chg_esc_note:    { ar: 'تجاوزت مرحلة «{stage}» سقفها البالغ {sla} أيام بمرور {elapsed} يوم دون إجراء، فانتقلت صلاحية البتّ من {from} إلى {to}. المُحال إليه الأصلي يبقى مسجّلاً، والإجراء مثبَّت في سجل التدقيق ولا يمكن تعديله.',
+                     en: 'Stage “{stage}” passed its {sla}-day ceiling with {elapsed} days elapsed, so authority moved from {from} to the {to}. The original assignee stays on the record, and the escalation is written to the audit trail where it cannot be edited.' },
+
   chg_recorded_by: { ar: 'يُسجِّل نيابةً:',                 en: 'Recorded by:' },
   chg_no_letter:   { ar: 'لا كتاب بعد',                     en: 'no letter yet' },
   chg_stalled_at:  { ar: 'متوقفة عند',                      en: 'stalled at' },

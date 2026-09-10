@@ -15,6 +15,7 @@ import { DateComponent } from '../../shared/date.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
+import { ChangeOrderFocusQueue } from '../../core/change-order-focus';
 import { ToastService } from '../../shared/toast.service';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
@@ -65,6 +66,7 @@ export class ChangeOrderPage {
   lang = inject(LangService);
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
+  focusQueue = inject(ChangeOrderFocusQueue);
   /** طباعة · تصدير are demo stubs and say so — ToastService.demo(). */
   toast = inject(ToastService);
   fmt = fmt;
@@ -461,6 +463,21 @@ export class ChangeOrderPage {
     return over > 100 ? 'over' : over >= 80 ? 'warn' : '';
   }
 
+  /**
+   * `vo-record.jsx:1373-1388` — a breached stage gets its own trail entry
+   * naming who it moved from and to. «المستوى الإداري الأعلى» is the same
+   * fixed escalation target the reference names (`MANAGER`, `:564`) — not a
+   * stored value, so it is a label, not an invented workflow role.
+   */
+  escalationNote(s: RecordStage): string {
+    return this.lang.t('chg_esc_note')
+      .replace('{stage}', this.lang.pick(s.nameAr, s.nameEn))
+      .replace('{sla}', String(s.slaDays))
+      .replace('{elapsed}', String(s.elapsedDays))
+      .replace('{from}', this.lang.pick(s.ownerParty, s.ownerPartyEn))
+      .replace('{to}', this.lang.t('chg_esc_manager'));
+  }
+
   // ── الشكل 31's three party rows under each item row ────────────────────
 
   /**
@@ -527,6 +544,38 @@ export class ChangeOrderPage {
     this.router.navigate(['/projects', this.projectId(), 'changeorders']);
   }
 
+  // ── Focus mode — `04 §8`, `vo-record.jsx:800-803,993-1006` ────────────────
+  //
+  // The queue is the register's own «awaiting me» list (BR-14, resolved once
+  // when the queue starts). This component only walks it and never recomputes
+  // who belongs in it.
+  focusActive = computed(() => this.focusQueue.active());
+  focusIndex = computed(() => this.focusQueue.index(this.no()));
+  focusTotal = computed(() => this.focusQueue.orderNos().length);
+  /** Z8's own tab, while a queue is active — «البطاقة» / «القائمة» (`vo-record.jsx:1013-1015`). */
+  paneTab = signal<'facts' | 'queue'>('facts');
+  focusQueueList = computed(() => {
+    const titles = this.focusQueue.titles();
+    return this.focusQueue.orderNos().map(n => ({
+      no: n, titleAr: titles[n]?.ar ?? '', titleEn: titles[n]?.en ?? '',
+    }));
+  });
+
+  private gotoQueue(i: number) {
+    const list = this.focusQueue.orderNos();
+    if (i < 0 || i >= list.length) return;
+    this.router.navigate(['/projects', this.projectId(), 'changeorders', list[i]]);
+  }
+  goNext() { this.gotoQueue(this.focusIndex() + 1); }
+  goPrev() { this.gotoQueue(this.focusIndex() - 1); }
+  jumpTo(no: string) { if (no !== this.no()) this.gotoQueue(this.focusQueue.index(no)); }
+
+  /** `vo-record.jsx:983` — `setOpenNo(null); setFocus(false)`, in that order. */
+  exitFocus() {
+    this.focusQueue.stop();
+    this.back();
+  }
+
   constructor() {
     // The order number is a URL segment and the project is the parent route's:
     // a record is a document, and a link to one has to survive being pasted.
@@ -547,6 +596,23 @@ export class ChangeOrderPage {
       const no = this.no();
       this.persona.currentId();
       if (pid && no) untracked(() => this.load());
+    });
+
+    // A direct link (pasted, or opened from the sibling picker) can land on
+    // an order the active queue never listed — the focus UI would then show
+    // stale prev/next controls for a queue this order isn't part of. Drop it
+    // rather than carry it silently.
+    effect(() => {
+      const no = this.no();
+      const active = this.focusQueue.active();
+      if (active && no && !this.focusQueue.contains(no)) {
+        untracked(() => this.focusQueue.stop());
+      }
+    });
+
+    // `vo-record.jsx:525` — `useEffect(() => { if (!focus) setPaneTab('facts'); }, [focus])`.
+    effect(() => {
+      if (!this.focusQueue.active()) untracked(() => this.paneTab.set('facts'));
     });
   }
 
