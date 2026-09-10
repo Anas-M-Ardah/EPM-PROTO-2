@@ -202,34 +202,51 @@ public class ChangeOrderRecordTests
         Assert.Null(d.DaysDelta);
     }
 
-    // ── D-14 · 02 §5 — a SUPPLY order never trips the 20% tier ───────────
-    // VO-08 · ITM-006: 196 contracted, rate 985,875. A 20-unit increase would
-    // trip 20% (threshold 39.2) on a works line; on a supply line the whole
-    // delta prices at the original rate regardless.
+    // ── D-14 · 02 §5 — a SUPPLY line trips the 20% tier exactly like a works
+    // line (P-261 corrects an earlier, wrong exemption here) ─────────────
+    // ITM-006: 196 contracted, rate 985,875 → threshold 39.2.
     private static readonly ChangeOrderRecord.Line Itm006Supply =
         new("ITM-006", "inc", 196m, 196m, 985_875m, 196m * 985_875m, IsSupply: true);
 
     [Fact]
-    public void A_supply_quantity_increase_never_trips_the_threshold()
+    public void A_supply_quantity_increase_within_20_percent_still_prices_entirely_at_the_original_rate()
     {
+        // delta 20 stays under the 39.2 threshold — reached via the same
+        // TierSplit path as construction now, with the same result as the
+        // old special-cased branch: no excess, no proposed rate shown.
         var c = ChangeOrderRecord.For(Itm006Supply, new(20m, null, 1_100_000m));
 
-        // The proposed excess rate (1,100,000) is IGNORED — there is no
-        // excess on a supply line, so the whole 20 prices at 985,875.
         Assert.False(c.TripsThreshold);
         Assert.Equal(0m, c.ExcessQty);
         Assert.Equal(20m, c.AtRateQty);
+        Assert.Equal(216m, c.QtyAfter);
         Assert.Equal(20m * 985_875m, c.Impact);
         Assert.Null(c.RateShown);
     }
 
     [Fact]
-    public void A_supply_quantity_decrease_also_prices_the_whole_delta_at_the_original_rate()
+    public void A_supply_quantity_increase_beyond_20_percent_now_trips_the_threshold_like_a_works_line()
     {
-        var c = ChangeOrderRecord.For(Itm006Supply with { ChangeType = "dec" }, new(50m, null, null));
+        // delta 50 exceeds the 39.2 threshold — 39.2 at the original rate,
+        // 10.8 at the proposed excess rate.
+        var c = ChangeOrderRecord.For(Itm006Supply, new(50m, null, 1_100_000m));
 
-        Assert.False(c.TripsThreshold);
+        Assert.True(c.TripsThreshold);
+        Assert.Equal(39.2m, c.AtRateQty);
+        Assert.Equal(10.8m, c.ExcessQty);
+        Assert.Equal(246m, c.QtyAfter);
+        Assert.Equal(50_526_300m, c.Impact);
+        Assert.Equal(1_100_000m, c.RateShown);
+    }
+
+    [Fact]
+    public void A_supply_quantity_decrease_beyond_20_percent_also_now_trips_the_threshold()
+    {
+        var c = ChangeOrderRecord.For(Itm006Supply with { ChangeType = "dec" }, new(50m, null, 1_050_000m));
+
+        Assert.True(c.TripsThreshold);
         Assert.Equal(146m, c.QtyAfter);
-        Assert.Equal(-50m * 985_875m, c.Impact);
+        Assert.Equal(-49_986_300m, c.Impact);
+        Assert.Equal(1_050_000m, c.RateShown);
     }
 }

@@ -158,11 +158,17 @@ and resets the penalty baseline. Until then, nothing has changed.
 
 ### The supply variant
 
-A change order on an equipment contract has **no 20% tier and no rate-fixing
-committee**. Its step 2 instead redistributes quantity **between beneficiaries
-within one item** — and its net effect on the contract value is **zero**. That
-is the point of the screen: a redistribution is a quantity move, not a financial
-one.
+A change order on an equipment contract runs the **same 20% tier and the same
+rate-fixing committee stage** as a works order (D-14, `02 §5`) — only who
+requests and reviews differs (المجهز / لجنة الفحص والاستلام in place of
+المقاول / دائرة المهندس المقيم), and a brand-new **base** rate may never be
+proposed directly (only the tier's excess-quantity rate, same as construction).
+
+Its step 2 additionally offers redistributing quantity **between beneficiaries
+within one item** — and that particular move's net effect on the contract value
+is zero, since it relocates who holds devices rather than how many the contract
+bought. That zero belongs to the redistribution screen specifically, not to the
+order type as a whole.
 
 ---
 

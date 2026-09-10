@@ -495,15 +495,13 @@ export class ChangeOrderPage {
   reviewerLabel = computed(() => this.lang.t(this.isSupply() ? 'chg_party_inspection' : 'chg_party_redept'));
 
   /**
-   * The rate column's header. A supply order has no 20% tier and no excess
-   * rate at all — its unit rate is fixed by the contract and the letter of
-   * credit — so its header says that FIRST (`vo-record.jsx`:
-   * `isSupply ? 'سعر الوحدة' : 'سعر الزائد'`). Only once an order is known to
-   * be engineering does whether every one of its lines is a `rate` change
-   * decide between the two.
+   * The rate column's header — «سعر الوحدة» only when every line on the
+   * order is a `rate` change (the whole line re-prices, no tier), «سعر
+   * الزائد» otherwise. A supply order's `inc`/`dec` lines go through the
+   * same 20% tier as construction (D-14, P-261), so they carry a genuine
+   * excess rate too — this no longer special-cases `isSupply()`.
    */
   rateHeader = computed(() => {
-    if (this.isSupply()) return this.lang.t('chg_col_unit_rate');
     const lines = this.data()?.lines ?? [];
     const allRate = lines.length > 0 && lines.every(l => l.changeType === 'rate');
     return this.lang.t(allRate ? 'chg_col_unit_rate' : 'chg_col_excess_rate');

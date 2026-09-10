@@ -193,22 +193,24 @@ public static class ChangeOrderWizardEndpoints
             if (contract is null)
                 return Results.NotFound(new { message = $"contract {draft.ContractId} not on {projectId}" });
 
-            // D-14 — an equipment project has one order kind, and the wizard
-            // no longer offers the other (`change-order.wizard.html`'s own
-            // type step). A caller that sends it anyway — a stale client, a
-            // direct request — is refused here rather than accepted into an
-            // engineering order a supply project cannot carry.
+            // D-14 — an equipment project has only one order kind, so the
+            // wizard doesn't offer the other on one (`change-order.wizard.
+            // html`'s own type step). A caller that sends "engineering"
+            // anyway — a stale client, a direct request — is refused here
+            // rather than accepted into an order kind a supply project
+            // cannot carry. The reverse is NOT refused: a construction
+            // project's own wizard genuinely offers "تجهيز / إعادة توزيع
+            // كميات" as a second, legitimate order kind (the prototype's own
+            // `KINDS`, `vo-wizard.jsx:38-43` — a redistribution-flavored
+            // order on an ordinary contract), and this endpoint used to
+            // reject that choice after the fact (P-262 corrects that).
             var wantsSupply = draft.Type == "supply";
             var isEquipment = p.Type == "equipment";
-            if (wantsSupply != isEquipment)
+            if (isEquipment && !wantsSupply)
                 return Results.BadRequest(new
                 {
-                    messageAr = isEquipment
-                        ? "مشاريع التجهيز لا تُصدر إلا أوامر تجهيز."
-                        : "هذا المشروع لا يُصدر أوامر تجهيز.",
-                    messageEn = isEquipment
-                        ? "Equipment-supply projects raise only supply orders."
-                        : "This project does not raise supply orders.",
+                    messageAr = "مشاريع التجهيز لا تُصدر إلا أوامر تجهيز.",
+                    messageEn = "Equipment-supply projects raise only supply orders.",
                 });
 
             var submitting = kind == "submit";
