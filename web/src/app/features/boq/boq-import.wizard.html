@@ -71,10 +71,10 @@
           }
 
           <div class="d-msgbar info">
-            <epm-icon name="info" [size]="16" />
-            <div>
-              <b>{{ lang.t('boq_imp_cols_t') }}</b>
-              <span>{{ lang.t('boq_imp_cols_b') }}</span>
+            <epm-icon name="info" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('boq_imp_cols_t') }}</b>
+              <span class="mbody">{{ lang.t('boq_imp_cols_b') }}</span>
             </div>
           </div>
         }
@@ -143,10 +143,10 @@
         @case (3) {
           @if (violations().length === 0) {
             <div class="d-msgbar info">
-              <epm-icon name="check_circle" [size]="16" />
-              <div>
-                <b>{{ lang.t('boq_imp_ok_t') }}</b>
-                <span>{{ lang.t('boq_imp_ok_b') }}
+              <epm-icon name="check_circle" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('boq_imp_ok_t') }}</b>
+                <span class="mbody">{{ lang.t('boq_imp_ok_b') }}
                   <bdi>{{ preview()!.weightSum.toFixed(2) }}%</bdi></span>
               </div>
             </div>
@@ -154,10 +154,10 @@
             <!-- Every failing cell, not the first: an import is fixed in the
                  spreadsheet, and one error per attempt is a dozen round trips. -->
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ lang.t('boq_imp_bad_t') }}</b>
-                <span><bdi>{{ violations().length }}</bdi> {{ lang.t('boq_imp_bad_b') }}</span>
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('boq_imp_bad_t') }}</b>
+                <span class="mbody"><bdi>{{ violations().length }}</bdi> {{ lang.t('boq_imp_bad_b') }}</span>
               </div>
             </div>
 
@@ -263,10 +263,10 @@
         @case (5) {
           @if (done(); as v) {
             <div class="d-msgbar info">
-              <epm-icon name="check_circle" [size]="16" />
-              <div>
-                <b>{{ lang.t('boq_imp_done_t') }}</b>
-                <span>{{ lang.t('boq_imp_done_b') }}
+              <epm-icon name="check_circle" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('boq_imp_done_t') }}</b>
+                <span class="mbody">{{ lang.t('boq_imp_done_b') }}
                   <bdi>{{ v.no }}</bdi> · <bdi>{{ v.itemCount }}</bdi>
                   {{ lang.t('boq_imp_rows') }} · <bdi>{{ fmt.money(v.totalAmount) }}</bdi></span>
               </div>

@@ -100,10 +100,10 @@
         <!-- The net, as a PREVIEW. EP-FIN-02 computes the binding one from the
              three figures above, so a net typed here could never disagree. -->
         <div class="d-msgbar info">
-          <epm-icon name="functions" [size]="16" />
-          <div>
-            <b>{{ lang.t('pay_w_net') }} <bdi class="mono">{{ fmt.money(net()) }}</bdi></b>
-            <span>{{ lang.t('pay_w_net_note') }}</span>
+          <epm-icon name="functions" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('pay_w_net') }} <bdi class="mono">{{ fmt.money(net()) }}</bdi></b>
+            <span class="mbody">{{ lang.t('pay_w_net_note') }}</span>
           </div>
         </div>
 
@@ -239,10 +239,10 @@
         <!-- WHAT THIS REGISTERS, said before it is registered. P-26's rule
              survives this screen and the reader is told so. -->
         <div class="d-msgbar warning">
-          <epm-icon name="warning" [size]="16" />
-          <div>
-            <b>{{ lang.t('pay_w_pending_t') }}</b>
-            <span>{{ lang.t('pay_w_pending_b') }}</span>
+          <epm-icon name="warning" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('pay_w_pending_t') }}</b>
+            <span class="mbody">{{ lang.t('pay_w_pending_b') }}</span>
           </div>
         </div>
       }

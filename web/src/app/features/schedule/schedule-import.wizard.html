@@ -142,20 +142,20 @@
         @if (preview(); as p) {
           @if (violations().length === 0) {
             <div class="d-msgbar">
-              <epm-icon name="verified" [size]="16" />
-              <div>
-                <b>{{ lang.t('scd_imp_ok_t') }}</b>
-                <span>{{ lang.t('scd_imp_ok_b') }}</span>
+              <epm-icon name="verified" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('scd_imp_ok_t') }}</b>
+                <span class="mbody">{{ lang.t('scd_imp_ok_b') }}</span>
               </div>
             </div>
           } @else {
             <!-- EVERY violation, not the first — a wizard that reports one per
                  upload makes a person re-upload once per row (04 §9). -->
             <div class="d-msgbar danger">
-              <epm-icon name="error" [size]="16" />
-              <div>
-                <b><bdi>{{ violations().length }}</bdi> {{ lang.t('scd_imp_bad_t') }}</b>
-                <span>{{ lang.t('scd_imp_bad_b') }}</span>
+              <epm-icon name="error" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle"><bdi>{{ violations().length }}</bdi> {{ lang.t('scd_imp_bad_t') }}</b>
+                <span class="mbody">{{ lang.t('scd_imp_bad_b') }}</span>
               </div>
             </div>
 
@@ -179,10 +179,10 @@
 
           @if (basisWarning()) {
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ lang.t('scd_imp_mh_t') }}</b>
-                <span>{{ lang.t('scd_imp_mh_b') }}</span>
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('scd_imp_mh_t') }}</b>
+                <span class="mbody">{{ lang.t('scd_imp_mh_b') }}</span>
               </div>
             </div>
           }
@@ -248,20 +248,20 @@
             <!-- `03` gives a claim on the contract's dates to a change order and
                  never to an import. Stated, and acted on by nothing. -->
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ lang.t('scd_imp_claim_t') }}</b>
-                <span>{{ lang.t('scd_imp_claim_b') }}</span>
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('scd_imp_claim_t') }}</b>
+                <span class="mbody">{{ lang.t('scd_imp_claim_b') }}</span>
               </div>
             </div>
           }
 
           @if (im.removed > 0) {
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ lang.t('scd_imp_gone_t') }}</b>
-                <span>{{ lang.t('scd_imp_gone_b') }}</span>
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('scd_imp_gone_t') }}</b>
+                <span class="mbody">{{ lang.t('scd_imp_gone_b') }}</span>
               </div>
             </div>
           }
@@ -304,10 +304,10 @@
       <!-- ══ 5 — تأكيد وتقديم ═════════════════════════════════════════════ -->
       @if (step() === 5) {
         <div class="d-msgbar info">
-          <epm-icon name="info" [size]="16" />
-          <div>
-            <b>{{ lang.t('scd_imp_version_t') }}</b>
-            <span>{{ lang.t('scd_imp_version_b') }}</span>
+          <epm-icon name="info" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('scd_imp_version_t') }}</b>
+            <span class="mbody">{{ lang.t('scd_imp_version_b') }}</span>
           </div>
         </div>
 

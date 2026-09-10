@@ -258,10 +258,10 @@
                      silently missing — a disabled action nobody can explain
                      reads as a bug. Switch capacity in the header to see both. -->
                 <div class="d-msgbar info">
-                  <epm-icon name="info" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('boq_imp_pending') }} — <bdi>{{ v.no }}</bdi></b>
-                    <span>{{ lang.t('boq_imp_pending_b') }}
+                  <epm-icon name="info" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('boq_imp_pending') }} — <bdi>{{ v.no }}</bdi></b>
+                    <span class="mbody">{{ lang.t('boq_imp_pending_b') }}
                       <bdi>{{ v.itemCount }}</bdi> {{ lang.t('boq_imp_rows') }} ·
                       <bdi>{{ fmt.money(v.totalAmount) }}</bdi> ·
                       <bdi>{{ v.actorName }}</bdi> · <bdi>{{ fmt.date(v.at) }}</bdi></span>
@@ -785,10 +785,10 @@
 
                   @if (a.isManual) {
                     <div class="d-msgbar warning">
-                      <epm-icon name="edit" [size]="16" />
-                      <div>
-                        <b>{{ lang.t('boq_asn_manual') }}</b>
-                        <span>{{ lang.t('boq_asn_method') }}</span>
+                      <epm-icon name="edit" [size]="16" class="mgi" />
+                      <div class="mtx">
+                        <b class="mtitle">{{ lang.t('boq_asn_manual') }}</b>
+                        <span class="mbody">{{ lang.t('boq_asn_method') }}</span>
                       </div>
                     </div>
                   } @else {
@@ -1169,10 +1169,10 @@
                        sentence. -->
                   @if (r.banded) {
                     <div class="d-msgbar info">
-                      <epm-icon name="info" [size]="16" />
-                      <div>
-                        <b>{{ lang.t('boq_banded') }}</b>
-                        <span>{{ lang.t('boq_card_banded_b') }}</span>
+                      <epm-icon name="info" [size]="16" class="mgi" />
+                      <div class="mtx">
+                        <b class="mtitle">{{ lang.t('boq_banded') }}</b>
+                        <span class="mbody">{{ lang.t('boq_card_banded_b') }}</span>
                       </div>
                     </div>
                   }
@@ -1470,10 +1470,10 @@
 
       @if (distExcess() > 0) {
         <div class="d-msgbar danger">
-          <epm-icon name="warning" [size]="16" />
-          <div>
-            <b>{{ lang.t('boq_dist_over_b') }}</b>
-            <span>{{ lang.t('boq_dist_over') }}:
+          <epm-icon name="warning" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('boq_dist_over_b') }}</b>
+            <span class="mbody">{{ lang.t('boq_dist_over') }}:
               <bdi class="num">{{ fmt.qty(distExcess()) }}</bdi> <bdi>{{ d.unit }}</bdi></span>
           </div>
         </div>

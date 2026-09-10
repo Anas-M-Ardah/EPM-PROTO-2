@@ -198,10 +198,10 @@
           <!-- 02 §9 — the PROJECTION, beside the totals and in none of them. -->
           @if (d.totals.pendingChanges !== 0) {
             <div class="d-msgbar info">
-              <epm-icon name="info" [size]="16" />
-              <div>
-                <b>{{ lang.t('fin_pending_t') }}</b>
-                <span>
+              <epm-icon name="info" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('fin_pending_t') }}</b>
+                <span class="mbody">
                   {{ lang.t('fin_pending_b') }}
                   <bdi>{{ fmt.money(d.totals.pendingChanges) }}</bdi>
                 </span>
@@ -352,16 +352,16 @@
             stalls. الشكل 14 puts it under the table it qualifies.
           -->
           <div class="d-msgbar info">
-            <epm-icon name="info" [size]="16" />
-            <div>
-              <b>{{ lang.t('fin_basis_t') }}</b>
+            <epm-icon name="info" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('fin_basis_t') }}</b>
               @if (d.totals.budgetGap === null) {
                 <!-- No budget recorded is a state, not a gap of zero (P-09):
                      with nothing to compare against, the two figures are the
                      same number and there is no comparison to draw. -->
-                <span>{{ lang.t('fin_basis_none') }}</span>
+                <span class="mbody">{{ lang.t('fin_basis_none') }}</span>
               } @else {
-                <span>
+                <span class="mbody">
                   {{ lang.t('fin_basis_budget') }}
                   <bdi>{{ fmt.money(d.totals.budgetRevised) }}</bdi> {{ lang.t('cur_iqd') }}
                   {{ lang.t('fin_basis_vs') }}
@@ -466,10 +466,10 @@
                   moves only through an approved مناقلة.
                 -->
                 <div class="d-msgbar info">
-                  <epm-icon name="info" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('fin_alloc_where_t') }}</b>
-                    <span>{{ lang.t('fin_alloc_where_b') }}</span>
+                  <epm-icon name="info" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('fin_alloc_where_t') }}</b>
+                    <span class="mbody">{{ lang.t('fin_alloc_where_b') }}</span>
                   </div>
                 </div>
               </epm-field-group>
@@ -620,10 +620,10 @@
                    it cannot disagree. -->
               @if (sla.escalated) {
                 <div class="d-msgbar warning">
-                  <epm-icon name="arrow_upward" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('fin_sla_esc_t') }}</b>
-                    <span>{{ lang.t('fin_sla_esc_b') }}</span>
+                  <epm-icon name="arrow_upward" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('fin_sla_esc_t') }}</b>
+                    <span class="mbody">{{ lang.t('fin_sla_esc_b') }}</span>
                   </div>
                 </div>
               }
@@ -633,10 +633,10 @@
                    the caps above (P-98). -->
               @if (sla.legalDueDate) {
                 <div class="d-msgbar {{ (sla.daysToDue ?? 0) < 0 ? 'warning' : 'info' }}">
-                  <epm-icon name="warning" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('fin_sla_due') }} <bdi>{{ fmt.date(sla.legalDueDate) }}</bdi></b>
-                    <span>
+                  <epm-icon name="warning" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('fin_sla_due') }} <bdi>{{ fmt.date(sla.legalDueDate) }}</bdi></b>
+                    <span class="mbody">
                       @if ((sla.daysToDue ?? 0) >= 0) {
                         {{ lang.t('fin_sla_in') }} <bdi>{{ sla.daysToDue }}</bdi> {{ lang.t('fin_sla_days') }}
                       } @else {
@@ -721,10 +721,10 @@
                field, rather than only on the tab that displays the year. -->
           @if (d.records.yearLocked) {
             <div class="d-msgbar info">
-              <epm-icon name="lock" [size]="16" />
-              <div>
-                <b>{{ lang.t('fin_rec_locked_t') }}</b>
-                <span>{{ lang.t('fin_rec_locked_b') }}</span>
+              <epm-icon name="lock" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('fin_rec_locked_t') }}</b>
+                <span class="mbody">{{ lang.t('fin_rec_locked_b') }}</span>
               </div>
             </div>
           }
