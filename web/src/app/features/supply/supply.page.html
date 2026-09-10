@@ -626,8 +626,8 @@
           </div>
           <label class="d-form-i">
             <span class="k">{{ lang.t('prg_updates_at') }}</span>
-            <input class="d-form-input" type="date" [value]="rDate()"
-                   (input)="rDate.set($any($event.target).value)" />
+            <epm-date [value]="rDate()" [label]="lang.t('prg_updates_at')"
+                      (changed)="rDate.set($event)" />
           </label>
           <label class="d-form-i">
             <span class="k">{{ lang.t('sup_qty') }} *</span>

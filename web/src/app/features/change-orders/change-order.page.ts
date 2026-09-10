@@ -11,6 +11,7 @@ import { SectionComponent } from '../../shared/section.component';
 import { DrawerComponent } from '../../shared/drawer.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
+import { DateComponent } from '../../shared/date.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
@@ -53,7 +54,7 @@ import {
   selector: 'epm-change-order-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, SectionComponent, DrawerComponent, TableSkeletonComponent, PanelHeadComponent,
-            PersonaSwitcherComponent],
+            PersonaSwitcherComponent, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-order.page.html',
 })

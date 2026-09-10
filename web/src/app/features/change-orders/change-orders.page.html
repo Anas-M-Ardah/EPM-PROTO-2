@@ -35,28 +35,34 @@
 
   } @else {
     @if (data(); as d) {
-      <!-- ══ Z6 — LIFECYCLE ONLY ═══════════════════════════════════════════
-           Attention is a different axis and lives in the toolbar below. -->
-      <div class="d-pz6">
-        <span class="z6-t">
-          {{ lang.t('mod_changeorders') }}
-          <em>{{ lang.t('prg_asof') }} <bdi>{{ fmt.date(d.dataDate) }}</bdi></em>
-        </span>
+      <!-- ══ Z6 — TITLE + ACTIONS ═══════════════════════════════════════════
+           Lifecycle is a separate axis, below, in its own Z5 tab strip
+           (P-256) — every sibling module that carries tabs (progress/
+           schedule/supply/contract/information) keeps them out of Z6 the
+           same way; this page was the one screen still cramming both onto
+           one row.
 
-        <div class="grp">
-          <button type="button" class="d-fchip" [class.on]="life() === 'all'" (click)="life.set('all')">
-            {{ lang.t('chg_grp_all') }}
-            <span class="n"><bdi>{{ d.rows.length }}</bdi></span>
-          </button>
-          @for (g of groups(); track g.key) {
-            <button type="button" class="d-fchip" [class.on]="life() === g.key" (click)="life.set(g.key)">
-              {{ groupLabel(g.key) }}
-              <span class="n"><bdi>{{ g.count }}</bdi></span>
-            </button>
-          }
-        </div>
+           P-256 also: the header used to carry its own "as of" `<em>`, the
+           only Z6 title in the app that did — every sibling module's `<em>`
+           is a HEADLINE METRIC (progress's physical/financial %, model's
+           version label), never the data date, which lives in the
+           `.d-pz10` footer strip and nowhere else. This module has no
+           equivalent single headline figure, so the title goes back to
+           bare, like model.page.html / audit.page.html, rather than keep
+           repeating the same date twice on one screen. -->
+      <div class="d-pz6">
+        <span class="z6-t">{{ lang.t('mod_changeorders') }}</span>
 
         <span class="sp"></span>
+
+        <!-- P-256, superseding P-126's placement: `vo-record.jsx:665-671`
+             passes the persona select as `DModuleFrame`'s own `toolbar` prop
+             — the SAME header row as «أمر تغييري جديد», not the filter bar
+             below. P-126 read «الشكل 29's filter bar» off the written
+             appendix figure; the running reference component (the thing
+             CLAUDE.md §1 says to trust over the spec text when the two
+             disagree) puts it here. Moved to match. -->
+        <epm-persona-switcher />
 
         <!-- الشكل 29's «أمر تغييري جديد» — it opens المسار 9's wizard over
              this register, which is where الشكل 37 draws it. -->
@@ -65,11 +71,32 @@
         </button>
       </div>
 
+      <!-- ══ Z5 — LIFECYCLE TABS ═════════════════════════════════════════════
+           `.d-pz5` — the real underline tab strip (hover, active underline,
+           count badge all already in `desktop.css:2411`), used by every
+           other module's lifecycle/view tabs. This screen had been using
+           `.d-fchip` — the TOOLBAR filter-chip look (bordered, tinted,
+           rounded) — for what is structurally a tab, not a filter: exactly
+           one is always selected, same as `progress.page.html`'s `view()`
+           tabs, never zero and never several at once the way the toolbar's
+           `attn`/stage chips can be. -->
+      <div class="d-pz5" role="tablist" [attr.aria-label]="lang.t('mod_changeorders')">
+        <button type="button" role="tab" [class.on]="life() === 'all'"
+                [attr.aria-selected]="life() === 'all'" (click)="life.set('all')">
+          {{ lang.t('chg_grp_all') }}
+          <span class="n"><bdi>{{ d.rows.length }}</bdi></span>
+        </button>
+        @for (g of groups(); track g.key) {
+          <button type="button" role="tab" [class.on]="life() === g.key"
+                  [attr.aria-selected]="life() === g.key" (click)="life.set(g.key)">
+            {{ groupLabel(g.key) }}
+            <span class="n"><bdi>{{ g.count }}</bdi></span>
+          </button>
+        }
+      </div>
+
       <div class="d-pbody no-aside">
         <div class="d-pz7">
-
-          <epm-summary-strip [stats]="summaryStats()"
-                             [unavailableLabel]="lang.t('unavailable')" />
 
           <!-- ══ WHO IS LOOKING ══════════════════════════════════════════
                `03 §7` — the relation, and therefore every action gate, is
@@ -77,21 +104,31 @@
                party so a reader knows whose answer the chips are. -->
           @if (d.awaitingMe > 0) {
             <div class="d-msgbar warning">
-              <epm-icon name="pending" [size]="16" />
-              <div>
-                <b>{{ awaitingTitle() }}</b>
-                <span>{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
+              <epm-icon name="pending" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ awaitingTitle() }}</b>
+                <span class="mbody">{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
               </div>
             </div>
           } @else {
             <div class="d-msgbar info">
-              <epm-icon name="info" [size]="16" />
-              <div>
-                <b>{{ lang.t('chg_awaiting_none_t') }}</b>
-                <span>{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
+              <epm-icon name="info" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('chg_awaiting_none_t') }}</b>
+                <span class="mbody">{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
               </div>
             </div>
           }
+
+          <!-- ══ THE REGISTER CARD (P-260) ═══════════════════════════════
+               `vo-record.jsx:694` wraps the toolbar + table in `<DFGroup id="vo-reg"
+               flush title="سجل الأوامر التغييرية" sub="{shown}/{total}">` — a
+               titled, collapsible card with its own chevron. This port never
+               had it: the toolbar sat directly under the Z6 tabs with no card
+               boundary or title above it at all, which is the missing "header
+               section" a direct comparison against the reference turns up. -->
+          <epm-field-group id="vo-reg" flush [title]="lang.t('chg_reg_title')"
+                            [sub]="shown().length + ' ' + lang.t('chg_of') + ' ' + d.rows.length">
 
           <!-- ══ THE TOOLBAR — THE OTHER THREE AXES ══════════════════════ -->
           <div class="d-toolbar">
@@ -146,11 +183,6 @@
                 <epm-icon name="close" [size]="13" />{{ lang.t('clear_filters') }}
               </button>
             }
-
-            <!-- الشكل 29 lists «مبدّل «العرض بصفة»» in this bar, right after
-                 «مسح الفلاتر». It is a filter on THIS screen, not an app-wide
-                 identity control (P-126). -->
-            <epm-persona-switcher />
 
             <!-- الشكل 29's «مرشح نوع الأمر». هندسي / تجهيزي — the two the
                  `co-type` lookup defines, and only the ones present. -->
@@ -209,7 +241,15 @@
             <div class="d-vow-tw wide-voreg"><table class="d-line-table d-vo-reg">
               <thead>
                 <tr>
-                  <th>{{ lang.t('chg_col_no') }}</th>
+                  <!-- P-258: `.code` here matches the `<td class="code">` below
+                       it — without it, `.d-vow-tw table th:first-child`'s
+                       generic sticky-column white (desktop.css:1970) beat
+                       `.d-vo-reg thead th.code`'s tinted one (desktop.css:3490)
+                       for lack of a class to attach to, and the header row
+                       rendered two-tone: a white first cell against the
+                       tinted `--surface-container` the reference uses across
+                       the whole row. -->
+                  <th class="code">{{ lang.t('chg_col_no') }}</th>
                   <th>{{ lang.t('chg_col_order') }}</th>
                   <th class="r">{{ lang.t('chg_col_value') }} <span class="cur">({{ lang.t('cur_iqd') }})</span></th>
                   <!-- The unit rides in `.cur`, the same way القيمة's (د.ع)
@@ -317,12 +357,12 @@
                 <tr>
                   <td class="code">{{ lang.t('chg_total') }}</td>
                   <td class="d-cell-sub">
-                    <bdi>{{ shown().length }}</bdi> {{ lang.t('chg_of') }} <bdi>{{ d.rows.length }}</bdi>
+                    <bdi>{{ shown().length }}</bdi> {{ lang.t('chg_of') }} <bdi>{{ d.rows.length }}</bdi> {{ lang.t('chg_of_orders') }}
                   </td>
                   <td class="r num"><bdi>{{ fmt.delta(shownValue()) }}</bdi></td>
                   <td class="r num"><bdi>{{ shownDays() === 0 ? '—' : fmt.delta(shownDays()) }}</bdi></td>
                   <td colspan="2" class="d-cell-sub">
-                    {{ lang.t('chg_kpi_net') }} <bdi>{{ fmt.money(d.indicators.netApproved) }}</bdi>
+                    {{ lang.t('chg_total_approved') }} <bdi>{{ fmt.money(d.indicators.netApproved) }}</bdi>
                   </td>
                   <td class="r"></td>
                 </tr>
@@ -336,15 +376,54 @@
             </div>
           }
 
+          </epm-field-group>
+
           <!-- Where a row goes, and what is still ahead of it: the record is
                built, and the decisions on it are the stage machine's. -->
           <div class="d-msgbar info">
-            <epm-icon name="info" [size]="16" />
-            <div>
-              <b>{{ lang.t('chg_record_soon_t') }}</b>
-              <span>{{ lang.t('chg_record_soon_b') }}</span>
+            <epm-icon name="info" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('chg_record_soon_t') }}</b>
+              <span class="mbody">{{ lang.t('chg_record_soon_b') }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- ══ Z10 — the status strip (P-256) ═══════════════════════════
+             `03 §10`: "five compact indicators only — no large cards, no
+             charts." The comment already said this; the markup used
+             `<epm-summary-strip>` anyway, whose own doc calls its tile "a
+             quiet bordered card" — the opposite of both the spec text and
+             `.d-pz10`, this app's own compact strip: a hairline footer bar
+             that sits AFTER `.d-pz7` closes, not inside it — boq/progress/
+             financials/schedule/supply all place theirs as a sibling of
+             `.d-pz7` so it is pinned below the scrolling region, never
+             scrolled away with the list, matching the reference's own
+             register, where `DZ10` stays visible under the table.
+
+             `vo-record.jsx:672` — the reference's own `DZ10` for this exact
+             screen — carries four of the five, not five: orders (shown /
+             total), pending, net approved, avg cycle. SLA-exceeded and
+             overdue are deliberately left OUT of its DZ10 and live only as
+             the toolbar's `attn` chips (our `chg_f_sla`/`chg_f_overdue`
+             above) — the spec text reads as pre-dating that split, the same
+             drift already documented for the type scale (P-214). Followed
+             the reference over the stale spec line, per CLAUDE.md §1. -->
+        <div class="d-pz10">
+          <span class="st">{{ lang.t('chg_kpi_orders') }}
+            <b><bdi>{{ shown().length }} / {{ d.rows.length }}</bdi></b></span>
+          <span class="st">{{ lang.t('chg_kpi_pending') }}
+            <b><bdi>{{ d.indicators.pending }}</bdi></b></span>
+          <span class="st">{{ lang.t('chg_kpi_net') }}
+            <b><bdi>{{ fmt.money(d.indicators.netApproved) }}</bdi></b> {{ lang.t('cur_iqd') }}</span>
+          @if (d.indicators.avgCycleDays !== null) {
+            <span class="st">{{ lang.t('chg_kpi_cycle') }}
+              <b><bdi>{{ fmt.index(d.indicators.avgCycleDays, 1) }}</bdi></b> {{ lang.t('scd_days') }}</span>
+          } @else {
+            <span class="st">{{ lang.t('chg_kpi_cycle') }} <b>—</b></span>
+          }
+          <span class="sp"></span>
+          <span class="asof">{{ lang.t('prg_asof_data') }} <bdi>{{ d.dataDate ? fmt.date(d.dataDate) : '—' }}</bdi></span>
         </div>
       </div>
     }

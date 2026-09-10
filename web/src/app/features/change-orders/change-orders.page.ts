@@ -6,9 +6,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
-import { SummaryStripComponent, Stat } from '../../shared/summary-strip.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { PersonaSwitcherComponent } from '../../shared/persona-switcher.component';
+import { FieldGroupComponent } from '../../shared/field-group.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
@@ -46,8 +46,8 @@ import { ChangeOrderWizard } from './change-order.wizard';
   selector: 'epm-change-orders-page',
   standalone: true,
   imports: [
-    IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent,
-    ChangeOrderWizard, PersonaSwitcherComponent,
+    IconComponent, StatusPillComponent, TableSkeletonComponent,
+    ChangeOrderWizard, PersonaSwitcherComponent, FieldGroupComponent,
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-orders.page.html',
@@ -197,34 +197,6 @@ export class ChangeOrdersPage {
   /** Σ of what is on screen — a footer that ignores the filter is a footer nobody trusts. */
   shownValue = computed(() => this.shown().reduce((a, r) => a + r.value, 0));
   shownDays = computed(() => this.shown().reduce((a, r) => a + r.days, 0));
-
-  /**
-   * `03 §10`: **five compact indicators only — no large cards, no charts.**
-   * The average cycle is null until something has closed, and the tile then
-   * says "unavailable + reason" rather than printing a 0 (P-09).
-   */
-  summaryStats = computed<Stat[]>(() => {
-    const d = this.data();
-    if (!d) return [];
-    const i = d.indicators;
-    const ar = this.lang.isAr();
-    return [
-      { label: this.lang.t('chg_kpi_net'), value: i.netApproved, foot: this.lang.t('chg_kpi_net_foot') },
-      { label: this.lang.t('chg_kpi_pending'), value: i.pending },
-      { label: this.lang.t('chg_kpi_needs'), value: i.needsAction },
-      { label: this.lang.t('chg_kpi_overdue'), value: i.overdue },
-      {
-        label: this.lang.t('chg_kpi_cycle'),
-        value: i.avgCycleDays ?? 0,
-        dp: 1,
-        suffix: ' ' + this.lang.t('scd_days'),
-        unavailable: i.avgCycleDays === null
-          ? (ar ? 'لم يُغلق أي أمر بعد، فلا دورة اعتماد يمكن حساب متوسطها.'
-                : 'No order has closed yet, so there is no approval cycle to average.')
-          : undefined,
-      },
-    ];
-  });
 
   typeLabel(code: string): string { return this.lookups.label('co-type', code); }
 

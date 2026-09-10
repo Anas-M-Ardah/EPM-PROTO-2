@@ -11,6 +11,7 @@ import { TileComponent, TileDir, TileState } from '../../shared/tile.component';
 import { FieldGroupComponent } from '../../shared/field-group.component';
 import { SelectComponent, SelectOption } from '../../shared/select.component';
 import { SCurveComponent, CurvePeriod } from '../../shared/scurve.component';
+import { DateComponent } from '../../shared/date.component';
 import { LangService, StrKey } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -69,7 +70,7 @@ import { AccomplishmentPeriodsResponse } from './accomplishment-period.types';
   selector: 'epm-progress-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, DrawerComponent,
-    TileComponent, FieldGroupComponent, SelectComponent, SCurveComponent, RouterLink, SectionComponent],
+    TileComponent, FieldGroupComponent, SelectComponent, SCurveComponent, RouterLink, SectionComponent, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './progress.page.html',
 })

@@ -5,6 +5,7 @@ import { Subject, debounceTime } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../core/icon.component';
 import { SectionComponent } from '../../shared/section.component';
+import { DateComponent } from '../../shared/date.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -68,7 +69,7 @@ interface ActRow {
 @Component({
   selector: 'epm-change-order-wizard',
   standalone: true,
-  imports: [IconComponent, SectionComponent],
+  imports: [IconComponent, SectionComponent, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-order.wizard.html',
 })

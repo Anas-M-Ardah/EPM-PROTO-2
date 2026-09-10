@@ -783,6 +783,23 @@ select.d-form-input::-ms-expand { display: none; }
 .d-chart-legend { display: flex; flex-wrap: wrap; gap: 8px var(--space-16); padding-top: var(--space-12); margin-top: 12px; border-top: 1px solid var(--surface-container-high); }
 .d-chart-legend .li { display: inline-flex; align-items: center; gap: var(--space-6); font-size: 12px; color: var(--on-surface-variant); font-weight: var(--fw-bold); }
 .d-chart-legend .li i { display: inline-block; width: 12px; height: 12px; border-radius: var(--r-xs); flex: none; }
+/* S-curve redesign (P-255): bars scaled to their own per-period max, unrelated to the
+   printed 0–100% axis, made the chart unreadable — dropped entirely. What remains is the
+   plan/actual line pair plus a hover layer the static chart never had. */
+.d-chart-wrap { position: relative; }
+.d-chart-hit { fill: transparent; cursor: pointer; outline: none; }
+.d-chart-hit:focus-visible { fill: var(--hover-overlay); }
+.d-chart-tip {
+  position: absolute; top: 0; transform: translate(-50%, 0); pointer-events: none;
+  background: var(--inverse-surface); color: var(--inverse-on-surface); box-shadow: var(--elev-3);
+  border-radius: var(--r-sm); padding: var(--space-8) 10px; font-size: var(--fs-200); line-height: var(--lh-200);
+  white-space: nowrap; z-index: 2;
+}
+.d-chart-tip .hd { font-weight: var(--fw-bold); margin-bottom: var(--space-4); }
+.d-chart-tip .row { display: flex; align-items: baseline; gap: var(--space-16); justify-content: space-between; }
+.d-chart-tip .row + .row { margin-top: 2px; }
+.d-chart-tip .k { color: color-mix(in srgb, var(--inverse-on-surface) 68%, transparent); }
+.d-chart-tip .v { font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
 /* change-order review workspace */
 .d-vo-stages { display: flex; flex-direction: column; }
 .d-vo-stage { display: grid; grid-template-columns: 26px 1fr; gap: 12px; }
@@ -1498,6 +1515,19 @@ select.ctl { cursor: pointer; }
 .d-sec-h { border-bottom: none; padding: 0 0 2px; min-height: 0; }
 .d-sec-h > .ico { display: none; }
 .d-sec-b, .d-sec-b.flush { background: none; border: none; border-radius: 0; padding: 0; margin-top: 10px; }
+
+/* ---------- 3b. boxed sections — change-order screens only (epm-section [boxed]) ----------
+   The change-order wizard + record page were compared against the client reference
+   (docs/spec/reference/app/vo-*.jsx, infinite-azaiton.github.io/epm) and, unlike every other
+   tab, the reference wraps each block in a bordered card. This restores that card ONLY where
+   .boxed is set — every other .d-sec above is untouched. Tokens only, nothing invented:
+   --r-md is the existing card/drawer radius, --outline-variant the existing hairline colour,
+   --surface-container-lowest the existing lowest plane, --space-12 the existing 12px step. */
+.d-sec.boxed { margin-bottom: 24px; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow: hidden; }
+.d-sec.boxed > .d-sec-h { border-bottom: 1px solid var(--outline-variant); padding: 10px 16px; min-height: 30px; }
+.d-sec.boxed > .d-sec-h > .ico { display: grid; }
+.d-sec.boxed > .d-sec-b, .d-sec.boxed > .d-sec-b.flush { background: none; border: none; border-radius: 0; padding: var(--space-12) 16px; margin-top: 0; }
+.d-sec.boxed > .d-sec-b.flush { padding: 0; overflow: hidden; }
 .d-detail-body .d-section-title { border: none; background: none; padding: 0; margin: 30px 0 10px; }
 .d-detail-body .d-section-title:first-child { margin-top: 0; }
 .d-detail-body .d-section-title + .d-card-sub,
@@ -1933,6 +1963,19 @@ button:disabled, select:disabled, input:disabled, textarea:disabled {
 /* the amendment history keeps its column widths and scrolls sideways rather
    than crushing dates and figures when the Z8 record pane takes 320px */
 .d-vow-tw.wide-amd > .d-line-table { min-width: 1094px; }
+/* the item/party identity column stays visible while scrolling right to reach
+   الأثر/الوزن/مطبق — the Gantt's .d-gantt-cellname already established this
+   pattern for the same reason (a wide comparison table you can't scroll back
+   from without losing which row you're on). */
+.d-vow-tw table th:first-child, .d-vow-tw table td:first-child {
+  position: sticky; inset-inline-start: 0; z-index: 1; background: var(--surface-container-lowest); }
+/* match .d-line-table tbody tr:hover td's own background exactly, so the pinned
+   cell doesn't read as a different shade from the rest of the hovered row */
+.d-vow-tw table tbody tr:hover td:first-child { background: var(--surface-container-low); }
+/* a selected row (tr.on) tints via color-mix on the row itself — an opaque
+   sticky cell would otherwise sit on the unselected plane while the rest of
+   the row shows the primary tint, so the pinned cell repeats the same mix */
+.d-vow-tw table tbody tr.on td:first-child { background: color-mix(in srgb, var(--primary) 5%, var(--surface-container-lowest)); }
 .d-vow-f { display: flex; align-items: center; gap: 6px; }
 .d-vow-ac { display: flex; align-items: center; gap: 2px; }
 .d-vow-ac .d-icon-btn { width: 34px; height: 34px; }
@@ -2998,9 +3041,21 @@ button.d-amd-mark.pend:hover { background: color-mix(in srgb, var(--status-suspe
   border: 1px solid var(--info); background: color-mix(in srgb, var(--info) 8%, var(--surface));
   font-size: var(--fs-300); line-height: var(--lh-300); }
 .d-msgbar > .mgi { flex: none; margin-top: 1px; color: var(--info); }
-.d-msgbar .mtx { min-width: 0; }
+/* P-257: `.mtitle` (a `<b>`) and `.mbody` (a `<span>`) are both inline by
+   element default, and neither was ever given a `display` of its own — so
+   they sat side by side with nothing separating them. Worse than a missing
+   gap: Angular's default template whitespace collapsing (`preserveWhitespaces:
+   false`) removes an inter-element text node that is pure newline+indent
+   entirely, not down to one space, so the rendered HTML had literally zero
+   characters between "…إجراءك" and "بصفة…" — "إجراءكبصفة" was not a spacing
+   bug, it was two inline runs with no break at all. Same defect family as
+   P-247's `.rp-h > .tx > .sub`, same fix: the CONTAINER goes flex column,
+   exactly `.rp-h .tx`'s own base rule (desktop.css:2874) — stacking no
+   longer depends on either child's own display or on template whitespace
+   surviving compilation. */
+.d-msgbar .mtx { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .d-msgbar .mtitle { font-weight: var(--fw-semibold); color: var(--on-surface); text-wrap: pretty; }
-.d-msgbar .mbody { margin-top: var(--space-2); color: var(--on-surface-variant);
+.d-msgbar .mbody { color: var(--on-surface-variant);
   font-size: var(--fs-200); line-height: var(--lh-300); text-wrap: pretty; }
 .d-msgbar.success { border-color: var(--success); background: color-mix(in srgb, var(--success) 8%, var(--surface)); }
 .d-msgbar.success > .mgi { color: var(--success); }
