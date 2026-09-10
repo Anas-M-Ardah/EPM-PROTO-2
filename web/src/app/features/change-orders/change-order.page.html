@@ -116,14 +116,14 @@
              the `none` relation too — «للاطلاع» is a status, not silence. -->
         @if (tab() === 'summary' || tab() === 'flow') {
           <div class="d-msgbar" [class.warning]="d.relation.canAct" [class.info]="!d.relation.canAct">
-            <epm-icon [name]="d.relation.canAct ? 'pending_actions' : 'visibility'" [size]="16" />
-            <div>
+            <epm-icon [name]="d.relation.canAct ? 'pending_actions' : 'visibility'" [size]="16" class="mgi" />
+            <div class="mtx">
               <!-- `none` IS «للاطلاع» — saying it twice reads as a stutter. -->
-              <b>{{ relLabel(d.relation.key) }}
+              <b class="mtitle">{{ relLabel(d.relation.key) }}
                 @if (!d.relation.canAct && d.relation.key !== 'none') {
                   — {{ lang.t('chg_view_only') }}
                 }</b>
-              <span>
+              <span class="mbody">
                 {{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi>
                 @if (d.relation.stageNameAr) {
                   · {{ lang.t('chg_col_status') }}:
@@ -137,7 +137,7 @@
         <!-- ══ TAB 1 — الملخص · الشكل 30 ═════════════════════════════════ -->
         @if (tab() === 'summary') {
 
-          <epm-section [title]="lang.t('chg_sec_info')" icon="info" [collapsible]="true" [defaultOpen]="true">
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_info')" icon="info" [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_type') }}</span>
                 <span class="v">{{ typeLabel(d.type) }}</span></div>
@@ -157,7 +157,7 @@
           <!-- 03 §1 — the contractor and the consultant act BEFORE the order
                exists. The section says so in its own subtitle, because a reader
                who takes them for stages will look for their SLA. -->
-          <epm-section [title]="lang.t('chg_sec_preinputs')" icon="mail"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_preinputs')" icon="mail"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-vo-ext">
               <div class="lbl">{{ lang.t('chg_preinputs_note') }}</div>
@@ -191,7 +191,7 @@
             </div>
           </epm-section>
 
-          <epm-section [title]="lang.t('chg_sec_impact')" icon="functions"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_impact')" icon="functions"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ requesterLabel() }}</span>
@@ -225,7 +225,7 @@
             </div>
           </epm-section>
 
-          <epm-section [title]="lang.t('chg_sec_contract')" icon="description"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_contract')" icon="description"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_value_before') }}</span>
@@ -259,16 +259,16 @@
                  exists to keep true. -->
             @if (d.contract.amendmentState === 'pending') {
               <div class="d-msgbar warning">
-                <epm-icon name="pending" [size]="16" />
-                <div>
-                  <b>{{ lang.t('chg_approval_note_t') }}</b>
-                  <span>{{ lang.t('chg_approval_note_b') }}</span>
+                <epm-icon name="pending" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('chg_approval_note_t') }}</b>
+                  <span class="mbody">{{ lang.t('chg_approval_note_b') }}</span>
                 </div>
               </div>
             }
           </epm-section>
 
-          <epm-section [title]="lang.t('chg_sec_decision')" icon="gavel"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_decision')" icon="gavel"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ requesterLabel() }}</span>
@@ -313,7 +313,7 @@
 
           <!-- الشكل 30's nine steps. `03 §6` numbers seven of them; the two the
                plate adds carry no spec number and do not pretend to. -->
-          <epm-section [title]="lang.t('chg_sec_apply')" icon="task_alt"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_apply')" icon="task_alt"
                        [collapsible]="true" [defaultOpen]="true" [flush]="true">
             <table class="d-line-table"><tbody>
               @for (s of d.applySteps; track s.no) {
@@ -342,7 +342,7 @@
             </div>
 
           } @else {
-            <epm-section [title]="lang.t('chg_sec_lines')" icon="list_alt"
+            <epm-section [boxed]="true" [title]="lang.t('chg_sec_lines')" icon="list_alt"
                          [n]="d.lines.length" [collapsible]="true" [defaultOpen]="true" [flush]="true">
               <div class="d-vow-tw">
                 <table class="d-line-table d-vo-cmp" style="min-width: 1180px">
@@ -478,7 +478,7 @@
             <!-- الشكل 31's «أثر الأوزان»: BR-01 re-run on the after-state, and
                  the 100% check is the recomputation's own answer — not an
                  assertion printed beside it. -->
-            <epm-section [title]="lang.t('chg_sec_weights')" icon="donut_small"
+            <epm-section [boxed]="true" [title]="lang.t('chg_sec_weights')" icon="donut_small"
                          [collapsible]="true" [defaultOpen]="true">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_w_before') }}</span>
@@ -528,7 +528,7 @@
             </epm-section>
 
             @if (d.redistribution.length) {
-              <epm-section [title]="lang.t('chg_sec_redist')" icon="swap_horiz"
+              <epm-section [boxed]="true" [title]="lang.t('chg_sec_redist')" icon="swap_horiz"
                            [collapsible]="true" [defaultOpen]="true" [flush]="true">
                 <table class="d-line-table">
                   <thead>
@@ -574,7 +574,7 @@
                  this one moves quantity between BOQ lines; this one moves one
                  line's own quantity between the workspaces that hold it. -->
             @if (d.beneficiaryTransfers.length) {
-              <epm-section [title]="lang.t('chg_sec_transfers')" icon="swap_horiz"
+              <epm-section [boxed]="true" [title]="lang.t('chg_sec_transfers')" icon="swap_horiz"
                            [collapsible]="true" [defaultOpen]="true" [flush]="true">
                 <table class="d-line-table">
                   <thead>
@@ -616,7 +616,7 @@
 
         <!-- ══ TAB 3 — الأثر الزمني · الشكل 32 ═══════════════════════════ -->
         @if (tab() === 'time') {
-          <epm-section [title]="lang.t('chg_sec_time')" icon="calendar_month"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_time')" icon="calendar_month"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_activities') }}</span>
@@ -656,7 +656,7 @@
             </div>
 
           } @else {
-            <epm-section [title]="lang.t('chg_sec_acts')" icon="account_tree"
+            <epm-section [boxed]="true" [title]="lang.t('chg_sec_acts')" icon="account_tree"
                          [n]="d.time.activities.length" [collapsible]="true" [defaultOpen]="true" [flush]="true">
               <div class="d-vow-tw">
                 <table class="d-line-table" style="min-width: 1120px">
@@ -710,10 +710,10 @@
               <!-- الشكل 32's governing note, and the reason the activity days
                    and the order's days are allowed to differ. -->
               <div class="d-msgbar info">
-                <epm-icon name="account_tree" [size]="16" />
-                <div>
-                  <b>{{ lang.t('chg_actdur_t') }}</b>
-                  <span>{{ lang.t('chg_actdur_b') }}</span>
+                <epm-icon name="account_tree" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('chg_actdur_t') }}</b>
+                  <span class="mbody">{{ lang.t('chg_actdur_b') }}</span>
                 </div>
               </div>
             </epm-section>
@@ -735,7 +735,7 @@
         @if (tab() === 'flow') {
           <div class="d-l14">
           <div class="d-l14-trail">
-          <epm-section [title]="lang.t('chg_sec_path')" icon="alt_route"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_path')" icon="alt_route"
                        [sub]="stageCount().done + ' / ' + stageCount().total + ' ' + lang.t('chg_stages')"
                        [collapsible]="true" [defaultOpen]="true">
             <ol class="d-votrail">
@@ -857,7 +857,7 @@
           <!-- الشكل 33's «القرار» panel. 5.4 puts the four decisions here; until
                then the panel states WHOSE decision it is rather than showing a
                disabled control (`03 §7` — never a bare disabled button). -->
-          <epm-section [title]="lang.t('chg_sec_decision_panel')" icon="gavel"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_decision_panel')" icon="gavel"
                        [sub]="d.relation.canAct ? lang.t('chg_yours') : lang.t('chg_view_only')"
                        [collapsible]="true" [defaultOpen]="true">
             <!-- `03 §7` — the actions render ONLY for `awaiting` or `recorder`.
@@ -865,14 +865,14 @@
                  decision it is, never a bare disabled button. -->
             @if (decisions().length === 0) {
               <div class="d-msgbar info">
-                <epm-icon name="lock" [size]="16" />
-                <div>
-                  <b>{{ lang.t('chg_locked_t') }}</b>
+                <epm-icon name="lock" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('chg_locked_t') }}</b>
                   @if (d.transaction.stalledAtAr) {
-                    <span>{{ lang.t('chg_locked_b') }}
+                    <span class="mbody">{{ lang.t('chg_locked_b') }}
                       <bdi>{{ lang.pick(d.transaction.stalledAtAr, d.transaction.stalledAtEn || '') }}</bdi></span>
                   } @else {
-                    <span>{{ lang.t('chg_locked_done') }}</span>
+                    <span class="mbody">{{ lang.t('chg_locked_done') }}</span>
                   }
                 </div>
               </div>
@@ -907,15 +907,15 @@
               <!-- «ماذا سيحدث بعد ذلك» — the consequences BEFORE the act. It is
                    the part of a decision a reader cannot infer from its name. -->
               <div class="d-msgbar" [class.warning]="chosen()?.danger" [class.info]="!chosen()?.danger">
-                <epm-icon name="account_tree" [size]="16" />
-                <div>
-                  <b>{{ lang.t('chg_d_next_t') }}</b>
+                <epm-icon name="account_tree" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('chg_d_next_t') }}</b>
                   @if (chosen(); as c) {
-                    <ul class="d-conseq">
+                    <ul class="d-conseq mbody">
                       @for (w of consequences(c.key); track w) { <li>{{ w }}</li> }
                     </ul>
                   } @else {
-                    <span>{{ lang.t('chg_d_next_b') }}</span>
+                    <span class="mbody">{{ lang.t('chg_d_next_b') }}</span>
                   }
                 </div>
               </div>
@@ -926,10 +926,10 @@
                    is required, not optional decoration. -->
               @if (isStage3Approve()) {
                 <div class="d-msgbar info">
-                  <epm-icon name="difference" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('chg_d_appr_t') }}</b>
-                    <span>{{ lang.t('chg_d_appr_b') }}</span>
+                  <epm-icon name="difference" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('chg_d_appr_t') }}</b>
+                    <span class="mbody">{{ lang.t('chg_d_appr_b') }}</span>
                   </div>
                 </div>
 
@@ -988,7 +988,7 @@
             }
           </epm-section>
 
-          <epm-section [title]="lang.t('chg_sec_transaction')" icon="schedule"
+          <epm-section [boxed]="true" [title]="lang.t('chg_sec_transaction')" icon="schedule"
                        [collapsible]="true" [defaultOpen]="true">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_referred') }}</span>
@@ -1131,7 +1131,7 @@
           </div>
 
           <div class="rp-b">
-            <epm-section [title]="lang.t('chg_card_value')">
+            <epm-section [boxed]="true" [title]="lang.t('chg_card_value')">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_card_requested') }}</span>
                   <span class="v num"><bdi>{{ fmt.money(d.card.requestedValue) }}</bdi></span></div>
@@ -1153,7 +1153,7 @@
               </div>
             </epm-section>
 
-            <epm-section [title]="lang.t('chg_card_time')">
+            <epm-section [boxed]="true" [title]="lang.t('chg_card_time')">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_f_days_req') }}</span>
                   <span class="v num"><bdi>{{ d.card.requestedDays }}</bdi></span></div>
@@ -1170,7 +1170,7 @@
               </div>
             </epm-section>
 
-            <epm-section [title]="lang.t('chg_card_linked')">
+            <epm-section [boxed]="true" [title]="lang.t('chg_card_linked')">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_f_in_no') }}</span>
                   <span class="v mono"><bdi>{{ d.incomingNo }}</bdi> ·
@@ -1184,7 +1184,7 @@
               </div>
             </epm-section>
 
-            <epm-section [title]="lang.t('chg_card_parties')">
+            <epm-section [boxed]="true" [title]="lang.t('chg_card_parties')">
               <div class="d-form-grid">
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_f_party') }}</span>
                   <span class="v">{{ d.responsibleParty }}</span></div>
@@ -1222,7 +1222,7 @@
         <!-- D-01 — the threshold is measured against the ORIGINAL contracted
              quantity, which is NOT necessarily the quantity in force. Both are
              printed, because that is the distinction the rule turns on. -->
-        <epm-section [title]="lang.t('chg_line_basis')">
+        <epm-section [boxed]="true" [title]="lang.t('chg_line_basis')">
           <div class="d-form-grid">
             <div class="d-form-i"><span class="k">{{ lang.t('chg_line_contracted') }}</span>
               <span class="v num"><bdi>{{ fmt.qty(l.contractedQty) }}</bdi>&nbsp;<bdi>{{ l.unit }}</bdi></span></div>
@@ -1239,7 +1239,7 @@
           </div>
         </epm-section>
 
-        <epm-section [title]="lang.t('chg_line_proposals')" [flush]="true">
+        <epm-section [boxed]="true" [title]="lang.t('chg_line_proposals')" [flush]="true">
           <table class="d-line-table">
             <thead>
               <tr>
@@ -1289,10 +1289,10 @@
         <!-- 02 §5, in the one place where the whole rule is visible at once. -->
         @if (l.contractor.tripsThreshold || l.reDept.tripsThreshold) {
           <div class="d-msgbar info">
-            <epm-icon name="difference" [size]="16" />
-            <div>
-              <b>{{ lang.t('chg_tier_t') }}</b>
-              <span>{{ lang.t('chg_tier_b') }}</span>
+            <epm-icon name="difference" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('chg_tier_t') }}</b>
+              <span class="mbody">{{ lang.t('chg_tier_b') }}</span>
             </div>
           </div>
         }
@@ -1308,10 +1308,10 @@
                   [closeLabel]="lang.t('scd_rec_close')" [hasFooter]="true"
                   (closed)="recording.set(null)">
         <div class="d-msgbar info">
-          <epm-icon name="edit_note" [size]="16" />
-          <div>
-            <b>{{ lang.t('chg_d_attribution_t') }}</b>
-            <span>{{ lang.t('chg_d_attribution_b') }}
+          <epm-icon name="edit_note" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('chg_d_attribution_t') }}</b>
+            <span class="mbody">{{ lang.t('chg_d_attribution_b') }}
               <bdi>{{ lang.pick(x.partyAr, x.partyEn) }}</bdi> ·
               {{ lang.t('chg_recorded_by') }} <bdi>{{ d.viewerParty }}</bdi></span>
           </div>
@@ -1337,10 +1337,10 @@
                    (input)="letterNo.set($any($event.target).value)" placeholder="OUT-0000" />
           </div>
           <div class="d-form-field">
-            <label for="ext-date">{{ lang.t('chg_d_letter_date') }}<span class="req" aria-hidden="true">*</span></label>
-            <input id="ext-date" class="d-form-input mono" type="date" [value]="letterDate()"
-                   [class.bad]="decisionTouched() && !letterDate().trim()"
-                   (input)="letterDate.set($any($event.target).value)" />
+            <label>{{ lang.t('chg_d_letter_date') }}<span class="req" aria-hidden="true">*</span></label>
+            <epm-date [value]="letterDate()" [label]="lang.t('chg_d_letter_date')"
+                      [invalid]="decisionTouched() && !letterDate().trim()"
+                      (changed)="letterDate.set($event)" />
           </div>
         </div>
 

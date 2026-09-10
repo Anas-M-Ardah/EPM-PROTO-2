@@ -6,6 +6,7 @@ import { IconComponent } from '../../core/icon.component';
 import { StatusPillComponent } from '../../shared/status-pill.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
 import { DrawerComponent } from '../../shared/drawer.component';
+import { DateComponent } from '../../shared/date.component';
 import {
   CellTemplateDirective, DataTableComponent, TableColumn,
 } from '../../shared/data-table.component';
@@ -48,7 +49,7 @@ import {
   selector: 'epm-supply-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, DrawerComponent,
-    DataTableComponent, CellTemplateDirective],
+    DataTableComponent, CellTemplateDirective, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './supply.page.html',
 })

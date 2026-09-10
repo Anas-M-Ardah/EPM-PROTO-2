@@ -1107,10 +1107,10 @@
       @if (periods()?.canClose) {
         <div class="d-drawer-grp">
           <div class="d-form-field">
-            <label for="period-new-date">{{ lang.t('prg_period_new_date') }}<span class="req" aria-hidden="true">*</span></label>
-            <input id="period-new-date" type="date" class="d-form-input"
-                   [class.bad]="!!closeError() && !newDataDate()"
-                   [value]="newDataDate()" (input)="newDataDate.set($any($event.target).value)" />
+            <label>{{ lang.t('prg_period_new_date') }}<span class="req" aria-hidden="true">*</span></label>
+            <epm-date [value]="newDataDate()" [label]="lang.t('prg_period_new_date')"
+                      [invalid]="!!closeError() && !newDataDate()"
+                      (changed)="newDataDate.set($event)" />
           </div>
           @if (closeError()) { <span class="d-form-err">{{ closeError() }}</span> }
           <button type="button" class="d-btn primary" style="width: 100%"

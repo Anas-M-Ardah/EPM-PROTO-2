@@ -15,6 +15,17 @@ import { IconComponent } from '../core/icon.component';
  * The header is a hairline-underlined label; the body is a single plane. A
  * section inside a section inside a card is the failure mode this replaces.
  * `flush` drops the body padding so a table can sit edge to edge.
+ *
+ * ── `boxed` — opt-in, change-orders only ──────────────────────────────────
+ * The change-order screens (wizard + record page) were re-compared against
+ * the client reference (docs/spec/reference/app/vo-*.jsx, the live build at
+ * infinite-azaiton.github.io/epm) and, unlike every other tab, the reference
+ * wraps each block in a bordered card rather than a flat label+space band.
+ * `[boxed]="true"` restores that card treatment (desktop.css §3b) for those
+ * two templates only — every other `<epm-section>` call site is unaffected
+ * because the default stays `false`. See DECISIONS.md and the approved plan
+ * for the full reasoning; this is a deliberate, scoped exception to §3's
+ * flat rule, not a reversal of it.
  */
 @Component({
   selector: 'epm-section',
@@ -22,7 +33,7 @@ import { IconComponent } from '../core/icon.component';
   encapsulation: ViewEncapsulation.None,
   imports: [IconComponent],
   template: `
-    <div class="d-sec" [class.collapsible]="collapsible" [attr.id]="id">
+    <div class="d-sec" [class.collapsible]="collapsible" [class.boxed]="boxed" [attr.id]="id">
       <div class="d-sec-h"
            [attr.role]="collapsible ? 'button' : null"
            [attr.tabindex]="collapsible ? 0 : null"
@@ -59,6 +70,8 @@ export class SectionComponent {
   /** Drops the body padding — for a table that should reach the edges. */
   @Input() flush = false;
   @Input() collapsible = false;
+  /** Bordered-card presentation — change-order screens only, see header comment. */
+  @Input() boxed = false;
   /** Anchor for <epm-sec-nav>. */
   @Input() id: string | null = null;
 

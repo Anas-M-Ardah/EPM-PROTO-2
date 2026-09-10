@@ -77,7 +77,7 @@
 
         <!-- ══ 1 — النوع والكتاب الرسمي · الشكل 37 ═════════════════════ -->
         @if (step() === 1) {
-          <epm-section [title]="lang.t('chg_w_sec_contract')" icon="assignment">
+          <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_contract')" icon="assignment">
             <div class="d-form-grid">
               <div class="d-form-field">
                 <label for="w-contract">{{ lang.t('chg_w_pick_contract') }}<span class="req" aria-hidden="true">*</span></label>
@@ -101,10 +101,10 @@
 
             <!-- non-negotiable #1, stated where the choice is made. -->
             <div class="d-msgbar info">
-              <epm-icon name="lock" [size]="16" />
-              <div>
-                <b>{{ lang.t('chg_w_scope_t') }}</b>
-                <span>{{ lang.t('chg_w_scope_b') }}</span>
+              <epm-icon name="lock" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('chg_w_scope_t') }}</b>
+                <span class="mbody">{{ lang.t('chg_w_scope_b') }}</span>
               </div>
             </div>
           </epm-section>
@@ -113,7 +113,7 @@
                raises only a supply order (D-14) — the same reason its wizard
                has no resident engineer to name later — so the engineering
                card is not offered rather than offered and refused on submit. -->
-          <epm-section [title]="lang.t('chg_w_sec_type')" icon="engineering">
+          <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_type')" icon="engineering">
             <div class="d-vow-types">
               @if (!isSupplyProject()) {
                 <button type="button" class="d-vow-type" [class.on]="type() === 'engineering'"
@@ -133,7 +133,7 @@
           </epm-section>
 
           <!-- A free textarea, and no preset reason list (`03 §8` step 1). -->
-          <epm-section [title]="lang.t('chg_f_justification')" icon="verified_user">
+          <epm-section [boxed]="true" [title]="lang.t('chg_f_justification')" icon="verified_user">
             <div class="d-form-field">
               <textarea class="d-form-input" rows="4"
                         [attr.placeholder]="lang.t('chg_w_just_ph')"
@@ -144,7 +144,7 @@
 
           <!-- الشكل 37 fixes the letter at step 1 «بوصفه نقطة بدء العدّ
                القانوني» — BR-12 measures every SLA from this date. -->
-          <epm-section [title]="lang.t('chg_w_sec_letter')" icon="description">
+          <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_letter')" icon="description">
             <div class="d-form-grid">
               <div class="d-form-field">
                 <label for="w-party">{{ lang.t('chg_f_party') }}</label>
@@ -160,9 +160,9 @@
                        (input)="incomingNo.set($any($event.target).value)" placeholder="0801/2026" />
               </div>
               <div class="d-form-field">
-                <label for="w-in-date">{{ lang.t('chg_f_in_date') }}</label>
-                <input id="w-in-date" class="d-form-input mono" type="date" [value]="incomingDate()"
-                       (input)="incomingDate.set($any($event.target).value)" />
+                <label>{{ lang.t('chg_f_in_date') }}</label>
+                <epm-date [value]="incomingDate()" [label]="lang.t('chg_f_in_date')"
+                          (changed)="incomingDate.set($event)" />
               </div>
             </div>
             <p class="d-cell-sub">{{ lang.t('chg_w_letter_note') }}</p>
@@ -644,11 +644,11 @@
                                            well: the zero is the POINT of this flow,
                                            not a figure that has not arrived. -->
                                       <div class="d-msgbar info">
-                                        <epm-icon name="balance" [size]="16" />
-                                        <div>
-                                          <b>{{ lang.t('chg_rd_zero_t') }}
+                                        <epm-icon name="balance" [size]="16" class="mgi" />
+                                        <div class="mtx">
+                                          <b class="mtitle">{{ lang.t('chg_rd_zero_t') }}
                                             <bdi class="mono">{{ fmt.money(p.redistImpact) }}</bdi></b>
-                                          <span>{{ lang.t('chg_rd_zero_b') }}</span>
+                                          <span class="mbody">{{ lang.t('chg_rd_zero_b') }}</span>
                                         </div>
                                       </div>
                                     }
@@ -659,20 +659,20 @@
                                      that has one (`02 §5`). -->
                                 @if (showsExcessRate(r.code)) {
                                   <div class="d-msgbar info">
-                                    <epm-icon name="difference" [size]="16" />
-                                    <div>
-                                      <b>{{ lang.t('chg_tier_t') }}</b>
-                                      <span>{{ lang.t('chg_tier_b') }}</span>
+                                    <epm-icon name="difference" [size]="16" class="mgi" />
+                                    <div class="mtx">
+                                      <b class="mtitle">{{ lang.t('chg_tier_t') }}</b>
+                                      <span class="mbody">{{ lang.t('chg_tier_b') }}</span>
                                     </div>
                                   </div>
                                 }
 
                                 @for (i of issuesFor(r.code); track i.gate + i.messageAr) {
                                   <div class="d-msgbar danger">
-                                    <epm-icon name="warning" [size]="16" />
-                                    <div>
-                                      <b>{{ issueText(i) }}</b>
-                                      <span>{{ lang.t('chg_w_gate_b') }}</span>
+                                    <epm-icon name="warning" [size]="16" class="mgi" />
+                                    <div class="mtx">
+                                      <b class="mtitle">{{ issueText(i) }}</b>
+                                      <span class="mbody">{{ lang.t('chg_w_gate_b') }}</span>
                                     </div>
                                   </div>
                                 }
@@ -775,10 +775,10 @@
 
                 <!-- The standing note `03 §8` requires on this table. -->
                 <div class="d-msgbar info">
-                  <epm-icon name="account_tree" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('chg_actdur_t') }}</b>
-                    <span>{{ lang.t('chg_actdur_b') }}</span>
+                  <epm-icon name="account_tree" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('chg_actdur_t') }}</b>
+                    <span class="mbody">{{ lang.t('chg_actdur_b') }}</span>
                   </div>
                 </div>
               }
@@ -831,7 +831,7 @@
               </span>
             </div>
 
-            <epm-section [title]="lang.t('chg_w_changes')" icon="difference" [flush]="true">
+            <epm-section [boxed]="true" [title]="lang.t('chg_w_changes')" icon="difference" [flush]="true">
               <table class="d-line-table">
                 <thead>
                   <tr>
@@ -933,7 +933,7 @@
 
         <!-- ══ 5 — المراجعة والإرسال · الشكل 42 ════════════════════════ -->
         @if (step() === 5) {
-          <epm-section [title]="lang.t('chg_w_sec_review')" icon="description">
+          <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_review')" icon="description">
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_type') }}</span>
                 <span class="v">{{ type() === 'supply' ? lang.t('chg_w_type_sup') : lang.t('chg_w_type_eng') }}</span></div>
@@ -954,7 +954,7 @@
           </epm-section>
 
           @if (preview(); as pv) {
-            <epm-section [title]="lang.t('chg_w_sel_lines')" icon="list_alt"
+            <epm-section [boxed]="true" [title]="lang.t('chg_w_sel_lines')" icon="list_alt"
                          [n]="pv.lines.length" [flush]="true">
               @if (pv.lines.length === 0) {
                 <p class="d-cell-sub" style="padding: 12px 16px">{{ lang.t('chg_w_nolines_t') }}</p>
@@ -1021,7 +1021,7 @@
               }
             </epm-section>
 
-            <epm-section [title]="lang.t('chg_w_sel_acts')" icon="calendar_month" [n]="acts().length">
+            <epm-section [boxed]="true" [title]="lang.t('chg_w_sel_acts')" icon="calendar_month" [n]="acts().length">
               @if (acts().length === 0) {
                 <p class="d-cell-sub">{{ lang.t('chg_w_noacts_review') }}</p>
               } @else {
@@ -1042,7 +1042,7 @@
             <!-- `03 §8` step 5 — the expected path, RENDERED FROM THE ACTUAL
                  CONDITIONS. A stage that does not apply is listed with its
                  reason, never dropped (`03 §2`). -->
-            <epm-section [title]="lang.t('chg_w_expected_path')" icon="alt_route">
+            <epm-section [boxed]="true" [title]="lang.t('chg_w_expected_path')" icon="alt_route">
               <ol class="d-votrail">
                 @for (s of pv.expectedPath; track s.stageNo) {
                   <li [class]="s.applicable ? '' : 'na'">
@@ -1068,10 +1068,10 @@
 
             @if (blocking().length) {
               <div class="d-msgbar danger">
-                <epm-icon name="warning" [size]="16" />
-                <div>
-                  <b>{{ lang.t('chg_w_blocked_t') }}</b>
-                  <span>
+                <epm-icon name="warning" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('chg_w_blocked_t') }}</b>
+                  <span class="mbody">
                     @for (i of blocking(); track i.gate + i.messageAr) {
                       <bdi>{{ i.ref }}</bdi>: {{ issueText(i) }}<br />
                     }

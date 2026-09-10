@@ -2177,6 +2177,7 @@ const STR = {
 
 
   // ── SCR-W8 Change orders — the register (Phase 5.1) ────────────────────
+  chg_reg_title:   { ar: 'سجل الأوامر التغييرية',           en: 'Change-order register' },
   chg_grp_all:     { ar: 'الكل',                            en: 'All' },
   chg_grp_draft:   { ar: 'مسودة',                           en: 'Draft' },
   chg_grp_pending: { ar: 'قيد الاعتماد',                    en: 'In approval' },
@@ -2192,6 +2193,7 @@ const STR = {
   chg_rel_upcoming: { ar: 'سيصلك لاحقاً',                   en: 'Reaches you later' },
   chg_rel_none:    { ar: 'للاطلاع',                         en: 'For information' },
 
+  chg_kpi_orders:  { ar: 'الأوامر',                         en: 'Orders' },
   chg_kpi_net:     { ar: 'صافي المعتمد',                    en: 'Net approved' },
   chg_kpi_net_foot: { ar: 'المعتمد وحده — لا المقترح',      en: 'approved only, never proposed' },
   chg_kpi_pending: { ar: 'قيد الاعتماد',                    en: 'In approval' },
@@ -2202,7 +2204,7 @@ const STR = {
   chg_search:      { ar: 'بحث بالرقم أو السبب أو رقم الوارد…',
                      en: 'Search by number, reason or letter…' },
   chg_f_mine:      { ar: 'بانتظار إجرائي',                  en: 'Awaiting me' },
-  chg_f_sla:       { ar: 'تجاوزت السقف',                    en: 'SLA exceeded' },
+  chg_f_sla:       { ar: 'تجاوزت السقف الزمني',             en: 'SLA exceeded' },
   chg_f_overdue:   { ar: 'متأخرة',                          en: 'Overdue' },
   chg_f_stage:     { ar: 'المرحلة',                          en: 'Stage' },
   chg_f_stage_all: { ar: 'كل المراحل',                      en: 'All stages' },
@@ -2222,6 +2224,8 @@ const STR = {
   chg_col_files:   { ar: 'مرفقات',                          en: 'Files' },
   chg_total:       { ar: 'الإجمالي',                        en: 'Total' },
   chg_of:          { ar: 'من',                              en: 'of' },
+  chg_of_orders:   { ar: 'أمر',                              en: 'orders' },
+  chg_total_approved: { ar: 'المعتمد فعلياً',                 en: 'Actually approved' },
 
   chg_approved_fig: { ar: 'معتمد',                          en: 'approved' },
   chg_proposed_fig: { ar: 'مقترح',                          en: 'proposed' },

@@ -8,6 +8,7 @@ import { IconComponent } from '../../core/icon.component';
 import { PanelHeadComponent } from '../../shared/panel-head.component';
 import { SectionComponent } from '../../shared/section.component';
 import { TableSkeletonComponent } from '../../shared/table-skeleton.component';
+import { DateComponent } from '../../shared/date.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -33,7 +34,7 @@ import { DocumentRow, DocumentsResponse, RevisionInput, RevisionRow } from './do
 @Component({
   selector: 'epm-documents-page',
   standalone: true,
-  imports: [IconComponent, SectionComponent, TableSkeletonComponent, PanelHeadComponent],
+  imports: [IconComponent, SectionComponent, TableSkeletonComponent, PanelHeadComponent, DateComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './documents.page.html',
 })

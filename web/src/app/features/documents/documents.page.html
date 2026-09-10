@@ -312,9 +312,9 @@
                   <epm-section [title]="lang.t('doc_upload_rev')">
                     <div class="d-form-grid">
                       <div class="d-form-field">
-                        <label for="rev-date">{{ lang.t('doc_rev_date') }}</label>
-                        <input id="rev-date" type="date" class="d-form-input"
-                               [value]="revIssuedOn()" (input)="revIssuedOn.set($any($event.target).value)" />
+                        <label>{{ lang.t('doc_rev_date') }}</label>
+                        <epm-date [value]="revIssuedOn()" [label]="lang.t('doc_rev_date')"
+                                  (changed)="revIssuedOn.set($event)" />
                       </div>
                       <div class="d-form-field">
                         <label for="rev-issuer">{{ lang.t('doc_rev_issuer') }}<span class="req" aria-hidden="true">*</span></label>
