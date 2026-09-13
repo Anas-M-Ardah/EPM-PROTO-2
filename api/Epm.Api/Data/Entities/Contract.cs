@@ -47,6 +47,16 @@ public class Contract
     /// </summary>
     public DateOnly? ForecastFinish { get; set; }
 
+    /// <summary>
+    /// نسبة الغرامة التأخيرية (BR-10, D-02, P-264) — fixed by the tender
+    /// conditions within الشكل 10's statutory 10%–25% band, applied to both
+    /// the daily fraction and the total cap (`Domain/Penalty`). NEVER
+    /// overwritten once set at creation (non-negotiable #6) — like
+    /// <see cref="OriginalValue"/> and <see cref="OriginalFinish"/>, an
+    /// amendment moves the value and the finish, never the rate.
+    /// </summary>
+    public decimal PenaltyRatePct { get; set; } = Epm.Api.Domain.Penalty.DefaultRatePct;
+
     // ---- the expense items ----
     //
     // ── THREE OR FOUR? THE DOCUMENTS DISAGREE ────────────────────────────

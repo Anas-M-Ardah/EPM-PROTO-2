@@ -216,6 +216,23 @@
                 }
                 <small>{{ lang.t('con_monitoring_hint') }}</small>
               </label>
+
+              <label class="epm-ws-f">
+                <span>{{ lang.t('con_penalty_rate') }}</span>
+                <input class="d-form-input mono" dir="ltr" type="number" min="10" max="25" step="1"
+                       placeholder="10"
+                       [class.epm-invalid]="errorFor('penaltyRatePct')"
+                       [disabled]="!isNew()"
+                       [value]="penaltyRatePctDisplay() ?? ''"
+                       (input)="setPenaltyRatePct($any($event.target).value)" />
+                @if (errorFor('penaltyRatePct')) {
+                  <small class="epm-f-err">{{ errorFor('penaltyRatePct') }}</small>
+                }
+                <!-- Non-negotiable #6: fixed by the tender conditions at award,
+                     never overwritten — like the award amount above. -->
+                @if (!isNew()) { <small>{{ lang.t('con_penalty_locked') }}</small> }
+                @else { <small>{{ lang.t('con_penalty_hint') }}</small> }
+              </label>
             </div>
           </epm-section>
 

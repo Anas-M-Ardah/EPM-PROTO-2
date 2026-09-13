@@ -251,6 +251,12 @@ export interface ContractDefinitionInput {
   contactInfo: string | null;
   incomingNo: string | null;
   incomingDate: string | null;
+  /**
+   * نسبة الغرامة (BR-10, D-02, P-264) — a fraction (0.10 = 10%), within
+   * الشكل 10's statutory 10%–25% band. Null on create defaults server-side
+   * to 10%; ignored on an edit like the other originals.
+   */
+  penaltyRatePct: number | null;
 }
 
 /** One failed clause of المسار 2 step 5. `field` matches a member above. */

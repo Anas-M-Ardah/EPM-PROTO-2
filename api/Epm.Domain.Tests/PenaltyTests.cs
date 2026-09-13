@@ -15,7 +15,7 @@ public class PenaltyTests
         // 587,673,564 ÷ 364 = 1,614,487.81… × 10% = 161,448.78…, which the plate
         // prints rounded. This is the example that settled the formula, so it is
         // the first one here.
-        var r = Penalty.For(587_673_564m, 364, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30));
+        var r = Penalty.For(587_673_564m, 364, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(161_449m, Math.Round(r.PerDay));
         Assert.Equal(58_767_356.40m, Math.Round(r.Cap, 2));
@@ -26,7 +26,7 @@ public class PenaltyTests
     {
         // 365,000,000 over 365 days → 1,000,000 a day of contract, 10% of which
         // is 100,000 a day of delay.
-        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30));
+        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(61, r.Days);
         Assert.Equal(100_000m, r.PerDay);
@@ -42,7 +42,7 @@ public class PenaltyTests
         var impact = Penalty.Compare(
             valueBefore: 365_000_000m, finishBefore: new DateOnly(2026, 6, 30), durationBefore: 365,
             valueAfter: 369_000_000m, finishAfter: new DateOnly(2026, 8, 14), durationAfter: 410,
-            forecastFinish: new DateOnly(2026, 8, 30));
+            forecastFinish: new DateOnly(2026, 8, 30), ratePct: Penalty.DefaultRatePct);
 
         Assert.Equal(6_100_000m, impact.Before.Amount);
         Assert.Equal(16, impact.After.Days);
@@ -61,7 +61,7 @@ public class PenaltyTests
         var impact = Penalty.Compare(
             365_000_000m, new DateOnly(2026, 6, 30), 365,
             369_000_000m, new DateOnly(2026, 8, 14), 410,
-            new DateOnly(2026, 8, 30));
+            new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(100_000m, impact.Before.PerDay);
         Assert.Equal(90_000m, impact.After.PerDay);
@@ -76,9 +76,9 @@ public class PenaltyTests
         // identically — so a contract 365 days late has exhausted its penalty
         // and a day 366 costs nothing more.
         var atDuration = Penalty.For(
-            365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30).AddDays(365));
+            365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30).AddDays(365), Penalty.DefaultRatePct);
         var beyond = Penalty.For(
-            365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30).AddDays(500));
+            365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30).AddDays(500), Penalty.DefaultRatePct);
 
         Assert.Equal(365, atDuration.Days);
         Assert.Equal(36_500_000m, atDuration.Amount);
@@ -92,8 +92,8 @@ public class PenaltyTests
         // Same value, half the duration → twice the daily penalty and the cap
         // reached in half the time. This is the behaviour the client's formula
         // describes and the superseded one could not express at all.
-        var slow = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30));
-        var fast = Penalty.For(365_000_000m, 182, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30));
+        var slow = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
+        var fast = Penalty.For(365_000_000m, 182, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(100_000m, slow.PerDay);
         Assert.True(fast.PerDay > slow.PerDay * 1.99m);
@@ -105,7 +105,7 @@ public class PenaltyTests
     {
         // Not a division error, and not an invented figure either (P-09's
         // treatment of the missing forecast, applied to the missing duration).
-        var r = Penalty.For(365_000_000m, 0, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30));
+        var r = Penalty.For(365_000_000m, 0, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(61, r.Days);
         Assert.Equal(0m, r.PerDay);
@@ -115,7 +115,7 @@ public class PenaltyTests
     [Fact]
     public void Finishing_on_time_carries_no_penalty()
     {
-        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30));
+        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30), Penalty.DefaultRatePct);
 
         Assert.Equal(0, r.Days);
         Assert.Equal(0m, r.Amount);
@@ -124,7 +124,7 @@ public class PenaltyTests
     [Fact]
     public void Finishing_early_is_not_a_negative_penalty()
     {
-        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 5, 1));
+        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 5, 1), Penalty.DefaultRatePct);
 
         Assert.Equal(0, r.Days);
         Assert.Equal(0m, r.Amount);
@@ -141,7 +141,7 @@ public class PenaltyTests
 
         Assert.Equal(61, Penalty.DelayDays(contractual, forecast));
         Assert.Equal(
-            Penalty.For(365_000_000m, 365, contractual, forecast).Days,
+            Penalty.For(365_000_000m, 365, contractual, forecast, Penalty.DefaultRatePct).Days,
             Penalty.DelayDays(contractual, forecast));
     }
 
@@ -150,6 +150,20 @@ public class PenaltyTests
     {
         Assert.Equal(0, Penalty.DelayDays(new DateOnly(2026, 6, 30), new DateOnly(2026, 5, 1)));
         Assert.Equal(0, Penalty.DelayDays(new DateOnly(2026, 6, 30), new DateOnly(2026, 6, 30)));
+    }
+
+    [Fact]
+    public void A_contract_at_the_top_of_the_legal_band_pays_double_the_default_rate()
+    {
+        // Same value, same duration, same delay — only the rate differs: 20%
+        // (the reference's own sampled contracts carry 10/12/15/20%) instead of
+        // the 10% default. perDay and Cap both scale with the rate; Days does not.
+        var r = Penalty.For(365_000_000m, 365, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), 0.20m);
+
+        Assert.Equal(61, r.Days);
+        Assert.Equal(200_000m, r.PerDay);
+        Assert.Equal(73_000_000m, r.Cap);
+        Assert.Equal(12_200_000m, r.Amount);
     }
 
     [Fact]

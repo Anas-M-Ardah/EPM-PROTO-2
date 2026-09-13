@@ -202,6 +202,7 @@ public static class Fixture
                 IncomingNo = "3421", IncomingDate = new DateOnly(2025, 5, 12),
                 Contractor = "شركة الفاو الهندسية", Consultant = "دار الهندسة",
                 Component = "المكوّن المدني", ExecutingParty = "شركة الفاو العامة", ContactInfo = "+964 771 222 3333",
+                PenaltyRatePct = 0.10m,
             },
             new Contract
             {
@@ -216,6 +217,10 @@ public static class Fixture
                 IncomingNo = "3588", IncomingDate = new DateOnly(2025, 8, 4),
                 Contractor = "شركة المنصور للتجهيزات", Consultant = "دار الهندسة",
                 Component = "المكوّن الكهربائي", ExecutingParty = "شركة الطاقة العامة", ContactInfo = "+964 780 444 5555",
+                // Demonstrates D-02/P-264: the rate is per contract, not a
+                // ministry-wide constant — the reference's own sampled
+                // contracts carry 10/12/15/20%, not a single figure.
+                PenaltyRatePct = 0.12m,
             },
             new Contract
             {
@@ -244,6 +249,10 @@ public static class Fixture
                 IncomingNo = "3102", IncomingDate = new DateOnly(2024, 12, 3),
                 Contractor = "شركة الموصل", Consultant = "دار الهندسة",
                 Component = "المكوّن البنى التحتية", ExecutingParty = "شركة الرافدين العامة", ContactInfo = "+964 751 666 7777",
+                // Already delayed (ForecastFinish is 136 days past OriginalFinish)
+                // — the higher end of the legal band makes the feature's effect
+                // visible on a contract that actually charges a penalty today.
+                PenaltyRatePct = 0.20m,
             }
         );
 
@@ -986,6 +995,7 @@ public static class Fixture
                 Contractor = "شركة الشرق للتجهيزات العلمية", Consultant = "المكتب الاستشاري الهندسي",
                 Component = "المكوّن التجهيزي", ExecutingParty = "المديرية العامة للتجهيز والمشتريات",
                 ContactInfo = "+964 770 555 8899",
+                PenaltyRatePct = 0.15m,
             },
             // الشكل 57's own contract — «CNT-0439-EM — عقد التركيب والتشغيل
             // بقيمة IQD 416,160,000». The supply change order (الأشكال 57–60)

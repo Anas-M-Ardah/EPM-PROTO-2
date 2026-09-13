@@ -211,6 +211,38 @@ public class ContractDefinitionTests
         Assert.Contains(ContractDefinition.Validate(c, NoneYet), x => x.Field == "projectId");
     }
 
+    // ── نسبة الغرامة — الشكل 10's «النطاق القانوني 10%–25%» ────────────────
+
+    [Fact]
+    public void No_penalty_rate_at_all_is_not_a_violation()
+    {
+        // Not required — a missing rate defaults to Penalty.DefaultRatePct on
+        // create (ContractEndpoints.Apply), so this rule only checks a GIVEN one.
+        Assert.Empty(ContractDefinition.Validate(Valid() with { PenaltyRatePct = null }, NoneYet));
+    }
+
+    [Theory]
+    [InlineData(0.10)]
+    [InlineData(0.15)]
+    [InlineData(0.25)]
+    public void A_rate_within_the_legal_band_is_accepted(decimal rate)
+    {
+        var c = Valid() with { PenaltyRatePct = rate };
+
+        Assert.DoesNotContain(ContractDefinition.Validate(c, NoneYet), x => x.Field == "penaltyRatePct");
+    }
+
+    [Theory]
+    [InlineData(0.09)]
+    [InlineData(0.26)]
+    [InlineData(0)]
+    public void A_rate_outside_the_legal_band_is_refused(decimal rate)
+    {
+        var c = Valid() with { PenaltyRatePct = rate };
+
+        Assert.Contains(ContractDefinition.Validate(c, NoneYet), x => x.Field == "penaltyRatePct");
+    }
+
     // ── the stored duration ───────────────────────────────────────────────
 
     [Fact]

@@ -151,7 +151,7 @@ public static class RuleCatalog
             new { value = 587_673_564m, durationDays = 364, contractualFinish = "2026-06-30", forecastFinish = "2026-08-30" },
             "161,449 د.ع a day — the figure الشكل 10 prints on CNT-0170-EM",
             "Domain/Penalty.cs",
-            () => Penalty.For(587_673_564m, 364, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30))),
+            () => Penalty.For(587_673_564m, 364, new DateOnly(2026, 6, 30), new DateOnly(2026, 8, 30), Penalty.DefaultRatePct)),
 
         new("EVM", "BR-11", "02.11",
             "Earned value (CPI/SPI/EAC/VAC)",

@@ -568,6 +568,10 @@ const STR = {
   con_monitoring:  { ar: 'مبلغ المراقبة',                  en: 'Monitoring amount' },
   /** `01 §2.3` lists three expense items; المسار 2 asks for four. See Contract.cs. */
   con_monitoring_hint:{ ar: 'يطلبه المسار 1 ضمن المبالغ الأربعة.', en: 'Requested by المسار 2 as the fourth amount.' },
+  con_penalty_rate: { ar: 'نسبة الغرامة التأخيرية (%)',      en: 'Delay penalty rate (%)' },
+  /** D-02, P-264 — الشكل 10's «النطاق القانوني 10%–25%», not a fixed figure. */
+  con_penalty_hint: { ar: 'ضمن النطاق القانوني 10٪–25٪ — تُترك فارغة لاعتماد 10٪.', en: 'Within the legal range 10%–25% — leave blank for the 10% default.' },
+  con_penalty_locked:{ ar: 'نسبة الغرامة ثابتة بشروط المناقصة — لا تُعدَّل بعد الحفظ.', en: 'The penalty rate is fixed by the tender conditions — never edited after saving.' },
   con_start:       { ar: 'تاريخ المباشرة',                 en: 'Start date' },
   con_finish:      { ar: 'تاريخ الإنجاز التعاقدي',         en: 'Contractual finish' },
   con_finish_locked:{ ar: 'الإنجاز التعاقدي لا يُعدَّل — يحرّكه أمر تغييري.', en: 'The contractual finish is never edited — an amendment moves it.' },
@@ -784,7 +788,8 @@ const STR = {
   /** The rule as the client's own documents state it — العرض الفني §11 in
    *  words, الشكل 10 in figures (161,449 on CNT-0170-EM). BR-10 was rewritten
    *  to it; the superseded 0.1%/day form is recorded in P-81. */
-  con_pen_how_b:   { ar: 'غرامة اليوم = (قيمة العقد النافذة ÷ مدة العقد النافذة) × ١٠٪ · بحد أقصى ١٠٪ من قيمة العقد — أي أن الحد الأقصى يُبلَغ بعد تأخير يعادل مدة العقد كاملةً، ويُعاد الاحتساب عند كل ملحق يغيّر المبلغ أو المدة.', en: 'Daily penalty = (the contract value in force ÷ the contract duration in force) × 10%, capped at 10% of the contract value — so the ceiling is reached after a delay of one whole contract duration, and it is recomputed on every amendment that moves the amount or the duration.' },
+  /** `{rate}` — the CONTRACT's own rate (D-02, P-264), never a fixed 10%. */
+  con_pen_how_b:   { ar: 'غرامة اليوم = (قيمة العقد النافذة ÷ مدة العقد النافذة) × {rate} · بحد أقصى {rate} من قيمة العقد — أي أن الحد الأقصى يُبلَغ بعد تأخير يعادل مدة العقد كاملةً، ويُعاد الاحتساب عند كل ملحق يغيّر المبلغ أو المدة.', en: 'Daily penalty = (the contract value in force ÷ the contract duration in force) × {rate}, capped at {rate} of the contract value — so the ceiling is reached after a delay of one whole contract duration, and it is recomputed on every amendment that moves the amount or the duration.' },
   con_pen_item:    { ar: 'البند',                           en: 'Item' },
   con_pen_diff:    { ar: 'الفرق',                           en: 'Difference' },
   con_pen_row_days:{ ar: 'أيام التأخير',                    en: 'Days late' },

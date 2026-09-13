@@ -261,7 +261,7 @@ public static class ContractEndpoints
             if (c.ForecastFinish is null)
             {
                 penalty = new PenaltyImpact(0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    Penalty.RatePct, Penalty.CapPct, true);
+                    c.PenaltyRatePct, c.PenaltyRatePct, true);
             }
             else
             {
@@ -269,11 +269,12 @@ public static class ContractEndpoints
                 // duration. `effective` already carries the duration in force —
                 // Amendments.Effective adds every applied order's delta days to
                 // it — so the after-figure divides by the extended duration and
-                // not by the original one.
+                // not by the original one. The RATE never moves (non-negotiable
+                // #6) — one figure for both columns.
                 var impact = Penalty.Compare(
                     c.OriginalValue, c.OriginalFinish, c.OriginalDurationDays,
                     effective.Value, effective.Finish, effective.Duration,
-                    c.ForecastFinish.Value);
+                    c.ForecastFinish.Value, c.PenaltyRatePct);
 
                 penalty = new PenaltyImpact(
                     impact.Before.Days, impact.Before.Amount, impact.Before.Cap,
@@ -283,7 +284,7 @@ public static class ContractEndpoints
                     // قبل/بعد row. BR-10 already computes it; it simply had
                     // nowhere to go before this screen asked for it.
                     impact.Before.PerDay, impact.After.PerDay,
-                    Penalty.RatePct, Penalty.CapPct, false);
+                    c.PenaltyRatePct, c.PenaltyRatePct, false);
             }
 
             var disbursed = payments.Where(x => x.Status == "paid").Sum(x => x.NetAmount);
@@ -660,6 +661,11 @@ public static class ContractEndpoints
             c.OriginalValue = (d.AwardAmount ?? 0m)
                 + (d.ReserveAmount ?? 0m)
                 + (d.SupervisionAmount ?? 0m);
+
+            // نسبة الغرامة — fixed by the tender conditions at award, like the
+            // value and the finish above; ContractDefinition.Validate has
+            // already checked a GIVEN rate against the legal band.
+            c.PenaltyRatePct = d.PenaltyRatePct ?? Penalty.DefaultRatePct;
         }
     }
 
@@ -672,7 +678,7 @@ public static class ContractEndpoints
         c.Start == default ? null : c.Start,
         c.OriginalFinish == default ? null : c.OriginalFinish,
         c.AwardAmount, c.ReserveAmount, c.SupervisionAmount, c.MonitoringAmount,
-        c.Contractor, c.ExecutingParty);
+        c.Contractor, c.ExecutingParty, c.PenaltyRatePct);
 
     private static ContractDefinitionInput Read(Data.Entities.Contract c) => new(
         c.Id, c.NameAr, c.NameEn, c.Component, c.Status,
@@ -680,7 +686,7 @@ public static class ContractEndpoints
         c.Start == default ? null : c.Start.ToString("yyyy-MM-dd"),
         c.OriginalFinish == default ? null : c.OriginalFinish.ToString("yyyy-MM-dd"),
         c.Contractor, c.ExecutingParty, c.Consultant, c.ContactInfo,
-        c.IncomingNo, c.IncomingDate?.ToString("yyyy-MM-dd"));
+        c.IncomingNo, c.IncomingDate?.ToString("yyyy-MM-dd"), c.PenaltyRatePct);
 
     /// <summary>
     /// One log row. `change` is null on a create and on any action that is not
