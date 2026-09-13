@@ -889,6 +889,18 @@ select.d-form-input::-ms-expand { display: none; }
 .d-modnav-item.locked { color: var(--on-surface-variant); cursor: not-allowed; }
 .d-modnav-item .d-tab-ready { margin-inline-start: auto; }
 .d-detail-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+/* A routed module (`epm-change-order-page`, `epm-model-page`, …) renders as
+   its OWN host element — the sibling `<router-outlet>` leaves behind, one
+   level under `.d-main` (bare top-level routes) or `.d-detail-main` (project
+   modules). That host has no rule of its own, so it defaults to `flex: 0 1
+   auto` and sizes to its content instead of the space its flex parent has
+   for it. `.d-pframe`'s own `flex: 1; min-height: 0` chain down to `.d-pz7`'s
+   `overflow-y: auto` then has nothing bounding it, so a page whose content
+   is taller than the viewport just runs off the bottom with no scrollbar —
+   invisible on a page that happens to fit, reproducible on the change-order
+   record (VO-02's stacked sections push past 2000px against an 875px frame). */
+.d-main > router-outlet + *, .d-detail-main > router-outlet + * {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 @media (max-width: 1200px) { .d-modnav { width: 60px; padding: 10px 6px; } .d-modnav-item .ml, .d-modnav-group .gl { display: none; } .d-modnav-item { justify-content: center; padding: 10px 0; } .d-modnav-item .d-tab-ready { position: absolute; top: 6px; inset-inline-end: 8px; margin: 0; } .d-modnav-group { margin-top: 8px; border-top: 1px solid var(--outline-variant); padding-top: 8px; } }
 
 /* detail header */
