@@ -568,6 +568,10 @@ const STR = {
   con_monitoring:  { ar: 'مبلغ المراقبة',                  en: 'Monitoring amount' },
   /** `01 §2.3` lists three expense items; المسار 2 asks for four. See Contract.cs. */
   con_monitoring_hint:{ ar: 'يطلبه المسار 1 ضمن المبالغ الأربعة.', en: 'Requested by المسار 2 as the fourth amount.' },
+  con_penalty_rate: { ar: 'نسبة الغرامة التأخيرية (%)',      en: 'Delay penalty rate (%)' },
+  /** D-02, P-264 — الشكل 10's «النطاق القانوني 10%–25%», not a fixed figure. */
+  con_penalty_hint: { ar: 'ضمن النطاق القانوني 10٪–25٪ — تُترك فارغة لاعتماد 10٪.', en: 'Within the legal range 10%–25% — leave blank for the 10% default.' },
+  con_penalty_locked:{ ar: 'نسبة الغرامة ثابتة بشروط المناقصة — لا تُعدَّل بعد الحفظ.', en: 'The penalty rate is fixed by the tender conditions — never edited after saving.' },
   con_start:       { ar: 'تاريخ المباشرة',                 en: 'Start date' },
   con_finish:      { ar: 'تاريخ الإنجاز التعاقدي',         en: 'Contractual finish' },
   con_finish_locked:{ ar: 'الإنجاز التعاقدي لا يُعدَّل — يحرّكه أمر تغييري.', en: 'The contractual finish is never edited — an amendment moves it.' },
@@ -784,7 +788,8 @@ const STR = {
   /** The rule as the client's own documents state it — العرض الفني §11 in
    *  words, الشكل 10 in figures (161,449 on CNT-0170-EM). BR-10 was rewritten
    *  to it; the superseded 0.1%/day form is recorded in P-81. */
-  con_pen_how_b:   { ar: 'غرامة اليوم = (قيمة العقد النافذة ÷ مدة العقد النافذة) × ١٠٪ · بحد أقصى ١٠٪ من قيمة العقد — أي أن الحد الأقصى يُبلَغ بعد تأخير يعادل مدة العقد كاملةً، ويُعاد الاحتساب عند كل ملحق يغيّر المبلغ أو المدة.', en: 'Daily penalty = (the contract value in force ÷ the contract duration in force) × 10%, capped at 10% of the contract value — so the ceiling is reached after a delay of one whole contract duration, and it is recomputed on every amendment that moves the amount or the duration.' },
+  /** `{rate}` — the CONTRACT's own rate (D-02, P-264), never a fixed 10%. */
+  con_pen_how_b:   { ar: 'غرامة اليوم = (قيمة العقد النافذة ÷ مدة العقد النافذة) × {rate} · بحد أقصى {rate} من قيمة العقد — أي أن الحد الأقصى يُبلَغ بعد تأخير يعادل مدة العقد كاملةً، ويُعاد الاحتساب عند كل ملحق يغيّر المبلغ أو المدة.', en: 'Daily penalty = (the contract value in force ÷ the contract duration in force) × {rate}, capped at {rate} of the contract value — so the ceiling is reached after a delay of one whole contract duration, and it is recomputed on every amendment that moves the amount or the duration.' },
   con_pen_item:    { ar: 'البند',                           en: 'Item' },
   con_pen_diff:    { ar: 'الفرق',                           en: 'Difference' },
   con_pen_row_days:{ ar: 'أيام التأخير',                    en: 'Days late' },
@@ -2245,6 +2250,14 @@ const STR = {
   chg_record_soon_b: { ar: 'بطاقة الأمر تعرض الملخص والكميات والأثر الزمني والمسار والمرفقات والسجل. اتخاذ القرار وتطبيق الأمر يأتيان مع محرّك المراحل.',
                        en: 'The record carries the summary, the quantities, the time impact, the path, the attachments and the log. Taking a decision and applying the order arrive with the stage machine.' },
 
+  // `04 §8` — «Focus mode (split queue + work pane) for the awaiting-me set».
+  chg_focus_mode:  { ar: 'وضع الإنجاز',                     en: 'Focus mode' },
+  chg_focus_exit:  { ar: 'إنهاء وضع الإنجاز',                en: 'Exit focus mode' },
+  chg_focus_prev:  { ar: 'السابق',                          en: 'Previous' },
+  chg_focus_next:  { ar: 'التالي',                          en: 'Next' },
+  chg_focus_queue_t: { ar: 'بانتظار إجرائك',                en: 'Awaiting you' },
+  chg_focus_none:  { ar: 'لا شيء بانتظارك.',                en: 'Nothing awaits you.' },
+
   // ── SCR-W8 · بطاقة الأمر التغييري — ملحق الأشكال 30–34, `03 §9` ──────
   chg_back:        { ar: 'السجل',                           en: 'Register' },
   chg_picker:      { ar: 'منتقي الأمر',                      en: 'Order picker' },
@@ -2411,6 +2424,19 @@ const STR = {
   chg_external:    { ar: 'أطراف خارجية',                    en: 'External parties' },
   chg_ext_note:    { ar: 'أطراف خارجية — تُسجَّل قراراتها بموجب كتاب رسمي',
                      en: 'External parties — their decisions recorded against an official letter' },
+
+  // `vo-record.jsx:1373-1388` — the trail's own escalation entry for a
+  // breached stage. «المستوى الإداري الأعلى» is the reference's fixed
+  // escalation target (`MANAGER`, `:564`), not a stored role.
+  chg_esc_t:       { ar: 'تصعيد تلقائي',                    en: 'Automatic escalation' },
+  chg_esc_pill:    { ar: 'تجاوز السقف',                     en: 'SLA breached' },
+  chg_esc_from:    { ar: 'من',                              en: 'from' },
+  chg_esc_to:      { ar: 'إلى',                             en: 'to' },
+  chg_esc_manager: { ar: 'المستوى الإداري الأعلى',           en: 'Senior manager' },
+  chg_esc_moved_t: { ar: 'انتقلت صلاحية البتّ',              en: 'Authority moved' },
+  chg_esc_note:    { ar: 'تجاوزت مرحلة «{stage}» سقفها البالغ {sla} أيام بمرور {elapsed} يوم دون إجراء، فانتقلت صلاحية البتّ من {from} إلى {to}. المُحال إليه الأصلي يبقى مسجّلاً، والإجراء مثبَّت في سجل التدقيق ولا يمكن تعديله.',
+                     en: 'Stage “{stage}” passed its {sla}-day ceiling with {elapsed} days elapsed, so authority moved from {from} to the {to}. The original assignee stays on the record, and the escalation is written to the audit trail where it cannot be edited.' },
+
   chg_recorded_by: { ar: 'يُسجِّل نيابةً:',                 en: 'Recorded by:' },
   chg_no_letter:   { ar: 'لا كتاب بعد',                     en: 'no letter yet' },
   chg_stalled_at:  { ar: 'متوقفة عند',                      en: 'stalled at' },
@@ -2546,8 +2572,8 @@ const STR = {
   chg_w_tier_t:    { ar: 'قاعدة 20%',                       en: 'The 20% rule' },
   chg_w_tier_b:    { ar: 'تغيير الكمية زيادةً أو نقصاناً حتى 20% من الكمية الأصلية يُحتسب بسعر الوحدة الأصلي. الكمية الزائدة عن ذلك تُسعَّر بسعر جديد يقترحه المقاول ودائرة المهندس المقيم، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.',
                      en: 'A quantity increase or decrease up to 20% of the original quantity is valued at the original unit rate. Anything beyond that is priced at a new rate proposed by the contractor and the RE department, and fixed by the rate-fixing committee.' },
-  chg_w_tier_supply: { ar: 'أسعار الفقرات التجهيزية مثبَّتة بالعقد وخطاب الاعتماد، فلا تنطبق قاعدة الـ20% ولا لجنة تثبيت الأسعار.',
-                       en: 'Supply-item prices are fixed by the contract and the letter of credit, so neither the 20% rule nor the rate-fixing committee applies.' },
+  chg_w_tier_supply: { ar: 'تغيير كمية الفقرة التجهيزية زيادةً أو نقصاناً حتى 20% من الكمية الأصلية يُحتسب بسعر الوحدة الأصلي المثبَّت بالعقد وخطاب الاعتماد. الكمية الزائدة عن ذلك تُسعَّر بسعر جديد يقترحه المجهز ولجنة الفحص والاستلام، ويُثبَّت السعر النهائي بقرار لجنة تثبيت الأسعار.',
+                       en: 'A supply-item quantity increase or decrease up to 20% of the original quantity is valued at the original unit rate fixed by the contract and the letter of credit. Anything beyond that is priced at a new rate proposed by the supplier and the inspection & receipt committee, and fixed by the rate-fixing committee.' },
   chg_w_tab_boq:   { ar: 'بنود جدول الكميات',               en: 'BOQ items' },
   chg_w_tab_act:   { ar: 'الأنشطة',                         en: 'Activities' },
   chg_w_pick_lines: { ar: 'اختيار بنود',                    en: 'Select items' },

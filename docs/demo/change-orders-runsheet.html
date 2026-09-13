@@ -1,0 +1,975 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Change Orders Runsheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --paper:#f9f8f3; --surface:#f1efe4; --surface-2:#e8e5d5;
+    --ink:#1d1c16; --ink-soft:#5b5847; --ink-faint:#948f78;
+    --rule:#ddd8c4; --rule-firm:#c7c1a7;
+
+    /* the two flows get their own hue — blueprint steel for works,
+       warehouse ochre for supply. every place content forks, the
+       color forks with it. */
+    --works:#2d5f86; --works-soft:#e5edf3; --works-ink:#1d3f5c;
+    --supply:#966018; --supply-soft:#f3e7d2; --supply-ink:#6b4310;
+
+    --good:#2f7d4f; --good-soft:#e6f2ea;
+    --warn:#b6540f; --warn-soft:#f7e9dc;
+    --bad:#a93a3a; --bad-soft:#f6e3e0;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#181713; --surface:#211f18; --surface-2:#2a281e;
+      --ink:#efece0; --ink-soft:#bdb8a0; --ink-faint:#847f68;
+      --rule:#38352a; --rule-firm:#4a4636;
+      --works:#7fa9cf; --works-soft:#1c2c3a; --works-ink:#bcd7ec;
+      --supply:#d9a052; --supply-soft:#332616; --supply-ink:#f0c98a;
+      --good:#5cb37e; --good-soft:#173324;
+      --warn:#e0913f; --warn-soft:#3a2413;
+      --bad:#e07272; --bad-soft:#3a2020;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#181713; --surface:#211f18; --surface-2:#2a281e;
+    --ink:#efece0; --ink-soft:#bdb8a0; --ink-faint:#847f68;
+    --rule:#38352a; --rule-firm:#4a4636;
+    --works:#7fa9cf; --works-soft:#1c2c3a; --works-ink:#bcd7ec;
+    --supply:#d9a052; --supply-soft:#332616; --supply-ink:#f0c98a;
+    --good:#5cb37e; --good-soft:#173324;
+    --warn:#e0913f; --warn-soft:#3a2413;
+    --bad:#e07272; --bad-soft:#3a2020;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .ar { font-family: Cairo, "IBM Plex Sans", sans-serif; }
+  .num, code, kbd, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  a { color: var(--works); }
+  *:focus-visible { outline: 2px solid var(--works); outline-offset: 2px; }
+
+  .app { display: grid; grid-template-columns: 272px 1fr; min-height: 100vh; }
+  .side { border-inline-end: 1px solid var(--rule); background: var(--surface);
+    padding: 20px 12px 40px; position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
+  .side .brand { padding: 4px 10px 16px; border-bottom: 1px solid var(--rule); margin-bottom: 10px; }
+  .side .kicker { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .side h1 { font-size: 17px; margin: 4px 0 3px; font-weight: 700; letter-spacing: -.01em; }
+  .side p.sub { font-size: 11.5px; color: var(--ink-faint); margin: 0; line-height: 1.45; }
+  .navgrp { margin-top: 14px; }
+  .navgrp .lbl { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); padding: 6px 10px 5px; font-weight: 600; }
+  .navitem { display: flex; align-items: center; gap: 9px; width: 100%; text-align: start; padding: 7px 10px;
+    border-radius: 6px; border: none; background: transparent; color: var(--ink); font-size: 13px;
+    cursor: pointer; font-family: inherit; }
+  .navitem .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rule-firm); flex-shrink: 0; }
+  .navitem.works .dot { background: var(--works); }
+  .navitem.supply .dot { background: var(--supply); }
+  .navitem:hover { background: var(--surface-2); }
+  .navitem.active { background: var(--works); color: #fff; }
+  .navitem.active .dot { background: #fff; }
+
+  .main { padding: 40px 44px 100px; max-width: 900px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+  h1.pt { font-size: 30px; margin: 8px 0 12px; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+  .lede { font-size: 15.5px; color: var(--ink-soft); max-width: 66ch; }
+
+  h2.stitle { font-size: 22px; margin: 0 0 5px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+  h2.stitle .ar { display: block; font-size: 15px; color: var(--ink-soft); font-weight: 600; margin-top: 3px; }
+  .dek { font-size: 14px; color: var(--ink-soft); max-width: 62ch; margin: 8px 0 0; }
+
+  h3.sec { font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+    margin: 34px 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--rule); }
+  h3.sec .n { font-family: "IBM Plex Mono", monospace; color: var(--ink-faint); margin-inline-end: 7px; }
+  p.body { font-size: 14px; color: var(--ink); max-width: 68ch; }
+  p.body.soft { color: var(--ink-soft); }
+
+  /* ── the fork badge — appears anywhere content is flow-specific ── */
+  .fork { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .04em; padding: 2px 8px 2px 6px; border-radius: 999px; white-space: nowrap; }
+  .fork::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+  .fork.works { background: var(--works-soft); color: var(--works-ink); }
+  .fork.works::before { background: var(--works); }
+  .fork.supply { background: var(--supply-soft); color: var(--supply-ink); }
+  .fork.supply::before { background: var(--supply); }
+  .fork.both { background: var(--surface-2); color: var(--ink-soft); }
+  .fork.both::before { background: var(--ink-faint); }
+
+  /* ── the headline split card ── */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule);
+    border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 18px 0; }
+  .split > div { background: var(--paper); padding: 18px 20px; }
+  .split .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .split .hd .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .split.works-l .hd .sw { background: var(--works); }
+  .split .hd b { font-size: 14px; }
+  .split .hd .ar { font-size: 12.5px; color: var(--ink-faint); margin-inline-start: 2px; }
+  .split dl { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .split dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
+  .split dd { margin: 1px 0 0; font-size: 13.5px; }
+  .split dd.ar { font-family: Cairo, sans-serif; }
+
+  .tw { overflow-x: auto; margin: 12px 0; border: 1px solid var(--rule); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 460px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { background: var(--surface); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; position: sticky; top: 0; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: color-mix(in srgb, var(--surface) 55%, transparent); }
+  td.v { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; }
+  td.v.ar { font-family: Cairo, sans-serif; font-size: 13px; }
+  td.n, th.n { text-align: right; font-family: "IBM Plex Mono", monospace; }
+  td.ar { font-family: Cairo, sans-serif; }
+  td.sub { color: var(--ink-faint); font-size: 12px; }
+  tr.works-row { border-inline-start: 3px solid var(--works); }
+  tr.supply-row { border-inline-start: 3px solid var(--supply); }
+
+  /* required / optional / not-enforced pills for the verification tables */
+  .req { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .req.yes { background: var(--good-soft); color: var(--good); }
+  .req.no { background: var(--bad-soft); color: var(--bad); }
+  .req.opt { background: var(--surface-2); color: var(--ink-soft); }
+  .req.part { background: var(--warn-soft); color: var(--warn); }
+  .req.info { background: var(--warn-soft); color: var(--warn); }
+
+  .flag { margin: 12px 0; padding: 11px 14px; border-radius: 8px; font-size: 13px; display: flex; gap: 10px; }
+  .flag .ico { flex-shrink: 0; font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 11px;
+    letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; height: fit-content; }
+  .flag.ok { background: var(--good-soft); } .flag.ok .ico { background: var(--good); color: #fff; }
+  .flag.warn { background: var(--warn-soft); } .flag.warn .ico { background: var(--warn); color: #fff; }
+  .flag.no { background: var(--bad-soft); } .flag.no .ico { background: var(--bad); color: #fff; }
+  .flag .tx b { display: block; margin-bottom: 2px; }
+  .flag .cite { display: block; margin-top: 6px; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint); }
+
+  code { font-size: 12px; background: var(--surface-2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--rule); }
+  pre { background: var(--surface-2); border: 1px solid var(--rule); padding: 11px 14px; overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; margin: 12px 0; border-radius: 8px; line-height: 1.55; }
+  pre code { background: none; border: none; padding: 0; }
+  blockquote { margin: 12px 0; padding: 10px 14px; background: var(--surface); border-inline-start: 3px solid var(--rule-firm);
+    font-size: 13.5px; border-radius: 0 8px 8px 0; }
+  blockquote p { margin: 0; }
+
+  .stagechain { display: flex; flex-direction: column; margin: 14px 0; }
+  .stage { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .stage:last-child { border-bottom: none; }
+  .stage .no { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 15px; color: var(--ink-faint);
+    width: 22px; flex-shrink: 0; padding-top: 1px; }
+  .stage .bd { flex: 1; min-width: 0; }
+  .stage .bd .t { font-weight: 600; font-size: 14px; }
+  .stage .bd .t .ar { color: var(--ink-soft); font-weight: 500; margin-inline-start: 8px; font-size: 13px; }
+  .stage .bd .own { font-size: 12.5px; color: var(--ink-faint); margin-top: 3px; }
+  .stage .bd .own .ar { font-family: Cairo, sans-serif; }
+  .stage .cond { flex-shrink: 0; align-self: center; }
+
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 5px 14px; font-size: 13px; margin: 10px 0; }
+  .kv dt { color: var(--ink-faint); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; padding-top: 1px; }
+  .kv dd { margin: 0; }
+
+  .field-step { border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+  .field-step .fs-hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .field-step .fs-hd .fn { font-family: "IBM Plex Mono", monospace; font-weight: 700; color: var(--works); font-size: 13px; }
+  .field-step .fs-hd b { font-size: 15px; }
+  .field-step .fs-hd .ar { color: var(--ink-soft); font-size: 13px; }
+
+  /* ── test protocol ── */
+  .test { border: 1px solid var(--rule-firm); border-radius: 10px; margin: 18px 0; overflow: hidden;
+    background: var(--paper); }
+  .test.done { border-color: var(--good); }
+  .test-hd { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--surface);
+    border-bottom: 1px solid var(--rule); cursor: pointer; user-select: none; }
+  .test-hd .tno { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 13px;
+    color: var(--paper); background: var(--ink-faint); width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .test.done .test-hd .tno { background: var(--good); }
+  .test-hd .th-tx { flex: 1; min-width: 0; }
+  .test-hd .th-tx b { font-size: 14.5px; display: block; }
+  .test-hd .th-tx .hy { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
+  .test-hd .chk { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--rule-firm);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--paper); }
+  .test.done .chk { background: var(--good); border-color: var(--good); color: #fff; font-weight: 700; font-size: 13px; }
+  .test-bd { padding: 16px 18px 18px; }
+  .test-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); }
+  .pill.route { font-family: "IBM Plex Mono", monospace; font-weight: 500; }
+  .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+  .steps > li { counter-increment: step; padding: 8px 0 8px 30px; border-bottom: 1px dashed var(--rule);
+    position: relative; font-size: 13.5px; }
+  .steps > li:last-child { border-bottom: none; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 8px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 700; color: var(--works);
+    width: 20px; height: 20px; border-radius: 5px; background: var(--works-soft); display: flex;
+    align-items: center; justify-content: center; }
+  [dir="rtl"] .steps > li::before, .steps > li::before { left: 0; }
+  .outcomes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .outcome { padding: 10px 12px; border-radius: 8px; font-size: 12.5px; }
+  .outcome.confirms { background: var(--good-soft); }
+  .outcome.refutes { background: var(--bad-soft); }
+  .outcome .lbl { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .outcome.confirms .lbl { color: var(--good); }
+  .outcome.refutes .lbl { color: var(--bad); }
+  .test-links { margin-top: 12px; font-size: 12px; }
+  @media (max-width: 640px) { .outcomes { grid-template-columns: 1fr; } }
+
+  @media (max-width: 780px) { .app { grid-template-columns: 1fr; } .side { position: static; height: auto; }
+    .split { grid-template-columns: 1fr; } .main { padding: 28px 20px 80px; } }
+</style>
+
+<div class="app">
+  <nav class="side">
+    <div class="brand">
+      <div class="kicker">EPM · Change Orders</div>
+      <h1>Runsheet</h1>
+      <p class="sub">What the wizard/record actually enforce, section by section — with the works/supply fork called out everywhere it changes something.</p>
+    </div>
+
+    <div class="navgrp">
+      <button class="navitem active" data-p="p-overview"><span class="dot"></span>Overview</button>
+      <button class="navitem" data-p="p-fork"><span class="dot"></span>The fork</button>
+      <button class="navitem" data-p="p-parties"><span class="dot"></span>Vocabulary &amp; parties</button>
+      <button class="navitem" data-p="p-stages"><span class="dot"></span>The six stages</button>
+      <button class="navitem" data-p="p-wizard"><span class="dot"></span>The wizard, step by step</button>
+      <button class="navitem" data-p="p-tier"><span class="dot"></span>20% rule &amp; redistribution</button>
+      <button class="navitem" data-p="p-verify"><span class="dot"></span>Required vs. not — the table</button>
+      <button class="navitem" data-p="p-findings"><span class="dot"></span>Open findings</button>
+    </div>
+
+    <div class="navgrp">
+      <div class="lbl">Do it yourself</div>
+      <button class="navitem" data-p="p-test"><span class="dot" style="background:var(--good)"></span>Test protocol<span id="nav-progress" style="margin-inline-start:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint)"></span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ══════════════════ OVERVIEW ══════════════════ -->
+    <section class="panel active" id="p-overview">
+      <div class="eyebrow">EPM · SCR-W8 · <code>03-CHANGE-ORDER-PROCESS.md</code></div>
+      <h1 class="pt">One engine, two vocabularies</h1>
+      <p class="lede">
+        The register, the six-stage machine, the wizard and the apply step are <b>one shared code path</b> for
+        every change order. What forks is the <b>type</b> a given order is created as — <code>engineering</code>
+        or <code>supply</code> — which is itself constrained by the project's own type. The fork changes which
+        parties are named, whether the 20% rate rule applies, which BOQ change types are offered, and how
+        redistribution works. It does <em>not</em> change the stage count, the four decisions, or the record's
+        six tabs.
+      </p>
+
+      <div class="split">
+        <div class="works-l">
+          <div class="hd"><span class="sw"></span><b>Engineering / works</b><span class="ar">هندسي</span></div>
+          <dl>
+            <dt>Raised by</dt><dd class="ar">المقاول <span class="sub">(contractor)</span></dd>
+            <dt>Reviewed by</dt><dd class="ar">دائرة المهندس المقيم <span class="sub">(RE department)</span></dd>
+            <dt>20% rate rule</dt><dd>Applies — <code>TierSplit</code></dd>
+            <dt>BOQ change types</dt><dd>5 of 5, incl. <code>rate</code></dd>
+            <dt>Redistribution moves</dt><dd>a quantity from one BOQ line to another</dd>
+            <dt>Available on</dt><dd>every project type except <code>equipment</code></dd>
+          </dl>
+        </div>
+        <div>
+          <div class="hd"><span class="sw" style="background:var(--supply)"></span><b>Supply</b><span class="ar">تجهيز</span></div>
+          <dl>
+            <dt>Raised by</dt><dd class="ar">المجهّز <span class="sub">(supplier)</span></dd>
+            <dt>Reviewed by</dt><dd class="ar">لجنة الفحص والاستلام <span class="sub">(inspection &amp; receipt cttee)</span></dd>
+            <dt>20% rate rule</dt><dd>Never applies — prices are LC-fixed</dd>
+            <dt>BOQ change types</dt><dd>4 of 5 — <code>rate</code> refused server-side</dd>
+            <dt>Redistribution moves</dt><dd>an allocation between beneficiary workspaces on <em>one</em> item</dd>
+            <dt>Available on</dt><dd>only <code>equipment</code>-typed projects (and there, it's the <em>only</em> option)</dd>
+          </dl>
+        </div>
+      </div>
+
+      <p class="body soft">
+        The live fixture (<code>PRJ-0279</code>, construction) carries seven engineering orders. The one genuine
+        supply order is <code>VO-08</code> on <code>CNT-0439</code>, the one project actually typed
+        <code>equipment</code> (<span class="ar">تجهيز الأجهزة المختبرية العلمية</span>). Everything below is
+        checked against the live source, not the appendix figures — file and line cited on every claim that
+        isn't a straight read of the domain rule.
+      </p>
+
+      <h3 class="sec"><span class="n">·</span>How to read this page</h3>
+      <div class="kv">
+        <dt><span class="req yes">enforced</span></dt><dd>the server refuses submission if this is missing/wrong</dd>
+        <dt><span class="req part">partial</span></dt><dd>the client nudges or caps it, but the server accepts a submission without it</dd>
+        <dt><span class="req no">not enforced</span></dt><dd>nothing anywhere blocks this — confirmed by reading the gate, not assumed</dd>
+        <dt><span class="req opt">optional</span></dt><dd>genuinely optional in the written spec, on both flows</dd>
+        <dt><span class="fork works">works</span> / <span class="fork supply">supply</span> / <span class="fork both">both</span></dt>
+        <dd>which flow the row to its left applies to</dd>
+      </div>
+    </section>
+
+    <!-- ══════════════════ THE FORK ══════════════════ -->
+    <section class="panel" id="p-fork">
+      <div class="eyebrow">What actually decides it</div>
+      <h2 class="stitle">The fork is keyed off the <u>project</u>, not the contract<span class="ar">تصنيف المشروع، لا العقد</span></h2>
+      <p class="dek">
+        This is the thing most worth double-checking, because the fixture data makes it easy to misread. There
+        is no per-contract "kind" column — it was offered and declined (<code>DECISIONS.md</code> D-14a).
+      </p>
+
+      <h3 class="sec"><span class="n">1</span>The gate, verbatim</h3>
+      <p class="body">On <code>POST /api/projects/{id}/change-orders</code>, before anything else is validated:</p>
+      <pre><code>var wantsSupply = draft.Type == "supply";
+var isEquipment = p.Type == "equipment";          // p = the PROJECT row
+if (wantsSupply != isEquipment)
+    return Results.BadRequest(...);               // 400, refused before any BOQ line is even read</code></pre>
+      <p class="body soft" class="mono">ChangeOrderWizardEndpoints.cs:201-212</p>
+      <div class="kv">
+        <dt>Project <em>not</em> <code>equipment</code></dt>
+        <dd>the wizard offers <b>both</b> type cards — <span class="ar">هندسي</span> is pre-selected, <span class="ar">تجهيز</span> is a click away. Either is accepted.</dd>
+        <dt>Project <em>is</em> <code>equipment</code></dt>
+        <dd>the wizard shows <b>only</b> the supply card (<code>change-order.wizard.html:118</code>, guarded by <code>!isSupplyProject()</code>) — there's no control to even attempt the other, so the 400 above is a defence against a stale client, not something a normal user can trigger.</dd>
+      </div>
+
+      <h3 class="sec"><span class="n">2</span>A supply-flavoured <em>contract</em> still gets the works flow</h3>
+      <p class="body">
+        <code>CNT-0279-EM</code> — the electromechanical package — sits inside <code>PRJ-0279</code>, and
+        <code>PRJ-0279.Type == "construction"</code>. Its change orders (<code>VO-06</code>, <code>VO-07</code>)
+        are therefore <b>engineering</b> orders, reviewed by the RE department, eligible for a <code>rate</code>
+        change — not supply orders, despite the contract name suggesting otherwise.
+      </p>
+      <div class="flag ok">
+        <span class="ico">confirmed</span>
+        <div class="tx">
+          <b>This was once a real bug, already caught and fixed.</b> Both fixture rows carry a comment
+          explaining the correction: they were originally seeded <code>Type = "supply"</code> — "P-159's own
+          mistake" — and retyped to <code>engineering</code>, because a rate change reviewed by the RE
+          department and fixed by the pricing committee is what an engineering order looks like; a supply order
+          may not carry <code>rate</code> at all, and has no resident engineer to own the review.
+          <span class="cite">Fixture.cs:1403-1413 · Domain/ChangeOrderGates.cs:77-80 (the server-side refusal for rate+supply)</span>
+        </div>
+      </div>
+
+      <h3 class="sec"><span class="n">3</span>What this means for you, checking it live</h3>
+      <p class="body">
+        Don't infer flow from the contract's name, discipline, or BOQ content — the visible tell is the order's
+        own <code>type</code> field (register row, or the wizard's type-card selection), which traces back to
+        one field on the <em>project</em>: <code>Projects.Type == "equipment"</code>. In the fixture that's
+        exactly one project: <code>PRJ-0439</code>.
+      </p>
+      <p class="test-links">→ <a data-p="p-test">Test protocol</a> T1 (the gate itself) and T2 (the CNT-0279-EM case)</p>
+    </section>
+
+    <!-- ══════════════════ VOCABULARY & PARTIES ══════════════════ -->
+    <section class="panel" id="p-parties">
+      <div class="eyebrow">Who's who, on each flow</div>
+      <h2 class="stitle">Vocabulary &amp; parties<span class="ar">الأطراف والمصطلحات</span></h2>
+      <p class="dek">Ported from the reference's own <code>EPM.voTerms(project, lang)</code> — one function, switched once on project type, read by both the wizard and the record.</p>
+
+      <div class="tw"><table>
+        <thead><tr><th>Role</th><th>Engineering / works</th><th>Supply</th></tr></thead>
+        <tbody>
+          <tr><td class="sub">requests the order</td><td class="v ar">المقاول <span class="sub ar">(Contractor)</span></td><td class="v ar">المجهّز <span class="sub ar">(Supplier)</span></td></tr>
+          <tr><td class="sub">reviews / governs the displayed figure</td><td class="v ar">دائرة المهندس المقيم <span class="sub ar">(RE department)</span></td><td class="v ar">لجنة الفحص والاستلام <span class="sub ar">(Inspection &amp; receipt cttee)</span></td></tr>
+          <tr><td class="sub">gives the technical opinion, before entry</td><td class="v ar">الاستشاري المصمم والمدقق</td><td class="v ar">لجنة الفحص والاستلام الفني</td></tr>
+          <tr><td class="sub">enters the order into the system</td><td class="v ar">دائرة المهندس المقيم</td><td class="v ar">لجنة الفحص والاستلام</td></tr>
+          <tr><td class="sub">executes at stage 6</td><td class="v ar">دائرة المهندس المقيم</td><td class="v ar">لجنة الفحص والاستلام</td></tr>
+          <tr><td class="sub">has the 20% rate rule?</td><td class="v">yes</td><td class="v">no — <code>hasRateRule: false</code></td></tr>
+        </tbody>
+      </table></div>
+      <p class="body soft" style="font-size:12px">docs/spec/reference/app/model.js:776-817 — <code>EPM.voTerms</code></p>
+
+      <div class="flag warn">
+        <span class="ico">verify</span>
+        <div class="tx">
+          <b>The wizard's own "party" dropdown (step 1, official letter) doesn't match this table.</b>
+          It's populated from <code>WizardSourceResponse.parties</code>, which — for a <em>non</em>-equipment
+          project — reads <code class="ar">['المقاول', 'الاستشاري المصمم والمدقق', 'الجهة المستفيدة', 'دائرة المهندس المقيم']</code>.
+          The reference's own array for the same case is
+          <code class="ar">['المقاول', 'المهندس المقيم', 'الجهة المستفيدة', 'الاستشاري']</code> — positions 2 and 4
+          are swapped, and "المهندس المقيم" (a person, the resident engineer) becomes "الاستشاري المصمم والمدقق"
+          (a different party, the design consultant). The supply-side array (<code class="ar">المجهّز / لجنة الفحص
+          والاستلام / الجهة المستفيدة / الاستشاري</code>) matches the reference exactly — only the works-side
+          array diverges. This only affects the <em>letter-sender</em> dropdown's four options; the requester/
+          reviewer labels shown elsewhere on the record are hard-coded correctly regardless of this list.
+          <span class="cite">ChangeOrderWizardEndpoints.cs:50-52 vs. model.js:781,801 · change-order.wizard.html:150-155</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ THE SIX STAGES ══════════════════ -->
+    <section class="panel" id="p-stages">
+      <div class="eyebrow">BR-13 · <code>Domain/WorkflowMachine.cs</code></div>
+      <h2 class="stitle">Six stages, one owner swap<span class="ar">ست مراحل ومبادلة مالكٍ واحدة</span></h2>
+      <p class="dek">
+        The chain is identical in count and order on both flows. What differs: two of the six owners swap from
+        "RE department" to "inspection &amp; receipt committee" on a supply order, because a pure-supply
+        contract has no resident engineer to hold that seat.
+      </p>
+
+      <div class="stagechain">
+        <div class="stage">
+          <div class="no">1</div>
+          <div class="bd">
+            <div class="t">Request study<span class="ar">دراسة الطلب</span></div>
+            <div class="own"><span class="fork works">works</span> <span class="ar">دائرة المهندس المقيم</span> &nbsp;·&nbsp; <span class="fork supply">supply</span> <span class="ar">لجنة الفحص والاستلام</span></div>
+          </div>
+          <div class="cond"><span class="req opt">always</span></div>
+        </div>
+        <div class="stage">
+          <div class="no">2</div>
+          <div class="bd">
+            <div class="t">Change-order committee<span class="ar">لجنة أوامر الغيار</span></div>
+            <div class="own"><span class="fork both">both</span> <span class="ar">لجنة أوامر الغيار</span> — no swap</div>
+          </div>
+          <div class="cond"><span class="req opt">always</span></div>
+        </div>
+        <div class="stage">
+          <div class="no">3</div>
+          <div class="bd">
+            <div class="t">Rate fixing<span class="ar">تثبيت الأسعار</span></div>
+            <div class="own"><span class="fork both">both</span> <span class="ar">لجنة تثبيت الأسعار</span> — no swap</div>
+          </div>
+          <div class="cond"><span class="req info">see below</span></div>
+        </div>
+        <div class="stage">
+          <div class="no">4</div>
+          <div class="bd">
+            <div class="t">Endorsement &amp; allocation<span class="ar">المصادقة والتخصيص</span></div>
+            <div class="own"><span class="fork both">both</span> <span class="ar">لجنة أوامر الغيار</span> — no swap</div>
+          </div>
+          <div class="cond"><span class="req opt">if endorsement/funding needed</span></div>
+        </div>
+        <div class="stage">
+          <div class="no">5</div>
+          <div class="bd">
+            <div class="t">Ministerial order &amp; addendum<span class="ar">الأمر الوزاري وملحق العقد</span></div>
+            <div class="own"><span class="fork both">both</span> <span class="ar">لجنة أوامر الغيار</span> — no swap</div>
+          </div>
+          <div class="cond"><span class="req opt">always</span></div>
+        </div>
+        <div class="stage">
+          <div class="no">6</div>
+          <div class="bd">
+            <div class="t">Execution<span class="ar">التنفيذ</span></div>
+            <div class="own"><span class="fork works">works</span> <span class="ar">دائرة المهندس المقيم</span> &nbsp;·&nbsp; <span class="fork supply">supply</span> <span class="ar">لجنة الفحص والاستلام</span></div>
+          </div>
+          <div class="cond"><span class="req opt">always</span></div>
+        </div>
+      </div>
+      <p class="body soft" style="font-size:12px"><code>WorkflowMachine.Stages</code> + <code>StagesFor(supply)</code>, WorkflowMachine.cs:35-81 — the swap fires on <code>Owner == "دائرة المهندس المقيم"</code>, which is exactly stages 1 and 6.</p>
+
+      <h3 class="sec"><span class="n">·</span>Stage 3's own history is worth reading before you trust a fixture screenshot</h3>
+      <p class="body">
+        The code today (<code>WorkflowMachine.Plan</code>) has <b>no branch that skips stage 3 for any reason</b>
+        — it is active on every order, works or supply, tripping the 20% tier or not. The doc comment says why:
+      </p>
+      <blockquote><p>"Stage 3 (تثبيت الأسعار) is <b>NEVER</b> skipped (P-252) … <code>tripsThreshold</code> only changes whether stage 3 also fixes an excess rate — never whether it runs."</p></blockquote>
+      <p class="body soft" style="font-size:12px">WorkflowMachine.cs:8-11, 87-98</p>
+      <div class="flag no">
+        <span class="ico">contradiction</span>
+        <div class="tx">
+          <b>But the seeded <code>VO-08</code> (the live supply example) still shows stage 3 skipped.</b>
+          Its fixture row is hard-written with <code>applicable: false</code> and a reason string — "redistribution
+          never changes the contracted quantity, so the rate-fixing stage doesn't apply" — which is exactly the
+          OLD behaviour the P-252 comment above says was removed. If you open <code>VO-08</code>'s <span class="ar">المسار</span>
+          tab expecting to see the current rule in action, you'll see the opposite of it: this one order's data
+          predates the fix and was never regenerated against it.
+          <span class="cite">Fixture.cs:1646-1655 vs. WorkflowMachine.cs:87-98</span>
+          <span class="test-links">→ <a data-p="p-test">Test protocol</a> T4 (baseline) and T5 (the actual check, on a fresh order)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ THE WIZARD ══════════════════ -->
+    <section class="panel" id="p-wizard">
+      <div class="eyebrow"><code>03 §8</code> · <code>change-order.wizard.ts/.html</code></div>
+      <h2 class="stitle">The wizard, step by step<span class="ar">مسار المعالج بخطواته الخمس</span></h2>
+      <p class="dek">Five steps, one draft object, computed on the server on a 300ms debounce (nothing here is arithmetic done in the browser).</p>
+
+      <div class="field-step">
+        <div class="fs-hd"><span class="fn">1</span><b>Type &amp; official letter</b><span class="ar">النوع والكتاب الرسمي</span></div>
+        <div class="kv">
+          <dt>Contract</dt><dd><span class="req yes">enforced (client)</span> — <code>canLeaveStep1</code> blocks Next until one is chosen. Everything downstream is scoped to it.</dd>
+          <dt>Type card</dt><dd><span class="req yes">enforced</span> — only offered cards can be picked; the choice is gated by project type, see <a data-p="p-fork">The fork</a>.</dd>
+          <dt>Justification</dt><dd><span class="req no">not enforced</span> — free textarea, no preset list, no minimum length, and nothing on the server checks it's non-empty.</dd>
+          <dt>Party <span class="ar">(الجهة)</span></dt><dd><span class="req opt">defaults</span> to <code>source().parties[0]</code> if never touched.</dd>
+          <dt>Incoming letter no. / date</dt><dd><span class="req no">not enforced</span> — see <a data-p="p-findings">Open findings</a>: this is a real divergence from both the reference and the written spec.</dd>
+        </div>
+      </div>
+
+      <div class="field-step">
+        <div class="fs-hd"><span class="fn">2</span><b>Affected items &amp; activities</b><span class="ar">البنود والأنشطة المتأثرة</span></div>
+        <div class="kv">
+          <dt>At least one line or activity</dt><dd><span class="req yes">enforced</span> — <code>ChangeOrderGates</code>'s <code>"empty"</code> gate blocks a fully blank order.</dd>
+          <dt>Per-line change type</dt><dd><span class="req yes">enforced</span> — a menu, not free text; <code>rate</code> is absent from the menu on a supply order and refused server-side even if forced.</dd>
+          <dt>Contractor/RE proposal quantity or rate</dt><dd><span class="req no">not enforced</span> — every quantity/rate field on the draft is nullable, and no gate checks "is this blank on a <code>inc</code>/<code>dec</code>/<code>rate</code> line". A line can be added and left with zero delta on both proposals.</dd>
+          <dt>Decrease vs. remaining qty</dt><dd><span class="req yes">enforced, per proposal</span> — contractor's and RE dept's figures are checked separately; one can fail while the other passes.</dd>
+          <dt>Redistribution target</dt><dd><span class="req yes">enforced</span> — a BOQ-line target OR at least one beneficiary transfer is required; see <a data-p="p-tier">20% rule &amp; redistribution</a>.</dd>
+        </div>
+      </div>
+
+      <div class="field-step">
+        <div class="fs-hd"><span class="fn">3</span><b>Impact summary</b><span class="ar">ملخص الأثر</span></div>
+        <p class="body soft">Read-only. Nothing entered here — the approved-value and revised-contract-value fields always print "set at financial review" / "indicative," never a number a user typed.</p>
+      </div>
+
+      <div class="field-step">
+        <div class="fs-hd"><span class="fn">4</span><b>Attachments</b><span class="ar">المرفقات</span></div>
+        <div class="kv">
+          <dt>Any file</dt><dd><span class="req opt">optional</span> on both flows — matches the written spec, not a gap.</dd>
+          <dt>Category, if a file is added</dt><dd><span class="req part">defaults</span> to the first of 6 categories, editable per row.</dd>
+        </div>
+      </div>
+
+      <div class="field-step">
+        <div class="fs-hd"><span class="fn">5</span><b>Review &amp; submit</b><span class="ar">المراجعة والإرسال</span></div>
+        <div class="kv">
+          <dt><b>Save as draft</b></dt><dd>writes nothing to the approval chain — no <code>ChangeOrderStage</code> rows, and none of the gates above are blocking. A draft can be genuinely incomplete.</dd>
+          <dt><b>Submit for review</b></dt><dd>blocked exactly when <code>ChangeOrderGates.Validate(...)</code> returns any issue, full stop — the summary above is that function's contents, not a separate check.</dd>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ 20% RULE & REDISTRIBUTION ══════════════════ -->
+    <section class="panel" id="p-tier">
+      <div class="eyebrow">BR-05 &amp; the two kinds of "redistribute"</div>
+      <h2 class="stitle">The 20% rule, and redistribution's split personality<span class="ar">قاعدة الـ 20% وإعادة التوزيع</span></h2>
+
+      <h3 class="sec"><span class="n">1</span><span class="fork works">works only</span> the 20% rate rule</h3>
+      <p class="body">
+        For an <code>inc</code>/<code>dec</code> line: the portion of the delta up to 20% of the
+        <b>original</b> contracted quantity prices at the original rate; only the excess may carry a new,
+        committee-fixed rate. Supply never reaches this code path — <code>TierSplit.AppliesTo</code> is checked
+        against <code>inc</code>/<code>dec</code> only, and a supply order's prices are LC-fixed, so there is
+        nothing for a committee to re-price.
+      </p>
+      <pre><code>threshold = originalQty × 0.20
+atRate    = min(delta, threshold)        // priced at the ORIGINAL rate
+excess    = max(0, delta − threshold)    // priced at whatever rate the committee fixes</code></pre>
+      <p class="body soft" style="font-size:12px">Domain/TierSplit.cs:28,31,50-64 — measured against the ORIGINAL quantity (D-01), never the current effective one.</p>
+
+      <h3 class="sec"><span class="n">2</span>Two things both called "<span class="ar">إعادة توزيع</span>"</h3>
+      <div class="tw"><table>
+        <thead><tr><th></th><th><span class="fork works">works</span> BOQ-line → BOQ-line</th><th><span class="fork supply">supply</span> beneficiary → beneficiary</th></tr></thead>
+        <tbody>
+          <tr><td class="sub">moves</td><td class="v">a quantity off one line, onto a different line</td><td class="v">an allocation off one workspace, onto another — same line, same total</td></tr>
+          <tr><td class="sub">changes the item's total?</td><td class="v">yes on both lines</td><td class="v">no — the item's contracted qty is untouched</td></tr>
+          <tr><td class="sub">wizard input</td><td class="v">pick a target BOQ item, then drawn/distributed qty</td><td class="v">a from/to/qty row per transfer, any number of rows</td></tr>
+          <tr><td class="sub">gate</td><td class="v"><code>redist-no-target</code>, <code>redist-unbalanced</code></td><td class="v"><code>SupplyRedistribution.Check</code> — draws capped at "المتاح," per source</td></tr>
+        </tbody>
+      </table></div>
+      <p class="body soft" style="font-size:12px">ChangeOrderGates.cs:99-114 · Domain/SupplyRedistribution.cs — the gate reads <code>TransferCount</code> to tell which of the two it's looking at, so the target-item check never fires on a beneficiary transfer and vice versa.</p>
+    </section>
+
+    <!-- ══════════════════ REQUIRED VS NOT — THE TABLE ══════════════════ -->
+    <section class="panel" id="p-verify">
+      <div class="eyebrow">The checklist</div>
+      <h2 class="stitle">Required vs. not — one table<span class="ar">ما هو إلزامي وما ليس كذلك</span></h2>
+      <p class="dek">Every field/behaviour above, in one scan. "Enforced" means the 422/400 actually fires — checked by reading the gate function, not by reading a label.</p>
+
+      <div class="tw"><table>
+        <thead><tr><th>Field / behaviour</th><th>Flow</th><th>Status</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td class="ar">اختيار العقد <span class="sub">contract selection</span></td><td><span class="fork both">both</span></td><td><span class="req yes">enforced</span></td><td class="v sub">wizard.ts <code>canLeaveStep1</code></td></tr>
+          <tr><td class="ar">نوع الأمر <span class="sub">order type card</span></td><td><span class="fork both">both</span></td><td><span class="req yes">enforced</span></td><td class="v sub">WizardEndpoints.cs:201-212</td></tr>
+          <tr><td class="ar">الأسباب الموجبة <span class="sub">justification text</span></td><td><span class="fork both">both</span></td><td><span class="req no">not enforced</span></td><td class="v sub">no check anywhere</td></tr>
+          <tr><td class="ar">رقم وتاريخ الوارد <span class="sub">incoming letter no./date</span></td><td><span class="fork both">both</span></td><td><span class="req no">not enforced</span></td><td class="v sub">ChangeOrderGates.cs — absent; ref. requires it</td></tr>
+          <tr><td class="ar">بند أو نشاط واحد على الأقل <span class="sub">≥1 line/activity</span></td><td><span class="fork both">both</span></td><td><span class="req yes">enforced</span></td><td class="v sub"><code>"empty"</code> gate</td></tr>
+          <tr><td class="ar">مقدار التغيير <span class="sub">delta qty / new rate, on inc/dec/rate</span></td><td><span class="fork both">both</span></td><td><span class="req no">not enforced</span></td><td class="v sub">all fields nullable, no blank check</td></tr>
+          <tr><td class="ar">سعر جديد <span class="sub">rate change type offered</span></td><td><span class="fork works">works</span></td><td><span class="req yes">offered</span></td><td class="v sub">wizard.ts:142-145</td></tr>
+          <tr><td class="ar">سعر جديد <span class="sub">rate change type</span></td><td><span class="fork supply">supply</span></td><td><span class="req no">refused server-side</span></td><td class="v sub">ChangeOrderGates.cs:77-80</td></tr>
+          <tr><td class="ar">الكمية المتبقية <span class="sub">decrease ≤ remaining</span></td><td><span class="fork both">both</span></td><td><span class="req yes">enforced, per proposal</span></td><td class="v sub">ChangeOrderGates.cs:82-97</td></tr>
+          <tr><td class="ar">البند الهدف <span class="sub">redistribution target</span></td><td><span class="fork works">works</span></td><td><span class="req yes">enforced</span></td><td class="v sub">ChangeOrderGates.cs:106-109</td></tr>
+          <tr><td class="ar">توازن التحويلات <span class="sub">transfer balance</span></td><td><span class="fork supply">supply</span></td><td><span class="req yes">enforced</span></td><td class="v sub">SupplyRedistribution.Check</td></tr>
+          <tr><td class="ar">أيام / تواريخ النشاط <span class="sub">activity days/dates</span></td><td><span class="fork both">both</span></td><td><span class="req no">not enforced</span></td><td class="v sub">no gate reads <code>WizardActivityInput</code>'s fields</td></tr>
+          <tr><td class="ar">مرفق واحد على الأقل <span class="sub">≥1 attachment</span></td><td><span class="fork both">both</span></td><td><span class="req opt">optional — by design</span></td><td class="v sub">written spec agrees</td></tr>
+          <tr><td class="ar">كتاب المقاول / رأي الاستشاري <span class="sub">preceding-input letters</span></td><td><span class="fork both">both</span></td><td><span class="req no">no wizard field exists</span></td><td class="v sub">shown on record, un-settable live</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ══════════════════ OPEN FINDINGS ══════════════════ -->
+    <section class="panel" id="p-findings">
+      <div class="eyebrow">Punch list — things worth a decision, not yet fixed</div>
+      <h2 class="stitle">Open findings<span class="ar">ملاحظات بانتظار قرار</span></h2>
+      <p class="dek">Nothing here has been changed. Each is cited to the exact lines so it can be re-checked in one look.</p>
+
+      <div class="flag no">
+        <span class="ico">gap</span>
+        <div class="tx">
+          <b>Incoming letter no./date can be submitted blank.</b> The reference blocks submission without both —
+          its own comment calls the incoming letter "the legal-counter start" for BR-12's SLA clock
+          (<code>03 §2.1.1 / §2.10.1</code>). The local <code>ChangeOrderGates.Validate</code> has no such check,
+          and a blank <code>IncomingDate</code> silently defaults to the project's data date rather than being
+          refused.
+          <span class="cite">vo-wizard.jsx:169-172 (reference blockers) · ChangeOrderGates.cs (no matching gate) · ChangeOrderWizardEndpoints.cs:258-259 (the silent default)</span>
+          <span class="test-links">→ <a data-p="p-test">Test protocol</a> T6 (works) · T9 (supply)</span>
+        </div>
+      </div>
+
+      <div class="flag no">
+        <span class="ico">gap</span>
+        <div class="tx">
+          <b>A blank delta/rate on an <code>inc</code>/<code>dec</code>/<code>rate</code> line submits fine.</b>
+          The reference refuses this explicitly — "a change type that carries a quantity/rate must actually
+          specify one." Locally, every proposal field is nullable and nothing checks it, so a line can carry a
+          change type with zero effect and still pass every gate.
+          <span class="cite">vo-wizard.jsx:186-189 · change-order-wizard.types.ts:96-110 · ChangeOrderGates.cs (full file, no such check)</span>
+          <span class="test-links">→ <a data-p="p-test">Test protocol</a> T7 (works) · T10 (supply) · T8 as a control</span>
+        </div>
+      </div>
+
+      <div class="flag warn">
+        <span class="ico">verify</span>
+        <div class="tx">
+          <b>Stage 3's fixture data may not match today's code for a fresh supply order.</b> Full detail in
+          <a data-p="p-stages">The six stages</a> — the seeded <code>VO-08</code> shows stage 3 skipped;
+          <code>WorkflowMachine.Plan</code> today has no code path that would skip it for any order.
+          <span class="test-links">→ <a data-p="p-test">Test protocol</a> T4 / T5</span>
+        </div>
+      </div>
+
+      <div class="flag warn">
+        <span class="ico">verify</span>
+        <div class="tx">
+          <b>The wizard's works-side letter-sender dropdown doesn't match the reference's party list.</b> Full
+          detail in <a data-p="p-parties">Vocabulary &amp; parties</a> — positions 2 and 4 are swapped and one
+          party name changed from "resident engineer" to "design &amp; checking consultant."
+          <span class="test-links">→ <a data-p="p-test">Test protocol</a> T3</span>
+        </div>
+      </div>
+
+      <div class="flag ok">
+        <span class="ico">by design</span>
+        <div class="tx">
+          <b>The two "preceding input" letters (contractor's request, consultant's opinion) have no wizard
+          field.</b> They render on the record's summary tab when present (P-103's four columns), but nothing
+          in the live wizard writes them — every order created through the running app leaves them blank. This
+          matches the written spec's own framing: those two letters happen <em>before</em> the order is entered,
+          "not workflow stages and not system users" (<code>03 §1</code>) — so the absence looks intentional
+          rather than an oversight, but it's worth confirming no capture screen was meant to exist for them.
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ TEST PROTOCOL ══════════════════ -->
+    <section class="panel" id="p-test">
+      <div class="eyebrow">Do it yourself · 10 tests · ~25 min</div>
+      <h2 class="stitle">Test protocol<span class="ar">بروتوكول الاختبار اليدوي</span></h2>
+      <p class="dek">
+        Every test below is written to be <b>falsifiable</b> — it names what you'll see if the finding holds,
+        and what you'll see instead if it doesn't. Six of the ten are works-flow, four supply — T9 and T10 exist
+        specifically because T6 and T7's gaps are tagged "both flows" in the verification table, and that tag
+        deserved its own check rather than an assumption. Run them in order; several create real records the
+        later tests don't depend on, so nothing here needs to be undone between tests. Check each box as you
+        confirm it — state is kept in this browser only, nothing is sent anywhere.
+      </p>
+
+      <h3 class="sec"><span class="n">·</span>Before you start</h3>
+      <div class="kv">
+        <dt>API</dt><dd><code>cd api/Epm.Api &amp;&amp; dotnet run</code> — <code>:5080</code>. Stop it first if it's already running and you need to rebuild.</dd>
+        <dt>Web</dt><dd><code>cd web &amp;&amp; npm start</code> — <code>:4300</code></dd>
+        <dt>Data</dt><dd>If the register is empty: <code>POST /api/dev/reset</code> then <code>POST /api/dev/load-fixture</code>. If <code>PRJ-0279</code> and <code>PRJ-0439</code> already show change orders, skip this.</dd>
+        <dt>Persona</dt><dd>The switcher is in the workspace header, labelled <span class="ar">العرض بصفة</span> / "Viewing as." Creating an order isn't persona-gated — any persona can do it — only <em>deciding</em> on one is.</dd>
+      </div>
+
+      <!-- T1 -->
+      <div class="test" data-t="t1">
+        <div class="test-hd" data-toggle="t1">
+          <span class="tno">1</span>
+          <div class="th-tx"><b>The type-card gate matches the project type</b><div class="hy">tests: <a data-p="p-fork">The fork</a></div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork both">works + supply</span><span class="pill route">/projects/PRJ-0439/changeorders → New change order</span></div>
+          <ol class="steps">
+            <li>Open <code>PRJ-0439</code> (<span class="ar">تجهيز الأجهزة المختبرية العلمية</span>) → Change Orders tab.</li>
+            <li>Click <span class="ar">أمر تغييري جديد</span> / "New change order."</li>
+            <li>On step 1, look at the type-card row.</li>
+            <li>Now repeat on <code>PRJ-0279</code> (<span class="ar">مجمع الكليات الطبية</span>) instead.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">confirms</span>PRJ-0439 shows one card, <span class="ar">تجهيز</span> only. PRJ-0279 shows two, <span class="ar">هندسي</span> pre-selected.</div>
+            <div class="outcome refutes"><span class="lbl">refutes</span>PRJ-0439 offers a second card, or PRJ-0279 offers only one.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T2 -->
+      <div class="test" data-t="t2">
+        <div class="test-hd" data-toggle="t2">
+          <span class="tno">2</span>
+          <div class="th-tx"><b>A supply-sounding contract still carries engineering orders</b><div class="hy">tests: <a data-p="p-fork">The fork</a> §2</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork works">works</span><span class="pill route">/projects/PRJ-0279/changeorders</span></div>
+          <ol class="steps">
+            <li>Open the register. Find <code>VO-06</code> and <code>VO-07</code> — both on <code>CNT-0279-EM</code>, the electromechanical package.</li>
+            <li>Open <code>VO-06</code>'s record → Summary tab → read the <span class="ar">النوع</span> / "Type" field.</li>
+            <li>Also check the Path tab: which party owns stage 1 and stage 6?</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">confirms</span>Type reads <span class="ar">هندسي</span> / Engineering. Stage 1 and 6 are owned by <span class="ar">دائرة المهندس المقيم</span>, not the inspection committee.</div>
+            <div class="outcome refutes"><span class="lbl">refutes</span>Type reads <span class="ar">تجهيز</span> / Supply.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T3 -->
+      <div class="test" data-t="t3">
+        <div class="test-hd" data-toggle="t3">
+          <span class="tno">3</span>
+          <div class="th-tx"><b>The letter-sender dropdown, on the works flow</b><div class="hy">tests: <a data-p="p-parties">Vocabulary &amp; parties</a></div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork works">works</span><span class="pill route">/projects/PRJ-0279/changeorders → New change order → step 1</span></div>
+          <ol class="steps">
+            <li>Open the wizard on <code>PRJ-0279</code>, pick contract <code>CNT-0279</code>, keep type <span class="ar">هندسي</span>.</li>
+            <li>Scroll to the <span class="ar">الكتاب الرسمي</span> / "Official letter" section.</li>
+            <li>Open the <span class="ar">الجهة</span> / "Party" select and read its four options top to bottom.</li>
+          </ol>
+          <p class="body soft" style="font-size:12.5px">This runsheet's table predicts: <span class="ar">المقاول</span>, <span class="ar">الاستشاري المصمم والمدقق</span>, <span class="ar">الجهة المستفيدة</span>, <span class="ar">دائرة المهندس المقيم</span> — in that order.</p>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">matches</span>Your four options are exactly that list, in that order.</div>
+            <div class="outcome refutes"><span class="lbl">doesn't match</span>Different order or wording — write down what you actually see.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T4 -->
+      <div class="test" data-t="t4">
+        <div class="test-hd" data-toggle="t4">
+          <span class="tno">4</span>
+          <div class="th-tx"><b>Stage 3 on the existing supply order</b><div class="hy">baseline for T5 · tests: <a data-p="p-stages">The six stages</a></div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork supply">supply</span><span class="pill route">/projects/PRJ-0439/changeorders/VO-08 → Path tab</span></div>
+          <ol class="steps">
+            <li>Open <code>VO-08</code>'s record → <span class="ar">المسار</span> / "Path" tab.</li>
+            <li>Find stage 3, <span class="ar">تثبيت الأسعار</span> / "Rate fixing."</li>
+            <li>Read its status and, if shown, its skip reason.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">as documented</span>Stage 3 shows greyed out / not applicable, with a reason about redistribution not changing the contracted quantity.</div>
+            <div class="outcome refutes"><span class="lbl">different</span>Stage 3 shows active or done, same as the others.</div>
+          </div>
+          <p class="test-links">This alone doesn't resolve the contradiction — <code>VO-08</code> is old fixture data either way. T5 tests a <em>fresh</em> order instead.</p>
+        </div>
+      </div>
+
+      <!-- T5 -->
+      <div class="test" data-t="t5">
+        <div class="test-hd" data-toggle="t5">
+          <span class="tno">5</span>
+          <div class="th-tx"><b>Stage 3 on a change order you create right now</b><div class="hy">the actual test · resolves the T4 contradiction</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork supply">supply</span><span class="pill route">/projects/PRJ-0439/changeorders → New change order</span></div>
+          <ol class="steps">
+            <li>New change order on <code>PRJ-0439</code>. Contract <code>CNT-0439</code>, type <span class="ar">تجهيز</span> (only option).</li>
+            <li>Justification: anything, e.g. "stage-3 verification." Fill the incoming letter no. and date too — real values, so this test isn't muddied by T6's finding.</li>
+            <li>Step 2, BOQ tab → <span class="ar">اختيار بنود</span> → pick <code>ITM-006</code> (<span class="ar">خادم شبكة</span>).</li>
+            <li>Set its change type to <span class="ar">إعادة توزيع</span> / Redistribution. Open the row editor.</li>
+            <li>Add one transfer: pick a source beneficiary the screen shows with the most remaining allocation, a different target, and a small quantity — 2 or 3 units is enough.</li>
+            <li>Step 5 → <span class="ar">إرسال للمراجعة</span> / Submit for review.</li>
+            <li>Open the new order's record → <span class="ar">المسار</span> tab → stage 3 again.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">code has moved on</span>Stage 3 is <b>active</b> (not skipped) — matches <code>WorkflowMachine.Plan</code>'s current "never skipped" comment. <code>VO-08</code>'s data is simply stale.</div>
+            <div class="outcome refutes"><span class="lbl">still skipped</span>Stage 3 is skipped here too, with the same or a similar reason — meaning the code path this endpoint actually takes differs from what <code>WorkflowMachine.cs:87-98</code>'s comment describes, worth a closer read of <code>ChangeOrderWizardEndpoints.cs</code>'s own call into <code>WorkflowMachine.Plan</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T6 -->
+      <div class="test" data-t="t6">
+        <div class="test-hd" data-toggle="t6">
+          <span class="tno">6</span>
+          <div class="th-tx"><b>Submit with the incoming letter left blank</b><div class="hy">works side · supply mirror is T9 · tests: <a data-p="p-findings">Open findings</a> #1</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork works">works</span><span class="pill route">/projects/PRJ-0279/changeorders → New change order</span></div>
+          <ol class="steps">
+            <li>New change order on <code>PRJ-0279</code>, contract <code>CNT-0279</code>, type <span class="ar">هندسي</span>.</li>
+            <li>Fill the justification. Leave <span class="ar">رقم الوارد</span> and <span class="ar">تاريخ الوارد</span> — incoming no. and date — both blank.</li>
+            <li>Step 2 → add any one BOQ line, change type <span class="ar">إلغاء بند</span> / Cancel item (needs no quantity, keeps this test isolated from T7).</li>
+            <li>Go straight to step 5 and press <span class="ar">إرسال للمراجعة</span> / Submit for review.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">gap confirmed</span>It submits. Open the new record: the incoming date silently reads today's data date rather than blank or an error.</div>
+            <div class="outcome refutes"><span class="lbl">gap doesn't exist</span>Submit is blocked / disabled, naming the missing letter fields.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T7 -->
+      <div class="test" data-t="t7">
+        <div class="test-hd" data-toggle="t7">
+          <span class="tno">7</span>
+          <div class="th-tx"><b>A change type with nothing entered</b><div class="hy">works side · supply mirror is T10 · tests: <a data-p="p-findings">Open findings</a> #2</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork works">works</span><span class="pill route">/projects/PRJ-0279/changeorders → New change order → step 2</span></div>
+          <ol class="steps">
+            <li>New change order, contract <code>CNT-0279</code>, type <span class="ar">هندسي</span>. Fill the letter fields this time (isolates this test from T6).</li>
+            <li>Step 2 → add one BOQ line → set its change type to <span class="ar">زيادة كمية</span> / Increase quantity.</li>
+            <li>Leave <b>both</b> proposal quantity fields — contractor's and the reviewer's — empty. Don't type a number in either.</li>
+            <li>Step 5 → check whether a warning about this line appears; press Submit for review regardless.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">gap confirmed</span>It submits with no warning tied to the blank line — the line's impact reads as 0 / unchanged.</div>
+            <div class="outcome refutes"><span class="lbl">gap doesn't exist</span>Submit is blocked, naming this line and asking for a quantity.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T8 -->
+      <div class="test" data-t="t8">
+        <div class="test-hd" data-toggle="t8">
+          <span class="tno">8</span>
+          <div class="th-tx"><b>Control — a gate that's supposed to actually fire</b><div class="hy">sanity check, not a finding</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork works">works</span><span class="pill route">/projects/PRJ-0279/changeorders → New change order → step 2</span></div>
+          <p class="body soft" style="font-size:13px;margin-top:0">
+            If T6 and T7 both submitted freely, it's worth confirming Submit isn't simply <em>always</em> accepting
+            everything — this one checks a gate the runsheet says <em>is</em> enforced.
+          </p>
+          <ol class="steps">
+            <li>Add a BOQ line whose <span class="ar">المتبقي</span> / remaining quantity you can see is a specific number — note it.</li>
+            <li>Set change type <span class="ar">نقص كمية</span> / Decrease quantity.</li>
+            <li>Type a decrease bigger than that remaining quantity, on either proposal.</li>
+            <li>Try to submit.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">as expected</span>Submit is blocked, naming this line and "exceeds remaining quantity."</div>
+            <div class="outcome refutes"><span class="lbl">unexpected</span>It submits anyway — if so, T6/T7's results need a second look; something broader than those two specific fields may be unenforced.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T9 -->
+      <div class="test" data-t="t9">
+        <div class="test-hd" data-toggle="t9">
+          <span class="tno">9</span>
+          <div class="th-tx"><b>Submit with the incoming letter left blank — supply side</b><div class="hy">mirrors T6, on the flow the "both" tag actually needs proving</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork supply">supply</span><span class="pill route">/projects/PRJ-0439/changeorders → New change order</span></div>
+          <p class="body soft" style="font-size:13px;margin-top:0">
+            Same question as T6, on a <code>type == "supply"</code> order — <code>ChangeOrderGates.Validate</code>
+            is the same function either way, so this should behave identically. Worth confirming rather than
+            assuming: the wizard's own field set differs enough between the two (no rate column, a transfer
+            editor instead of a target picker) that a flow-specific check could plausibly live somewhere T6 never touches.
+          </p>
+          <ol class="steps">
+            <li>New change order on <code>PRJ-0439</code>, contract <code>CNT-0439</code>, type <span class="ar">تجهيز</span> (only option).</li>
+            <li>Fill the justification. Leave <span class="ar">رقم الوارد</span> and <span class="ar">تاريخ الوارد</span> both blank.</li>
+            <li>Step 2 → add one BOQ line → <code>ITM-007</code> (<span class="ar">خزانة سلامة مختبرية</span>) → change type <span class="ar">إلغاء بند</span> / Cancel item (needs no quantity, keeps this isolated from T10).</li>
+            <li>Step 5 → <span class="ar">إرسال للمراجعة</span> / Submit for review.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">same gap, both flows</span>It submits, same as T6 — confirms the "both" tag in the verification table.</div>
+            <div class="outcome refutes"><span class="lbl">flows actually differ</span>This one is blocked where T6 wasn't (or vice versa) — the "both" tag is wrong and needs narrowing to one flow.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T10 -->
+      <div class="test" data-t="t10">
+        <div class="test-hd" data-toggle="t10">
+          <span class="tno">10</span>
+          <div class="th-tx"><b>A change type with nothing entered — supply side</b><div class="hy">mirrors T7, on the flow the "both" tag actually needs proving</div></div>
+          <span class="chk"></span>
+        </div>
+        <div class="test-bd">
+          <div class="test-meta"><span class="pill">any persona</span><span class="fork supply">supply</span><span class="pill route">/projects/PRJ-0439/changeorders → New change order → step 2</span></div>
+          <ol class="steps">
+            <li>New change order on <code>PRJ-0439</code>, contract <code>CNT-0439</code>, type <span class="ar">تجهيز</span>. Fill the letter fields this time (isolates this from T9).</li>
+            <li>Step 2 → add one BOQ line → <code>ITM-007</code> → change type <span class="ar">زيادة كمية</span> / Increase quantity — the same menu item supply gets, since <code>rate</code> is the only one it loses.</li>
+            <li>Leave <b>both</b> proposal quantity fields empty.</li>
+            <li>Step 5 → check for a warning on this line; press Submit for review regardless.</li>
+          </ol>
+          <div class="outcomes">
+            <div class="outcome confirms"><span class="lbl">same gap, both flows</span>It submits with no warning — confirms the "both" tag.</div>
+            <div class="outcome refutes"><span class="lbl">flows actually differ</span>This one is blocked where T7 wasn't (or vice versa) — narrow the table's tag to the one flow that actually enforces it.</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const items = document.querySelectorAll('.navitem, [data-p]');
+  const panels = document.querySelectorAll('.panel');
+  function go(p) {
+    document.querySelectorAll('.navitem').forEach(b => b.classList.toggle('active', b.getAttribute('data-p') === p));
+    panels.forEach(s => s.classList.toggle('active', s.id === p));
+    document.querySelector('.main').scrollTo({top:0, behavior:'instant'});
+    try { history.replaceState(null, '', '#' + p); } catch(e) {}
+  }
+  items.forEach(el => el.addEventListener('click', (e) => { e.preventDefault(); go(el.getAttribute('data-p')); }));
+  const initial = (location.hash || '').replace('#','');
+  if (initial && document.getElementById(initial)) go(initial);
+
+  // ── test-case checkboxes: local to this browser, nothing sent anywhere ──
+  (function () {
+    const KEY = 'epm-co-runsheet-tests';
+    const tests = document.querySelectorAll('.test[data-t]');
+    const progressEl = document.getElementById('nav-progress');
+    let done = {};
+    try { done = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { done = {}; }
+
+    function paint() {
+      let n = 0;
+      tests.forEach(t => {
+        const id = t.getAttribute('data-t');
+        const on = !!done[id];
+        t.classList.toggle('done', on);
+        const chk = t.querySelector('.chk');
+        if (chk) chk.textContent = on ? '✓' : '';
+        if (on) n++;
+      });
+      if (progressEl) progressEl.textContent = tests.length ? n + '/' + tests.length : '';
+    }
+
+    function toggle(id) {
+      done[id] = !done[id];
+      try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {}
+      paint();
+    }
+
+    tests.forEach(t => {
+      const id = t.getAttribute('data-t');
+      const chk = t.querySelector('.chk');
+      if (chk) {
+        chk.setAttribute('role', 'checkbox');
+        chk.setAttribute('tabindex', '0');
+        chk.setAttribute('aria-label', 'Mark test ' + id + ' as checked');
+        chk.addEventListener('click', (e) => { e.stopPropagation(); toggle(id); });
+        chk.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggle(id); }
+        });
+      }
+    });
+    paint();
+  })();
+
+  // ── test-case bodies collapse; the header (minus the checkbox) toggles them ──
+  document.querySelectorAll('[data-toggle]').forEach(hd => {
+    const body = hd.parentElement.querySelector('.test-bd');
+    hd.addEventListener('click', () => { if (body) body.hidden = !body.hidden; });
+  });
+</script>
+</body></html>

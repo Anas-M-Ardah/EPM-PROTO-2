@@ -109,6 +109,13 @@
                 <b class="mtitle">{{ awaitingTitle() }}</b>
                 <span class="mbody">{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
               </div>
+              <!-- `04 §8` — «Focus mode (split queue + work pane) for the
+                   awaiting-me set»; `vo-record.jsx:689-691` puts the button
+                   right in this bar. -->
+              <button type="button" class="d-btn sm primary" style="margin-inline-start: 12px"
+                      (click)="startFocus()">
+                <epm-icon name="center_focus_strong" [size]="15" />{{ lang.t('chg_focus_mode') }}
+              </button>
             </div>
           } @else {
             <div class="d-msgbar info">

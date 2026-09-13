@@ -31,17 +31,32 @@ namespace Epm.Api.Domain;
 /// D-02 — superseded. `02 §10` carried 0.1%/day capped at 10% since the port,
 /// flagged CONFIRM. الشكل 10 and العرض الفني §11 both state this formula
 /// instead, and they differ by 3.6× on CNT-0170-EM. The client's documents win.
-/// What is still open is whether the 10% rate is fixed or whether الشكل 10's
-/// «النطاق القانوني 10%–25%» is a range — see TODO.md §1.
+///
+/// THE RATE ITSELF IS NOW PER CONTRACT, NOT A GLOBAL CONSTANT (P-261-adjacent
+/// follow-up, this session). الشكل 10 labels 10% «النطاق القانوني 10%–25%» —
+/// a statutory band the tender conditions pick from, not a fixed figure —
+/// and the client-validated reference prototype (`epm/app/contract-amendments.jsx`
+/// `PENALTY_BAND`, citing "Gov. Contract Regs 2/2014, revised 2017") already
+/// stores a real per-contract rate rather than a flat one, with seeded
+/// contracts at 10/12/15/20%. `Contract.PenaltyRatePct` carries it, defaulting
+/// to 10% and validated at `ContractDefinition` against the 10%–25% band. This
+/// is still **unconfirmed against the actual ministry regulation** — the
+/// reference is evidence, not a client sign-off — see D-02 and P-45/P-264.
 ///
 /// The value is the EFFECTIVE one (BR-09) — never the original, never the projection.
 /// </summary>
 public static class Penalty
 {
-    /// <summary>نسبة الغرامة. Applied to the value spread over the duration, not to the value.</summary>
-    public const decimal RatePct = 0.10m;
+    /// <summary>
+    /// نسبة الغرامة الافتراضية — what a contract gets when none is entered, and
+    /// what الشكل 10's own worked example uses. Never read for a real
+    /// contract's own calculation; `Contract.PenaltyRatePct` is (D-02, P-264).
+    /// </summary>
+    public const decimal DefaultRatePct = 0.10m;
 
-    public const decimal CapPct = 0.10m;
+    /// <summary>الشكل 10's «النطاق القانوني» — the band `ContractDefinition` validates a rate against.</summary>
+    public const decimal LegalMinRatePct = 0.10m;
+    public const decimal LegalMaxRatePct = 0.25m;
 
     public record Result(int Days, decimal PerDay, decimal Cap, decimal Amount);
 
@@ -65,25 +80,35 @@ public static class Penalty
     /// says nothing about what a day of delay costs, and inventing a figure on
     /// a legal record is worse than showing none.
     /// </param>
-    public static Result For(decimal value, int durationDays, DateOnly contractualFinish, DateOnly forecastFinish)
+    /// <param name="ratePct">
+    /// نسبة الغرامة — the contract's OWN rate (`Contract.PenaltyRatePct`), never
+    /// a global constant. Applied to both the daily fraction and the cap: the
+    /// reference's own formula uses one rate for each contract, not two.
+    /// </param>
+    public static Result For(
+        decimal value, int durationDays, DateOnly contractualFinish, DateOnly forecastFinish, decimal ratePct)
     {
         var days = DelayDays(contractualFinish, forecastFinish);
-        var perDay = durationDays <= 0 ? 0m : value / durationDays * RatePct;
-        var cap = value * CapPct;
+        var perDay = durationDays <= 0 ? 0m : value / durationDays * ratePct;
+        var cap = value * ratePct;
 
         return new Result(days, perDay, cap, Math.Min(perDay * days, cap));
     }
 
     public record Impact(Result Before, Result After, decimal Waived);
 
-    /// <summary>Before vs after an applied order, and what it waived.</summary>
+    /// <summary>
+    /// Before vs after an applied order, and what it waived. One `ratePct` for
+    /// both columns: the rate is fixed by the tender conditions at award and an
+    /// amendment never moves it (non-negotiable #6), only the value and duration do.
+    /// </summary>
     public static Impact Compare(
         decimal valueBefore, DateOnly finishBefore, int durationBefore,
         decimal valueAfter, DateOnly finishAfter, int durationAfter,
-        DateOnly forecastFinish)
+        DateOnly forecastFinish, decimal ratePct)
     {
-        var before = For(valueBefore, durationBefore, finishBefore, forecastFinish);
-        var after = For(valueAfter, durationAfter, finishAfter, forecastFinish);
+        var before = For(valueBefore, durationBefore, finishBefore, forecastFinish, ratePct);
+        var after = For(valueAfter, durationAfter, finishAfter, forecastFinish, ratePct);
 
         return new Impact(before, after, Math.Max(0m, before.Amount - after.Amount));
     }

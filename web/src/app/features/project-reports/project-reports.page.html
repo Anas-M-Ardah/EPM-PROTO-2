@@ -116,8 +116,8 @@
                   <span class="d-skel d-skel-row" style="width:100%"></span>
                 } @else if (bodyError()) {
                   <div class="d-msgbar danger">
-                    <epm-icon name="error" [size]="16" />
-                    <div><b>{{ lang.t('error_t') }}</b><span><bdi>{{ bodyError() }}</bdi></span></div>
+                    <epm-icon name="error" [size]="16" class="mgi" />
+                    <div class="mtx"><b class="mtitle">{{ lang.t('error_t') }}</b><span class="mbody"><bdi>{{ bodyError() }}</bdi></span></div>
                   </div>
                 } @else {
                  @if (body(); as b) {
@@ -140,10 +140,10 @@
                        than an empty table. -->
                   @if (!b.available) {
                     <div class="d-msgbar warning">
-                      <epm-icon name="lock" [size]="16" />
-                      <div>
-                        <b>{{ lang.t('prp_unavailable') }}</b>
-                        <span>{{ lang.t('prp_needs') }} {{ bodyMissing() }}</span>
+                      <epm-icon name="lock" [size]="16" class="mgi" />
+                      <div class="mtx">
+                        <b class="mtitle">{{ lang.t('prp_unavailable') }}</b>
+                        <span class="mbody">{{ lang.t('prp_needs') }} {{ bodyMissing() }}</span>
                       </div>
                     </div>
                   } @else if (!b.rendered) {
@@ -153,10 +153,10 @@
                          already there. RPT-04 wants weight-rolled BOQ progress,
                          which is SCR-W6's own rollup. `04 §9`. -->
                     <div class="d-msgbar info">
-                      <epm-icon name="info" [size]="16" />
-                      <div>
-                        <b>{{ lang.t('prp_norender_t') }}</b>
-                        <span>{{ lang.t('prp_norender_b') }}</span>
+                      <epm-icon name="info" [size]="16" class="mgi" />
+                      <div class="mtx">
+                        <b class="mtitle">{{ lang.t('prp_norender_t') }}</b>
+                        <span class="mbody">{{ lang.t('prp_norender_b') }}</span>
                       </div>
                     </div>
                   } @else {
@@ -242,10 +242,10 @@
         </epm-section>
 
         <div class="d-msgbar info">
-          <epm-icon name="info" [size]="16" />
-          <div>
-            <b>{{ lang.t('prp_norm_t') }}</b>
-            <span>{{ lang.t('prp_norm_b') }}</span>
+          <epm-icon name="info" [size]="16" class="mgi" />
+          <div class="mtx">
+            <b class="mtitle">{{ lang.t('prp_norm_t') }}</b>
+            <span class="mbody">{{ lang.t('prp_norm_b') }}</span>
           </div>
         </div>
 

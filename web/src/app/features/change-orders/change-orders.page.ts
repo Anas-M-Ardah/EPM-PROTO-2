@@ -12,6 +12,7 @@ import { FieldGroupComponent } from '../../shared/field-group.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { PersonaService } from '../../core/persona';
+import { ChangeOrderFocusQueue } from '../../core/change-order-focus';
 import * as fmt from '../../core/format';
 import { ChangeOrdersApi } from './change-orders.api';
 import { ChangeOrderRow, ChangeOrdersResponse, ExceptionChip } from './change-orders.types';
@@ -59,6 +60,7 @@ export class ChangeOrdersPage {
   lang = inject(LangService);
   lookups = inject(LookupsService);
   persona = inject(PersonaService);
+  focusQueue = inject(ChangeOrderFocusQueue);
   fmt = fmt;
 
   projectId = signal('');
@@ -205,6 +207,23 @@ export class ChangeOrdersPage {
 
   awaitingTitle = computed(() =>
     this.lang.t('chg_awaiting_t').replace('{n}', String(this.data()?.awaitingMe ?? 0)));
+
+  /**
+   * `04 §8`'s «awaiting-me set» — the same rows `attn === 'mine'` filters to
+   * and what the server's own `awaitingMe` counts. Focus mode works this
+   * list in order; it is never recomputed once the queue starts (`03 §7`'s
+   * relation is the server's answer, taken once per queue, not re-derived
+   * as decisions land elsewhere).
+   */
+  mineList = computed(() => this.rows().filter(r => r.relation.canAct));
+
+  /** `vo-record.jsx:685-692` — «وضع الإنجاز». Opens the queue on its first order. */
+  startFocus() {
+    const list = this.mineList();
+    if (!list.length) return;
+    this.focusQueue.start(list.map(r => ({ no: r.no, titleAr: r.titleAr, titleEn: r.titleEn })));
+    this.open(list[0].no);
+  }
 
   constructor() {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {

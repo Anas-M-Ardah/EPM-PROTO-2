@@ -106,11 +106,13 @@ output of the running code.
 | **BR-06** | **Two proposals** | RE department's figure governs display; neither is the approved value until financial review | governing **11,400,000** (RE dept), divergence −600,000, marked **تقديرية** |
 | **BR-08** | **Distribution** | A line's quantity split across the beneficiaries **assigned to that project**; inputs capped at what is left | qty 120, distributed 90 → remaining 30, state `partial` |
 | **BR-09** | **Amendment** | On **apply**: `value += approvedValue`, `finish += approvedDays`. The last applied amendment *is* the effective contract | amendment no 1 → value **105,000,000**, finish **2026-08-14** |
-| **BR-10** | **Delay penalty** | `perDay = value ÷ durationDays × 10%`; `cap = value × 10%`; `amount = min(perDay × days, cap)` | 587,673,564 over 364 days → **161,449 د.ع/day** |
+| **BR-10** | **Delay penalty** | `perDay = value ÷ durationDays × rate`; `cap = value × rate`; `amount = min(perDay × days, cap)` | 587,673,564 over 364 days at 10% → **161,449 د.ع/day** |
 
 > **BR-10 is the client's own formula** (العرض الفني §11, الشكل 10), not the
 > 0.1%/day the earlier written spec carried. The cap is reached after exactly
-> one contract duration of delay.
+> one contract duration of delay. **`rate` is `Contract.PenaltyRatePct`**, per
+> contract within الشكل 10's statutory 10%–25% band — defaulting to 10%, never
+> a single ministry-wide constant (D-02, P-264).
 
 ### Schedule and progress
 
@@ -158,11 +160,17 @@ and resets the penalty baseline. Until then, nothing has changed.
 
 ### The supply variant
 
-A change order on an equipment contract has **no 20% tier and no rate-fixing
-committee**. Its step 2 instead redistributes quantity **between beneficiaries
-within one item** — and its net effect on the contract value is **zero**. That
-is the point of the screen: a redistribution is a quantity move, not a financial
-one.
+A change order on an equipment contract runs the **same 20% tier and the same
+rate-fixing committee stage** as a works order (D-14, `02 §5`) — only who
+requests and reviews differs (المجهز / لجنة الفحص والاستلام in place of
+المقاول / دائرة المهندس المقيم), and a brand-new **base** rate may never be
+proposed directly (only the tier's excess-quantity rate, same as construction).
+
+Its step 2 additionally offers redistributing quantity **between beneficiaries
+within one item** — and that particular move's net effect on the contract value
+is zero, since it relocates who holds devices rather than how many the contract
+bought. That zero belongs to the redistribution screen specifically, not to the
+order type as a whole.
 
 ---
 

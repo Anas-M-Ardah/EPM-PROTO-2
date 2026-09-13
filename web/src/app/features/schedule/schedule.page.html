@@ -211,12 +211,12 @@
         @if (pendingVersion(); as v) {
           @if (rows().length > 0) {
             <div class="d-msgbar warning">
-              <epm-icon name="warning" [size]="16" />
-              <div>
-                <b>{{ lang.t('scd_imp_pending_t') }}
+              <epm-icon name="warning" [size]="16" class="mgi" />
+              <div class="mtx">
+                <b class="mtitle">{{ lang.t('scd_imp_pending_t') }}
                   — <bdi class="mono">{{ v.fileName }}</bdi> ·
                   <bdi>{{ v.activityCount }}</bdi> {{ lang.t('scd_imp_activities') }}</b>
-                <span>{{ lang.t('scd_imp_pending_b') }}
+                <span class="mbody">{{ lang.t('scd_imp_pending_b') }}
                   @if (v.contractFinishDelta !== 0) {
                     · {{ lang.t('scd_imp_delta') }}
                     <bdi>{{ fmt.delta(v.contractFinishDelta) }}</bdi> {{ lang.t('amd_days') }}
@@ -557,10 +557,10 @@
                      figures above were actually produced by, stated where they
                      are read (05 §6). -->
                 <div class="d-msgbar">
-                  <epm-icon name="info" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('scd_imp_how_t') }}</b>
-                    <span>{{ lang.t('scd_imp_how_b') }}</span>
+                  <epm-icon name="info" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('scd_imp_how_t') }}</b>
+                    <span class="mbody">{{ lang.t('scd_imp_how_b') }}</span>
                   </div>
                 </div>
 
@@ -804,10 +804,10 @@
 
               @if (a.isCritical) {
                 <div class="d-msgbar info">
-                  <epm-icon name="timeline" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('scd_critical') }}</b>
-                    <span>{{ lang.t('scd_crit_note') }}</span>
+                  <epm-icon name="timeline" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('scd_critical') }}</b>
+                    <span class="mbody">{{ lang.t('scd_crit_note') }}</span>
                   </div>
                 </div>
               }

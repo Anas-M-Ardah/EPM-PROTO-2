@@ -72,8 +72,13 @@ public static class WorkflowMachine
     /// BR-14 matches a persona's Party against `Owner`, so this swap is what
     /// decides who may act; leaving it out makes a supply order UNACTIONABLE
     /// rather than merely mislabelled, because no persona carries the missing
-    /// party. Stage 3 (تثبيت الأسعار) needs no swap: it is conditioned on a line
-    /// tripping 20%, which a supply order never does (`02 §5`).
+    /// party. Stage 3 (تثبيت الأسعار) needs no swap regardless: `Plan()` never
+    /// skips it (P-252) and its owner is already لجنة تثبيت الأسعار on both
+    /// variants. A supply line CAN trip the 20% tier like any other line
+    /// (D-14, `02 §5` — P-261 corrects an earlier claim here that it never
+    /// does), which changes stage 3's CONTENT (an excess rate to fix) but
+    /// never its presence — that was already unconditional before this
+    /// correction and stays that way.
     /// </summary>
     public static IReadOnlyList<StageDef> StagesFor(bool supply) =>
         !supply ? Stages : Stages.Select(s => s.Owner == "دائرة المهندس المقيم"

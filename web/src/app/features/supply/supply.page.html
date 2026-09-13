@@ -220,10 +220,10 @@
         <!-- ══ الشكل 56 — استعلام الفقرات ════════════════════════════════ -->
         @if (view() === 'inquiry') {
           <div class="d-msgbar info">
-            <epm-icon name="info" [size]="16" />
-            <div>
-              <b>{{ lang.t('sup_inq_t') }}</b>
-              <span>{{ lang.t('sup_inq_b') }}</span>
+            <epm-icon name="info" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('sup_inq_t') }}</b>
+              <span class="mbody">{{ lang.t('sup_inq_b') }}</span>
             </div>
           </div>
 
@@ -316,10 +316,10 @@
                 <!-- الشكل 51's own warning bar. -->
                 @if (shortfall() > 0) {
                   <div class="d-msgbar warning">
-                    <epm-icon name="warning" [size]="16" />
-                    <div>
-                      <b>{{ lang.t('sup_short_t') }}</b>
-                      <span>{{ lang.t('sup_short_b') }}
+                    <epm-icon name="warning" [size]="16" class="mgi" />
+                    <div class="mtx">
+                      <b class="mtitle">{{ lang.t('sup_short_t') }}</b>
+                      <span class="mbody">{{ lang.t('sup_short_b') }}
                         <bdi>{{ fmt.qty(shortfall()) }}</bdi>
                         {{ lang.t('sup_of') }}
                         <bdi>{{ fmt.qty(p.item.contractedQty) }}</bdi></span>

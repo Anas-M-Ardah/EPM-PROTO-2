@@ -435,6 +435,15 @@ export class ContractPage {
     return (v * 100).toFixed(1).replace(/\.0$/, '') + '%';
   }
 
+  /**
+   * `con_pen_how_b`'s two `{rate}` placeholders, filled with THIS contract's
+   * own rate (D-02, P-264) — the explainer used to hard-code "10%" twice,
+   * which silently went wrong the moment a contract carried a different one.
+   */
+  penHowText(ratePct: number): string {
+    return this.lang.t('con_pen_how_b').split('{rate}').join(this.ratePct(ratePct));
+  }
+
   statusCount(code: string): number { return this.countByStatus()[code] ?? 0; }
   statusCodes = computed(() => Object.keys(this.countByStatus()));
 

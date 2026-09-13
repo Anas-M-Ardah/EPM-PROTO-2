@@ -30,10 +30,17 @@ public static class ChangeOrderRecord
     /// <param name="BeforeQty">What the line stood at when the order was raised.</param>
     /// <param name="IsSupply">
     /// The ORDER's own type, not the line's — a bill has one kind (D-14) so
-    /// every line on it agrees. `02 §5`'s whole tier is a construction-contract
-    /// rule: a supply unit rate is fixed by the contract and the letter of
-    /// credit before anything ships, so there is no rate to fix here and no
-    /// portion of a quantity change that could carry one.
+    /// every line on it agrees. It no longer changes this function's
+    /// arithmetic: D-14 (CONFIRM) and `02 §5` are explicit that "weight,
+    /// amount and the 20% rule run on the base, so a supply bill prices
+    /// itself through exactly the rules a works bill does" — a prior reading
+    /// of `02 §5` as a construction-only rule was wrong (P-261 corrects
+    /// P-110). `IsSupply` is kept on `Line` because it is still read
+    /// elsewhere for two separate, legitimate reasons: `WorkflowMachine.
+    /// StagesFor` swaps the stage-1/6 owner (a تجهيز contract has no
+    /// resident engineer), and `ChangeOrderGates`' `supply-no-rate` gate
+    /// refuses a brand-new BASE rate on a supply line (only the tier's
+    /// excess-quantity rate may move, same as construction).
     /// </param>
     public record Line(
         string Code,
@@ -77,23 +84,11 @@ public static class ChangeOrderRecord
 
         switch (l.ChangeType)
         {
-            // BR-05 — and ONLY here, and only off the contract. A rate change,
-            // a cancellation and a redistribution never measured themselves
-            // against 20% (02 §5); a SUPPLY quantity change joins them now —
-            // its rate is catalogue/LC-fixed, so the whole delta prices at the
-            // original rate and none of it can trip a threshold that does not
-            // apply to it.
-            case "inc" when l.IsSupply:
-            case "dec" when l.IsSupply:
-            {
-                var delta = Math.Abs(p.DeltaQty ?? 0m);
-                var qtyAfter = l.ChangeType == "dec" ? l.BeforeQty - delta : l.BeforeQty + delta;
-                var atCost = delta * l.BeforeRate;
-                var after = l.ChangeType == "dec" ? l.BeforeAmount - atCost : l.BeforeAmount + atCost;
-
-                return new(qtyAfter, null, after, after - l.BeforeAmount, 0m, delta, 0m, false);
-            }
-
+            // BR-05 — applies to every inc/dec line regardless of project
+            // type (D-14, 02 §5: no project-type carve-out). IsSupply affects
+            // who requests/reviews (WorkflowMachine.StagesFor) and forbids a
+            // NEW BASE rate outright (ChangeOrderGates' supply-no-rate gate)
+            // — it does not change this arithmetic.
             case "inc":
             case "dec":
             {

@@ -49,7 +49,13 @@ public static class ContractDefinition
         decimal? MonitoringAmount,
         string Contractor,
         /// <summary>الجهة المنفذة — الشكل 8 stars it; the rule refuses it empty.</summary>
-        string ExecutingParty);
+        string ExecutingParty,
+        /// <summary>
+        /// نسبة الغرامة (BR-10, D-02, P-264). Null reads as "not entered yet" —
+        /// the caller defaults it to <see cref="Penalty.DefaultRatePct"/> on
+        /// create; this rule only checks the legal band when a value IS given.
+        /// </summary>
+        decimal? PenaltyRatePct = null);
 
     /// <summary>
     /// الشكل 8's «نجمة على الحقول الإلزامية» — the five fields its screen marks:
@@ -166,6 +172,16 @@ public static class ContractDefinition
         Negative("reserveAmount", c.ReserveAmount, "مبلغ الاحتياط", "The reserve amount");
         Negative("supervisionAmount", c.SupervisionAmount, "مبلغ الإشراف", "The supervision amount");
         Negative("monitoringAmount", c.MonitoringAmount, "مبلغ المراقبة", "The monitoring amount");
+
+        // ── نسبة الغرامة — الشكل 10's «النطاق القانوني 10%–25%» ────────────
+        // Not required (RequiredFields/EnforcedFields) — a missing rate
+        // defaults to Penalty.DefaultRatePct on create — but a GIVEN rate
+        // outside the statutory band is refused rather than silently applied
+        // to a legal penalty calculation.
+        if (c.PenaltyRatePct is { } rate && (rate < Penalty.LegalMinRatePct || rate > Penalty.LegalMaxRatePct))
+            v.Add(new("penaltyRatePct",
+                $"نسبة الغرامة يجب أن تقع ضمن النطاق القانوني {Penalty.LegalMinRatePct:P0}–{Penalty.LegalMaxRatePct:P0}.",
+                $"The penalty rate must fall within the legal range {Penalty.LegalMinRatePct:P0}–{Penalty.LegalMaxRatePct:P0}."));
 
         void Negative(string field, decimal? amount, string ar, string en)
         {

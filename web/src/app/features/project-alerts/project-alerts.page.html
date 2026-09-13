@@ -93,10 +93,10 @@
                Domain/AlertInbox.Live is this sentence, and the switch below
                proves it — the inbox count in the footer moves with it. -->
           <div class="d-msgbar info">
-            <epm-icon name="verified_shield" [size]="16" />
-            <div>
-              <b>{{ lang.t('pal_norm_t') }}</b>
-              <span>{{ lang.t('pal_norm_b') }}</span>
+            <epm-icon name="verified_shield" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('pal_norm_t') }}</b>
+              <span class="mbody">{{ lang.t('pal_norm_b') }}</span>
             </div>
           </div>
 
@@ -167,10 +167,10 @@
                    data date: no scheduler runs here and 07 §2 lists the
                    delivery engine as POC work (P-119). -->
               <div class="d-msgbar">
-                <epm-icon name="info" [size]="16" />
-                <div>
-                  <b>{{ lang.t('pal_engine_t') }}</b>
-                  <span>{{ lang.t('pal_engine_b') }}</span>
+                <epm-icon name="info" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('pal_engine_t') }}</b>
+                  <span class="mbody">{{ lang.t('pal_engine_b') }}</span>
                 </div>
               </div>
             }

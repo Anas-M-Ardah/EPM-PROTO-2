@@ -866,10 +866,10 @@
               -->
               @if (pending().length) {
                 <div class="d-msgbar warning">
-                  <epm-icon name="warning" [size]="16" />
-                  <div>
-                    <b>{{ lang.t('con_pending_title') }}</b>
-                    <span>{{ lang.t('ovw_projection_note') }} —
+                  <epm-icon name="warning" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('con_pending_title') }}</b>
+                    <span class="mbody">{{ lang.t('ovw_projection_note') }} —
                       <bdi>{{ fmt.money(c.projectionValue) }}</bdi> {{ lang.t('cur_iqd') }}
                       · <bdi>{{ fmt.date(projectionFinish()) }}</bdi></span>
                   </div>
@@ -968,10 +968,10 @@
                        See P-81: a formula that its own figures do not satisfy
                        would be worse than either rule. -->
                   <div class="d-msgbar info">
-                    <epm-icon name="functions" [size]="16" />
-                    <div>
-                      <b>{{ lang.t('con_pen_how') }}</b>
-                      <span>{{ lang.t('con_pen_how_b') }}</span>
+                    <epm-icon name="functions" [size]="16" class="mgi" />
+                    <div class="mtx">
+                      <b class="mtitle">{{ lang.t('con_pen_how') }}</b>
+                      <span class="mbody">{{ penHowText(pen.ratePct) }}</span>
                     </div>
                   </div>
 
@@ -1028,10 +1028,10 @@
 
                   @if (pen.amountAfter === 0) {
                     <div class="d-msgbar info">
-                      <epm-icon name="info" [size]="16" />
-                      <div>
-                        <b>{{ lang.t('con_pen_none_t') }}</b>
-                        <span>{{ lang.t('con_pen_none_b') }}</span>
+                      <epm-icon name="info" [size]="16" class="mgi" />
+                      <div class="mtx">
+                        <b class="mtitle">{{ lang.t('con_pen_none_t') }}</b>
+                        <span class="mbody">{{ lang.t('con_pen_none_b') }}</span>
                       </div>
                     </div>
                   }

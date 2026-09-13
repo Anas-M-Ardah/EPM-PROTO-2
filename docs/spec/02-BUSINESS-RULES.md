@@ -213,18 +213,20 @@ State per version: `original` (no. 0) · `superseded` (an earlier applied one) �
 
 ## 10. Delay penalty
 
-**Rule.** `The contract value spread over the contract duration, times the penalty rate, per day of delay — capped at 10% of the contract value.`
+**Rule.** `The contract value spread over the contract duration, times the penalty rate, per day of delay — capped at that same rate of the contract value.`
 
-العرض الفني §11 states it in words — «غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷ (مدة العقد ± تغيّر المدة) × نسبة الغرامة» — and الشكل 10 prints **161,449 د.ع/day** against CNT-0170-EM's 587,673,564 د.ع over 364 days.
+العرض الفني §11 states it in words — «غرامة اليوم = (قيمة العقد ± تغيّر المبلغ) ÷ (مدة العقد ± تغيّر المدة) × نسبة الغرامة» — and الشكل 10 prints **161,449 د.ع/day** against CNT-0170-EM's 587,673,564 د.ع over 364 days at the 10% default.
+
+**The rate is per contract** (`Contract.PenaltyRatePct`), fixed by the tender conditions within الشكل 10's own statutory band, **10%–25%** — never a single ministry-wide constant. It defaults to 10% and is never overwritten once set (D-02, P-264).
 
 ```
 days   = max(0, forecastFinish − contractualFinish)
-perDay = effectiveContractValue ÷ effectiveDurationDays × 0.10
-cap    = effectiveContractValue × 0.10
+perDay = effectiveContractValue ÷ effectiveDurationDays × rate
+cap    = effectiveContractValue × rate
 amount = min(perDay × days, cap)
 ```
 
-**The cap is reached after exactly one contract duration of delay**, because `perDay × durationDays = value × 0.10 = cap` identically. A short contract therefore exhausts its penalty faster than a long one of the same value.
+**The cap is reached after exactly one contract duration of delay**, because `perDay × durationDays = value × rate = cap` identically. A short contract therefore exhausts its penalty faster than a long one of the same value.
 
 **An applied change order moves both terms of the fraction** — the value (numerator) and the duration (denominator) — as well as the contractual finish. An extension can therefore **lower** the daily penalty while the contract value rises. Show **before vs after** and the resulting **waived amount**, because a time extension is often the point of the order.
 

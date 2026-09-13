@@ -349,7 +349,13 @@ public record ContractDefinitionInput(
     string? ContactInfo,
     // كتاب الإحالة
     string? IncomingNo,
-    string? IncomingDate
+    string? IncomingDate,
+    /// <summary>
+    /// نسبة الغرامة (BR-10, D-02, P-264) — a fraction (0.10 = 10%), within
+    /// الشكل 10's statutory 10%–25% band. Null on create defaults to
+    /// `Penalty.DefaultRatePct`; ignored on an edit like the other originals.
+    /// </summary>
+    decimal? PenaltyRatePct = null
 );
 
 /// <inheritdoc cref="Epm.Api.Features.Projects.ProjectViolation"/>

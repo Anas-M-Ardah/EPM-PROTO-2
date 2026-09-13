@@ -89,6 +89,22 @@ export class ContractFormPage {
     this.set(key, raw.trim() === '' || Number.isNaN(n) ? null : n);
   }
 
+  /**
+   * `penaltyRatePct` is a FRACTION on the wire (0.10 = 10%, matching
+   * `Domain/Penalty`) but a percentage on screen — the only field with a
+   * display unit different from its stored one, so it gets its own setter
+   * rather than overloading `setNumber` with a silent ×100.
+   */
+  setPenaltyRatePct(raw: string) {
+    const n = Number(raw);
+    this.set('penaltyRatePct', raw.trim() === '' || Number.isNaN(n) ? null : n / 100);
+  }
+
+  penaltyRatePctDisplay(): number | null {
+    const v = this.form().penaltyRatePct;
+    return v == null ? null : Math.round(v * 1000) / 10;
+  }
+
   errorFor(field: string): string | null {
     const v = this.violations().find(x => x.field === field);
     return v ? this.lang.pick(v.messageAr, v.messageEn) : null;
@@ -208,6 +224,6 @@ function empty(): ContractDefinitionInput {
     awardAmount: null, reserveAmount: null, supervisionAmount: null, monitoringAmount: null,
     start: null, finish: null,
     contractor: null, executingParty: null, consultant: null, contactInfo: null,
-    incomingNo: null, incomingDate: null,
+    incomingNo: null, incomingDate: null, penaltyRatePct: null,
   };
 }
