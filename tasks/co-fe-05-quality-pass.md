@@ -3,7 +3,7 @@
 id: CO-FE-05
 title: Change-order responsive, RTL, and accessibility pass
 anchor: EP-CO-FE-05
-status: TODO
+status: DONE
 
 ## Scope
 
@@ -34,4 +34,3 @@ Workflow({
   }
 })
 ```
-

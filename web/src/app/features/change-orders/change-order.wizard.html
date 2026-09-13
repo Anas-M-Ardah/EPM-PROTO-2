@@ -25,10 +25,11 @@
     <!-- الشكل 37's stepper: a done step carries its tick, the active one its
          icon. Steps beyond the contract choice are unreachable until it is
          made, because every one of them is scoped by it. -->
-    <div class="d-stepper icons">
+    <div class="d-stepper icons" role="tablist" [attr.aria-label]="lang.t('chg_w_title')">
       @for (s of steps; track s.n) {
-        <button type="button" class="d-step {{ stepState(s.n) }}"
+        <button type="button" role="tab" class="d-step {{ stepState(s.n) }}"
                 [disabled]="s.n > step() || saving()"
+                [attr.aria-selected]="step() === s.n"
                 [attr.aria-current]="step() === s.n ? 'step' : null"
                 (click)="go(s.n)">
           <span class="n">
@@ -236,12 +237,14 @@
               </div>
             </div>
 
-            <div class="d-vow-tabs">
-              <button type="button" class="d-vow-tab" [class.on]="tab() === 'boq'" (click)="tab.set('boq')">
+            <div class="d-vow-tabs" role="tablist" [attr.aria-label]="lang.t('chg_w_step2')">
+              <button type="button" role="tab" class="d-vow-tab" [class.on]="tab() === 'boq'"
+                      [attr.aria-selected]="tab() === 'boq'" (click)="tab.set('boq')">
                 <epm-icon name="list_alt" [size]="15" />{{ lang.t('chg_w_tab_boq') }}
                 <span class="n"><bdi>{{ lines().length }}</bdi></span>
               </button>
-              <button type="button" class="d-vow-tab" [class.on]="tab() === 'act'" (click)="tab.set('act')">
+              <button type="button" role="tab" class="d-vow-tab" [class.on]="tab() === 'act'"
+                      [attr.aria-selected]="tab() === 'act'" (click)="tab.set('act')">
                 <epm-icon name="calendar_month" [size]="15" />{{ lang.t('chg_w_tab_act') }}
                 <span class="n"><bdi>{{ acts().length }}</bdi></span>
               </button>

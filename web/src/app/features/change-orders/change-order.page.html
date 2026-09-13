@@ -8,18 +8,20 @@
 
   Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
 -->
-<div class="d-pframe epm-co-record">
+<div class="d-pframe epm-co-record" [attr.aria-busy]="loading()">
 
   @if (loading()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <epm-table-skeleton [cols]="6" [rows]="8" [loadingLabel]="lang.t('loading')" />
+      <div role="status" aria-live="polite">
+        <epm-table-skeleton [cols]="6" [rows]="8" [loadingLabel]="lang.t('loading')" />
+      </div>
     </div></div>
 
   } @else if (error()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <div class="d-empty">
+      <div class="d-empty" role="alert" aria-live="assertive">
         <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
         <b>{{ lang.t('error_t') }}</b>
         <span><bdi>{{ error() }}</bdi></span>

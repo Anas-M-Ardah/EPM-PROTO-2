@@ -20,8 +20,14 @@ public class ChangeOrderAuditEntry
 
     public string UserId { get; set; } = "";
 
+    /// <summary>Capacity used for the action; system identifies automated apply work.</summary>
+    public string ActorRole { get; set; } = "actor";
+
     /// <summary>e.g. "create" · "edit" · "submit" · "approve" · "return" · "reject" · "cancel" · "apply" · "record-external".</summary>
     public string Action { get; set; } = "";
+
+    /// <summary>Traceability anchor for the endpoint/domain rule that emitted this event.</summary>
+    public string TraceabilityAnchor { get; set; } = "EP-CO-09";
 
     /// <summary>Which of the six stages this happened in. Null for pre-submission edits.</summary>
     public int? StageNo { get; set; }
@@ -31,6 +37,10 @@ public class ChangeOrderAuditEntry
 
     public string? PreviousValue { get; set; }
     public string? NewValue { get; set; }
+
+    /// <summary>Structured snapshots retained alongside the display values.</summary>
+    public string? BeforeSnapshot { get; set; }
+    public string? AfterSnapshot { get; set; }
 
     public string? Note { get; set; }
 

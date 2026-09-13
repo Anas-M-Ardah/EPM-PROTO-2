@@ -156,13 +156,14 @@ public class ChangeOrderApplyTests
     // ── which decisions are on offer (03 §5 · §3 · §7) ───────────────────
 
     [Fact]
-    public void Only_the_stage_owner_or_the_delegate_is_offered_anything()
+    public void Only_the_stage_owner_is_offered_workflow_decisions()
     {
         Assert.Empty(WorkflowMachine.Available("pending", "none", []));
         Assert.Empty(WorkflowMachine.Available("pending", "acted", []));
         Assert.Empty(WorkflowMachine.Available("pending", "upcoming", []));
         Assert.NotEmpty(WorkflowMachine.Available("pending", "awaiting", []));
-        Assert.NotEmpty(WorkflowMachine.Available("pending", "recorder", []));
+        // A delegate records external responses through the separate endpoint.
+        Assert.Empty(WorkflowMachine.Available("pending", "recorder", []));
     }
 
     [Fact]

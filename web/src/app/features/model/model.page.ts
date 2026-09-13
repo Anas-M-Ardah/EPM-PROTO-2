@@ -57,6 +57,8 @@ export class ModelPage {
   /** «مفتاح تبديل بين عرض الحالة وعرض التخصص». */
   colourBy = signal<'status' | 'discipline'>('status');
   discipline = signal('all');
+  status = signal('all');
+  versionCode = signal<string | null>(null);
   /** The plate opens with COL-L1 selected. */
   selected = signal<string | null>(null);
 
@@ -64,6 +66,8 @@ export class ModelPage {
   versions = computed(() => this.data()?.versions ?? []);
 
   current = computed(() => this.versions().find(v => v.isCurrent) ?? null);
+  selectedVersion = computed(() =>
+    this.versions().find(v => v.code === this.versionCode()) ?? this.current());
 
   name(e: { nameAr: string; nameEn: string }): string {
     return this.lang.pick(e.nameAr, e.nameEn);
@@ -110,10 +114,14 @@ export class ModelPage {
       .map(b => ({
         buildingAr: b.buildingAr,
         buildingEn: b.buildingEn,
-        levels: b.levels
+          levels: b.levels
           .map(l => ({
             level: l.level,
             elements: l.elements.filter(e => d === 'all' || e.discipline === d),
+          }))
+          .map(l => ({
+            ...l,
+            elements: l.elements.filter(e => this.status() === 'all' || e.status === this.status()),
           }))
           .filter(l => l.elements.length > 0),
       }))
@@ -123,7 +131,10 @@ export class ModelPage {
   shownCount = computed(() =>
     this.tree().reduce((n, b) => n + b.levels.reduce((m, l) => m + l.elements.length, 0), 0));
 
-  opened = computed(() => this.elements().find(e => e.code === this.selected()) ?? null);
+  opened = computed(() => {
+    const visible = this.tree().flatMap(b => b.levels.flatMap(l => l.elements));
+    return visible.find(e => e.code === this.selected()) ?? visible[0] ?? null;
+  });
 
   select(code: string) { this.selected.set(code); }
 
@@ -167,6 +178,8 @@ export class ModelPage {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');
       this.discipline.set('all');
+      this.status.set('all');
+      this.versionCode.set(null);
       this.selected.set(null);
     });
 
@@ -188,6 +201,7 @@ export class ModelPage {
         // الشكل 44 opens with an element already selected, because an empty
         // panel beside a tree teaches nothing about what the tree is for.
         this.selected.set(model.elements[0]?.code ?? null);
+        this.versionCode.set(model.versions.find(v => v.isCurrent)?.code ?? model.versions[0]?.code ?? null);
         this.loading.set(false);
       },
       error: e => {
@@ -195,5 +209,9 @@ export class ModelPage {
         this.loading.set(false);
       },
     });
+  }
+
+  chooseVersion(event: Event) {
+    this.versionCode.set((event.target as HTMLSelectElement).value || null);
   }
 }

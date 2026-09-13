@@ -6,6 +6,8 @@ using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
+using System.Text.Json;
+
 namespace Epm.Api.Features.ChangeOrders;
 
 /// <summary>
@@ -412,9 +414,13 @@ public static class ChangeOrderWizardEndpoints
                 ChangeOrderId = order.Id,
                 At = asOf.ToDateTime(TimeOnly.FromDateTime(DateTime.UtcNow)),
                 UserId = persona.Id,
+                ActorRole = persona.RoleAr,
                 Action = "create",
+                TraceabilityAnchor = "EP-CO-03",
                 StageNo = 1,
                 NewValue = order.No,
+                BeforeSnapshot = JsonSerializer.Serialize(new { lifecycle = (string?)null }),
+                AfterSnapshot = JsonSerializer.Serialize(new { order.No, order.ContractId, order.Type, order.Lifecycle }),
                 Note = order.Justification,
                 Version = 1,
             });
@@ -425,11 +431,15 @@ public static class ChangeOrderWizardEndpoints
                     ChangeOrderId = order.Id,
                     At = asOf.ToDateTime(TimeOnly.FromDateTime(DateTime.UtcNow)),
                     UserId = persona.Id,
+                    ActorRole = persona.RoleAr,
                     Action = "submit",
+                    TraceabilityAnchor = "EP-CO-01",
                     StageNo = 1,
                     Field = "lifecycle",
                     PreviousValue = "مسودة",
                     NewValue = "قيد الاعتماد",
+                    BeforeSnapshot = JsonSerializer.Serialize(new { lifecycle = "draft" }),
+                    AfterSnapshot = JsonSerializer.Serialize(new { lifecycle = "pending" }),
                     Version = 1,
                 });
 
@@ -447,6 +457,8 @@ public static class ChangeOrderWizardEndpoints
     {
         var derived = await BoqEndpoints.Derive(db, contract.Id, "cost");
         var byCode = derived.ToDictionary(d => d.Item.Code);
+        var activities = await db.Activities.AsNoTracking()
+            .Where(a => a.ContractId == contract.Id).ToListAsync();
 
         var amendments = await db.ContractAmendments.AsNoTracking()
             .Where(a => a.ContractId == contract.Id && a.AppliedAt != null).ToListAsync();
@@ -554,6 +566,16 @@ public static class ChangeOrderWizardEndpoints
             draft.Activities.Select(a => new ChangeOrderGates.Activity(a.ActivityId, contract.Id)).ToList(),
             draft.Type == "supply"));
 
+        var scheduleIssues = ChangeOrderScheduleValidation.Validate(
+            draft.Activities.Select(a =>
+            {
+                var source = activities.FirstOrDefault(x =>
+                    string.Equals(x.ActivityId, a.ActivityId, StringComparison.OrdinalIgnoreCase));
+                return new ChangeOrderScheduleValidation.Input(
+                    a.ActivityId, a.RequestedDeltaDays ?? 0,
+                    source?.IsCritical ?? false, source?.TotalFloat ?? 0m);
+            }).ToList());
+
         // BR-01 over the RE department's column, on every line of the contract.
         var afterByCode = derived.ToDictionary(x => x.Item.Code, x => M(x.Line.Amount));
         foreach (var l in lines)
@@ -597,10 +619,12 @@ public static class ChangeOrderWizardEndpoints
                 Math.Round(weights.Rows.Sum(r => Math.Abs(r.Delta)), 2), weights.Valid),
             path,
             issues.Select(i => new PreviewIssue(i.Gate, i.Ref, i.MsgAr, i.MsgEn, true))
-                .Concat(redistIssues).ToList(),
+                .Concat(redistIssues)
+                .Concat(scheduleIssues.Select(i => new PreviewIssue(
+                    i.Code, i.Ref, i.MessageAr, i.MessageEn, true))).ToList(),
             // An EMPTY order is a gate of its own (BR-07), so `CanSubmit` is
             // exactly "no blocking issue" — never "the user filled something in".
-            issues.Count == 0 && redistIssues.Count == 0);
+            issues.Count == 0 && redistIssues.Count == 0 && scheduleIssues.Count == 0);
     }
 
     /// <summary>

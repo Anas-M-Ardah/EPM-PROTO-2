@@ -56,8 +56,13 @@ public static class ModelEndpoints
                 .Select(l => l.Code)
                 .ToListAsync();
 
+            var projectContractIds = await db.Contracts.AsNoTracking()
+                .Where(c => c.ProjectId == projectId)
+                .Select(c => c.Id)
+                .ToListAsync();
+
             var elements = (await db.ModelElements.AsNoTracking()
-                .Where(e => e.ProjectId == projectId)
+                .Where(e => e.ProjectId == projectId && projectContractIds.Contains(e.ContractId))
                 .ToListAsync())
                 .OrderBy(e => e.BuildingAr)
                 .ThenBy(e => e.Level)

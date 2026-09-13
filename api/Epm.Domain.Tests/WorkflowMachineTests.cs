@@ -10,6 +10,24 @@ public class WorkflowMachineTests
         => Assert.Equal(6, WorkflowMachine.Stages.Count);
 
     [Fact]
+    public void Derived_phases_keep_submitted_review_executed_and_closed_distinct()
+    {
+        Assert.Equal(["draft", "submitted"], WorkflowMachine.ReachedPhases("pending", 1));
+        Assert.Equal(["draft", "submitted", "under_review"], WorkflowMachine.ReachedPhases("pending", 3));
+        Assert.Equal(["draft", "submitted", "under_review", "approved", "executed", "closed"],
+            WorkflowMachine.ReachedPhases("closed", null));
+    }
+
+    [Theory]
+    [InlineData("awaiting", true)]
+    [InlineData("recorder", false)]
+    [InlineData("acted", false)]
+    [InlineData("upcoming", false)]
+    [InlineData("none", false)]
+    public void Only_stage_owner_can_take_workflow_decisions(string relation, bool expected)
+        => Assert.Equal(expected, WorkflowMachine.Available("pending", relation, []).Any());
+
+    [Fact]
     public void Skipped_stages_are_listed_with_a_reason_never_omitted()
     {
         // 03 §2 is explicit about this: a silently missing stage is a defect.

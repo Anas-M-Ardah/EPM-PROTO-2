@@ -221,6 +221,45 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
 
     // ── next pages append their DbSets here ──────────────────────────────
 
+    // Audit versions are assigned at persistence, not at individual call sites.
+    // One save may add several field-level events for the same order.
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        if (ChangeTracker.Entries<ChangeOrderAuditEntry>()
+            .Any(e => e.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Change-order audit entries are append-only.");
+        var groups = ChangeTracker.Entries<ChangeOrderAuditEntry>()
+            .Where(e => e.State == EntityState.Added && e.Entity.ChangeOrderId > 0)
+            .GroupBy(e => e.Entity.ChangeOrderId);
+        foreach (var group in groups)
+        {
+            var next = ChangeOrderAuditEntries.AsNoTracking()
+                .Where(a => a.ChangeOrderId == group.Key)
+                .Max(a => (int?)a.Version) ?? 0;
+            foreach (var entry in group) entry.Entity.Version = ++next;
+        }
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        if (ChangeTracker.Entries<ChangeOrderAuditEntry>()
+            .Any(e => e.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Change-order audit entries are append-only.");
+        var groups = ChangeTracker.Entries<ChangeOrderAuditEntry>()
+            .Where(e => e.State == EntityState.Added && e.Entity.ChangeOrderId > 0)
+            .GroupBy(e => e.Entity.ChangeOrderId);
+        foreach (var group in groups)
+        {
+            var next = await ChangeOrderAuditEntries.AsNoTracking()
+                .Where(a => a.ChangeOrderId == group.Key)
+                .MaxAsync(a => (int?)a.Version, cancellationToken) ?? 0;
+            foreach (var entry in group) entry.Entity.Version = ++next;
+        }
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         // Natural string keys — readable in SQL and in URLs.

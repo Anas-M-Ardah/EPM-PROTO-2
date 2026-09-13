@@ -56,7 +56,6 @@ public class ChangeOrderLine
 
     // ---- APPLIED: written when the order is applied. ----
     public decimal? AppliedDeltaQty { get; set; }
-    public decimal? AppliedAmount { get; set; }
 
     // ---- redistribution (ChangeType = "redist") ----
     public int? TargetBoqItemId { get; set; }
