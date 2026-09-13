@@ -4,6 +4,7 @@ using Epm.Api.Domain;
 using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Epm.Api.Features.ChangeOrders;
 
@@ -73,6 +74,94 @@ public static class ChangeOrderWorkflowEndpoints
 
     public static void MapChangeOrderWorkflowEndpoints(this WebApplication app)
     {
+        // [EP-CO-02] PUT /api/projects/{projectId}/change-orders/{no}
+        // Only the creator may edit a draft or a returned order. The endpoint
+        // never accepts contract identity, baseline, approved or applied data.
+        app.MapPut("/api/projects/{projectId}/change-orders/{no}",
+            async (EpmDb db, HttpContext ctx, string projectId, string no, WizardDraft input) =>
+        {
+            var found = await Load(db, ctx, projectId, no);
+            if (found.Error is { } e) return e;
+            var (_, order, _, _, asOf, persona) = found;
+
+            var denial = ChangeOrderAuthorization.DenialReason(
+                order!.Lifecycle, order.CreatedByUserId, persona!.Id);
+            if (denial is not null)
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order, asOf, persona.Id, "denied-edit", null,
+                    "change-order", order.Lifecycle, "edit", denial, version: 2,
+                    anchor: "EP-CO-02"));
+                await db.SaveChangesAsync();
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (input.ContractId != order.ContractId || input.Type != order.Type)
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order, asOf, persona.Id, "denied-edit", null,
+                    "core-fields", order.ContractId, input.ContractId,
+                    "العقد ونوع الأمر غير قابلين للتغيير.", version: 2, anchor: "EP-CO-01"));
+                await db.SaveChangesAsync();
+                return Results.BadRequest(new { message = "لا يمكن تغيير العقد أو نوع الأمر بعد إنشاء الأمر" });
+            }
+
+            var version = (await db.ChangeOrderAuditEntries
+                .Where(x => x.ChangeOrderId == order.Id).MaxAsync(x => (int?)x.Version) ?? 0) + 1;
+            void Record(string field, string? before, string? after)
+            {
+                if (before != after)
+                    db.ChangeOrderAuditEntries.Add(Audit(order, asOf, persona.Id, "edit", null,
+                        field, before, after, null, version, "EP-CO-09"));
+            }
+
+            Record("Justification", order.Justification, input.Justification);
+            Record("ResponsibleParty", order.ResponsibleParty, input.ResponsibleParty);
+            Record("IncomingNo", order.IncomingNo, input.IncomingNo);
+            order.Justification = input.Justification;
+            order.ResponsibleParty = input.ResponsibleParty;
+            order.IncomingNo = input.IncomingNo;
+            if (DateOnly.TryParse(input.IncomingDate, out var incomingDate)) order.IncomingDate = incomingDate;
+
+            var items = await db.BoqItems.AsNoTracking().Where(x => x.ContractId == order.ContractId).ToListAsync();
+            var itemByCode = items.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
+            var lines = await db.ChangeOrderLines.Where(x => x.ChangeOrderId == order.Id).ToListAsync();
+            foreach (var proposed in input.Lines)
+            {
+                if (!itemByCode.TryGetValue(proposed.Code, out var item)) continue;
+                var line = lines.FirstOrDefault(x => x.BoqItemId == item.Id);
+                if (line is null) continue;
+                Record($"{proposed.Code}.proposal", Proposal(line), Proposal(proposed));
+                line.ContractorDeltaQty = proposed.ContractorDeltaQty;
+                line.ContractorNewRate = proposed.ContractorNewRate;
+                line.ContractorExcessRate = proposed.ContractorExcessRate;
+                line.ReDeptDeltaQty = proposed.ReDeptDeltaQty;
+                line.ReDeptNewRate = proposed.ReDeptNewRate;
+                line.ReDeptExcessRate = proposed.ReDeptExcessRate;
+                line.TargetBoqItemId = proposed.TargetCode is null || !itemByCode.TryGetValue(proposed.TargetCode, out var target) ? null : target.Id;
+                line.DrawnQty = proposed.DrawnQty;
+                line.DistributedQty = proposed.DistributedQty;
+            }
+
+            var activities = await db.ChangeOrderActivities
+                .Where(x => x.ChangeOrderId == order.Id).ToListAsync();
+            var sourceActivities = await db.Activities.AsNoTracking()
+                .Where(x => x.ContractId == order.ContractId).ToListAsync();
+            foreach (var proposed in input.Activities)
+            {
+                var source = sourceActivities.FirstOrDefault(x =>
+                    string.Equals(x.ActivityId, proposed.ActivityId, StringComparison.OrdinalIgnoreCase));
+                var activity = source is null ? null : activities.FirstOrDefault(x => x.ActivityId == source.Id);
+                if (activity is null) continue;
+                Record($"{proposed.ActivityId}.proposal", ActivityProposal(activity), ActivityProposal(proposed));
+                activity.ChangeType = proposed.ChangeType;
+                activity.RequestedDeltaDays = proposed.RequestedDeltaDays;
+                activity.RequestedStart = DateOnly.TryParse(proposed.RequestedStart, out var start) ? start : null;
+                activity.RequestedFinish = DateOnly.TryParse(proposed.RequestedFinish, out var finish) ? finish : null;
+            }
+
+            await db.SaveChangesAsync();
+            return Results.Ok(new WorkflowResult(order.No, order.Lifecycle, null, "سُجّل التعديل"));
+        });
+
         // [EP-WFL-01] POST /api/projects/{projectId}/change-orders/{no}/decisions
         // web: change-orders.api.ts decide() → change-order.page.ts
         // spec: 03 §5 · §7 · ملحق الشكل 33 | rules: BR-13, BR-14
@@ -93,7 +182,14 @@ public static class ChangeOrderWorkflowEndpoints
                     .Select(x => x.State).ToList());
 
             if (offered.FirstOrDefault(d => d.Key == input.Decision) is not { } decision)
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order!, asOf, persona!.Id, "denied-transition",
+                    current?.StageNo, "lifecycle", Life(order!.Lifecycle), input.Decision,
+                    "الانتقال مرفوض بحسب المرحلة أو صلاحية المستخدم.", version: 2,
+                    anchor: "EP-CO-02"));
+                await db.SaveChangesAsync();
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
 
             // `03 §5` — a return or a rejection without a stated reason is a
             // decision the next reader cannot act on.
@@ -107,7 +203,13 @@ public static class ChangeOrderWorkflowEndpoints
             // D-04 — cancelling belongs to the two external parties of stage 4,
             // recorded by their delegate. Nobody else may end an order this way.
             if (input.Decision == "cancel" && !persona!.IsDelegate)
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order!, asOf, persona.Id, "denied-transition",
+                    current?.StageNo, "lifecycle", Life(order!.Lifecycle), input.Decision,
+                    "الإلغاء يتطلب مسجلاً مفوضاً.", version: 2, anchor: "EP-CO-02"));
+                await db.SaveChangesAsync();
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
 
             var before = order.Lifecycle;
 
@@ -157,6 +259,12 @@ public static class ChangeOrderWorkflowEndpoints
                         line.ApprovedDeltaQty = a.DeltaQty;
                         line.ApprovedRate = a.Rate;
                         line.ApprovedExcessRate = a.ExcessRate;
+                        db.ChangeOrderAuditEntries.Add(Audit(order, asOf, persona!.Id,
+                            "approval-recalculation", current.StageNo,
+                            $"{a.Code}.approved", null,
+                            $"qty={a.DeltaQty?.ToString() ?? "null"};rate={a.Rate?.ToString() ?? "null"};excessRate={a.ExcessRate?.ToString() ?? "null"}",
+                            "أُعيد احتساب قيمة السطر من مدخلات لجنة التسعير.", version: 2,
+                            anchor: "EP-CO-09"));
                     }
 
                     // Same Line/Column/Net pattern ChangeOrdersEndpoints.cs
@@ -281,7 +389,14 @@ public static class ChangeOrderWorkflowEndpoints
             // `03 §4` — recording on behalf of a party is the DELEGATE's job,
             // and BR-14 calls that relation `recorder`. A stage owner acting in
             // their own right does not get to answer for somebody else.
-            if (!persona!.IsDelegate) return Results.StatusCode(StatusCodes.Status403Forbidden);
+            if (!persona!.IsDelegate)
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order!, asOf, persona.Id, "denied-external-record",
+                    null, "external-party", null, input.State,
+                    "تسجيل قرار جهة خارجية يتطلب صفة الممثل المفوض.", version: 2, anchor: "EP-CO-02"));
+                await db.SaveChangesAsync();
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
 
             var stage = stages.FirstOrDefault(s => s.Id == party.ChangeOrderStageId);
             if (stage is null || stage.Status is not ("active" or "overdue"))
@@ -352,13 +467,21 @@ public static class ChangeOrderWorkflowEndpoints
             var relation = Relation(order!, stages, externals, persona!, current);
 
             if (!WorkflowMachine.Available(order!.Lifecycle, relation, []).Any(d => d.Key == "apply"))
+            {
+                db.ChangeOrderAuditEntries.Add(Audit(order!, asOf, persona!.Id, "denied-transition",
+                    current?.StageNo, "lifecycle", Life(order.Lifecycle), "apply",
+                    "التطبيق مرفوض بحسب المرحلة أو صلاحية المستخدم.", version: 2, anchor: "EP-CO-02"));
+                await db.SaveChangesAsync();
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
 
             if (order.ApprovedValue is null)
                 return Results.UnprocessableEntity(new
                 {
                     message = "لا يمكن التطبيق قبل اعتماد القيمة من لجنة التسعير",
                 });
+
+            await using var applyTransaction = await db.Database.BeginTransactionAsync();
 
             var contract = await db.Contracts.FirstAsync(c => c.Id == order.ContractId);
             var amendments = await db.ContractAmendments
@@ -411,6 +534,12 @@ public static class ChangeOrderWorkflowEndpoints
             var outcomes = ChangeOrderApply.StepOutcomes(plan);
             var checklist = WorkflowMachine.ApplyChecklist(plan.AnyRateChanged, plan.PenaltyMoves);
 
+            db.ChangeOrderAuditEntries.Add(Audit(order, asOf, "system", "recalculation",
+                current?.StageNo, "weights", $"{plan.Weights.SumBefore:0.00}%",
+                $"{plan.Weights.SumAfter:0.00}%",
+                "أُعيد احتساب الأوزان والأثر من القيم المصدرية قبل التطبيق.", version: 2,
+                anchor: "EP-CO-05"));
+
             // ── the steps, recorded before anything else ────────────────
             var existing = await db.ChangeOrderApplySteps
                 .Where(s => s.ChangeOrderId == order.Id).ToListAsync();
@@ -445,6 +574,7 @@ public static class ChangeOrderWorkflowEndpoints
                     "فشل إعادة احتساب الأوزان — لم يُطبَّق الأمر.", version: 2));
 
                 await db.SaveChangesAsync();
+                await applyTransaction.CommitAsync();
 
                 return Results.UnprocessableEntity(new
                 {
@@ -503,8 +633,6 @@ public static class ChangeOrderWorkflowEndpoints
                     });
 
                 coLine.AppliedDeltaQty = coLine.ApprovedDeltaQty;
-                coLine.AppliedAmount = Math.Round(change.AmountAfter - change.AmountBefore, 2,
-                    MidpointRounding.AwayFromZero);
                 coLine.ApplyStatus = "done";
 
                 db.ChangeOrderAuditEntries.Add(Audit(order, asOf, "system", "apply",
@@ -626,6 +754,7 @@ public static class ChangeOrderWorkflowEndpoints
                 current?.StageNo, "lifecycle", "مطبَّق", "مغلق", null, version: 2));
 
             await db.SaveChangesAsync();
+            await applyTransaction.CommitAsync();
 
             return Results.Ok(new WorkflowResult(order.No, order.Lifecycle, null,
                 $"طُبِّق الأمر وصدر ملحق العقد رقم {amendment.No} — تغيّرت قيمة العقد والكميات"));
@@ -713,16 +842,22 @@ public static class ChangeOrderWorkflowEndpoints
 
     private static ChangeOrderAuditEntry Audit(
         ChangeOrder o, DateOnly asOf, string userId, string action, int? stageNo,
-        string? field, string? previous, string? next, string? note, int version = 1) => new()
+        string? field, string? previous, string? next, string? note, int version = 1,
+        string anchor = "EP-CO-09") => new()
     {
         ChangeOrderId = o.Id,
         At = asOf.ToDateTime(TimeOnly.FromDateTime(DateTime.UtcNow)),
         UserId = userId,
+        ActorRole = userId == "system" ? "system"
+            : Personas.All.FirstOrDefault(p => p.Id == userId)?.RoleAr ?? "unknown",
         Action = action,
+        TraceabilityAnchor = anchor,
         StageNo = stageNo,
         Field = field,
         PreviousValue = previous,
         NewValue = next,
+        BeforeSnapshot = JsonSerializer.Serialize(new { action, stageNo, field, value = previous }),
+        AfterSnapshot = JsonSerializer.Serialize(new { action, stageNo, field, value = next }),
         Note = note,
         Version = version,
     };
@@ -739,6 +874,20 @@ public static class ChangeOrderWorkflowEndpoints
         "cancelled" => "ملغى",
         _ => code,
     };
+
+    private static string Proposal(ChangeOrderLine line) =>
+        $"{line.ChangeType}|{line.ContractorDeltaQty}|{line.ContractorNewRate}|{line.ContractorExcessRate}|" +
+        $"{line.ReDeptDeltaQty}|{line.ReDeptNewRate}|{line.ReDeptExcessRate}|{line.TargetBoqItemId}|{line.DrawnQty}|{line.DistributedQty}";
+
+    private static string Proposal(WizardLineInput line) =>
+        $"{line.ChangeType}|{line.ContractorDeltaQty}|{line.ContractorNewRate}|{line.ContractorExcessRate}|" +
+        $"{line.ReDeptDeltaQty}|{line.ReDeptNewRate}|{line.ReDeptExcessRate}|{line.TargetCode}|{line.DrawnQty}|{line.DistributedQty}";
+
+    private static string ActivityProposal(ChangeOrderActivity activity) =>
+        $"{activity.ChangeType}|{activity.RequestedDeltaDays}|{activity.RequestedStart}|{activity.RequestedFinish}";
+
+    private static string ActivityProposal(WizardActivityInput activity) =>
+        $"{activity.ChangeType}|{activity.RequestedDeltaDays}|{activity.RequestedStart}|{activity.RequestedFinish}";
 
     private static string StateLabel(string code) => code switch
     {

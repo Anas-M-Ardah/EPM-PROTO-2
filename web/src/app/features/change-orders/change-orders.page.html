@@ -14,22 +14,31 @@
 
   Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
 -->
-<div class="d-pframe">
+<div class="d-pframe epm-co-register" [attr.aria-busy]="loading()">
 
   @if (loading()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <epm-table-skeleton [cols]="colCount" [rows]="6" [loadingLabel]="lang.t('loading')" />
+      <div role="status" aria-live="polite">
+        <epm-table-skeleton [cols]="colCount" [rows]="6" [loadingLabel]="lang.t('loading')" />
+      </div>
     </div></div>
 
   } @else if (error()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <div class="d-empty">
-        <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
-        <b>{{ lang.t('error_t') }}</b>
-        <span><bdi>{{ error() }}</bdi></span>
-        <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+      <div class="d-empty" role="alert" aria-live="assertive">
+        @if (forbidden()) {
+          <span class="d-empty-ico"><epm-icon name="lock" [size]="30" /></span>
+          <b>{{ lang.t('chg_forbidden_t') }}</b>
+          <span>{{ lang.t('chg_forbidden_b') }}</span>
+          <epm-persona-switcher />
+        } @else {
+          <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
+          <b>{{ lang.t('error_t') }}</b>
+          <span><bdi>{{ error() }}</bdi></span>
+          <button type="button" class="d-btn primary" (click)="load()">{{ lang.t('retry') }}</button>
+        }
       </div>
     </div></div>
 
@@ -82,13 +91,13 @@
            `attn`/stage chips can be. -->
       <div class="d-pz5" role="tablist" [attr.aria-label]="lang.t('mod_changeorders')">
         <button type="button" role="tab" [class.on]="life() === 'all'"
-                [attr.aria-selected]="life() === 'all'" (click)="life.set('all')">
+                [attr.aria-selected]="life() === 'all'" (click)="setLife('all')">
           {{ lang.t('chg_grp_all') }}
           <span class="n"><bdi>{{ d.rows.length }}</bdi></span>
         </button>
         @for (g of groups(); track g.key) {
           <button type="button" role="tab" [class.on]="life() === g.key"
-                  [attr.aria-selected]="life() === g.key" (click)="life.set(g.key)">
+                  [attr.aria-selected]="life() === g.key" (click)="setLife(g.key)">
             {{ groupLabel(g.key) }}
             <span class="n"><bdi>{{ g.count }}</bdi></span>
           </button>
@@ -102,13 +111,13 @@
                `03 §7` — the relation, and therefore every action gate, is
                resolved from the identity on the SERVER. The bar names the
                party so a reader knows whose answer the chips are. -->
-          @if (d.awaitingMe > 0) {
-            <div class="d-msgbar warning">
-              <epm-icon name="pending" [size]="16" class="mgi" />
-              <div class="mtx">
-                <b class="mtitle">{{ awaitingTitle() }}</b>
-                <span class="mbody">{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
-              </div>
+          <div class="d-msgbar" [class.warning]="d.awaitingMe > 0" [class.info]="d.awaitingMe === 0">
+            <epm-icon [name]="d.awaitingMe > 0 ? 'pending' : 'visibility'" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ scopeTitle() }}</b>
+              <span class="mbody">{{ lang.t('chg_scope_t') }}: <bdi>{{ d.viewerParty }}</bdi> · {{ scopeBody() }}</span>
+            </div>
+            @if (d.awaitingMe > 0) {
               <!-- `04 §8` — «Focus mode (split queue + work pane) for the
                    awaiting-me set»; `vo-record.jsx:689-691` puts the button
                    right in this bar. -->
@@ -116,16 +125,8 @@
                       (click)="startFocus()">
                 <epm-icon name="center_focus_strong" [size]="15" />{{ lang.t('chg_focus_mode') }}
               </button>
-            </div>
-          } @else {
-            <div class="d-msgbar info">
-              <epm-icon name="info" [size]="16" class="mgi" />
-              <div class="mtx">
-                <b class="mtitle">{{ lang.t('chg_awaiting_none_t') }}</b>
-                <span class="mbody">{{ lang.t('chg_awaiting_b') }} <bdi>{{ d.viewerParty }}</bdi></span>
-              </div>
-            </div>
-          }
+            }
+          </div>
 
           <!-- ══ THE REGISTER CARD (P-260) ═══════════════════════════════
                `vo-record.jsx:694` wraps the toolbar + table in `<DFGroup id="vo-reg"
@@ -170,8 +171,8 @@
                  the stages orders are actually SITTING in are offered — a
                  stage with nothing in it is a filter onto an empty result. -->
             @if (stagesPresent().length > 1) {
-              <label class="d-field">
-                <span class="epm-sr-only">{{ lang.t('chg_f_stage') }}</span>
+              <label class="d-ctxsel">
+                <span>{{ lang.t('chg_f_stage') }}</span>
                 <select class="epm-bare-input" [value]="stage()"
                         [attr.aria-label]="lang.t('chg_f_stage')"
                         (change)="stage.set($any($event.target).value)">
@@ -194,8 +195,8 @@
             <!-- الشكل 29's «مرشح نوع الأمر». هندسي / تجهيزي — the two the
                  `co-type` lookup defines, and only the ones present. -->
             @if (typesPresent().length > 1) {
-              <label class="d-field">
-                <span class="epm-sr-only">{{ lang.t('chg_ff_type') }}</span>
+              <label class="d-ctxsel">
+                <span>{{ lang.t('chg_ff_type') }}</span>
                 <select class="epm-bare-input" [value]="type()"
                         [attr.aria-label]="lang.t('chg_ff_type')"
                         (change)="type.set($any($event.target).value)">
@@ -215,6 +216,9 @@
               <span class="d-empty-ico"><epm-icon name="sync_alt" [size]="30" /></span>
               <b>{{ lang.t('chg_empty_t') }}</b>
               <span>{{ lang.t('chg_empty_b') }}</span>
+              <button type="button" class="d-btn primary" (click)="wizardOpen.set(true)">
+                <epm-icon name="add" [size]="15" />{{ lang.t('chg_w_new') }}
+              </button>
             </div>
 
           } @else if (shown().length === 0) {
@@ -280,6 +284,7 @@
                 -->
                 @for (r of shown(); track r.id) {
                   <tr class="epm-ws-tr"
+                      [class.d-vo-awaits-apply]="awaitsContractApplication(r)"
                       tabindex="0"
                       role="button"
                       [attr.aria-label]="lang.t('chg_open') + ': ' + r.no + ' — ' + title(r)"
@@ -299,6 +304,7 @@
                         {{ typeLabel(r.type) }} · <bdi class="mono">{{ r.incomingNo }}</bdi>
                         · <bdi class="mono">{{ fmt.date(r.incomingDate) }}</bdi>
                       </div>
+                      <div class="d-cell-sub"><epm-icon name="open_in_new" [size]="13" />{{ lang.t('chg_open_record_hint') }}</div>
                     </td>
 
                     <!-- 02 §6 — which of the two proposals this figure IS. -->
@@ -307,6 +313,9 @@
                       <div class="d-cell-sub">
                         {{ r.valueIsApproved ? lang.t('chg_approved_fig') : lang.t('chg_proposed_fig') }}
                       </div>
+                      @if (awaitsContractApplication(r)) {
+                        <div class="d-cell-sub">{{ lang.t('chg_effect_pending') }}</div>
+                      }
                     </td>
 
                     <td class="r num"><bdi>{{ r.days === 0 ? '—' : fmt.delta(r.days) }}</bdi></td>

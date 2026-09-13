@@ -68,6 +68,8 @@ export class ChangeOrdersPage {
 
   loading = signal(true);
   error = signal<string | null>(null);
+  /** A denied register is a distinct state from a failed request. */
+  forbidden = signal(false);
 
   /** المسار 9's wizard, over this register (الشكل 37). */
   wizardOpen = signal(false);
@@ -168,6 +170,12 @@ export class ChangeOrdersPage {
     this.q.set('');
   }
 
+  /** Lifecycle is the register's grouping axis; a stage belongs to one group. */
+  setLife(key: string) {
+    this.life.set(key);
+    this.stage.set('');
+  }
+
   toggleAttn(k: string) { this.attn.update(v => (v === k ? '' : k)); }
 
   /** `03 §9`'s record. The number is the segment — a record has to be linkable. */
@@ -202,11 +210,26 @@ export class ChangeOrdersPage {
 
   typeLabel(code: string): string { return this.lookups.label('co-type', code); }
 
+  /** Approved is still outside the contract until the workflow applies it. */
+  awaitsContractApplication(r: ChangeOrderRow): boolean {
+    return r.lifecycle === 'approved' || r.lifecycle === 'applied_partial';
+  }
+
   /** BR-14's five relations, as the chip beside the lifecycle pill (`03 §7`). */
   relLabel(key: string): string { return this.lang.t(('chg_rel_' + key) as never); }
 
   awaitingTitle = computed(() =>
     this.lang.t('chg_awaiting_t').replace('{n}', String(this.data()?.awaitingMe ?? 0)));
+
+  scopeTitle = computed(() =>
+    (this.data()?.awaitingMe ?? 0) > 0
+      ? this.awaitingTitle()
+      : this.lang.t('chg_scope_review_t'));
+
+  scopeBody = computed(() =>
+    this.data()?.viewerIsDelegate
+      ? this.lang.t('chg_scope_delegate_b')
+      : this.lang.t('chg_scope_review_b'));
 
   /**
    * `04 §8`'s «awaiting-me set» — the same rows `attn === 'mine'` filters to
@@ -247,6 +270,7 @@ export class ChangeOrdersPage {
     if (!pid) return;
     this.loading.set(true);
     this.error.set(null);
+    this.forbidden.set(false);
 
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.list(pid) }).subscribe({
       next: ({ model }) => {
@@ -254,6 +278,7 @@ export class ChangeOrdersPage {
         this.loading.set(false);
       },
       error: e => {
+        this.forbidden.set(e?.status === 403);
         this.error.set(e?.error?.message ?? e?.message ?? 'request failed');
         this.loading.set(false);
       },

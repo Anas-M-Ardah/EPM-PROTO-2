@@ -587,7 +587,7 @@ public static class ChangeOrdersEndpoints
                 var actor = isSystem ? null : Personas.Resolve(a.UserId);
                 return new RecordAuditEntry(
                     a.At.ToString("yyyy-MM-dd HH:mm"),
-                    isSystem ? "النظام" : actor!.RoleAr,
+                    isSystem ? "النظام" : a.ActorRole is "" or "actor" ? actor!.RoleAr : a.ActorRole,
                     isSystem ? "System" : actor!.RoleEn,
                     a.Action, a.StageNo, StageAr(a.StageNo), StageEn(a.StageNo),
                     a.Field, a.PreviousValue, a.NewValue, a.Note, a.Version);

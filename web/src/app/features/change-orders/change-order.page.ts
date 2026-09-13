@@ -77,6 +77,9 @@ export class ChangeOrderPage {
 
   loading = signal(true);
   error = signal<string | null>(null);
+  actionError = signal<string | null>(null);
+  actionSuccess = signal<string | null>(null);
+  hasFailedApply = computed(() => (this.data()?.applySteps ?? []).some(s => s.status === 'fail'));
 
   /** `03 §9`'s six, in its order. `flow` is المسار — 5.4 fills in its actions. */
   readonly tabs = [
@@ -263,6 +266,8 @@ export class ChangeOrderPage {
     if (this.approvalsMissing()) { this.decisionTouched.set(true); return; }
 
     this.deciding.set(true);
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
     const note = this.decisionNote().trim() || null;
 
     const approvals = this.isStage3Approve()
@@ -284,6 +289,7 @@ export class ChangeOrderPage {
         this.decisionNote.set('');
         this.lineApprovals.set({});
         this.approvedDaysInput.set(null);
+        this.actionSuccess.set(r.message);
         this.toast.show(r.message);
         this.load();
       },
@@ -291,13 +297,14 @@ export class ChangeOrderPage {
         this.deciding.set(false);
         // A 422 from apply is `03 §6`'s failable step: nothing moved, and the
         // message names the step that stopped.
-        this.error.set(e?.error?.message ?? e?.message ?? 'request failed');
+        this.actionError.set(e?.error?.message ?? e?.message ?? 'request failed');
         this.load();
       },
     });
   }
 
   openRecording(stage: RecordStage, party: RecordExternalParty) {
+    this.actionError.set(null);
     this.recording.set(party);
     this.recordingStage.set(stage);
     this.recordState.set('in');
@@ -315,6 +322,8 @@ export class ChangeOrderPage {
     if (this.letterMissing()) { this.decisionTouched.set(true); return; }
 
     this.deciding.set(true);
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
     this.api.recordExternal(this.projectId(), this.no(), party.id, {
       state: this.recordState(),
       letterNo: this.letterNo().trim(),
@@ -324,12 +333,13 @@ export class ChangeOrderPage {
       next: r => {
         this.deciding.set(false);
         this.recording.set(null);
+        this.actionSuccess.set(r.message);
         this.toast.show(r.message);
         this.load();
       },
       error: e => {
         this.deciding.set(false);
-        this.error.set(e?.error?.message ?? e?.message ?? 'request failed');
+        this.actionError.set(e?.error?.message ?? e?.message ?? 'request failed');
       },
     });
   }
@@ -485,8 +495,8 @@ export class ChangeOrderPage {
    * inside the limit says so; a line beyond it prints both halves, because
    * only the second one may carry a new rate (`02 §5`).
    */
-  tierText(l: RecordLine, c: RecordColumn): string {
-    if (c.qtyAfter === null) return this.lang.t('chg_awaiting_decision');
+  tierText(l: RecordLine, c: RecordColumn, key: string): string {
+    if (c.qtyAfter === null) return this.lang.t(key === 'applied' ? 'chg_not_applied' : 'chg_awaiting_decision');
     if (l.changeType === 'rate') return this.lang.t('chg_rate_change_note');
     if (l.changeType === 'redist') return this.lang.t('chg_redist_note');
     if (!c.tripsThreshold) return this.lang.t('chg_within_tier');
@@ -498,10 +508,26 @@ export class ChangeOrderPage {
     { key: 'contractor', label: this.lang.t('chg_party_contractor') },
     { key: 'reDept', label: this.lang.t('chg_party_redept') },
     { key: 'approved', label: this.lang.t('chg_party_approved') },
+    { key: 'applied', label: this.lang.t('chg_applied') },
   ]);
 
   col(l: RecordLine, key: string): RecordColumn {
-    return key === 'contractor' ? l.contractor : key === 'reDept' ? l.reDept : l.approved;
+    return key === 'contractor' ? l.contractor : key === 'reDept' ? l.reDept
+      : key === 'applied' ? l.applied : l.approved;
+  }
+
+  onTabKey(e: KeyboardEvent, key: string) {
+    const forward = this.lang.isAr() ? -1 : 1;
+    const index = this.tabs.findIndex(t => t.k === key);
+    const next = e.key === 'ArrowRight' ? index + forward
+      : e.key === 'ArrowLeft' ? index - forward
+      : e.key === 'Home' ? 0 : e.key === 'End' ? this.tabs.length - 1 : -1;
+    if (next < 0 && e.key !== 'Home' && e.key !== 'End') return;
+    if (next < 0 || next >= this.tabs.length) return;
+    e.preventDefault();
+    this.tab.set(this.tabs[next].k);
+    const buttons = (e.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    buttons?.[next]?.focus();
   }
 
   /** D-14 — المجهز requests, لجنة الفحص والاستلام reviews, in place of
@@ -583,6 +609,8 @@ export class ChangeOrderPage {
       this.no.set(pm.get('no') ?? '');
       this.tab.set('summary');
       this.openStage.set(null);
+      this.actionError.set(null);
+      this.actionSuccess.set(null);
     });
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');

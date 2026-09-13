@@ -49,11 +49,17 @@
       <span class="z6-t">
         {{ lang.t('mod_model') }}
         @if (current(); as v) {
-          <em>{{ versionLabel(v) }} · <bdi>{{ fmt.date(v.issuedOn) }}</bdi></em>
+          <em>{{ versionLabel(selectedVersion() ?? v) }} · <bdi>{{ fmt.date((selectedVersion() ?? v).issuedOn) }}</bdi></em>
         }
       </span>
 
       <div class="grp">
+        <select class="d-form-input ctl" [value]="versionCode() ?? ''"
+                [attr.aria-label]="lang.t('mdl_versions')" (change)="chooseVersion($event)">
+          @for (v of versions(); track v.code) {
+            <option [value]="v.code">{{ versionLabel(v) }} · {{ fmt.date(v.issuedOn) }}</option>
+          }
+        </select>
         <div class="d-seg">
           <button type="button" [class.on]="colourBy() === 'status'"
                   (click)="colourBy.set('status')">{{ lang.t('mdl_by_status') }}</button>
@@ -80,12 +86,26 @@
             <!-- ══ شجرة النموذج ══════════════════════════════════════════ -->
             <div>
               <div class="d-model-filter">
+                <span class="d-cell-sub">{{ lang.t('mdl_discipline') }}</span>
                 @for (c of d.disciplines; track c.code) {
                   <button type="button" class="d-chip2" [class.on]="discipline() === c.code"
                           (click)="discipline.set(c.code)">
                     {{ disciplineLabel(c.code) }} <bdi>{{ c.count }}</bdi>
                   </button>
                 }
+              </div>
+              <div class="d-model-filter">
+                <span class="d-cell-sub">{{ lang.t('col_status') }}</span>
+                @for (c of d.statuses; track c.code) {
+                  <button type="button" class="d-chip2" [class.on]="status() === c.code"
+                          (click)="status.set(c.code)">
+                    {{ statusLabel(c.code) }} <bdi>{{ c.count }}</bdi>
+                  </button>
+                }
+                <button type="button" class="d-chip2" [class.on]="status() === 'all'"
+                        (click)="status.set('all')">
+                  {{ lang.t('mdl_all') }} <bdi>{{ d.elementCount }}</bdi>
+                </button>
               </div>
 
               @if (tree().length === 0) {

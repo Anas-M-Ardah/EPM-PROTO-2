@@ -1066,39 +1066,61 @@ public static class BoqEndpoints
         }
 
         var bandRows = await db.BoqRateBands.AsNoTracking()
-            .Where(b => b.IsExcessBand && b.SourceChangeOrderId != null)
+            .Where(b => b.SourceChangeOrderId != null)
             .ToListAsync();
 
         foreach (var o in orders)
         foreach (var l in lines.Where(l => l.ChangeOrderId == o.Id))
         {
-            var applied = l.AppliedDeltaQty is not null;
+            var sourceBands = bandRows
+                .Where(b => b.BoqItemId == l.BoqItemId && b.SourceChangeOrderId == o.Id)
+                .OrderBy(b => b.Seq)
+                .ToList();
+            var applied = l.AppliedDeltaQty is not null || sourceBands.Count > 0;
             var at = o.DecisionDate ?? o.IncomingDate;
 
-            decimal deltaQty, deltaValue, excessQty = 0m;
+            decimal deltaQty, excessQty = 0m;
+            decimal? deltaValue;
             decimal? excessRate = null;
 
             if (applied)
             {
-                deltaQty = l.AppliedDeltaQty!.Value;
+                deltaQty = l.AppliedDeltaQty
+                    ?? sourceBands.Sum(b => b.Qty) - l.BeforeQty;
+
+                var appliedColumn = ChangeOrderRecord.For(
+                    new ChangeOrderRecord.Line(
+                        "", l.ChangeType, l.ContractedQty, l.BeforeQty, l.BeforeRate, l.BeforeAmount),
+                    new ChangeOrderRecord.Party(
+                        l.AppliedDeltaQty
+                            ?? (sourceBands.Count > 0 ? deltaQty : l.ApprovedDeltaQty ?? l.ReDeptDeltaQty),
+                        l.ApprovedRate ?? l.ReDeptNewRate
+                            ?? sourceBands.FirstOrDefault(b => !b.IsExcessBand)?.Rate,
+                        l.ApprovedExcessRate ?? l.ReDeptExcessRate
+                            ?? sourceBands.FirstOrDefault(b => b.IsExcessBand)?.Rate));
 
                 // A REDISTRIBUTION'S VALUE IS NOT ZERO AT THE LINE. `03 §9`
                 // moves quantity between two lines at ONE rate, so the contract
                 // value does not move — but each of the two lines does, by
-                // qty × rate in opposite directions. `AppliedAmount` records
-                // the CONTRACT's zero, which is the right figure for the order
-                // and the wrong one for the row: the register's own amount has
-                // already moved, and a chain saying it did not would contradict
-                // the cell it is explaining.
+                // qty × rate in opposite directions. The row disclosure keeps
+                // that per-line movement, while ordinary applied impacts come
+                // from the same derived record calculation as pending impacts.
                 deltaValue = l.ChangeType == "redist"
                     ? deltaQty * l.BeforeRate
-                    : l.AppliedAmount ?? 0m;
+                    : appliedColumn.Impact
+                        ?? (sourceBands.Count == 0
+                            ? null
+                            : sourceBands.Sum(b => b.Qty * b.Rate) - l.BeforeAmount);
+
+                // An applied legacy row without a rate and without attributable
+                // bands has no recoverable monetary impact. Do not turn missing
+                // history into a false zero-valued amendment.
+                if (deltaValue is null) continue;
 
                 // The band the apply wrote, if it wrote one. `IsExcessBand` is
                 // the flag, not "the second row" — a line can be re-priced
                 // without tripping the tier on a later order.
-                var band = bandRows.FirstOrDefault(
-                    b => b.BoqItemId == l.BoqItemId && b.SourceChangeOrderId == o.Id);
+                var band = sourceBands.FirstOrDefault(b => b.IsExcessBand);
                 if (band is not null) { excessQty = band.Qty; excessRate = band.Rate; }
             }
             else
@@ -1121,7 +1143,7 @@ public static class BoqEndpoints
             }
 
             Add(l.BoqItemId, new AmendmentDisclosure.Touch(
-                o.No, at, applied, deltaQty, deltaValue, excessQty, excessRate));
+                o.No, at, applied, deltaQty, deltaValue!.Value, excessQty, excessRate));
 
             // ── THE OTHER END OF A REDISTRIBUTION ────────────────────────
             //

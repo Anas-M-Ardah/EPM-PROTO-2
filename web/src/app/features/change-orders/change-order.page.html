@@ -8,18 +8,20 @@
 
   Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
 -->
-<div class="d-pframe">
+<div class="d-pframe epm-co-record" [attr.aria-busy]="loading()">
 
   @if (loading()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <epm-table-skeleton [cols]="6" [rows]="8" [loadingLabel]="lang.t('loading')" />
+      <div role="status" aria-live="polite">
+        <epm-table-skeleton [cols]="6" [rows]="8" [loadingLabel]="lang.t('loading')" />
+      </div>
     </div></div>
 
   } @else if (error()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_changeorders') }}</span></div>
     <div class="d-pbody no-aside"><div class="d-pz7">
-      <div class="d-empty">
+      <div class="d-empty" role="alert" aria-live="assertive">
         <span class="d-empty-ico"><epm-icon name="error" [size]="30" /></span>
         <b>{{ lang.t('error_t') }}</b>
         <span><bdi>{{ error() }}</bdi></span>
@@ -112,11 +114,25 @@
       </button>
     </div>
 
+    <div class="co-decision-summary" [attr.aria-label]="lang.t('chg_r_decision_summary')">
+      <div><span class="k">{{ lang.t('chg_col_stage') }}</span>
+        <strong>{{ stageLabel() }}</strong></div>
+      <div><span class="k">{{ lang.t('chg_card_owner') }}</span>
+        <strong>{{ currentStage() ? lang.pick(currentStage()!.ownerParty, currentStage()!.ownerPartyEn) : '—' }}</strong></div>
+      <div><span class="k">{{ lang.t('chg_f_elapsed') }} / {{ lang.t('chg_f_ceiling') }}</span>
+        <strong class="num">@if (currentStage(); as s) { <bdi>{{ s.elapsedDays }} / {{ s.slaDays }}</bdi> {{ lang.t('scd_days') }} } @else { — }</strong></div>
+      <div><span class="k">{{ lang.t('chg_r_next_action') }}</span>
+        <strong>{{ decisions().length ? decisionLabelOf(decisions()[0].key) : lang.t('chg_view_only') }}</strong></div>
+    </div>
+
     <!-- ══ THE SIX TABS (03 §9) ═══════════════════════════════════════════ -->
-    <div class="d-tabs" role="tablist">
+    <div class="d-tabs" role="tablist" [attr.aria-label]="lang.t('chg_r_decision_summary')">
       @for (t of tabs; track t.k) {
         <button type="button" role="tab" class="d-tab" [class.on]="tab() === t.k"
-                [attr.aria-selected]="tab() === t.k" (click)="tab.set(t.k)">
+                [id]="'co-tab-' + t.k" aria-controls="co-panel"
+                [attr.tabindex]="tab() === t.k ? 0 : -1"
+                [attr.aria-selected]="tab() === t.k" (click)="tab.set(t.k)"
+                (keydown)="onTabKey($event, t.k)">
           <epm-icon [name]="t.icon" [size]="14" />
           {{ lang.t($any(t.label)) }}
           @if (t.k === 'cost' && lineCount()) { <span class="n"><bdi>{{ lineCount() }}</bdi></span> }
@@ -128,7 +144,35 @@
     </div>
 
     <div class="d-pbody">
-      <div class="d-pz7">
+      <div class="d-pz7" id="co-panel" role="tabpanel" tabindex="0" [attr.aria-labelledby]="'co-tab-' + tab()">
+
+        @if (actionError()) {
+          <div class="d-msgbar danger" role="alert">
+            <epm-icon name="error" [size]="16" class="mgi" />
+            <div class="mtx"><b class="mtitle">{{ lang.t('error_t') }}</b>
+              <span class="mbody"><bdi>{{ actionError() }}</bdi></span></div>
+          </div>
+        }
+        @if (actionSuccess()) {
+          <div class="d-msgbar success" role="status" aria-live="polite">
+            <epm-icon name="check" [size]="16" class="mgi" />
+            <div class="mtx"><span class="mbody"><bdi>{{ actionSuccess() }}</bdi></span></div>
+          </div>
+        }
+        @if (hasFailedApply()) {
+          <div class="d-msgbar warning" role="status">
+            <epm-icon name="warning" [size]="16" class="mgi" />
+            <div class="mtx"><b class="mtitle">{{ lang.t('chg_r_apply_failed') }}</b>
+              <span class="mbody">{{ lang.t('chg_r_apply_failed_note') }}</span></div>
+          </div>
+        }
+        @if (d.contract.amendmentState === 'pending') {
+          <div class="d-msgbar warning" role="status">
+            <epm-icon name="pending" [size]="16" class="mgi" />
+            <div class="mtx"><b class="mtitle">{{ lang.t('chg_approval_note_t') }}</b>
+              <span class="mbody">{{ lang.t('chg_approval_note_b') }}</span></div>
+          </div>
+        }
 
         <!-- WHOSE DECISION THIS IS (03 §7). The record says it in words on the
              two tabs where somebody might expect a button, and it says it for
@@ -212,20 +256,15 @@
 
           <epm-section [boxed]="true" [title]="lang.t('chg_sec_impact')" icon="functions"
                        [collapsible]="true" [defaultOpen]="true">
+            <div class="co-compare" [attr.aria-label]="lang.t('chg_sec_impact')">
+              <div class="co-compare-cell"><span class="k">{{ requesterLabel() }}</span>
+                <strong class="num">@if (d.impact.contractorValue !== null) { <bdi>{{ fmt.delta(d.impact.contractorValue) }}</bdi> {{ lang.t('cur_iqd') }} } @else { — }</strong></div>
+              <div class="co-compare-cell"><span class="k">{{ reviewerLabel() }}</span>
+                <strong class="num">@if (d.impact.reDeptValue !== null) { <bdi>{{ fmt.delta(d.impact.reDeptValue) }}</bdi> {{ lang.t('cur_iqd') }} } @else { — }</strong></div>
+              <div class="co-compare-cell" [class.pending]="d.impact.approvedValue === null"><span class="k">{{ lang.t('chg_f_approved_val') }}</span>
+                <strong class="num">@if (d.impact.approvedValue !== null) { <bdi>{{ fmt.delta(d.impact.approvedValue) }}</bdi> {{ lang.t('cur_iqd') }} } @else { {{ lang.t('chg_awaiting_pricing') }} }</strong></div>
+            </div>
             <div class="d-form-grid">
-              <div class="d-form-i"><span class="k">{{ requesterLabel() }}</span>
-                <span class="v num"><bdi>{{ fmt.delta(d.impact.contractorValue) }}</bdi></span></div>
-              <div class="d-form-i"><span class="k">{{ reviewerLabel() }}</span>
-                <span class="v num"><bdi>{{ fmt.delta(d.impact.reDeptValue) }}</bdi></span></div>
-              <!-- 02 §6 — the approved value comes only from the pricing
-                   committee. Until it exists the cell says where it comes from
-                   rather than showing a proposal in its place. -->
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_f_approved_val') }}</span>
-                <span class="v num">
-                  @if (d.impact.approvedValue !== null) {
-                    <bdi>{{ fmt.delta(d.impact.approvedValue) }}</bdi>
-                  } @else { {{ lang.t('chg_awaiting_pricing') }} }
-                </span></div>
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_over_tier') }}</span>
                 <span class="v num"><bdi>{{ d.impact.linesOverTier }}</bdi></span></div>
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_excess_rate') }}</span>
@@ -276,15 +315,6 @@
 
             <!-- 02 §9, non-negotiable #2. The one sentence this whole screen
                  exists to keep true. -->
-            @if (d.contract.amendmentState === 'pending') {
-              <div class="d-msgbar warning">
-                <epm-icon name="pending" [size]="16" class="mgi" />
-                <div class="mtx">
-                  <b class="mtitle">{{ lang.t('chg_approval_note_t') }}</b>
-                  <span class="mbody">{{ lang.t('chg_approval_note_b') }}</span>
-                </div>
-              </div>
-            }
           </epm-section>
 
           <epm-section [boxed]="true" [title]="lang.t('chg_sec_decision')" icon="gavel"
@@ -429,7 +459,7 @@
                       @for (p of parties(); track p.key) {
                         <tr class="d-vo-p" [class.gov]="p.key === 'approved'">
                           <td><span class="d-vo-party">{{ p.label }}</span></td>
-                          <td class="d-cell-sub wrap">{{ tierText(l, col(l, p.key)) }}</td>
+                          <td class="d-cell-sub wrap">{{ tierText(l, col(l, p.key), p.key) }}</td>
                           <td class="r mono">
                             @if (col(l, p.key).qtyAfter !== null) {
                               <bdi>{{ fmt.qty(col(l, p.key).qtyAfter) }}</bdi>
@@ -1031,7 +1061,7 @@
                 <button type="button" class="d-btn sm primary" [class.danger]="chosen()?.danger"
                         [disabled]="!chosen() || deciding()" (click)="submitDecision()">
                   <epm-icon [name]="chosen()?.key === 'apply' ? 'done_all' : 'gavel'" [size]="15" />
-                  {{ chosen() ? decisionLabelOf(chosen()!.key) : lang.t('chg_d_submit') }}
+                  {{ deciding() ? lang.t('loading') : chosen() ? decisionLabelOf(chosen()!.key) : lang.t('chg_d_submit') }}
                 </button>
               </div>
             }
@@ -1402,6 +1432,13 @@
           </div>
         </div>
 
+        @if (actionError()) {
+          <div class="d-msgbar danger" role="alert">
+            <epm-icon name="error" [size]="16" class="mgi" />
+            <div class="mtx"><span class="mbody"><bdi>{{ actionError() }}</bdi></span></div>
+          </div>
+        }
+
         <div class="d-form-field f-full">
           <label for="ext-state">{{ lang.t('chg_d_outcome') }}<span class="req" aria-hidden="true">*</span></label>
           <select id="ext-state" class="d-form-input" (change)="recordState.set($any($event.target).value)">
@@ -1454,7 +1491,7 @@
             @if (decisionTouched() && letterMissing()) { {{ lang.t('chg_d_letter_err') }} }
           </span>
           <button type="button" class="d-btn primary" [disabled]="deciding()" (click)="submitRecording()">
-            <epm-icon name="check" [size]="15" />{{ lang.t('chg_d_record_save') }}
+            <epm-icon name="check" [size]="15" />{{ deciding() ? lang.t('loading') : lang.t('chg_d_record_save') }}
           </button>
         </ng-container>
       </epm-drawer>

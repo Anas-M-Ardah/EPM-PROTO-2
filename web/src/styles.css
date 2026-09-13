@@ -117,6 +117,82 @@ epm-field-group { display: contents; }
 /* Closed, the header IS the card, so the ring follows all four corners. */
 .d-fgroup.closed > .gh:focus-visible { border-radius: var(--r-lg); }
 
+/* Change-order record and wizard: visible keyboard focus and compact comparison. */
+.epm-co-record :is(button, input, select, textarea, [role="button"]):focus-visible,
+.epm-co-wizard :is(button, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.epm-co-record .d-vo-h:focus-visible { outline-offset: -2px; }
+.epm-co-record .d-tabs { max-width: 100%; overflow-x: auto; }
+.epm-co-wizard { max-width: calc(100vw - 24px); }
+.epm-co-wizard .d-modal-foot { flex-wrap: wrap; gap: 8px; }
+/* Keep related labels close; separate controls, help, and adjacent fields. */
+.epm-co-wizard .co-wizard-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: var(--space-16) 20px;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+}
+.epm-co-wizard .co-wizard-form-grid > :is(.d-form-field, .d-form-i) {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.epm-co-wizard .co-wizard-form-grid .d-form-field { gap: var(--space-8); }
+.epm-co-wizard .co-wizard-form-grid :is(input, select, button).d-form-input { min-height: 44px; }
+.epm-co-wizard .co-wizard-field-label { font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-semibold); color: var(--on-surface); }
+.epm-co-wizard .co-wizard-contract-note { margin-block-start: 20px; }
+.epm-co-wizard .d-vow-props { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 16px; background: var(--surface-container-lowest); }
+.epm-co-wizard .d-vow-prop { min-width: 0; gap: 12px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.epm-co-wizard .d-vow-prop + .d-vow-prop { border-inline-start: 1px solid var(--outline-variant); padding-inline-start: 24px; }
+.epm-co-wizard .d-vow-tiers { border: 0; border-radius: 0; background: transparent; }
+.epm-co-wizard .d-vow-tiers .tr1 { border-block-end: 1px solid var(--outline-variant); padding-inline: 0; }
+.epm-co-wizard .d-vow-ed > td { background: var(--surface-container-lowest); }
+.epm-co-wizard .d-vow-note { border: 0; border-radius: 0; background: transparent; }
+.epm-co-wizard .co-wizard-line-wrap { overflow-x: hidden; }
+.epm-co-wizard .co-wizard-line-table { width: 100%; min-width: 0; table-layout: fixed; }
+.epm-co-wizard .co-wizard-line-table th { width: auto !important; min-width: 0 !important; }
+.epm-co-wizard .co-wizard-line-table td { overflow-wrap: anywhere; }
+.epm-co-wizard .co-wizard-line-table td.mono,
+.epm-co-wizard .co-wizard-line-table th { white-space: normal; }
+.epm-co-wizard .co-wizard-field-error { color: var(--status-delayed); font-size: 12px; line-height: 1.4; }
+.epm-co-wizard [aria-invalid="true"] { border-color: var(--status-delayed); }
+.epm-co-wizard .co-wizard-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.epm-co-wizard .co-wizard-drop { border: 1px dashed var(--outline); border-radius: var(--r-md); background: var(--surface-container-low); padding: 24px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; text-align: center; color: var(--on-surface-variant); }
+.epm-co-wizard .co-wizard-drop.dragging { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)); }
+.epm-co-picker .d-drawer-scrim { background: transparent; }
+.epm-co-picker .d-vow-filters { padding: 16px 18px 0; }
+.epm-co-picker .co-wizard-picker-results { min-width: 0; overflow-x: auto; }
+@media (max-width: 900px) {
+  .epm-co-wizard .co-wizard-line-table :is(th, td):nth-child(3),
+  .epm-co-wizard .co-wizard-line-table :is(th, td):nth-child(5),
+  .epm-co-wizard .co-wizard-line-table :is(th, td):nth-child(6),
+  .epm-co-wizard .co-wizard-line-table :is(th, td):nth-child(7) { display: none; }
+  .epm-co-wizard .d-vow-props { grid-template-columns: 1fr; }
+  .epm-co-wizard .d-vow-prop + .d-vow-prop { border-inline-start: 0; border-block-start: 1px solid var(--outline-variant); padding-inline-start: 0; padding-block-start: 16px; }
+}
+.co-decision-summary,
+.co-compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.co-decision-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 12px 16px; }
+.co-decision-summary > div,
+.co-compare-cell { min-width: 0; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-low); }
+.co-decision-summary .k,
+.co-compare-cell .k { display: block; color: var(--on-surface-variant); font-size: 12px; margin-bottom: 5px; }
+.co-decision-summary strong,
+.co-compare-cell strong { display: block; overflow-wrap: anywhere; }
+.co-compare { margin-block: 4px 16px; }
+.co-compare-cell.pending { border-style: dashed; }
+@media (max-width: 1180px) {
+  .co-decision-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .co-decision-summary,
+  .co-compare { grid-template-columns: 1fr; }
+}
+
 /* ── THE GATE MESSAGES INSIDE الشكل 39's EDITOR NEED THE ROW'S OWN INSET ──
    `.d-vow-ed > td` is `padding: 0 !important` (desktop.css:1979), because in
    the reference every child of the editor carries its own — `.d-vow-edh`

@@ -127,6 +127,30 @@ public static class WorkflowMachine
 
     public record Transition(string Lifecycle, int? StageNo);
 
+    /// <summary>
+    /// Human workflow milestones derived from the stored lifecycle and stage.
+    /// The persisted co-lifecycle lookup is not changed for existing orders.
+    /// Executed is a reached milestone after successful application; Closed
+    /// remains the final state of the same atomic operation.
+    /// </summary>
+    public static IReadOnlyList<string> ReachedPhases(string lifecycle, int? currentStageNo)
+    {
+        var phases = new List<string> { "draft" };
+        if (lifecycle == "draft") return phases;
+        phases.Add("submitted");
+        if (currentStageNo is > 1 || lifecycle is "approved" or "applied_partial" or "closed")
+            phases.Add("under_review");
+        if (lifecycle is "approved" or "applied_partial" or "closed") phases.Add("approved");
+        if (lifecycle == "closed")
+        {
+            phases.Add("executed");
+            phases.Add("closed");
+        }
+        else if (lifecycle is "returned" or "rejected" or "cancelled" or "applied_partial")
+            phases.Add(lifecycle);
+        return phases;
+    }
+
     /// <param name="Key">approve · return · reject · cancel · resubmit · apply.</param>
     /// <param name="NeedsNote">
     /// `03 §5` — a return or a rejection without a stated reason is a decision
@@ -153,7 +177,9 @@ public static class WorkflowMachine
     public static IReadOnlyList<Decision> Available(
         string lifecycle, string relation, IReadOnlyList<string> externalStates)
     {
-        var canAct = ViewerRelation.CanAct(relation);
+        // A recorder may record an external party's letter, but may not take
+        // the stage owner's approve/return/reject/apply decisions.
+        var canAct = relation == "awaiting";
         if (!canAct) return [];
 
         switch (lifecycle)

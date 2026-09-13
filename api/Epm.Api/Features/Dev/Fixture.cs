@@ -1706,7 +1706,7 @@ public static class Fixture
                 ContractorDeltaQty = 400m, ContractorExcessRate = 28_800m,
                 ReDeptDeltaQty = 380m, ReDeptExcessRate = 26_800m,
                 ApprovedDeltaQty = 310m, ApprovedExcessRate = 26_000m,
-                AppliedDeltaQty = 310m, AppliedAmount = 7_500_000m,
+                AppliedDeltaQty = 310m,
                 ApplyStatus = "done",
             },
             // VO-01 · BQ-001 — inside the limit (threshold 3,600), so it has no
@@ -1719,7 +1719,7 @@ public static class Fixture
                 ContractorDeltaQty = 2_600m,
                 ReDeptDeltaQty = 2_400m,
                 ApprovedDeltaQty = 2_000m,
-                AppliedDeltaQty = 2_000m, AppliedAmount = 2_500_000m,
+                AppliedDeltaQty = 2_000m,
                 ApplyStatus = "done",
             },
 
@@ -1745,7 +1745,7 @@ public static class Fixture
                 ContractedQty = 8_800m, ExecutedQty = 3_960m,
                 BeforeQty = 8_800m, BeforeRate = 3_000m, BeforeAmount = 26_400_000m,
                 ContractorDeltaQty = -500m, ReDeptDeltaQty = -500m, ApprovedDeltaQty = -500m,
-                AppliedDeltaQty = -500m, AppliedAmount = 0m,
+                AppliedDeltaQty = -500m,
                 TargetBoqItemId = boq["CNT-0279|BQ-009"], DrawnQty = 500m, DistributedQty = 500m,
                 // The line the failed weight recalculation surfaces on (`03 §6`).
                 ApplyStatus = "fail",
@@ -1785,9 +1785,8 @@ public static class Fixture
                 // on purpose: there is no excess on a rate change, so a value
                 // here would assert a 20% tier `02 §5` does not create.
                 ApprovedRate = 14_345_250m,
-                // 4 × 14,345,250. The line's amount AFTER the move, which is
-                // what the single band below re-derives.
-                AppliedAmount = 57_381_000m,
+                // 4 × 14,345,250. The line's amount AFTER the move is
+                // derived from the single band below.
                 ApplyStatus = "done",
             },
 
@@ -1853,7 +1852,7 @@ public static class Fixture
         db.BoqRateBands.AddRange(
             // VO-01 · BQ-001 — +2,000 inside the 3,600 threshold, so ONE band
             // at the contract rate. 20,000 × 1,250 = 25,000,000, i.e. the
-            // +2,500,000 the line's AppliedAmount records.
+            // +2,500,000, derived from the band rather than persisted on the line.
             new BoqRateBand
             {
                 BoqItemId = boq["CNT-0279|BQ-001"], Seq = 1,

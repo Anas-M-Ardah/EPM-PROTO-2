@@ -1,3 +1,5 @@
+using Epm.Api.Domain;
+
 namespace Epm.Api.Features.ChangeOrders;
 
 /// <summary>
@@ -73,7 +75,10 @@ public record ChangeOrderRow(
     string? LastActionDate,
     int Attachments,
     ViewerRelationDto Relation,
-    IReadOnlyList<ExceptionChip> Exceptions);
+    IReadOnlyList<ExceptionChip> Exceptions)
+{
+    public IReadOnlyList<string> WorkflowPhases => WorkflowMachine.ReachedPhases(Lifecycle, CurrentStageNo);
+}
 
 /// <param name="Key">`draft` · `pending` · `returned` · `applying` · `closed` · `rejected`.</param>
 public record ChangeOrderGroup(string Key, int Count);
