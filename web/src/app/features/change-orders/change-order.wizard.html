@@ -9,14 +9,15 @@
   else — the 20% split it prints is BR-05's, computed server-side as the two
   proposals are typed.
 -->
-<div class="d-modal-scrim" (click)="closed.emit()">
-  <div class="d-modal xl" role="dialog" aria-modal="true"
-       [attr.aria-label]="lang.t('chg_w_title')" (click)="$event.stopPropagation()">
+<div class="d-modal-scrim" (click)="cancel()">
+  <div class="d-modal xl epm-co-wizard" role="dialog" aria-modal="true"
+       [attr.aria-label]="lang.t('chg_w_title')" (click)="$event.stopPropagation()"
+       (keydown.escape)="cancel()">
 
     <div class="d-modal-head">
       <b>{{ lang.t('chg_w_title') }}</b>
       <button type="button" class="d-icon-btn sm"
-              [attr.aria-label]="lang.t('scd_rec_close')" (click)="closed.emit()">
+              [attr.aria-label]="lang.t('scd_rec_close')" (click)="cancel()">
         <epm-icon name="close" [size]="18" />
       </button>
     </div>
@@ -27,7 +28,7 @@
     <div class="d-stepper icons">
       @for (s of steps; track s.n) {
         <button type="button" class="d-step {{ stepState(s.n) }}"
-                [disabled]="s.n > 1 && !canLeaveStep1()"
+                [disabled]="s.n > step() || saving()"
                 [attr.aria-current]="step() === s.n ? 'step' : null"
                 (click)="go(s.n)">
           <span class="n">
@@ -38,6 +39,7 @@
             }
           </span>
           <span class="l">{{ lang.t($any(s.label)) }}</span>
+          <span class="epm-sr-only">{{ step() === s.n ? lang.t('chg_w_step_current') : stepState(s.n) === 'done' ? lang.t('chg_w_step_done') : '' }}</span>
         </button>
       }
     </div>
@@ -60,36 +62,65 @@
     <div class="d-modal-body">
 
       @if (loading()) {
-        <div class="d-vow-empty">
+        <div class="d-vow-empty" role="status" aria-live="polite">
           <epm-icon name="hourglass_empty" [size]="22" />
           <b>{{ lang.t('loading') }}</b>
+        </div>
+
+      } @else if (!source()) {
+        <div class="d-vow-empty" role="alert">
+          <epm-icon name="error" [size]="22" />
+          <b>{{ lang.t('error_t') }}</b>
+          <span><bdi>{{ error() }}</bdi></span>
+          <button type="button" class="d-btn primary" (click)="ngOnInit()">{{ lang.t('retry') }}</button>
         </div>
 
       } @else {
 
         @if (error()) {
-          <div class="d-inline-err">
+          <div class="d-inline-err" role="alert">
             <epm-icon name="error" [size]="15" /><span><bdi>{{ error() }}</bdi></span>
           </div>
         }
 
         <h2 class="d-vow-title">{{ lang.t($any(steps[step() - 1].label)) }}</h2>
 
+        @if (attemptedStep() === step() && stepIssues(step()).length) {
+          <div class="d-msgbar danger" role="alert">
+            <epm-icon name="warning" [size]="16" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">{{ lang.t('chg_w_incomplete') }}</b>
+              <ul class="mbody">
+                @for (issue of stepIssues(step()); track issue) { <li>{{ issue }}</li> }
+              </ul>
+            </div>
+          </div>
+        }
+        @if (step() >= 2 && previewLoading()) {
+          <div class="d-pager calcnote" role="status" aria-live="polite">
+            <epm-icon name="hourglass_empty" [size]="14" />{{ lang.t('chg_w_preview_wait') }}
+          </div>
+        }
+        @if (step() >= 2 && previewError()) {
+          <div class="d-msgbar danger" role="alert">
+            <epm-icon name="error" [size]="16" class="mgi" />
+            <div class="mtx"><b class="mtitle">{{ lang.t('chg_w_preview_error') }}</b>
+              <span class="mbody"><bdi>{{ previewError() }}</bdi></span></div>
+            <button type="button" class="d-btn sm" (click)="refresh()">{{ lang.t('retry') }}</button>
+          </div>
+        }
+
         <!-- ══ 1 — النوع والكتاب الرسمي · الشكل 37 ═════════════════════ -->
         @if (step() === 1) {
           <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_contract')" icon="assignment">
-            <div class="d-form-grid">
+            <div class="d-form-grid co-wizard-form-grid">
               <div class="d-form-field">
-                <label for="w-contract">{{ lang.t('chg_w_pick_contract') }}<span class="req" aria-hidden="true">*</span></label>
-                <select id="w-contract" class="d-form-input"
-                        (change)="chooseContract($any($event.target).value)">
-                  <option value="">{{ lang.t('chg_w_pick_contract_ph') }}</option>
-                  @for (c of source()?.contracts ?? []; track c.id) {
-                    <option [value]="c.id" [selected]="c.id === ckey()">
-                      {{ c.id }} — {{ lang.pick(c.nameAr, c.nameEn) }}
-                    </option>
-                  }
-                </select>
+                <span class="co-wizard-field-label">{{ lang.t('chg_w_pick_contract') }}<span class="req" aria-hidden="true">*</span></span>
+                <epm-select id="w-contract" [options]="contractOptions()" [value]="ckey() ?? ''"
+                            [label]="lang.t('chg_w_pick_contract')"
+                            [placeholder]="lang.t('chg_w_pick_contract_ph')"
+                            (changed)="chooseContract($event)" />
+                @if (attemptedStep() === 1 && !ckey()) { <small class="co-wizard-field-error">{{ lang.t('chg_w_missing_contract') }}</small> }
               </div>
               @if (contract(); as c) {
                 <div class="d-form-i"><span class="k">{{ lang.t('chg_w_current_value') }}</span>
@@ -100,7 +131,7 @@
             </div>
 
             <!-- non-negotiable #1, stated where the choice is made. -->
-            <div class="d-msgbar info">
+            <div class="d-msgbar info co-wizard-contract-note">
               <epm-icon name="lock" [size]="16" class="mgi" />
               <div class="mtx">
                 <b class="mtitle">{{ lang.t('chg_w_scope_t') }}</b>
@@ -117,14 +148,14 @@
             <div class="d-vow-types">
               @if (!isSupplyProject()) {
                 <button type="button" class="d-vow-type" [class.on]="type() === 'engineering'"
-                        [attr.aria-pressed]="type() === 'engineering'" (click)="type.set('engineering')">
+                        [attr.aria-pressed]="type() === 'engineering'" (click)="setType('engineering')">
                   <epm-icon name="engineering" [size]="17" />
                   <b>{{ lang.t('chg_w_type_eng') }}</b>
                   @if (type() === 'engineering') { <epm-icon name="check" [size]="15" /> }
                 </button>
               }
               <button type="button" class="d-vow-type" [class.on]="type() === 'supply'"
-                      [attr.aria-pressed]="type() === 'supply'" (click)="type.set('supply')">
+                      [attr.aria-pressed]="type() === 'supply'" (click)="setType('supply')">
                 <epm-icon name="inbox" [size]="17" />
                 <b>{{ lang.t('chg_w_type_sup') }}</b>
                 @if (type() === 'supply') { <epm-icon name="check" [size]="15" /> }
@@ -135,34 +166,38 @@
           <!-- A free textarea, and no preset reason list (`03 §8` step 1). -->
           <epm-section [boxed]="true" [title]="lang.t('chg_f_justification')" icon="verified_user">
             <div class="d-form-field">
-              <textarea class="d-form-input" rows="4"
+              <textarea id="w-justification" class="d-form-input" rows="4"
+                        [attr.aria-invalid]="attemptedStep() === 1 && !justification().trim()"
                         [attr.placeholder]="lang.t('chg_w_just_ph')"
                         [value]="justification()"
-                        (input)="justification.set($any($event.target).value)"></textarea>
+                        (input)="setJustification($any($event.target).value)"></textarea>
+              @if (attemptedStep() === 1 && !justification().trim()) { <small class="co-wizard-field-error">{{ lang.t('chg_w_missing_reason') }}</small> }
             </div>
           </epm-section>
 
           <!-- الشكل 37 fixes the letter at step 1 «بوصفه نقطة بدء العدّ
                القانوني» — BR-12 measures every SLA from this date. -->
           <epm-section [boxed]="true" [title]="lang.t('chg_w_sec_letter')" icon="description">
-            <div class="d-form-grid">
+            <div class="d-form-grid co-wizard-form-grid">
               <div class="d-form-field">
-                <label for="w-party">{{ lang.t('chg_f_party') }}</label>
-                <select id="w-party" class="d-form-input" (change)="party.set($any($event.target).value)">
-                  @for (p of source()?.parties ?? []; track p) {
-                    <option [value]="p" [selected]="p === party()">{{ p }}</option>
-                  }
-                </select>
+                <span class="co-wizard-field-label">{{ lang.t('chg_f_party') }}</span>
+                <epm-select id="w-party" [options]="partyOptions()" [value]="party()"
+                            [label]="lang.t('chg_f_party')" [allowEmpty]="false"
+                            (changed)="setParty($event)" />
+                @if (attemptedStep() === 1 && !party().trim()) { <small class="co-wizard-field-error">{{ lang.t('chg_w_missing_party') }}</small> }
               </div>
               <div class="d-form-field">
                 <label for="w-in-no">{{ lang.t('chg_f_in_no') }}</label>
                 <input id="w-in-no" class="d-form-input mono" [value]="incomingNo()"
-                       (input)="incomingNo.set($any($event.target).value)" placeholder="0801/2026" />
+                       [attr.aria-invalid]="attemptedStep() === 1 && !incomingNo().trim()"
+                       (input)="setIncomingNo($any($event.target).value)" placeholder="0801/2026" />
+                @if (attemptedStep() === 1 && !incomingNo().trim()) { <small class="co-wizard-field-error">{{ lang.t('chg_w_missing_number') }}</small> }
               </div>
               <div class="d-form-field">
                 <label>{{ lang.t('chg_f_in_date') }}</label>
-                <epm-date [value]="incomingDate()" [label]="lang.t('chg_f_in_date')"
-                          (changed)="incomingDate.set($event)" />
+                <epm-date id="w-in-date" [value]="incomingDate()" [label]="lang.t('chg_f_in_date')"
+                          (changed)="setIncomingDate($event)" />
+                @if (attemptedStep() === 1 && !incomingDate().trim()) { <small class="co-wizard-field-error">{{ lang.t('chg_w_missing_date') }}</small> }
               </div>
             </div>
             <p class="d-cell-sub">{{ lang.t('chg_w_letter_note') }}</p>
@@ -227,8 +262,8 @@
                 </div>
 
               } @else {
-                <div class="d-vow-tw">
-                  <table class="d-line-table" style="min-width: 1040px">
+                <div class="d-vow-tw co-wizard-line-wrap">
+                  <table class="d-line-table co-wizard-line-table">
                     <thead>
                       <tr>
                         <th style="width: 110px">{{ lang.t('chg_col_code') }}</th>
@@ -262,13 +297,9 @@
                             <!-- The change type is chosen BEFORE the figures
                                  (الشكل 38), which is what keeps an order from
                                  being ambiguous about what it does. -->
-                            <select class="d-form-input sm"
-                                    [attr.aria-label]="lang.t('chg_col_change')"
-                                    (change)="setLine(r.code, { changeType: $any($event.target).value })">
-                              @for (t of changeTypes(); track t.code) {
-                                <option [value]="t.code" [selected]="t.code === r.changeType">{{ t.label }}</option>
-                              }
-                            </select>
+                            <epm-select [options]="changeTypes()" [value]="r.changeType"
+                                        [label]="lang.t('chg_col_change')" [allowEmpty]="false"
+                                        (changed)="setLine(r.code, { changeType: $event })" />
                           </td>
                           <td class="r mono">
                             @if (previewOf(r.code)?.contractor?.impact !== null && previewOf(r.code)?.contractor?.impact !== undefined) {
@@ -566,29 +597,19 @@
                                             @for (t of r.transfers; track $index) {
                                               <tr>
                                                 <td>
-                                                  <select class="d-form-input sm"
-                                                          [attr.aria-label]="lang.t('chg_rd_from')"
-                                                          (change)="setTransfer(r.code, $index, { from: $any($event.target).value })">
-                                                    @for (a of allocOf(r.code); track a.code) {
-                                                      <option [value]="a.code" [selected]="a.code === t.from">
-                                                        {{ a.nameAr }} — {{ fmt.qty(a.qty) }}
-                                                      </option>
-                                                    }
-                                                  </select>
+                                                  <epm-select [options]="allocationOptions(r.code)" [value]="t.from"
+                                                              [label]="lang.t('chg_rd_from')" [allowEmpty]="false"
+                                                              (changed)="setTransfer(r.code, $index, { from: $event })" />
                                                 </td>
                                                 <td>
                                                   <!-- The whole ACTIVE list, not the
                                                        line's own: جامعة تلعفر holds
                                                        nothing and giving it devices is
                                                        the point of the order. -->
-                                                  <select class="d-form-input sm"
-                                                          [attr.aria-label]="lang.t('chg_rd_to')"
-                                                          (change)="setTransfer(r.code, $index, { to: $any($event.target).value })">
-                                                    <option value="" [selected]="!t.to">{{ lang.t('chg_rd_pick') }}</option>
-                                                    @for (b of source()?.beneficiaries ?? []; track b.code) {
-                                                      <option [value]="b.code" [selected]="b.code === t.to">{{ b.nameAr }}</option>
-                                                    }
-                                                  </select>
+                                                  <epm-select [options]="beneficiaryOptions()" [value]="t.to"
+                                                              [label]="lang.t('chg_rd_to')"
+                                                              [placeholder]="lang.t('chg_rd_pick')"
+                                                              (changed)="setTransfer(r.code, $index, { to: $event })" />
                                                 </td>
                                                 <td class="r">
                                                   <!-- Capped at المتاح rather than
@@ -747,12 +768,9 @@
                           <td class="r mono"><bdi>{{ fmt.pct(activityOf(a.activityId)?.progressPct, 0) }}</bdi></td>
                           <td class="r mono"><bdi>{{ activityOf(a.activityId)?.remainingDuration }}</bdi></td>
                           <td>
-                            <select class="d-form-input sm" [attr.aria-label]="lang.t('chg_col_change')"
-                                    (change)="setActivity(a.activityId, { changeType: $any($event.target).value })">
-                              @for (t of activityChangeTypes(); track t.code) {
-                                <option [value]="t.code" [selected]="t.code === a.changeType">{{ t.label }}</option>
-                              }
-                            </select>
+                            <epm-select [options]="activityChangeTypes()" [value]="a.changeType"
+                                        [label]="lang.t('chg_col_change')" [allowEmpty]="false"
+                                        (changed)="setActivity(a.activityId, { changeType: $event })" />
                           </td>
                           <td class="r">
                             <input class="d-form-input sm mono" inputmode="numeric"
@@ -788,7 +806,20 @@
 
         <!-- ══ 3 — ملخص الأثر · الشكل 40 ═══════════════════════════════ -->
         @if (step() === 3) {
-          @if (preview(); as pv) {
+          @if (previewCurrent() ? preview() : null; as pv) {
+            <div class="d-msgbar info" role="status">
+              <epm-icon name="functions" [size]="16" class="mgi" />
+              <div class="mtx"><b class="mtitle">{{ lang.t('chg_w_preview_title') }}</b>
+                <span class="mbody">{{ lang.t('chg_w_preview_note') }}</span></div>
+            </div>
+            <div class="co-compare" [attr.aria-label]="lang.t('chg_w_preview_title')">
+              <div class="co-compare-cell"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
+                <strong class="num">@if (pv.summary.contractorNet !== null) { <bdi>{{ fmt.delta(pv.summary.contractorNet) }}</bdi> {{ lang.t('cur_iqd') }} } @else { — }</strong></div>
+              <div class="co-compare-cell"><span class="k">{{ lang.t('chg_party_redept') }}</span>
+                <strong class="num">@if (pv.summary.reDeptNet !== null) { <bdi>{{ fmt.delta(pv.summary.reDeptNet) }}</bdi> {{ lang.t('cur_iqd') }} } @else { — }</strong></div>
+              <div class="co-compare-cell pending"><span class="k">{{ lang.t('chg_party_approved') }}</span>
+                <strong>{{ lang.t('chg_awaiting_pricing') }}</strong></div>
+            </div>
             <div class="d-form-grid">
               <div class="d-form-i"><span class="k">{{ lang.t('chg_w_sel_lines') }}</span>
                 <span class="v num"><bdi>{{ pv.summary.selectedLines }}</bdi></span></div>
@@ -796,10 +827,6 @@
                 <span class="v num"><bdi>{{ pv.summary.selectedActivities }}</bdi></span></div>
               <div class="d-form-i"><span class="k">{{ lang.t('chg_w_current_value') }}</span>
                 <span class="v num"><bdi>{{ fmt.money(pv.summary.contractValue) }}</bdi></span></div>
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_contractor') }}</span>
-                <span class="v num"><bdi>{{ fmt.delta(pv.summary.contractorNet) }}</bdi></span></div>
-              <div class="d-form-i"><span class="k">{{ lang.t('chg_party_redept') }}</span>
-                <span class="v num"><bdi>{{ fmt.delta(pv.summary.reDeptNet) }}</bdi></span></div>
               <div class="d-form-i"><span class="k">{{ lang.t('chg_f_over_tier') }}</span>
                 <span class="v num"><bdi>{{ pv.summary.linesOverTier }}</bdi></span></div>
               <!-- D-08 — the two figures nobody in this wizard may set, each
@@ -864,9 +891,7 @@
                       <td>{{ actChangeLabel(a.changeType) }}</td>
                       <td class="r mono"><bdi>{{ activityOf(a.activityId)?.remainingDuration }}</bdi></td>
                       <td class="r mono">
-                        @if (a.requestedDeltaDays !== null) {
-                          <bdi>{{ (activityOf(a.activityId)?.remainingDuration ?? 0) + a.requestedDeltaDays }}</bdi>
-                        } @else { — }
+                        {{ lang.t('chg_w_analysis_pending') }}
                       </td>
                       <td class="r mono">
                         @if (a.requestedDeltaDays !== null) {
@@ -884,8 +909,14 @@
         <!-- ══ 4 — المرفقات · الشكل 41 ═════════════════════════════════ -->
         @if (step() === 4) {
           <div class="d-form-field">
-            <label for="w-files">{{ lang.t('chg_w_upload') }}</label>
-            <input id="w-files" type="file" multiple (change)="addFiles($event)" />
+            <span class="co-wizard-field-label">{{ lang.t('chg_w_upload') }}</span>
+            <div class="co-wizard-drop" [class.dragging]="draggingFiles()"
+                 (dragover)="onFileDragOver($event)" (dragleave)="draggingFiles.set(false)" (drop)="onFileDrop($event)">
+              <epm-icon name="upload_file" [size]="24" />
+              <span>{{ lang.t('chg_w_drop_hint') }}</span>
+              <button type="button" class="d-btn" (click)="fileInput.click()">{{ lang.t('chg_w_upload') }}</button>
+              <input #fileInput id="w-files" class="co-wizard-file-input" type="file" multiple (change)="addFiles($event)" />
+            </div>
             <p class="d-cell-sub">{{ lang.t('chg_w_upload_note') }}</p>
           </div>
 
@@ -910,12 +941,9 @@
                   <tr>
                     <td class="mono"><bdi>{{ f.fileName }}</bdi></td>
                     <td>
-                      <select class="d-form-input sm" [attr.aria-label]="lang.t('chg_col_category')"
-                              (change)="setCategory(i, $any($event.target).value)">
-                        @for (c of categories(); track c.code) {
-                          <option [value]="c.code" [selected]="c.code === f.category">{{ c.label }}</option>
-                        }
-                      </select>
+                      <epm-select [options]="categories()" [value]="f.category"
+                                  [label]="lang.t('chg_col_category')" [allowEmpty]="false"
+                                  (changed)="setCategory(i, $event)" />
                     </td>
                     <td class="r mono"><bdi>{{ (f.sizeBytes / 1024).toFixed(0) }}</bdi> KB</td>
                     <td>
@@ -953,7 +981,7 @@
             </div>
           </epm-section>
 
-          @if (preview(); as pv) {
+          @if (previewCurrent() ? preview() : null; as pv) {
             <epm-section [boxed]="true" [title]="lang.t('chg_w_sel_lines')" icon="list_alt"
                          [n]="pv.lines.length" [flush]="true">
               @if (pv.lines.length === 0) {
@@ -966,8 +994,8 @@
                       <th style="min-width: 180px">{{ lang.t('chg_col_desc') }}</th>
                       <th style="width: 130px" class="r">{{ lang.t('chg_w_current') }}</th>
                       <th style="width: 150px">{{ lang.t('chg_col_change') }}</th>
-                      <th style="width: 140px" class="r">{{ lang.t('chg_party_contractor') }}</th>
-                      <th style="width: 150px" class="r">{{ lang.t('chg_party_redept') }}</th>
+                      <th style="width: 140px" class="r">{{ lang.t('chg_party_contractor') }} ({{ lang.t('cur_iqd') }})</th>
+                      <th style="width: 150px" class="r">{{ lang.t('chg_party_redept') }} ({{ lang.t('cur_iqd') }})</th>
                       <th style="width: 120px">{{ lang.t('col_status') }}</th>
                     </tr>
                   </thead>
@@ -1084,15 +1112,22 @@
       }
     </div>
 
-    <!-- TWO BUTTONS ON THE LAST STEP, AND ONLY TWO (`03 §8` step 5). -->
+    <!-- Draft saving remains available while the user completes the five steps. -->
     <div class="d-modal-foot">
       @if (step() > 1) {
-        <button type="button" class="d-btn" (click)="back()">
+        <button type="button" class="d-btn" [disabled]="saving()" (click)="back()">
           <epm-icon [name]="lang.isAr() ? 'chevron_right' : 'chevron_left'" [size]="16" />
           {{ lang.t('boq_imp_back') }}
         </button>
       }
       <span class="sp" style="flex: 1"></span>
+
+      @if (saving()) {
+        <span role="status" aria-live="polite">{{ lang.t('loading') }}</span>
+      }
+      <button type="button" class="d-btn" [disabled]="saving() || !ckey() || completed()" (click)="save('draft')">
+        <epm-icon name="save" [size]="15" />{{ lang.t('chg_w_save_draft') }}
+      </button>
 
       @if (step() === 5) {
         @if (blocking().length) {
@@ -1100,15 +1135,12 @@
             <epm-icon name="warning" [size]="14" />{{ lang.t('chg_w_cannot_submit') }}
           </span>
         }
-        <button type="button" class="d-btn" [disabled]="saving() || !ckey()" (click)="save('draft')">
-          <epm-icon name="save" [size]="15" />{{ lang.t('chg_w_save_draft') }}
-        </button>
         <button type="button" class="d-btn primary"
-                [disabled]="saving() || !ckey() || blocking().length > 0" (click)="save('submit')">
+                [disabled]="saving() || !ckey() || completed() || !previewCurrent() || !preview()?.canSubmit" (click)="save('submit')">
           <epm-icon name="forward_to_inbox" [size]="15" />{{ lang.t('chg_w_submit') }}
         </button>
       } @else {
-        <button type="button" class="d-btn primary" [disabled]="!canLeaveStep1()" (click)="next()">
+        <button type="button" class="d-btn primary" [disabled]="loading() || saving()" (click)="next()">
           {{ lang.t('boq_imp_next') }}
           <epm-icon [name]="lang.isAr() ? 'chevron_left' : 'chevron_right'" [size]="16" />
         </button>
@@ -1117,21 +1149,11 @@
   </div>
 </div>
 
-<!-- ══ THE PICKER — multi-select over THIS CONTRACT's lists (`03 §8`) ════
-     A second modal on purpose: the reference opens one too, and the search and
-     filters belong to the choosing, not to the composing. -->
+<!-- Secondary selection stays in a drawer so the wizard remains visible. -->
 @if (picking(); as what) {
-  <div class="d-modal-scrim" (click)="picking.set(null)">
-    <div class="d-modal" role="dialog" aria-modal="true"
-         [attr.aria-label]="what === 'boq' ? lang.t('chg_w_pick_lines') : lang.t('chg_w_pick_acts')"
-         (click)="$event.stopPropagation()">
-      <div class="d-modal-head">
-        <b>{{ what === 'boq' ? lang.t('chg_w_pick_lines') : lang.t('chg_w_pick_acts') }}</b>
-        <button type="button" class="d-icon-btn sm"
-                [attr.aria-label]="lang.t('scd_rec_close')" (click)="picking.set(null)">
-          <epm-icon name="close" [size]="18" />
-        </button>
-      </div>
+  <epm-drawer class="epm-co-picker" [wide]="true" [hasFooter]="true"
+              [title]="what === 'boq' ? lang.t('chg_w_pick_lines') : lang.t('chg_w_pick_acts')"
+              [closeLabel]="lang.t('scd_rec_close')" (closed)="picking.set(null)">
 
       <!-- الشكل 38's picker bar. `DVOMultiPick` vo-wizard-parts.jsx:42 puts the
            search in `.d-vow-filters > .d-vow-search`, ABOVE `.d-modal-body`
@@ -1153,13 +1175,14 @@
         </div>
       </div>
 
-      <div class="d-modal-body">
+      <div class="co-wizard-picker-results">
 
         @if (what === 'boq') {
           @if (boqPool().length === 0) {
             <div class="d-vow-empty">
               <epm-icon name="filter_list" [size]="22" />
-              <b>{{ lang.t('chg_w_pool_empty') }}</b>
+              <b>{{ pickQuery() ? lang.t('chg_w_no_match') : lang.t('chg_w_pool_empty') }}</b>
+              @if (pickQuery()) { <button type="button" class="d-btn sm" (click)="pickQuery.set('')">{{ lang.t('chg_w_clear_search') }}</button> }
             </div>
           } @else {
             <table class="d-line-table">
@@ -1193,7 +1216,8 @@
           @if (actPool().length === 0) {
             <div class="d-vow-empty">
               <epm-icon name="filter_list" [size]="22" />
-              <b>{{ lang.t('chg_w_pool_empty') }}</b>
+              <b>{{ pickQuery() ? lang.t('chg_w_no_match') : lang.t('chg_w_pool_empty') }}</b>
+              @if (pickQuery()) { <button type="button" class="d-btn sm" (click)="pickQuery.set('')">{{ lang.t('chg_w_clear_search') }}</button> }
             </div>
           } @else {
             <table class="d-line-table">
@@ -1226,12 +1250,8 @@
         }
       </div>
 
-      <div class="d-modal-foot">
-        <span style="flex: 1"></span>
-        <button type="button" class="d-btn primary" (click)="picking.set(null)">
-          {{ lang.t('chg_w_done_picking') }}
-        </button>
-      </div>
-    </div>
-  </div>
+      <button footer type="button" class="d-btn primary" (click)="picking.set(null)">
+        {{ lang.t('chg_w_done_picking') }}
+      </button>
+  </epm-drawer>
 }

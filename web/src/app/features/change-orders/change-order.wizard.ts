@@ -6,6 +6,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../core/icon.component';
 import { SectionComponent } from '../../shared/section.component';
 import { DateComponent } from '../../shared/date.component';
+import { SelectComponent } from '../../shared/select.component';
+import { DrawerComponent } from '../../shared/drawer.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
@@ -69,7 +71,7 @@ interface ActRow {
 @Component({
   selector: 'epm-change-order-wizard',
   standalone: true,
-  imports: [IconComponent, SectionComponent, DateComponent],
+  imports: [IconComponent, SectionComponent, DateComponent, SelectComponent, DrawerComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './change-order.wizard.html',
 })
@@ -94,6 +96,12 @@ export class ChangeOrderWizard {
   loading = signal(true);
   saving = signal(false);
   error = signal<string | null>(null);
+  previewLoading = signal(false);
+  previewError = signal<string | null>(null);
+  previewDraftKey = signal<string | null>(null);
+  attemptedStep = signal<number | null>(null);
+  completed = signal(false);
+  private previewRequest = 0;
 
   /** `03 §8`'s five, in its order. */
   readonly steps = [
@@ -122,6 +130,9 @@ export class ChangeOrderWizard {
   lines = signal<LineRow[]>([]);
   acts = signal<ActRow[]>([]);
   files = signal<{ fileName: string; category: string; sizeBytes: number }[]>([]);
+  draggingFiles = signal(false);
+  draftKey = computed(() => JSON.stringify(this.draft()));
+  previewCurrent = computed(() => this.preview() !== null && this.previewDraftKey() === this.draftKey());
 
   private changed = new Subject<void>();
 
@@ -137,6 +148,18 @@ export class ChangeOrderWizard {
     const c = this.contract();
     return c ? this.lang.pick(c.nameAr, c.nameEn) : '';
   });
+
+  contractOptions = computed(() => (this.source()?.contracts ?? []).map(c => ({
+    code: c.id,
+    label: `${c.id} — ${this.lang.pick(c.nameAr, c.nameEn)}`,
+  })));
+
+  partyOptions = computed(() => (this.source()?.parties ?? []).map(p => ({ code: p, label: p })));
+
+  beneficiaryOptions = computed(() => (this.source()?.beneficiaries ?? []).map(b => ({
+    code: b.code,
+    label: b.nameAr,
+  })));
 
   /** `06 §7`'s five, minus the one a supply order cannot use (`02 §5`). */
   changeTypes = computed(() => {
@@ -215,6 +238,8 @@ export class ChangeOrderWizard {
 
   chooseContract(id: string) {
     if (id === this.ckey()) return;
+    if (this.ckey() && (this.lines().length || this.acts().length)
+        && !window.confirm(this.lang.t('chg_w_switch_confirm'))) return;
     // Clearing is the point: a line belongs to the contract it was chosen
     // from, and carrying it across would be the cross-contract order BR-07
     // exists to refuse.
@@ -223,6 +248,20 @@ export class ChangeOrderWizard {
     this.acts.set([]);
     this.openLine.set(null);
     this.changed.next();
+  }
+
+  setType(value: string) { this.type.set(value); this.changed.next(); }
+  setJustification(value: string) { this.justification.set(value); this.changed.next(); }
+  setParty(value: string) { this.party.set(value); this.changed.next(); }
+  setIncomingNo(value: string) { this.incomingNo.set(value); this.changed.next(); }
+  setIncomingDate(value: string) { this.incomingDate.set(value); this.changed.next(); }
+
+  cancel() {
+    if (this.saving()) return;
+    const edited = this.lines().length || this.acts().length || this.files().length
+      || this.justification().trim() || this.incomingNo().trim();
+    if (edited && !window.confirm(this.lang.t('chg_w_cancel_confirm'))) return;
+    this.closed.emit();
   }
 
   addLine(code: string) {
@@ -258,6 +297,13 @@ export class ChangeOrderWizard {
   /** BR-08's rows for a line — the «من» picker, and nothing else. */
   allocOf(code: string): WizardAllocation[] {
     return this.boqOf(code)?.allocation ?? [];
+  }
+
+  allocationOptions(code: string) {
+    return this.allocOf(code).map(a => ({
+      code: a.code,
+      label: `${a.nameAr} — ${fmt.qty(a.qty)}`,
+    }));
   }
 
   /** الشكل 58's chip strip, as the preview returned it. */
@@ -328,21 +374,38 @@ export class ChangeOrderWizard {
 
   addFiles(e: Event) {
     const input = e.target as HTMLInputElement;
-    const picked = Array.from(input.files ?? []);
+    this.addPickedFiles(Array.from(input.files ?? []));
+    input.value = '';
+  }
+
+  onFileDragOver(e: DragEvent) {
+    e.preventDefault();
+    this.draggingFiles.set(true);
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  }
+
+  onFileDrop(e: DragEvent) {
+    e.preventDefault();
+    this.draggingFiles.set(false);
+    this.addPickedFiles(Array.from(e.dataTransfer?.files ?? []));
+  }
+
+  private addPickedFiles(picked: File[]) {
     if (!picked.length) return;
     // The bytes are NOT kept — `03 §8` step 4 records a name, a category and a
     // size, and the prototype stores exactly that (ChangeOrderAttachment).
     this.files.update(f => [...f, ...picked.map(x => ({
       fileName: x.name, category: 'support', sizeBytes: x.size,
     }))]);
-    input.value = '';
+    this.changed.next();
   }
 
   setCategory(i: number, code: string) {
     this.files.update(f => f.map((x, j) => (j === i ? { ...x, category: code } : x)));
+    this.changed.next();
   }
 
-  dropFile(i: number) { this.files.update(f => f.filter((_, j) => j !== i)); }
+  dropFile(i: number) { this.files.update(f => f.filter((_, j) => j !== i)); this.changed.next(); }
 
   // ── steps ─────────────────────────────────────────────────────────────
 
@@ -351,13 +414,61 @@ export class ChangeOrderWizard {
 
   stepState(n: number): string {
     if (n === this.step()) return 'on';
-    return n < this.step() ? 'done' : '';
+    return n < this.step() && !this.stepIssues(n).length ? 'done' : '';
+  }
+
+  stepIssues(n: number): string[] {
+    if (n === 1) {
+      const issues: string[] = [];
+      if (!this.ckey()) issues.push(this.lang.t('chg_w_missing_contract'));
+      if (!this.justification().trim()) issues.push(this.lang.t('chg_w_missing_reason'));
+      if (!this.party().trim()) issues.push(this.lang.t('chg_w_missing_party'));
+      if (!this.incomingNo().trim()) issues.push(this.lang.t('chg_w_missing_number'));
+      if (!this.incomingDate().trim()) issues.push(this.lang.t('chg_w_missing_date'));
+      return issues;
+    }
+    if (n === 2) return this.lines().length || this.acts().length
+      ? [] : [this.lang.t('chg_w_missing_effect')];
+    if (n === 3) return this.previewCurrent()
+      ? [] : [this.lang.t('chg_w_preview_wait')];
+    if (n === 5) {
+      const issues = [...this.stepIssues(1), ...this.stepIssues(2)];
+      if (!this.previewCurrent()) issues.push(this.lang.t('chg_w_preview_wait'));
+      else {
+        issues.push(...this.blocking().map(i => this.issueText(i)));
+        if (!this.preview()?.canSubmit && !this.blocking().length) {
+          issues.push(this.lang.t('chg_w_review_blocked'));
+        }
+      }
+      return issues;
+    }
+    return [];
   }
 
   go(n: number) {
-    if (n > 1 && !this.canLeaveStep1()) return;
-    this.step.set(Math.min(5, Math.max(1, n)));
-    if (n >= 3) this.refresh();
+    const target = Math.min(5, Math.max(1, n));
+    if (target > this.step()) {
+      if (target !== this.step() + 1) return;
+      if (this.stepIssues(this.step()).length) {
+        this.attemptedStep.set(this.step());
+        if (this.step() === 1) {
+          const id = !this.ckey() ? 'w-contract' : !this.justification().trim() ? 'w-justification'
+            : !this.party().trim() ? 'w-party' : !this.incomingNo().trim() ? 'w-in-no' : 'w-in-date';
+          setTimeout(() => {
+            const field = document.getElementById(id);
+            const focusTarget = field?.matches('epm-select, epm-date')
+              ? field.querySelector<HTMLElement>('button, input') : field;
+            field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
+          });
+        }
+        if (this.step() === 3 && !this.previewLoading()) this.refresh();
+        return;
+      }
+    }
+    this.step.set(target);
+    this.attemptedStep.set(null);
+    if (target >= 3 && !this.previewCurrent() && !this.previewLoading()) this.refresh();
   }
 
   next() { this.go(this.step() + 1); }
@@ -387,9 +498,23 @@ export class ChangeOrderWizard {
 
   refresh() {
     if (!this.ckey()) return;
+    const key = this.draftKey();
+    const request = ++this.previewRequest;
+    this.previewLoading.set(true);
+    this.previewError.set(null);
     this.api.preview(this.projectId, this.draft()).subscribe({
-      next: p => this.preview.set(p),
-      error: e => this.error.set(e?.error?.message ?? e?.message ?? 'preview failed'),
+      next: p => {
+        if (request !== this.previewRequest || key !== this.draftKey()) return;
+        this.preview.set(p);
+        this.previewDraftKey.set(key);
+        this.previewLoading.set(false);
+      },
+      error: e => {
+        if (request !== this.previewRequest || key !== this.draftKey()) return;
+        this.previewDraftKey.set(null);
+        this.previewError.set(e?.error?.message ?? e?.message ?? 'preview failed');
+        this.previewLoading.set(false);
+      },
     });
   }
 
@@ -404,13 +529,19 @@ export class ChangeOrderWizard {
   }
 
   save(kind: 'draft' | 'submit') {
-    if (this.saving()) return;
+    if (this.saving() || this.completed() || !this.ckey()) return;
+    if (kind === 'submit' && this.stepIssues(5).length) {
+      this.attemptedStep.set(5);
+      if (!this.previewCurrent() && !this.previewLoading()) this.refresh();
+      return;
+    }
     this.saving.set(true);
     this.error.set(null);
 
     this.api.create(this.projectId, this.draft(), kind).subscribe({
       next: r => {
         this.saving.set(false);
+        this.completed.set(true);
         this.toast.show(this.lang.isAr()
           ? (kind === 'submit' ? `أُرسل الأمر ${r.no} للمراجعة` : `حُفظ الأمر ${r.no} كمسودة`)
           : (kind === 'submit' ? `Order ${r.no} submitted for review` : `Order ${r.no} saved as a draft`));
@@ -441,6 +572,7 @@ export class ChangeOrderWizard {
 
   ngOnInit() {
     this.loading.set(true);
+    this.error.set(null);
     this.api.wizardSource(this.projectId).subscribe({
       next: s => {
         this.source.set(s);
