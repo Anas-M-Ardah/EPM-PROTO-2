@@ -27,6 +27,8 @@ export interface SupplyItemRow {
   receivedQty: number;
   /** Σ PRELIMINARY receipts — what beneficiaries have taken delivery of. */
   handedOverQty: number;
+  /** P-269 — Σ FINAL receipts: what beneficiaries have finally accepted. */
+  finalQty: number;
   remainingQty: number;
   receivedPct: number;
   /** received · partial · supplied · pending — `Domain/SupplyStatus`. */
@@ -36,6 +38,7 @@ export interface SupplyItemRow {
   notes: string;
   warehouseReceipts: number;
   preliminaryReceipts: number;
+  finalReceipts: number;
   documents: number;
 }
 
@@ -72,6 +75,9 @@ export interface SupplyReceiptRow {
   itemDevice: string;
   itemSeq: number;
   documents: SupplyReceiptDoc[];
+  relatedReceiptId?: number | null;
+  beneficiaryCode?: string | null;
+  dueDate?: string | null;
 }
 
 export interface SupplyTotals {
@@ -84,6 +90,7 @@ export interface SupplyTotals {
   beneficiaries: number;
   warehouseReceipts: number;
   preliminaryReceipts: number;
+  finalReceipts: number;
 }
 
 export interface SupplyRegisterResponse {
@@ -115,9 +122,14 @@ export interface SupplyItemDetailResponse {
   remainingWarehouse: number;
   /** الشكل 54's — what has arrived and not yet been handed over. */
   remainingPreliminary: number;
+  /** P-269 — handed over and not yet finally accepted (المسار 11 step 7). */
+  remainingFinal: number;
+  alerts?: string[];
 }
 
 export interface SupplyReceiptInput {
+  relatedReceiptId?: number | null;
+  dueDate?: string;
   kind: string;
   date: string;
   qty: number;

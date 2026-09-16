@@ -8,7 +8,7 @@
   Three tabs in Z5, the register in Z7, the item panel in Z8, the two receipt
   forms as drawers over it. Every number, date and ID is <bdi>-isolated.
 -->
-<div class="d-pframe">
+<div class="d-pframe epm-supply">
 
   @if (loading()) {
     <div class="d-pz6"><span class="z6-t">{{ lang.t('mod_supplyitems') }}</span></div>
@@ -76,10 +76,14 @@
         <span class="boq-basis">
           <span class="lbl">{{ lang.t('sup_receipt_kind') }}</span>
           <span class="seg">
+            <button type="button" [class.on]="receiptKind() === 'readiness'" (click)="receiptKind.set('readiness')">{{ kindLabel('readiness') }}</button>
+            <button type="button" [class.on]="receiptKind() === 'resubmission'" (click)="receiptKind.set('resubmission')">{{ kindLabel('resubmission') }}</button>
             <button type="button" [class.on]="receiptKind() === 'warehouse'"
                     (click)="receiptKind.set('warehouse')">{{ lang.t('sup_kind_warehouse') }}</button>
             <button type="button" [class.on]="receiptKind() === 'preliminary'"
                     (click)="receiptKind.set('preliminary')">{{ lang.t('sup_kind_preliminary') }}</button>
+            <button type="button" [class.on]="receiptKind() === 'final'"
+                    (click)="receiptKind.set('final')">{{ lang.t('sup_kind_final') }}</button>
           </span>
         </span>
       }
@@ -292,7 +296,7 @@
         <div class="d-pz8">
           <div class="d-rpane">
             @if (detail(); as p) {
-              <div class="d-rpane-h">
+              <div class="rp-h">
                 <div class="tx">
                   <b>{{ p.item.device }}</b>
                   <span class="mono"><bdi>{{ p.item.code }}</bdi></span>
@@ -303,7 +307,10 @@
                 </button>
               </div>
 
-              <div class="d-rpane-b">
+              <div class="rp-b">
+                @for (alert of p.alerts ?? []; track alert) {
+                  <div class="d-msgbar warning"><epm-icon name="warning" [size]="16" /><span>{{ alert }}</span></div>
+                }
                 <dl class="d-meta">
                   <div class="d-meta-i"><dt>{{ lang.t('boq_col_amount') }}</dt>
                     <dd class="num"><bdi>{{ fmt.money(p.item.amount) }}</bdi></dd></div>
@@ -415,10 +422,10 @@
                        their own headings with their own counts.
                        `.d-card-sub` is the copied stylesheet's own card
                        (desktop.css:990) — no CSS is added for this. -->
-                  @for (kind of ['warehouse', 'preliminary']; track kind) {
+                  @for (kind of ['readiness', 'warehouse', 'preliminary', 'resubmission', 'final']; track kind) {
                     <div class="d-drawer-grp">
                       <span class="lbl">
-                        {{ lang.t(kind === 'warehouse' ? 'sup_kind_warehouse' : 'sup_kind_preliminary') }}
+                        {{ kindLabel(kind) }}
                         · <bdi>{{ countOf(p.receipts, kind) }}</bdi>
                       </span>
 
@@ -454,6 +461,16 @@
                                 }
                               </div>
                               @if (r.notes) { <div class="nt">{{ r.notes }}</div> }
+                              @if (r.dueDate) { <div class="nt">{{ lang.pick('موعد الاستلام', 'Receipt deadline') }}: <bdi>{{ r.dueDate }}</bdi></div> }
+                              @if (r.relatedReceiptId) { <div class="nt">{{ lang.pick('مرجع الاستلام الأولي', 'Original preliminary receipt') }}: <bdi>{{ receiptReference(r.relatedReceiptId) }}</bdi></div> }
+                              @if (d.canRecord) {
+                                <label class="d-filechip">{{ lang.pick('إضافة مستند', 'Add evidence') }}
+                                  <input type="file" multiple hidden (change)="appendDocuments(r, $event)" />
+                                </label>
+                              }
+                              @if (r.kind === 'preliminary' && canReinspect(r) && d.canRecord) {
+                                <button type="button" class="d-btn sm" (click)="startReceipt('resubmission', r)">{{ kindLabel('resubmission') }}</button>
+                              }
 
                               <!-- THE RECEIPT'S OWN EVIDENCE, which this screen
                                    has never shown: every row carries
@@ -551,8 +568,9 @@
               </div>
 
               <!-- الشكل 51's action bar: استلام مخزني · استلام أولي. -->
-              <div class="d-rpane-f">
+              <div class="rp-f">
                 @if (d.canRecord) {
+                  <button type="button" class="d-btn sm" [disabled]="p.remainingWarehouse <= 0" (click)="startReceipt('readiness')">{{ kindLabel('readiness') }}</button>
                   <button type="button" class="d-btn sm primary"
                           [disabled]="p.remainingWarehouse <= 0"
                           (click)="startReceipt('warehouse')">
@@ -563,12 +581,18 @@
                           (click)="startReceipt('preliminary')">
                     {{ lang.t('sup_kind_preliminary') }}
                   </button>
+                  <!-- P-269 — المسار 11 step 7, «الاستلام النهائي بعد استيفاء الشروط». -->
+                  <button type="button" class="d-btn sm"
+                          [disabled]="p.remainingFinal <= 0"
+                          (click)="startReceipt('final')">
+                    {{ lang.t('sup_kind_final') }}
+                  </button>
                 } @else {
                   <span class="d-cell-sub">{{ lang.t('sup_no_capacity') }}</span>
                 }
               </div>
             } @else {
-              <div class="d-rpane-b">
+              <div class="rp-b">
                 <epm-table-skeleton [cols]="2" [rows]="4" [loadingLabel]="lang.t('loading')" />
               </div>
             }
@@ -600,7 +624,7 @@
 @if (receiptForm(); as kind) {
   @if (detail(); as p) {
     <epm-drawer
-      [title]="lang.t(kind === 'warehouse' ? 'sup_new_warehouse' : 'sup_new_preliminary')"
+      [title]="newTitle(kind)"
       [sub]="p.item.code" [hasFooter]="true" [closeLabel]="lang.t('boq_cancel')"
       (closed)="closeReceipt()">
 
@@ -613,6 +637,11 @@
       <div class="d-drawer-grp">
         <span class="lbl">{{ lang.t('sup_receipt_data') }}</span>
         <div class="d-form-grid">
+          @if (kind === 'readiness') {
+            <label class="d-form-i"><span class="k">{{ lang.pick('موعد الاستلام', 'Receipt deadline') }} *</span>
+              <epm-date [value]="rDueDate()" [label]="lang.pick('موعد الاستلام', 'Receipt deadline')" (changed)="rDueDate.set($event)" />
+            </label>
+          }
           <div class="d-form-i">
             <!-- «رقم الاستلام غير قابل للتحرير» — generated by the server, and
                  there is no field for it here at all. -->
@@ -631,7 +660,7 @@
           </label>
           <label class="d-form-i">
             <span class="k">{{ lang.t('sup_qty') }} *</span>
-            <input class="d-form-input num" inputmode="decimal" [value]="rQty()"
+            <input class="d-form-input num" inputmode="decimal" [value]="rQty()" [readOnly]="kind === 'resubmission'"
                    (input)="setQty($any($event.target).value, $any($event.target))" />
             <!-- 05 §6 — the cap, explained where it applies. `.d-form-hint` is
                  the sheet's own hint tone (supply-items.jsx:252): a ceiling is
@@ -648,11 +677,13 @@
               <input class="d-form-input" [value]="rStore()"
                      (input)="rStore.set($any($event.target).value)" />
             </label>
-          } @else {
+          } @else if (kind !== 'readiness') {
             <label class="d-form-i">
               <span class="k">{{ lang.t('sup_receiver') }} *</span>
-              <select class="epm-select" [value]="rBeneficiary()"
-                      (change)="rBeneficiary.set($any($event.target).value)">
+              <!-- ngModel reapplies the selected value after dynamic options register. -->
+              <select class="d-form-input" [ngModel]="rBeneficiary()"
+                      [disabled]="kind === 'resubmission'"
+                      (ngModelChange)="rBeneficiary.set($event)">
                 @for (b of p.beneficiaries; track b.code) {
                   <option [value]="b.code">{{ benName(b) }}</option>
                 }
@@ -660,8 +691,8 @@
             </label>
             <label class="d-form-i">
               <span class="k">{{ lang.t('sup_conformity') }}</span>
-              <select class="epm-select" [value]="rConformity()"
-                      (change)="rConformity.set($any($event.target).value)">
+              <select class="d-form-input" [ngModel]="rConformity()"
+                      (ngModelChange)="rConformity.set($event)">
                 <option [value]="lang.t('sup_conform_yes')">{{ lang.t('sup_conform_yes') }}</option>
                 <option [value]="lang.t('sup_conform_no')">{{ lang.t('sup_conform_no') }}</option>
               </select>

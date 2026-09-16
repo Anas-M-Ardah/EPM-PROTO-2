@@ -413,6 +413,8 @@ public static class ProgressEndpoints
         var contractRows = new List<ProgressContractDto>();
 
         var effectiveValues = new List<decimal>();
+        var physicalBases = new Dictionary<string, IReadOnlyDictionary<string, decimal>>();
+        var billedByContract = new Dictionary<string, decimal>();
         decimal projectExecuted = 0m;
         decimal plannedWeighted = 0m, plannedBasis = 0m;
 
@@ -426,6 +428,9 @@ public static class ProgressEndpoints
 
             var acts = allActivities.Where(a => a.ContractId == c.Id).ToList();
             var derived = await BoqEndpoints.Derive(db, c.Id, "cost");
+            physicalBases[c.Id] = BoqProgressBasis.For(derived.SelectMany(d => d.Links.Select(l =>
+                new BoqProgressBasis.Contribution(l.Activity.ActivityId, d.Line.Amount, l.SharePct))));
+            billedByContract[c.Id] = derived.Sum(d => d.Line.Amount);
 
             // Which BOQ lines each activity feeds — read off the SAME derivation
             // the reflection table below is built from, so the two cannot name
@@ -537,7 +542,7 @@ public static class ProgressEndpoints
         // activities and there is no second table.
         //
         // A NODE HAS NO PROGRESS OF ITS OWN. Every figure here is rolled up
-        // from the activities beneath it on cost weights, which is the plate's
+        // from the activities beneath it on their allocated BOQ value, which is the plate's
         // «محسوبة صعودًا من الأنشطة المرجّحة بالكلفة» and `02 §4`'s own rule.
         var wbsRows = new List<ProgressWbsDto>();
         foreach (var c in contracts)
@@ -571,19 +576,24 @@ public static class ProgressEndpoints
                     .ToList();
                 if (under.Count == 0) continue;
 
-                var basis = under.Sum(a => a.BudgetedCost);
-                var done = under.Sum(a => a.BudgetedCost * a.ProgressPct / 100m);
+                var physicalBasis = physicalBases[c.Id];
+                var basis = BoqProgressBasis.ScopeTotal(physicalBasis,
+                    under.Select(a => a.ActivityId).ToList(), allActivities
+                        .Where(a => a.ContractId == c.Id && !a.IsMilestone)
+                        .Select(a => a.ActivityId).ToList(),
+                    billedByContract[c.Id]);
+                var done = under.Sum(a => physicalBasis.GetValueOrDefault(a.ActivityId) * a.ProgressPct / 100m);
                 var plan = under.Sum(a =>
                     a.BudgetedCost * PlannedProgress.PlannedPct(a.BaselineStart, a.BaselineFinish, asOf) / 100m);
 
                 var nodeProgress = ProgressReflection.Rollup(basis, done);
-                var nodePlanned = ProgressReflection.Rollup(basis, plan);
+                var nodePlanned = ProgressReflection.Rollup(under.Sum(a => a.BudgetedCost), plan);
 
                 wbsRows.Add(new ProgressWbsDto(
                     path, names[path], names[path],
                     path.Count(ch => ch == PathSep) + 1, c.Id,
                     Q(nodeProgress), Q(nodePlanned), Q(nodeProgress - nodePlanned),
-                    Q(ScheduleWeights.For(basis, contractBasis, contractBasis).Absolute),
+                    Q(ScheduleWeights.For(under.Sum(a => a.BudgetedCost), contractBasis, contractBasis).Absolute),
                     under.Count,
                     under.All(a => a.ProgressPct >= 100m)));
             }

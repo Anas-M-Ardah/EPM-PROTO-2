@@ -113,22 +113,42 @@ public static class PaymentCertificate
     /// «الصرف السنوي لا يتجاوز التخصيص السنوي، والمصروف التراكمي لا يتجاوز
     /// الكلفة المعدلة» — both, in the order the document states them.
     ///
-    /// A null ceiling is NOT a ceiling of zero: a project with no allocation
-    /// recorded for the year, or no revised cost, has nothing to breach and
-    /// this returns null for it (P-09). Refusing on an absent figure would
-    /// block every project the finance directorate has not reached yet.
+    /// THE COST CEILING FALLS BACK, IT DOES NOT DISAPPEAR (P-265, superseding
+    /// P-09's cost half). The revised cost binds when the finance directorate
+    /// has entered one; until then the project's planned cost from المسار 1
+    /// binds — the figure the project was approved at. Under P-09 a missing
+    /// revised cost meant NO ceiling, and a 5,000,000 certificate registered
+    /// against a 950,000 contract.
+    ///
+    /// The ALLOCATION ceiling is still skipped when no allocation row exists for
+    /// the year: an absent allocation has no fallback figure, and refusing on it
+    /// would block every project finance has not reached (P-09's reasoning,
+    /// which still holds for that half).
     /// </summary>
     public static Breach? Ceilings(
         decimal amount,
         decimal spentThisYear, decimal? annualAllocation,
-        decimal spentToDate, decimal? revisedCost)
+        decimal spentToDate, decimal? revisedCost, decimal? plannedCost = null)
     {
         if (annualAllocation is { } alloc && spentThisYear + amount > alloc)
             return new Breach("allocation", alloc, spentThisYear + amount);
 
-        if (revisedCost is { } revised && spentToDate + amount > revised)
-            return new Breach("revised-cost", revised, spentToDate + amount);
+        if ((revisedCost ?? plannedCost) is { } cost && spentToDate + amount > cost)
+            return new Breach(revisedCost is null ? "planned-cost" : "revised-cost", cost, spentToDate + amount);
 
         return null;
     }
+
+    /// <summary>
+    /// A contract may not be certified past its EFFECTIVE value — the original
+    /// plus every applied amendment (P-265). Measured on what is COMMITTED, not
+    /// only on what is paid: a certificate that is pending or certified is a
+    /// claim the ministry has accepted into its route, and two claims that each
+    /// fit alone must not together exceed the contract.
+    /// </summary>
+    /// <param name="committedOnContract">Σ net of every certificate already on the contract (pending, certified, paid), excluding <paramref name="amount"/> itself.</param>
+    public static Breach? ContractCeiling(decimal amount, decimal committedOnContract, decimal effectiveContractValue)
+        => committedOnContract + amount > effectiveContractValue
+            ? new Breach("contract-value", effectiveContractValue, committedOnContract + amount)
+            : null;
 }

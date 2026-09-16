@@ -83,14 +83,20 @@ public static class ChangeOrderGates
             {
                 var remaining = l.ContractedQty - l.ExecutedQty;
 
+                // A decrease is a MAGNITUDE, whichever sign it arrives with. Comparing
+                // the signed figure let −45 against a remaining 38 pass (−45 > 38 is
+                // false) and submitted an order that removes work already executed.
+                var contractorDecrease = Math.Abs(l.ContractorDeltaQty);
+                var reDeptDecrease = Math.Abs(l.ReDeptDeltaQty);
+
                 // Each proposal is checked SEPARATELY (02 §7): the RE department's
                 // decrease may be valid where the contractor's is not.
-                if (l.ContractorDeltaQty > remaining)
+                if (contractorDecrease > remaining)
                     issues.Add(new("decrease-exceeds", l.Code,
                         $"مقترح المقاول يتجاوز الكمية المتبقية ({remaining:0.###})",
                         $"The contractor's decrease exceeds the remaining quantity ({remaining:0.###})"));
 
-                if (l.ReDeptDeltaQty > remaining)
+                if (reDeptDecrease > remaining)
                     issues.Add(new("decrease-exceeds", l.Code,
                         $"مقترح د.م.م يتجاوز الكمية المتبقية ({remaining:0.###})",
                         $"The RE department's decrease exceeds the remaining quantity ({remaining:0.###})"));

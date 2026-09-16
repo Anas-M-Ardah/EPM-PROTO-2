@@ -81,3 +81,11 @@ export class PersonaService {
 export function canDefineProjects(p: Persona | null | undefined): boolean {
   return p?.party === 'الجامعة / التشكيل';
 }
+
+/**
+ * المسار 12 steps 5–6 — approving or rejecting a document revision.
+ * MIRRORS Personas.CanDecideDocument; the server is the enforcement (P-267).
+ */
+export function canDecideDocuments(p: Persona | null | undefined): boolean {
+  return p?.party === 'دائرة المهندس المقيم' || p?.party === 'مدير المشروع';
+}

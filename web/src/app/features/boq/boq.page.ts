@@ -1071,6 +1071,8 @@ export class BoqPage {
       ? ['م³', 'م²', 'م.ط', 'عدد', 'كغم', 'طن', 'نقطة', 'مقطوعية']
       : ['m³', 'm²', 'l.m', 'no.', 'kg', 'ton', 'pt', 'L.S.'];
     const out: string[] = [];
+    // A blank supply catalogue must offer the device unit before its first row exists.
+    if (this.isSupplyBill()) out.push(this.lang.isAr() ? 'جهاز' : 'device');
     for (const r of this.reg()?.rows ?? []) {
       if (r.unit && r.unit !== '—' && !out.includes(r.unit)) out.push(r.unit);
     }

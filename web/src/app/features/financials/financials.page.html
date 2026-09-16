@@ -13,7 +13,7 @@
 
   Every number, date, percentage and ID is <bdi>-isolated (05 §5.2).
 -->
-<div class="d-pframe">
+<div class="d-pframe epm-financials">
 
   @if (loading()) {
     <epm-module-bar [title]="lang.t('mod_financials')" />
@@ -78,6 +78,16 @@
       }
 
       <ng-container actions>
+        @if (heldDesk(); as held) {
+          @if (held.canRelease) {
+            <button type="button" class="d-btn primary epm-finance-release"
+                    [disabled]="releasing() !== 0" (click)="release(held)"
+                    [title]="lang.pick(held.partyAr, held.partyEn) + ' · ' + d.auditSla?.letterNo">
+              <epm-icon name="check" [size]="16" />{{ lang.t('fin_sla_release') }}
+              <bdi>{{ d.auditSla?.letterNo }}</bdi>
+            </button>
+          }
+        }
         <!-- «تصدير» is the module's one permanent action, on every tab. The
              two write actions are NOT here: «تعديل» and «تسجيل دفعة» are both
              الشكل 18's buttons and both live on البيانات المسجّلة, which is the

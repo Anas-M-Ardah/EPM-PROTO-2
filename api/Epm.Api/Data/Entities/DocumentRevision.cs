@@ -50,4 +50,13 @@ public class DocumentRevision
     /// approved at R1 and back in draft at R2.
     /// </summary>
     public string Status { get; set; } = "draft";
+
+    /// <summary>
+    /// المسار 12 steps 5–6 / 5أ — who decided the revision, when (data date),
+    /// and the reason. A rejection without a reason is refused (P-267); an
+    /// approval may carry an optional note. All null until decided.
+    /// </summary>
+    public string? DecisionNote { get; set; }
+    public string? DecidedByUserId { get; set; }
+    public DateOnly? DecidedAt { get; set; }
 }

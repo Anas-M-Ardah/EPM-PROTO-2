@@ -40,6 +40,14 @@ public static class DocumentRevisions
     /// True when this revision has been superseded by a later one. The register
     /// marks it ملغاة and keeps everything else about it.
     /// </summary>
+    /// <summary>
+    /// المسار 12 step 5 — only the CURRENT revision, and only while it is still
+    /// a draft, may be approved or rejected. A superseded revision was replaced
+    /// before anyone decided on it, and a decided one is a record (P-267).
+    /// </summary>
+    public static bool CanDecide(int no, IReadOnlyList<Revision> revisions)
+        => Current(revisions) is { } current && current.No == no && current.Status == "draft";
+
     public static bool IsSuperseded(int no, IReadOnlyList<Revision> revisions)
         => revisions.Any(r => r.No > no);
 

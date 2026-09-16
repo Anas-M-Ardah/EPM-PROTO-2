@@ -12,6 +12,7 @@ import { DateComponent } from '../../shared/date.component';
 import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import { ToastService } from '../../shared/toast.service';
+import { PersonaService, canDecideDocuments } from '../../core/persona';
 import * as fmt from '../../core/format';
 import { DocumentsApi } from './documents.api';
 import { DocumentRow, DocumentsResponse, RevisionInput, RevisionRow } from './documents.types';
@@ -162,6 +163,45 @@ export class DocumentsPage {
       error: e => {
         this.revSaving.set(false);
         this.revError.set(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
+  }
+
+  // ── P-267 — «اعتماد المراجعة» / «رفض المراجعة مع بيان السبب» ────────────
+  // المسار 12 steps 5–6 and 5أ. Offered only on the CURRENT draft and only to
+  // دائرة المهندس المقيم / مدير المشروع; the server enforces both.
+  private persona = inject(PersonaService);
+  canDecide = computed(() => canDecideDocuments(this.persona.current()));
+  rejectingNo = signal<number | null>(null);
+  rejectNote = signal('');
+  deciding = signal(false);
+
+  approveRevision(no: number) { this.decide(no, 'approve', null); }
+
+  startReject(no: number) { this.rejectingNo.set(no); this.rejectNote.set(''); }
+
+  cancelReject() { this.rejectingNo.set(null); this.rejectNote.set(''); }
+
+  confirmReject(no: number) {
+    if (!this.rejectNote().trim()) return;
+    this.decide(no, 'reject', this.rejectNote().trim());
+  }
+
+  private decide(no: number, decision: 'approve' | 'reject', note: string | null) {
+    const doc = this.opened();
+    if (!doc || this.deciding()) return;
+    this.deciding.set(true);
+    this.api.decide(this.projectId(), doc.code, no, { decision, note }).subscribe({
+      next: () => {
+        this.deciding.set(false);
+        this.cancelReject();
+        this.toast.show(this.lang.t(decision === 'approve' ? 'doc_decided_approved' : 'doc_decided_rejected')
+          .replace('{no}', String(no)));
+        this.load();
+      },
+      error: e => {
+        this.deciding.set(false);
+        this.toast.show(e?.error?.message ?? e?.message ?? 'request failed');
       },
     });
   }

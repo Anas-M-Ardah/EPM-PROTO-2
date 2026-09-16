@@ -7,6 +7,35 @@ public class SupplyReceiptsTests
 {
     private static SupplyReceipts.Receipt W(decimal q) => new(SupplyReceipts.Warehouse, q, null);
     private static SupplyReceipts.Receipt P(decimal q, string ben) => new(SupplyReceipts.Preliminary, q, ben);
+    private static SupplyReceipts.Receipt F(decimal q, string ben) => new(SupplyReceipts.Final, q, ben);
+
+    // ── P-269 — the final receipt (المسار 11 step 7) ────────────────────────
+
+    [Fact]
+    public void A_final_receipt_is_capped_by_what_that_beneficiary_took_preliminarily()
+    {
+        // Live audit ITM-004: warehouse 36, preliminary 5 to ub.
+        var receipts = new[] { W(36m), P(5m, "ub") };
+
+        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Final, 5m, "ub", 49m, receipts));
+        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Final, 6m, "ub", 49m, receipts));
+        // nu took nothing preliminarily, so it can finally accept nothing.
+        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Final, 1m, "nu", 49m, receipts));
+    }
+
+    [Fact]
+    public void A_final_receipt_already_booked_reduces_what_is_still_open()
+    {
+        var receipts = new[] { W(36m), P(5m, "ub"), F(3m, "ub") };
+
+        Assert.Equal(2m, SupplyReceipts.Remaining(SupplyReceipts.Final, 49m, receipts));
+        Assert.Null(SupplyReceipts.Check(SupplyReceipts.Final, 2m, "ub", 49m, receipts));
+        Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Final, 3m, "ub", 49m, receipts));
+    }
+
+    [Fact]
+    public void A_final_receipt_requires_the_beneficiary()
+        => Assert.NotNull(SupplyReceipts.Check(SupplyReceipts.Final, 1m, "", 49m, [W(5m), P(5m, "ub")]));
 
     [Fact]
     public void Worked_example_ITM_002_has_sixteen_still_owed()
@@ -104,8 +133,8 @@ public class SupplyReceiptsTests
     [Fact]
     public void An_unknown_kind_is_refused_before_any_quantity_is_looked_at()
     {
-        Assert.NotNull(SupplyReceipts.Check("final", 1m, null, 111m, []));
-        Assert.False(SupplyReceipts.IsKnownKind("final"));
+        Assert.NotNull(SupplyReceipts.Check("handover", 1m, null, 111m, []));
+        Assert.False(SupplyReceipts.IsKnownKind("handover"));
     }
 
     [Fact]
@@ -122,5 +151,6 @@ public class SupplyReceiptsTests
         // الشكل 53 · WR-0439-2-2 and الشكل 52 · PR-0439-… on PRJ-0439's item 2.
         Assert.Equal("WR-0439-2-2", SupplyReceipts.Number(SupplyReceipts.Warehouse, "PRJ-0439", 2, 2));
         Assert.Equal("PR-0439-6-1", SupplyReceipts.Number(SupplyReceipts.Preliminary, "PRJ-0439", 6, 1));
+        Assert.Equal("FR-0439-4-1", SupplyReceipts.Number(SupplyReceipts.Final, "PRJ-0439", 4, 1));
     }
 }

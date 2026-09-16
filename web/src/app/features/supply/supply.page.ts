@@ -1,5 +1,6 @@
 import { Component, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -49,7 +50,7 @@ import {
   selector: 'epm-supply-page',
   standalone: true,
   imports: [IconComponent, StatusPillComponent, TableSkeletonComponent, DrawerComponent,
-    DataTableComponent, CellTemplateDirective, DateComponent],
+    DataTableComponent, CellTemplateDirective, DateComponent, FormsModule],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './supply.page.html',
 })
@@ -76,7 +77,7 @@ export class SupplyPage {
   view = signal<'items' | 'receipts' | 'inquiry'>('items');
 
   /** الشكل 55's «مبدّل نوع الاستلام» — أولي · مخزني. */
-  receiptKind = signal<'warehouse' | 'preliminary'>('warehouse');
+  receiptKind = signal<'warehouse' | 'preliminary' | 'final' | 'readiness' | 'resubmission'>('warehouse');
 
   q = signal('');
   status = signal('');
@@ -221,7 +222,7 @@ export class SupplyPage {
     // merged label that is imprecise in both states.
     {
       key: 'party',
-      label: this.receiptKind() === 'preliminary'
+      label: this.receiptKind() !== 'warehouse'
         ? this.lang.t('sup_recv_party')
         : this.lang.t('sup_store'),
       width: '200px',
@@ -234,7 +235,7 @@ export class SupplyPage {
     // cards differ exactly there, and الشكل 54's field list omits it — so on
     // the أولي side the column would be empty in every row, which is a column
     // that asks the reader to interpret a blank.
-    ...(this.receiptKind() === 'preliminary' ? [] : [{
+    ...(this.receiptKind() !== 'warehouse' ? [] : [{
       key: 'committee' as const, label: this.lang.t('sup_committee_c'),
       kind: 'text' as const, width: '190px',
     }]),
@@ -283,8 +284,24 @@ export class SupplyPage {
    * «سجل الاستلام المخزني» or «سجل الاستلام الأولي». One heading that said
    * «الاستلامات» over a filtered table would be titling the wrong list.
    */
-  recLogTitle = computed(() => this.lang.t(
-    this.receiptKind() === 'preliminary' ? 'sup_log_preliminary' : 'sup_log_warehouse'));
+  recLogTitle = computed(() => this.receiptKind() === 'readiness' || this.receiptKind() === 'resubmission'
+    ? this.kindLabel(this.receiptKind()) : this.lang.t(
+    this.receiptKind() === 'final' ? 'sup_log_final'
+      : this.receiptKind() === 'preliminary' ? 'sup_log_preliminary' : 'sup_log_warehouse'));
+
+  /** P-269 — the three receipt kinds' labels, in one place. */
+  kindLabel(kind: string): string {
+    if (kind === 'readiness') return this.lang.pick('إشعار الجاهزية', 'Readiness notice');
+    if (kind === 'resubmission') return this.lang.pick('معالجة الملاحظات وإعادة العرض', 'Observations and reinspection');
+    return this.lang.t((kind === 'final' ? 'sup_kind_final'
+      : kind === 'preliminary' ? 'sup_kind_preliminary' : 'sup_kind_warehouse') as StrKey);
+  }
+
+  newTitle(kind: string): string {
+    if (kind === 'readiness' || kind === 'resubmission') return this.kindLabel(kind);
+    return this.lang.t((kind === 'final' ? 'sup_new_final'
+      : kind === 'preliminary' ? 'sup_new_preliminary' : 'sup_new_warehouse') as StrKey);
+  }
 
   /**
    * «زر إضافة فقرة». A supply line IS a BOQ line (D-14), and «الإدخال اليدوي»
@@ -339,7 +356,9 @@ export class SupplyPage {
 
   // ── الشكل 53 · الشكل 54 — the two receipt drawers ──────────────────────
 
-  receiptForm = signal<'warehouse' | 'preliminary' | ''>('');
+  receiptForm = signal<'warehouse' | 'preliminary' | 'final' | 'readiness' | 'resubmission' | ''>('');
+  rRelated = signal<number | null>(null);
+  rDueDate = signal('');
   rDate = signal('');
   rQty = signal('');
   rStore = signal('');
@@ -360,26 +379,39 @@ export class SupplyPage {
   cap = computed(() => {
     const d = this.detail();
     if (!d) return 0;
-    return this.receiptForm() === 'preliminary' ? d.remainingPreliminary : d.remainingWarehouse;
+    if (this.receiptForm() === 'resubmission') return d.receipts.find(r => r.id === this.rRelated())?.qty ?? 0;
+    return this.receiptForm() === 'final' ? d.remainingFinal
+      : this.receiptForm() === 'preliminary' ? d.remainingPreliminary : d.remainingWarehouse;
   });
 
-  startReceipt(kind: 'warehouse' | 'preliminary') {
+  startReceipt(kind: 'warehouse' | 'preliminary' | 'final' | 'readiness' | 'resubmission', original?: SupplyReceiptRow) {
     const d = this.detail();
     if (!d) return;
 
     this.receiptForm.set(kind);
+    this.rRelated.set(original?.id ?? null);
+    this.rDueDate.set(this.data()?.asOf ?? '');
     this.rError.set('');
     this.rDate.set(this.data()?.asOf ?? '');
     // Opens on the WHOLE remainder, which is the common case and the one the
     // plate draws (الشكل 53 shows 16 against a remainder of 16).
-    this.rQty.set(String(kind === 'preliminary' ? d.remainingPreliminary : d.remainingWarehouse));
+    this.rQty.set(String(kind === 'final' ? d.remainingFinal
+      : kind === 'preliminary' ? d.remainingPreliminary : d.remainingWarehouse));
     this.rStore.set(kind === 'warehouse' ? this.lang.t('sup_default_store') : '');
-    this.rBeneficiary.set(kind === 'preliminary' ? (d.beneficiaries[0]?.code ?? '') : '');
+    // A final receipt defaults to the first beneficiary that has something
+    // received preliminarily — the only ones that can finally accept anything.
+    this.rBeneficiary.set(kind === 'warehouse' ? ''
+      : kind === 'final' ? (d.beneficiaries.find(b => b.receivedQty > 0)?.code ?? d.beneficiaries[0]?.code ?? '')
+      : (d.beneficiaries[0]?.code ?? ''));
     this.rCommittee.set(this.lang.t(
       kind === 'warehouse' ? 'sup_default_wcommittee' : 'sup_default_pcommittee'));
     this.rConformity.set(this.lang.t('sup_conform_yes'));
     this.rNotes.set('');
     this.rFiles.set([]);
+    if (original) {
+      this.rQty.set(String(original.qty));
+      this.rBeneficiary.set(original.beneficiaryCode ?? d.beneficiaries.find(b => this.benName(b) === original.party)?.code ?? '');
+    }
   }
 
   closeReceipt() { this.receiptForm.set(''); this.rError.set(''); }
@@ -404,8 +436,9 @@ export class SupplyPage {
     this.rFiles.update(list => [
       ...list,
       ...picked.map(f => ({
-        titleAr: this.lang.t(this.receiptForm() === 'preliminary'
-          ? 'sup_doc_preliminary' : 'sup_doc_warehouse'),
+        titleAr: this.receiptForm() === 'readiness' || this.receiptForm() === 'resubmission'
+          ? this.kindLabel(this.receiptForm()) : this.lang.t(this.receiptForm() === 'final' ? 'sup_doc_final'
+          : this.receiptForm() === 'preliminary' ? 'sup_doc_preliminary' : 'sup_doc_warehouse'),
         titleEn: 'Receipt record',
         fileName: f.name,
         sizeBytes: f.size,
@@ -419,7 +452,10 @@ export class SupplyPage {
   receiptValid = computed(() => {
     const n = parseFloat(this.rQty());
     if (!Number.isFinite(n) || n <= 0 || n > this.cap()) return false;
-    return this.receiptForm() === 'preliminary'
+    if (this.receiptForm() === 'readiness') return !!this.rDueDate() && !!this.rNotes().trim();
+    if (this.receiptForm() === 'resubmission' && (!this.rNotes().trim() || !this.rFiles().length)) return false;
+    if (this.rConformity() === this.lang.t('sup_conform_no') && !this.rNotes().trim()) return false;
+    return this.receiptForm() !== 'warehouse'
       ? this.rBeneficiary().length > 0
       : this.rStore().trim().length > 0;
   });
@@ -432,6 +468,8 @@ export class SupplyPage {
 
     this.api.recordReceipt(this.projectId(), this.effectiveContractId(), code, {
       kind: this.receiptForm(),
+      relatedReceiptId: this.rRelated(),
+      dueDate: this.rDueDate(),
       date: this.rDate(),
       qty: parseFloat(this.rQty()),
       store: this.rStore().trim(),
@@ -489,6 +527,26 @@ export class SupplyPage {
   /** الشكل 52's «الاستلام المخزني ·1 / الاستلام الأولي ·1» counts. */
   countOf(rows: { kind: string }[], kind: string): number {
     return rows.filter(r => r.kind === kind).length;
+  }
+
+  canReinspect(r: SupplyReceiptRow): boolean {
+    const latest = this.detail()?.receipts.find(x => x.kind === 'resubmission' && x.relatedReceiptId === r.id);
+    return (r.conformity === 'غير مطابق' || r.conformity === 'Not conforming' || r.conformity === 'Non-conforming') &&
+      latest?.conformity !== 'مطابق' && latest?.conformity !== 'Conforming';
+  }
+
+  receiptReference(id: number): string { return this.detail()?.receipts.find(r => r.id === id)?.no ?? String(id); }
+
+  appendDocuments(r: SupplyReceiptRow, ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const documents = Array.from(input.files ?? []).map(f => ({ titleAr: 'مستند الاستلام',
+      titleEn: 'Receipt evidence', fileName: f.name, sizeBytes: f.size }));
+    if (!documents.length) return;
+    this.api.addDocuments(this.projectId(), this.effectiveContractId(), r.id, documents).subscribe({
+      next: () => { this.open(this.openCode()); this.toast.show(this.lang.t('sup_receipt_saved')); },
+      error: e => this.toast.show(this.message(e)),
+    });
+    input.value = '';
   }
 
   /** «أيقونة نوع الملف» — the plate's own control, from the extension. */

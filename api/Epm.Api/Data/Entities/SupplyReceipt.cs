@@ -64,6 +64,11 @@ public class SupplyReceipt
 
     public string Notes { get; set; } = "";
 
+    /// <summary>Append-only reinspection references its original preliminary receipt.</summary>
+    public int? RelatedReceiptId { get; set; }
+    /// <summary>Supplier's stated receipt deadline; never inferred from the wall clock.</summary>
+    public DateOnly? DueDate { get; set; }
+
     // ── who recorded it ──────────────────────────────────────────────────
     public string ActorId { get; set; } = "";
     public string ActorName { get; set; } = "";

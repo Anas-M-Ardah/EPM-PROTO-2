@@ -235,22 +235,13 @@
 
         @if (view() === 'register') {
           <!-- ══ THE REGISTER ═══════════════════════════════════════════ -->
-          @if (rows().length === 0) {
-            <!-- empty BECAUSE THIS CONTRACT HAS NO BILL — a different state,
-                 with a different message, from "the filter excluded everything"
-                 below (04 §9). -->
-            <div class="d-empty">
-              <span class="d-empty-ico"><epm-icon name="inbox" [size]="30" /></span>
-              <b>{{ lang.t('boq_empty_t') }}</b>
-              <span>{{ lang.t('boq_empty_b') }}</span>
-            </div>
-          } @else {
-            <div class="d-tablewrap">
-
-              <!-- «يُقدَّم للاعتماد ولا يُستبدل الجدول السابق». Said HERE, over
-                   the bill it did not change, because that is where a reader
-                   would otherwise expect the import to have landed. -->
-              @if (pendingImport(); as v) {
+          <!-- «يُقدَّم للاعتماد ولا يُستبدل الجدول السابق». Said HERE, over
+               the bill it did not change, because that is where a reader
+               would otherwise expect the import to have landed.
+               OUTSIDE the empty/non-empty fork: a contract's FIRST version is
+               submitted onto an empty bill, and when this bar sat inside the
+               non-empty branch nobody could ever approve it from the screen. -->
+          @if (pendingImport(); as v) {
                 <!-- المسار 3 step 7 — «اعتماد الإصدار الجديد».
                      SEPARATION OF DUTIES ON SCREEN: the specialist who submitted
                      this sheet sees the bar and no button; إدارة المشاريع sees
@@ -276,7 +267,19 @@
                     </button>
                   }
                 </div>
-              }
+          }
+
+          @if (rows().length === 0) {
+            <!-- empty BECAUSE THIS CONTRACT HAS NO BILL — a different state,
+                 with a different message, from "the filter excluded everything"
+                 below (04 §9). -->
+            <div class="d-empty">
+              <span class="d-empty-ico"><epm-icon name="inbox" [size]="30" /></span>
+              <b>{{ lang.t('boq_empty_t') }}</b>
+              <span>{{ lang.t('boq_empty_b') }}</span>
+            </div>
+          } @else {
+            <div class="d-tablewrap">
 
               <div class="d-toolbar">
                 <div class="d-field">

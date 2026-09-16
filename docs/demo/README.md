@@ -7,6 +7,7 @@ else. It replaced an earlier prose-heavy, single-path version on 2026-09-08.
 | File | What it is |
 |---|---|
 | [`runsheet.html`](runsheet.html) | the data plan — open it in a browser, sidebar navigates by track |
+| [`change-order-video-runsheet.md`](change-order-video-runsheet.md) | Arabic narration cues, shot order, fixture anchors, and reset-safe optional takes for a change-order demo video |
 | [`demo-boq.xlsx`](demo-boq.xlsx) | the works project's four BOQ lines as a workbook, for demoing the `Excel file` import door instead of typing them |
 | [`demo-schedule.xer`](demo-schedule.xer) | the Primavera XER for the works project's schedule — four activities, costs matching the BOQ |
 | [`../BOQ-PARITY-LEDGER.html`](../BOQ-PARITY-LEDGER.html) | companion sheet — where the BOQ and project-type flows still diverge from the source prototype |

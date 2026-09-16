@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
 import {
-  SupplyItemDetailResponse, SupplyItemRow, SupplyRegisterResponse, SupplyReceiptInput,
+  SupplyItemDetailResponse, SupplyItemRow, SupplyRegisterResponse, SupplyReceiptInput, SupplyReceiptDoc,
 } from './supply.types';
 
 /**
@@ -14,6 +14,11 @@ import {
 @Injectable({ providedIn: 'root' })
 export class SupplyApi {
   private api = inject(Api);
+
+  // [EP-SUP-05] POST …/receipts/{receiptId}/documents → SupplyEndpoints.cs
+  addDocuments(projectId: string, contractId: string, receiptId: number, documents: SupplyReceiptDoc[]) {
+    return this.api.post<void>(`${this.base(projectId, contractId)}/receipts/${receiptId}/documents`, documents);
+  }
 
   private base(projectId: string, contractId: string) {
     return `/api/projects/${encodeURIComponent(projectId)}/supply/${encodeURIComponent(contractId)}`;

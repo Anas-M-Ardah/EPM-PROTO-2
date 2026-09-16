@@ -196,7 +196,7 @@ export class ChangeOrderPage {
    */
   consequences(key: string): string[] {
     const d = this.data();
-    const next = d?.stages.find(s => s.applicable && s.status === 'pending');
+    const next = d?.stages.find(s => s.applicable && s.stageNo > (this.currentStage()?.stageNo ?? 0));
     const owner = next ? this.lang.pick(next.ownerParty, next.ownerPartyEn) : '';
     const nextName = next ? this.lang.pick(next.nameAr, next.nameEn) : '';
 
@@ -256,7 +256,16 @@ export class ChangeOrderPage {
   }
 
   /** P-252 — a stage-3 approval with nothing entered is refused server-side too. */
-  approvalsMissing = computed(() => this.isStage3Approve() && this.approvalLines().length === 0);
+  approvalsMissing = computed(() => this.isStage3Approve() && (
+    this.approvalLines().length === 0 || this.approvalLines().some(l => {
+      const a = this.lineApprovals()[l.code];
+      if (!a) return true;
+      if (l.changeType === 'inc' || l.changeType === 'dec')
+        return a.deltaQty === null || !Number.isFinite(a.deltaQty) ||
+          (Math.abs(a.deltaQty) > l.threshold &&
+            (a.excessRate === null || !Number.isFinite(a.excessRate) || a.excessRate <= 0));
+      return l.changeType === 'rate' && (a.rate === null || !Number.isFinite(a.rate) || a.rate <= 0);
+    })));
 
   submitDecision() {
     const key = this.chosen()?.key;

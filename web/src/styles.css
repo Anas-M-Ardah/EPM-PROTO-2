@@ -11,6 +11,97 @@
    font-size outside the eight-step scale 11/11.5/12/13/15/18/21/24 (05 §2).
    ============================================================ */
 
+/* Shared editing surfaces: clear gutters, readable labels, and pinned actions.
+   Definition grids retain their compact layout outside editing surfaces. */
+.d-drawer-body > * { flex-shrink: 0; }
+
+/* Keep report descriptions readable when metadata columns exceed the canvas. */
+.epm-reports .epm-rpt-scroll { overflow-x: auto; }
+.epm-reports .d-table { min-width: 1100px; }
+.epm-reports .d-table th:first-child { min-width: 360px; }
+.epm-reports .d-table tbody td { padding-block: var(--space-16); }
+.epm-reports .d-cell-sub { font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface-variant); }
+.epm-reports .d-toolbar { gap: var(--space-12); }
+.epm-reports .d-scopebar { align-items: flex-start; line-height: var(--lh-300); }
+.d-drawer-body .d-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16) var(--space-20);
+  border: none;
+  background: transparent;
+  overflow: visible;
+}
+.d-drawer-body .d-form-i {
+  border: none;
+  padding: 0;
+  gap: var(--space-8);
+}
+.d-drawer-body .d-form-i .k,
+.d-drawer-grp > .lbl {
+  font-size: var(--fs-200);
+  line-height: var(--lh-300);
+  color: var(--on-surface);
+  font-weight: var(--fw-medium);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.d-drawer-body :is(.d-form-input, .d-form-ro) { min-height: var(--space-48); }
+.d-drawer-body .d-form-ro { height: auto; white-space: normal; line-height: var(--lh-300); }
+.d-drawer-body .d-form-hint { font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface-variant); }
+.d-drawer-body epm-date { display: block; min-width: 0; }
+.d-drawer-foot { flex-shrink: 0; background: var(--surface-container-lowest); flex-wrap: wrap; }
+.d-drawer-foot .d-btn { min-height: var(--space-48); }
+.d-drawer.wide .d-form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+
+.epm-supply .d-rpane > .rp-f { flex-shrink: 0; flex-wrap: wrap; }
+.epm-supply .d-rpane > .rp-f .d-btn { flex: 1 1 auto; white-space: normal; min-height: var(--space-48); }
+.epm-supply .rp-b .d-form-grid { grid-template-columns: minmax(0, 1fr); border: none; background: transparent; }
+.epm-supply .rp-b .d-form-i { padding: var(--space-12) 0; gap: var(--space-6); border-inline-end: none; }
+.epm-supply .rp-b .d-form-i .k { font-size: var(--fs-200); color: var(--on-surface); }
+.epm-supply .rp-b .d-form-i .v { font-size: var(--fs-300); line-height: var(--lh-300); overflow-wrap: anywhere; }
+.epm-supply .d-rcpt :is(.who, .nt) { font-size: var(--fs-200); line-height: var(--lh-300); color: var(--on-surface-variant); overflow-wrap: anywhere; }
+.epm-supply .d-pz6 .seg { flex-wrap: wrap; }
+.epm-financials .d-slastages .sf { flex-wrap: wrap; font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-financials .d-slastages .sf .d-btn { flex: 1 0 100%; min-height: var(--space-48); justify-content: center; }
+.epm-financials .d-slastages .sf .d-btn.primary { color: var(--on-primary); }
+.epm-financials .d-slastages .sh b { white-space: normal; overflow: visible; }
+.epm-financials .epm-finance-release { white-space: normal; flex-shrink: 0; }
+.epm-financials .d-pz6 { flex-shrink: 0; padding-block: var(--space-8); }
+.d-form-i:has(:is(input, select, textarea, epm-date)) { gap: var(--space-8); }
+.d-drawer-body p { font-size: var(--fs-200); line-height: var(--lh-400); color: var(--on-surface); }
+
+/* Project alerts: wrapped controls reserve their full height above the inbox. */
+.epm-project-alerts .d-pz6 {
+  height: auto; min-height: var(--space-48); flex-shrink: 0;
+  flex-wrap: wrap; align-items: center; gap: var(--space-12);
+  padding-block: var(--space-12);
+}
+.epm-project-alerts .d-pz6 .z6-t { flex-wrap: wrap; gap: var(--space-8); }
+.epm-project-alerts .d-pz6 .grp {
+  display: flex; align-items: center; min-width: 0;
+  flex: 1; flex-wrap: wrap; gap: var(--space-8);
+}
+.epm-project-alerts .d-pz6 .z6-t em { color: var(--on-surface-variant); }
+.epm-project-alerts .d-pz6 :is(.d-btn, .d-fchip, .d-seg button) { min-height: var(--space-40); }
+.epm-project-alerts .d-inbox > li { gap: var(--space-12); padding-block: var(--space-16); }
+.epm-project-alerts .d-inbox .bd { gap: var(--space-8); }
+.epm-project-alerts .d-inbox .t { flex-wrap: wrap; gap: var(--space-6) var(--space-10); }
+.epm-project-alerts .d-inbox .t > b {
+  white-space: normal; overflow: visible; text-overflow: clip;
+  overflow-wrap: anywhere; color: var(--on-surface);
+}
+.epm-project-alerts .d-inbox .mt {
+  font-size: var(--fs-200); line-height: var(--lh-400);
+  color: var(--on-surface-variant); gap: var(--space-6) var(--space-8);
+  overflow-wrap: anywhere;
+}
+.epm-project-alerts .d-inbox .mt .mono { word-break: break-word; }
+.epm-project-alerts .d-inbox > li > .d-btn { min-height: var(--space-40); }
+.epm-project-alerts .d-pager { flex-shrink: 0; flex-wrap: wrap; gap: var(--space-8); }
+.epm-project-alerts .d-table :is(.d-cell-sub, .d-cell-strong) {
+  white-space: normal; line-height: var(--lh-400);
+}
+.epm-project-alerts .d-table .d-cell-sub { color: var(--on-surface-variant); }
+
 /* ── THE FOUR ACCESSIBILITY CORRECTIONS ARE REVERTED ──────────────────────
    CLIENT DECISION: visual fidelity to the reference prototype wins over the
    05 §7 floors wherever the two conflict. This file used to override four
@@ -675,6 +766,31 @@ epm-change-orders-page { display: contents; }
    block, and over `transparent` for the row was the same oversight one
    declaration earlier. */
 .d-gantt-row { background: var(--surface-container-lowest); }
+
+/* Schedule: readable rows and opaque names above the scrolling metadata. */
+.epm-schedule .d-pz6 { height: auto; flex-shrink: 0; flex-wrap: wrap; gap: var(--space-12); padding-block: var(--space-12); }
+.epm-schedule .d-pz6 .grp { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.epm-schedule .d-pz6 :is(.d-btn, .d-select) { min-height: var(--space-40); }
+.epm-schedule .d-fsheet-recon { flex-wrap: wrap; gap: var(--space-16); padding: var(--space-16); }
+.epm-schedule .d-gantt-legend { flex-wrap: wrap; gap: var(--space-12) var(--space-16); padding: var(--space-16); font-size: var(--fs-200); color: var(--on-surface-variant); }
+.epm-schedule .d-gantt-colbar { padding: var(--space-8) var(--space-12); }
+.epm-schedule .d-gantt-row { min-height: var(--space-48); }
+.epm-schedule .d-gantt-row.head { min-height: var(--space-80); }
+.epm-schedule .d-gantt-cellname { z-index: 5; font-size: var(--fs-300); }
+.epm-schedule .d-gantt-row.head .d-gantt-cellname { z-index: 6; }
+.epm-schedule .d-gantt-cellname .nm { white-space: normal; line-height: var(--lh-300); }
+.epm-schedule .d-gantt-cellinfo { position: static; width: 565px; grid-template-columns: 44px 76px 76px 76px 76px 44px 52px 60px 60px; }
+.epm-schedule .d-gantt.cols-compact .d-gantt-cellinfo { width: 265px; grid-template-columns: 48px 84px 84px 48px; }
+.epm-schedule .d-gantt-cellinfo .c { font-size: var(--fs-200); }
+.epm-schedule .d-gantt-row.head .d-gantt-cellinfo .c { white-space: normal; line-height: var(--lh-300); letter-spacing: normal; }
+.epm-schedule .d-gantt-mon { height: var(--space-64); font-size: var(--fs-200); white-space: nowrap; }
+.epm-schedule .d-gantt-dd i { top: var(--space-64); inset-inline-start: auto; inset-inline-end: var(--space-4); font-size: var(--fs-200); background: var(--surface-container-low); white-space: nowrap; padding-inline: var(--space-4); }
+.epm-schedule .d-gantt-collapse { width: var(--space-32); height: var(--space-32); }
+.epm-schedule .wide-sched > .d-table { min-width: 1420px; }
+.epm-schedule .wide-sched .d-table th:nth-child(3) { min-width: 240px; }
+.epm-schedule .wide-sched .d-table :is(th, td) { padding-block: var(--space-12); }
+.epm-schedule .wide-sched .d-table td.mono { white-space: nowrap; font-size: var(--fs-200); }
+.epm-schedule .wide-sched .d-table tr.lvl1 { background: var(--surface-container); }
 .d-gantt-row.on { background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)); }
 
 /* ══ SCR-W6 Progress (Phase 4.4) ═════════════════════════════════════════
@@ -1746,3 +1862,9 @@ button.d-file > .fm { align-items: flex-start; }
    shadows (§6: sections are label + space, never nested boxes). */
 .boq-colmenu.inpop { position: static; inset: auto; width: auto; z-index: auto;
   padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+/* The account mark uses the same neutral person glyph in the rail and menu. */
+.epm-account-avatar {
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+}

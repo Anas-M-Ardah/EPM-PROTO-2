@@ -63,6 +63,7 @@ interface MonthCol { label: string; year: string; }
   imports: [IconComponent, StatusPillComponent, SummaryStripComponent, TableSkeletonComponent, PanelHeadComponent,
     AmendmentMarkComponent, AmendmentPanelComponent, ScheduleImportWizard, SelectComponent],
   encapsulation: ViewEncapsulation.None,
+  host: { class: 'epm-schedule' },
   templateUrl: './schedule.page.html',
 })
 export class SchedulePage {
@@ -126,7 +127,7 @@ export class SchedulePage {
   readonly colCount = 13;
 
   /** Pixels per month column. The reference's own 46. */
-  readonly monthWidth = 46;
+  readonly monthWidth = 64;
 
   // ── the gate ───────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ export class SchedulePage {
 
   /** Total inner width: the pinned name block + the info grid + the track. */
   innerWidth = computed(() =>
-    this.nameWidth() + (this.allColumns() ? 564 : 264) + this.trackWidth());
+    this.nameWidth() + (this.allColumns() ? 565 : 265) + this.trackWidth());
 
   /** Where the `--viz-base` data-date line goes. D-06: the project's date. */
   dataDateLeft = computed(() => this.fraction(this.data()?.timeline.dataDate) * this.trackWidth());

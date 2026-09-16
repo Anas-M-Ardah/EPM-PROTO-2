@@ -1,0 +1,12 @@
+ILLUSTRATIVE DEMO LETTER — PROTOTYPE RECORDING ONLY
+Incoming reference: DEMO-IN-01
+Demo data date: 2026-10-01
+Project: PRJ-0443
+Prepared contract: DEMO-CNT-02
+Reason: Increase in concrete quantity (زيادة كمية الخرسانة).
+BOQ line: D-02, reinforced concrete.
+Original quantity: 50 m3; original unit rate: 6,000 IQD.
+Requested increase: 15 m3.
+Contractor proposed excess rate: 7,000 IQD.
+Resident engineer department proposed excess rate: 6,500 IQD.
+These are illustrative inputs from the Track 9 runsheet. This sample does not certify a real request, consultant approval, or signature.

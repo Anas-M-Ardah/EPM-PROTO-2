@@ -39,13 +39,17 @@ public static class AlertInbox
 
     /// <summary>
     /// The alerts the inbox shows: rule enabled, or no rule at all. An alert
-    /// naming a rule that does not exist is treated as suppressed — a dangling
+    /// Built-in supply checks remain live without a configurable rule row.
+    /// An explicit disabled rule still suppresses them. Other alerts
+    /// naming a rule that does not exist are treated as suppressed — a dangling
     /// code is a broken rule, and a broken rule is not a live one.
     /// </summary>
     public static IReadOnlyList<Item> Live(
         IReadOnlyList<Item> alerts, IReadOnlyList<Rule> rules)
     {
         var enabled = rules.Where(r => r.Enabled).Select(r => r.Code).ToHashSet();
+        if (!rules.Any(r => r.Code == SupplyReceipts.AlertRuleCode))
+            enabled.Add(SupplyReceipts.AlertRuleCode);
         return alerts.Where(a => a.RuleCode is null || enabled.Contains(a.RuleCode)).ToList();
     }
 

@@ -19,3 +19,13 @@ Thumbs.db
 
 # Docker
 .env
+
+# Local agent and media-editing work files
+.claude/
+.claude-flow/
+**/.claude-flow/
+artifacts/
+
+# Transient demo-state backups captured while resetting recording fixtures
+docs/demo/tracks/**/receipts-before-*.json
+docs/demo/tracks/**/payment-*-before-*.json

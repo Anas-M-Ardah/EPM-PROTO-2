@@ -1,6 +1,7 @@
 using Epm.Api.Data;
 using Epm.Api.Data.Entities;
 using Epm.Api.Domain;
+using Epm.Api.Features.Dev;
 using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,7 +85,8 @@ public static class DocumentsEndpoints
                     mine.Select(r => new RevisionRow(
                         r.No, r.IssuedOn?.ToString("yyyy-MM-dd"), r.Issuer,
                         r.DescriptionAr, r.DescriptionEn, r.TransmittalNo, r.FileName,
-                        r.Status, DocumentRevisions.IsSuperseded(r.No, model))).ToList());
+                        r.Status, DocumentRevisions.IsSuperseded(r.No, model),
+                        r.DecisionNote, r.DecidedByUserId, r.DecidedAt?.ToString("yyyy-MM-dd"))).ToList());
             }).ToList();
 
             // الشكل 46's folders: «كل الوثائق» then معماري · إنشائي · كهربائي ·
@@ -156,8 +158,23 @@ public static class DocumentsEndpoints
             if (!DateOnly.TryParse(input.IssuedOn, out var issuedOn))
                 issuedOn = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
 
-            var existing = await db.DocumentRevisions
-                .Where(r => r.DocumentId == doc.Id).Select(r => r.No).ToListAsync();
+            var prior = await db.DocumentRevisions
+                .Where(r => r.DocumentId == doc.Id).ToListAsync();
+
+            // المسار 12 step 3 — «لا تكرار في الاسم والإصدار» (P-267). The same
+            // transmittal or the same file on the same document is the same
+            // issue posted twice, and it would silently supersede itself.
+            var transmittal = input.TransmittalNo.Trim();
+            var fileName = input.FileName.Trim();
+            if (prior.Any(r => string.Equals(r.TransmittalNo, transmittal, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(r.FileName, fileName, StringComparison.OrdinalIgnoreCase)))
+                return Results.Conflict(new
+                {
+                    message = $"مراجعة بنفس رقم التحويل «{transmittal}» أو اسم الملف «{fileName}» مسجَّلة لهذه الوثيقة — لا تكرار",
+                    messageEn = "A revision with the same transmittal number or file name is already registered for this document.",
+                });
+
+            var existing = prior.Select(r => r.No).ToList();
             var no = existing.Count == 0 ? 1 : existing.Max() + 1;
 
             db.DocumentRevisions.Add(new DocumentRevision
@@ -179,6 +196,65 @@ public static class DocumentsEndpoints
             await db.SaveChangesAsync();
 
             return Results.Ok(new { documentCode = doc.Code, revisionNo = no });
+        });
+
+        // [EP-DOC-03] POST /api/projects/{projectId}/documents/{code}/revisions/{no}/decision
+        // web: documents.api.ts decide() → documents.page.ts
+        // spec: المسار 12 steps 5–6 · 5أ | rules: DocumentRevisions.CanDecide, Personas.CanDecideDocument
+        // tables: Documents · DocumentRevisions *(written)*
+        // P-267 — «اعتماد المراجعة» / «رفض المراجعة مع بيان السبب». Only the current
+        // draft may be decided; a rejection must state its reason.
+        app.MapPost("/api/projects/{projectId}/documents/{code}/revisions/{no:int}/decision",
+            async (EpmDb db, HttpContext ctx, string projectId, string code, int no, DocumentDecisionInput input) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
+
+            var user = WorkspaceScope.User(ctx);
+            if (!user.CanDecideDocument())
+                return Results.Json(new
+                {
+                    message = "اعتماد الوثائق أو رفضها من صلاحية دائرة المهندس المقيم أو مدير المشروع",
+                    messageEn = "Approving or rejecting a document belongs to the RE department or the project manager.",
+                }, statusCode: StatusCodes.Status403Forbidden);
+
+            var doc = await db.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.ProjectId == projectId && d.Code == code);
+            if (doc is null) return Results.NotFound(new { message = $"document {code} not found on {projectId}" });
+
+            var revisions = await db.DocumentRevisions.Where(r => r.DocumentId == doc.Id).ToListAsync();
+            var target = revisions.FirstOrDefault(r => r.No == no);
+            if (target is null) return Results.NotFound(new { message = $"revision R{no} not found on {code}" });
+
+            var decision = (input.Decision ?? "").Trim().ToLowerInvariant();
+            if (decision is not ("approve" or "reject"))
+                return Results.BadRequest(new { message = "القرار إما اعتماد أو رفض", messageEn = "The decision is approve or reject." });
+
+            var model = revisions.Select(r => new DocumentRevisions.Revision(r.No, r.Status)).ToList();
+            if (!DocumentRevisions.CanDecide(no, model))
+                return Results.Conflict(new
+                {
+                    message = "لا يُبتّ إلا في المراجعة الحالية وهي مسوّدة",
+                    messageEn = "Only the current revision, while it is a draft, can be decided.",
+                });
+
+            var note = input.Note?.Trim();
+            if (decision == "reject" && string.IsNullOrWhiteSpace(note))
+                return Results.UnprocessableEntity(new
+                {
+                    message = "سبب الرفض مطلوب",
+                    messageEn = "A rejection must state its reason.",
+                    field = "note",
+                });
+
+            target.Status = decision == "approve" ? "approved" : "rejected";
+            target.DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note;
+            target.DecidedByUserId = user.Id;
+            // D-06 — the project data date, never the wall clock.
+            target.DecidedAt = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+            await db.SaveChangesAsync();
+            return Results.Ok(new { documentCode = doc.Code, revisionNo = no, status = target.Status });
         });
     }
 }

@@ -125,7 +125,12 @@ public static class ScheduleEndpoints
             // the SAME derivation SCR-W4's register and SCR-W6's editor use, so
             // three screens cannot name different lines for one activity (P-54).
             var feeds = new Dictionary<string, List<string>>();
-            foreach (var d in await BoqEndpoints.Derive(db, contractId, "cost"))
+            var derived = await BoqEndpoints.Derive(db, contractId, "cost");
+            var physicalBasis = BoqProgressBasis.For(derived.SelectMany(d => d.Links.Select(l =>
+                new BoqProgressBasis.Contribution(l.Activity.ActivityId, d.Line.Amount, l.SharePct))));
+            var billed = derived.Sum(d => d.Line.Amount);
+            decimal ProgressBasis(Activity a) => useMh ? Basis(a) : physicalBasis.GetValueOrDefault(a.ActivityId);
+            foreach (var d in derived)
                 foreach (var link in d.Links)
                 {
                     if (!feeds.TryGetValue(link.Activity.ActivityId, out var list))
@@ -133,10 +138,11 @@ public static class ScheduleEndpoints
                     list.Add(d.Item.Code);
                 }
 
-            var rows = Build(activities, Basis, contractTotal, p.DataDate, marks, feeds);
+            var rows = Build(activities, Basis, contractTotal, p.DataDate, marks, feeds,
+                ProgressBasis, useMh ? contractTotal : billed);
 
             var acts = activities.Where(a => !a.IsMilestone).ToList();
-            var achieved = acts.Sum(a => Basis(a) * a.ProgressPct / 100m);
+            var achieved = acts.Sum(a => ProgressBasis(a) * a.ProgressPct / 100m);
 
             // ── ملحق الشكل 21's headline: خط الأساس → المتوقع = التأخر ──────
             // The programme's own dates, which are the LATEST finish on either
@@ -155,7 +161,7 @@ public static class ScheduleEndpoints
                 activities.Count(a => a.IsMilestone),
                 activities.Count(a => a.IsCritical),
                 activities.Count(a => a.Status == "delayed"),
-                Q(ProgressReflection.Rollup(contractTotal, achieved)),
+                Q(ProgressReflection.Rollup(useMh ? contractTotal : billed, achieved)),
                 useMh ? "mh" : "cost",
                 manHoursAvailable,
                 blFinish == default ? null : Iso(blFinish),
@@ -304,7 +310,8 @@ public static class ScheduleEndpoints
     private static List<ScheduleRowDto> Build(
         List<Activity> activities, Func<Activity, decimal> basis, decimal contractTotal, DateOnly? dataDate,
         IReadOnlyDictionary<int, ScheduleAmendmentMark> marks,
-        IReadOnlyDictionary<string, List<string>> feeds)
+        IReadOnlyDictionary<string, List<string>> feeds,
+        Func<Activity, decimal> progressBasis, decimal progressTotal)
     {
         // path → display name, discovered from the activities that live under it
         var nodeNames = new Dictionary<string, string>();
@@ -361,11 +368,16 @@ public static class ScheduleEndpoints
             var under = activities.Where(a => IsUnder(a.WbsPath, path)).ToList();
 
             var w = ScheduleWeights.For(g.Total, contractTotal, ParentTotal(path));
+            var progressUnder = under.Where(a => !a.IsMilestone).ToList();
+            var allProgress = activities.Where(a => !a.IsMilestone).ToList();
+            var nodeBasis = progressUnder.Count == allProgress.Count
+                ? progressTotal : progressUnder.Sum(progressBasis);
+            var nodeDone = progressUnder.Sum(a => progressBasis(a) * a.ProgressPct / 100m);
 
             rows.Add(new ScheduleRowDto(
                 "wbs", path, nodeNames[path], nodeNames[path], path, level,
                 // A node has no status of its own — it is the sum of its parts.
-                "", Q(ProgressReflection.Rollup(g.Total, g.Done)),
+                "", Q(ProgressReflection.Rollup(nodeBasis, nodeDone)),
                 // A node's dates are the span of everything beneath it.
                 Iso(under.Min(a => a.BaselineStart)),
                 Iso(under.Max(a => a.BaselineFinish)),

@@ -36,6 +36,28 @@ public static class SupplyEndpoints
 {
     public static void MapSupplyEndpoints(this WebApplication app)
     {
+        // [EP-SUP-05] POST …/receipts/{receiptId}/documents — append missing evidence; preserve original record.
+        // web: supply.api.ts addDocuments() | proposal track 11: receipt documentation
+        app.MapPost("/api/projects/{projectId}/supply/{contractId}/receipts/{receiptId:int}/documents", async (
+            EpmDb db, HttpContext http, string projectId, string contractId, int receiptId,
+            IReadOnlyList<SupplyReceiptDocDto> documents) =>
+        {
+            var gate = await Gate(db, http, projectId, contractId);
+            if (gate.Refusal is { } refusal) return refusal;
+            if (!gate.User.CanRecordReceipt()) return Results.StatusCode(403);
+            var receipt = await db.SupplyReceipts.AsNoTracking().FirstOrDefaultAsync(r => r.Id == receiptId);
+            if (receipt is null || !await db.BoqItems.AnyAsync(i => i.Id == receipt.BoqItemId && i.ContractId == contractId))
+                return Results.NotFound();
+            var valid = documents.Where(d => !string.IsNullOrWhiteSpace(d.FileName) && d.SizeBytes >= 0).ToList();
+            if (valid.Count == 0) return Results.BadRequest(new { messageAr = "أرفق مستند الاستلام." });
+            foreach (var document in valid)
+                db.SupplyReceiptAttachments.Add(new SupplyReceiptAttachment { ReceiptId = receiptId,
+                    FileName = document.FileName, TitleAr = document.TitleAr, TitleEn = document.TitleEn,
+                    SizeBytes = document.SizeBytes });
+            await db.SaveChangesAsync();
+            await Read(db, contractId); // refresh generated documentation alerts
+            return Results.NoContent();
+        });
         // [EP-SUP-01] GET /api/projects/{projectId}/supply/{contractId}
         // web: supply/supply.api.ts register() → supply.page.ts
         // spec: ملحق الشكل 50 · الشكل 55 | rules: BR-01, BR-08, SupplyStatus, SupplyReceipts
@@ -59,7 +81,8 @@ public static class SupplyEndpoints
                 M(model.Items.Sum(i => i.Amount)),
                 model.BeneficiaryCount,
                 model.Receipts.Count(r => r.Kind == SupplyReceipts.Warehouse),
-                model.Receipts.Count(r => r.Kind == SupplyReceipts.Preliminary));
+                model.Receipts.Count(r => r.Kind == SupplyReceipts.Preliminary),
+                model.Receipts.Count(r => r.Kind == SupplyReceipts.Final));
 
             return Results.Ok(new SupplyRegisterResponse(
                 gate.Project.Id, gate.Project.NameAr, gate.Project.NameEn,
@@ -129,7 +152,11 @@ public static class SupplyEndpoints
                 Q(allocated),
                 Q(Math.Max(0m, item.OriginalQty - allocated)),
                 Q(SupplyReceipts.Remaining(SupplyReceipts.Warehouse, item.OriginalQty, Domain(receipts))),
-                Q(SupplyReceipts.Remaining(SupplyReceipts.Preliminary, item.OriginalQty, Domain(receipts)))));
+                Q(SupplyReceipts.Remaining(SupplyReceipts.Preliminary, item.OriginalQty, Domain(receipts))),
+                Q(SupplyReceipts.Remaining(SupplyReceipts.Final, item.OriginalQty, Domain(receipts))),
+                SupplyReceipts.Alerts(item.OriginalQty, Domain(receipts),
+                    mine.Any(r => r.Kind != SupplyReceipts.Readiness && r.Documents.Count == 0),
+                    gate.AsOf, receipts.LastOrDefault(r => r.Kind == SupplyReceipts.Readiness)?.DueDate)));
         });
 
         // [EP-SUP-03] GET /api/projects/{projectId}/supply/{contractId}/inquiry?q=
@@ -195,7 +222,33 @@ public static class SupplyEndpoints
             if (item is null)
                 return Results.NotFound(new { message = $"supply item {code} not found in {contractId}" });
 
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             var existing = await Receipts(db, item.Id);
+
+            if (input.Kind == SupplyReceipts.Warehouse && string.IsNullOrWhiteSpace(input.Store))
+                return Results.BadRequest(new { messageAr = "المخزن مطلوب." });
+            if (input.Kind == SupplyReceipts.Readiness &&
+                (!DateOnly.TryParse(input.DueDate, out _) || string.IsNullOrWhiteSpace(input.Notes)))
+                return Results.BadRequest(new { messageAr = "موعد الاستلام وبيانات إشعار المجهّز مطلوبة." });
+            if (input.Kind == SupplyReceipts.Resubmission)
+            {
+                var original = existing.FirstOrDefault(r => r.Id == input.RelatedReceiptId &&
+                    r.Kind == SupplyReceipts.Preliminary && r.BeneficiaryCode == input.BeneficiaryCode);
+                if (original is null || SupplyReceipts.IsConforming(original.Conformity) ||
+                    input.Qty != original.Qty || string.IsNullOrWhiteSpace(input.Notes) ||
+                    !(input.Documents?.Any(d => !string.IsNullOrWhiteSpace(d.FileName)) ?? false))
+                    return Results.BadRequest(new { messageAr = "إعادة العرض تتطلب استلاماً أولياً غير مطابق من الفقرة نفسها ومحضر معالجة الملاحظات، دون تغيير الكمية أو الجهة." });
+                if (SupplyReceipts.IsConforming(existing.LastOrDefault(r =>
+                    r.Kind == SupplyReceipts.Resubmission && r.RelatedReceiptId == original.Id)?.Conformity))
+                    return Results.BadRequest(new { messageAr = "أُغلقت ملاحظات هذا الاستلام بالفعل." });
+            }
+            if (input.Kind is SupplyReceipts.Preliminary or SupplyReceipts.Resubmission or SupplyReceipts.Final)
+            {
+                if (input.Conformity is not ("مطابق" or "غير مطابق" or "Conforming" or "Not conforming" or "Non-conforming"))
+                    return Results.BadRequest(new { messageAr = "نتيجة المطابقة مطلوبة." });
+                if (!SupplyReceipts.IsConforming(input.Conformity) && string.IsNullOrWhiteSpace(input.Notes))
+                    return Results.BadRequest(new { messageAr = "سجّل الملاحظات عند عدم المطابقة." });
+            }
 
             // `Domain/SupplyReceipts` — the ceiling, per kind. The wizard caps
             // the field; this is the rule, and a cap in a form is a courtesy
@@ -205,9 +258,13 @@ public static class SupplyEndpoints
                     item.OriginalQty, Domain(existing)) is { } bad)
                 return Results.BadRequest(new { messageAr = bad.MessageAr, messageEn = bad.MessageEn });
 
+            if (input.Kind == SupplyReceipts.Final && (!SupplyReceipts.IsConforming(input.Conformity) ||
+                !(input.Documents?.Any(d => !string.IsNullOrWhiteSpace(d.FileName)) ?? false)))
+                return Results.BadRequest(new { messageAr = "الاستلام النهائي يتطلب المطابقة ومحضر الاستلام النهائي." });
+
             // A preliminary receipt names a beneficiary; that beneficiary must
             // exist and be active (`02 §8`'s own import gate, at the movement).
-            if (input.Kind == SupplyReceipts.Preliminary)
+            if (input.Kind is SupplyReceipts.Preliminary or SupplyReceipts.Final or SupplyReceipts.Resubmission)
             {
                 var ben = await db.Workspaces.AsNoTracking()
                     .FirstOrDefaultAsync(w => w.Code == input.BeneficiaryCode);
@@ -231,11 +288,13 @@ public static class SupplyEndpoints
                 Date = DateOnly.TryParse(input.Date, out var d) ? d : gate.AsOf,
                 Qty = input.Qty,
                 Store = input.Kind == SupplyReceipts.Warehouse ? (input.Store ?? "").Trim() : "",
-                BeneficiaryCode = input.Kind == SupplyReceipts.Preliminary
+                BeneficiaryCode = input.Kind is SupplyReceipts.Preliminary or SupplyReceipts.Final or SupplyReceipts.Resubmission
                     ? (input.BeneficiaryCode ?? "").Trim() : "",
                 Committee = (input.Committee ?? "").Trim(),
                 Conformity = (input.Conformity ?? "").Trim(),
                 Notes = (input.Notes ?? "").Trim(),
+                RelatedReceiptId = input.Kind == SupplyReceipts.Resubmission ? input.RelatedReceiptId : null,
+                DueDate = input.Kind == SupplyReceipts.Readiness && DateOnly.TryParse(input.DueDate, out var due) ? due : null,
                 ActorId = gate.User.Id,
                 ActorName = gate.User.NameAr,
                 ActorParty = gate.User.Party,
@@ -257,6 +316,7 @@ public static class SupplyEndpoints
             await db.SaveChangesAsync();
 
             // THE WHOLE REGISTER COMES BACK. One receipt moves the item's
+            await transaction.CommitAsync();
             // received quantity, its status chip, the beneficiary's المستلم
             // column, the totals strip and the receipts tab's own count — the
             // same reason SCR-W4's writes return the whole bill.
@@ -272,7 +332,8 @@ public static class SupplyEndpoints
                 M(model.Items.Sum(i => i.Amount)),
                 model.BeneficiaryCount,
                 model.Receipts.Count(r => r.Kind == SupplyReceipts.Warehouse),
-                model.Receipts.Count(r => r.Kind == SupplyReceipts.Preliminary));
+                model.Receipts.Count(r => r.Kind == SupplyReceipts.Preliminary),
+                model.Receipts.Count(r => r.Kind == SupplyReceipts.Final));
 
             return Results.Ok(new SupplyRegisterResponse(
                 gate.Project.Id, gate.Project.NameAr, gate.Project.NameEn,
@@ -337,6 +398,7 @@ public static class SupplyEndpoints
             // DERIVED, every one of them (01 §3).
             var received = SupplyReceipts.ReceivedInto(asDomain);
             var handed = SupplyReceipts.HandedOver(asDomain);
+            var finalised = SupplyReceipts.Finalised(asDomain);
 
             items.Add(new SupplyItemRow(
                 seq, d.Item.Code, d.Item.DescriptionAr, d.Item.DescriptionEn, d.Item.Unit,
@@ -346,13 +408,14 @@ public static class SupplyEndpoints
                 // manufacturer and model off it (supply-items.jsx:30).
                 d.Item.DescriptionAr,
                 s.Manufacturer, s.Country, s.Model, s.SerialFrom, s.SerialTo,
-                Q(s.SuppliedQty), Q(received), Q(handed),
+                Q(s.SuppliedQty), Q(received), Q(handed), Q(finalised),
                 Q(SupplyStatus.Remaining(d.Item.OriginalQty, received)),
                 Q(SupplyStatus.ReceivedPct(d.Item.OriginalQty, received)),
                 SupplyStatus.Of(d.Item.OriginalQty, s.SuppliedQty, received),
                 s.WarrantyMonths, s.WarrantyExpiry?.ToString("yyyy-MM-dd"), s.Notes,
                 mine.Count(r => r.Kind == SupplyReceipts.Warehouse),
                 mine.Count(r => r.Kind == SupplyReceipts.Preliminary),
+                mine.Count(r => r.Kind == SupplyReceipts.Final),
                 mine.Sum(r => docs.GetValueOrDefault(r.Id)?.Count ?? 0)));
         }
 
@@ -365,16 +428,44 @@ public static class SupplyEndpoints
 
             return new SupplyReceiptRow(
                 r.Id, r.No, r.Kind, r.Date.ToString("yyyy-MM-dd"), Q(r.Qty),
-                r.Kind == SupplyReceipts.Preliminary
+                r.Kind != SupplyReceipts.Warehouse
                     ? benNames.GetValueOrDefault(r.BeneficiaryCode, r.BeneficiaryCode)
                     : r.Store,
                 r.Committee, r.Conformity, r.Notes,
                 item.Item.Code, item.Item.DescriptionAr, itemSeq,
                 (docs.GetValueOrDefault(r.Id) ?? [])
                     .Select(a => new SupplyReceiptDocDto(a.TitleAr, a.TitleEn, a.FileName, a.SizeBytes))
-                    .ToList());
+                    .ToList(), r.RelatedReceiptId, r.DueDate?.ToString("yyyy-MM-dd"), r.BeneficiaryCode);
         }).ToList();
 
+        // Receipt alert outputs also appear in the existing central/project registers.
+        var contract = await db.Contracts.AsNoTracking().FirstAsync(c => c.Id == contractId);
+        var project = await db.Projects.AsNoTracking().FirstAsync(p => p.Id == contract.ProjectId);
+        var asOf = project.DataDate ?? contract.Start;
+        var previousAlerts = await db.Alerts.Where(a => a.ProjectId == project.Id &&
+            a.RuleCode == SupplyReceipts.AlertRuleCode && a.TargetRef != null && a.TargetRef.StartsWith(contractId + "/")).ToListAsync();
+        var activeTargets = new HashSet<string>();
+        foreach (var item in items)
+        {
+            var itemReceipts = receiptRows.Where(r => r.ItemCode == item.Code).ToList();
+            var source = receipts.Where(r => r.BoqItemId == byId.First(x => x.Value.Item.Code == item.Code).Key).ToList();
+            foreach (var title in SupplyReceipts.Alerts(item.ContractedQty, Domain(source),
+                itemReceipts.Any(r => r.Kind != SupplyReceipts.Readiness && r.Documents.Count == 0),
+                asOf, source.FirstOrDefault(r => r.Kind == SupplyReceipts.Readiness)?.DueDate))
+            {
+                var target = contractId + "/" + item.Code + "/" + title;
+                activeTargets.Add(target);
+                if (!previousAlerts.Any(a => a.TargetRef == target))
+                    db.Alerts.Add(new Alert { ProjectId = project.Id, RuleCode = SupplyReceipts.AlertRuleCode, Kind = "other",
+                        Severity = "warning", TitleAr = title + " — " + item.Code,
+                        TitleEn = (title == "استلام متأخر" ? "Late receipt" : title == "نقص في مستندات الاستلام" ?
+                            "Missing receipt documents" : "Incomplete item receipt") + " — " + item.Code,
+                        TargetRef = target, RaisedAt = asOf.ToDateTime(TimeOnly.MinValue), DueOn = asOf });
+            }
+        }
+        // Retain acknowledgement history; remove only obsolete unacknowledged generated outputs.
+        db.Alerts.RemoveRange(previousAlerts.Where(a => !a.Acknowledged && !activeTargets.Contains(a.TargetRef!)));
+        await db.SaveChangesAsync();
         return new Model(items, receiptRows,
             dist.Select(x => x.BeneficiaryCode).Distinct().Count());
     }
@@ -387,7 +478,8 @@ public static class SupplyEndpoints
 
     /// <summary>Entity rows → the shape `Domain/SupplyReceipts` reasons about.</summary>
     private static List<SupplyReceipts.Receipt> Domain(IEnumerable<SupplyReceipt> rows) =>
-        rows.Select(r => new SupplyReceipts.Receipt(r.Kind, r.Qty, r.BeneficiaryCode)).ToList();
+        rows.Select(r => new SupplyReceipts.Receipt(r.Kind, r.Qty, r.BeneficiaryCode,
+            r.Id, r.Conformity, r.RelatedReceiptId)).ToList();
 
     /// <summary>The item's 1-based position in its bill — the receipt number reads it.</summary>
     private static async Task<int> Seq(EpmDb db, string contractId, int boqItemId)
