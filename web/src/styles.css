@@ -1104,7 +1104,11 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 /* ── EP-WSP-02 create-workspace form ──────────────────────────────────────
    A drawer, per 04 §3 ("secondary detail goes in a drawer, not an in-place
    expander"). Fields stack; the two short codes share a row because they are
-   read together. Tokens only. */
+   read together. Tokens only.
+
+   THIS IS THE BASELINE and it stays the baseline. The 12-column treatment
+   below is scoped to the two form PAGES, which have a canvas to spend; a
+   440px drawer does not, and the grid made it worse there. */
 .epm-ws-form { display: flex; flex-direction: column; gap: var(--space-16); }
 .epm-ws-f { display: flex; flex-direction: column; gap: var(--space-6, 6px); }
 .epm-ws-f > span {
@@ -1114,6 +1118,69 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
 .epm-ws-f > small { font-size: 11px; color: var(--on-surface-variant); }
 .epm-ws-f2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
 
+/* ── THE FORM-PAGE GRID — project definition · contract definition ────────
+   The same class names, on the two screens that are PAGES. They used to be
+   the drawer's flex column with its rigid `1fr 1fr` pair, which gave a
+   four-digit year the same width as a full Arabic project name and stretched
+   a single input across a 1920px canvas.
+
+   Here it is TWO EQUAL COLUMNS, and the first version of this got it wrong.
+   It sized each field to its content on a 12-column grid — seven columns for
+   a name, three for a year, five for a status — which is right in a record
+   pane and wrong on an entry form: every row then ended in a different place
+   and the column down the inline-END side came out ragged. Twenty-four fields
+   want a RHYTHM, not twenty-four individual decisions.
+
+   So the cell is always a half and the control always fills it. Capping the
+   short controls instead — a 240px box for a year, a full one for a name, in
+   two cells of the same size — was tried and dropped: it reads as an uneven
+   form rather than a considered one. Uniformity is the point. `.c12` is the
+   single escape, for the one field that genuinely needs the row: the
+   description textarea.
+
+   `.epm-ws-f2` — an authored pair — becomes `display: contents`, so its two
+   children join the parent grid directly. That keeps the document order
+   exactly as authored while letting fields flow on and fill the rows, instead
+   of each pair reserving a row of its own and leaving half of it empty.
+
+   The breakpoint is a CONTAINER query: the module frame the contract form
+   sits in is narrower than the canvas the project form sits on, and it is the
+   container, not the viewport, that decides whether two columns fit. */
+epm-project-form-page .epm-ws-form, epm-contract-form-page .epm-ws-form {
+  container-type: inline-size;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-32); row-gap: var(--space-20); align-items: start;
+}
+/* label above control — the implicit `<label>`-wraps-its-input association
+   both forms rely on (there is no for/id), so this stays a flex column. */
+epm-project-form-page .epm-ws-f, epm-contract-form-page .epm-ws-f {
+  grid-column: span 1; display: flex; flex-direction: column;
+  gap: var(--space-6); min-width: 0; }
+epm-project-form-page .epm-ws-f > span, epm-contract-form-page .epm-ws-f > span {
+  font-size: var(--fs-200); line-height: var(--lh-200);
+  font-weight: var(--fw-semibold); color: var(--on-surface);
+}
+epm-project-form-page .epm-ws-f > span > i,
+epm-contract-form-page .epm-ws-f > span > i { margin-inline-start: var(--space-4); }
+epm-project-form-page .epm-ws-f > small, epm-contract-form-page .epm-ws-f > small {
+  font-size: var(--fs-200); line-height: var(--lh-200); }
+epm-project-form-page .epm-ws-f2, epm-contract-form-page .epm-ws-f2 { display: contents; }
+
+/* the one escape from the rhythm */
+epm-project-form-page .epm-ws-f.c12, epm-contract-form-page .epm-ws-f.c12 { grid-column: 1 / -1; }
+
+@container (max-width: 640px) {
+  epm-project-form-page .epm-ws-form, epm-contract-form-page .epm-ws-form {
+    grid-template-columns: minmax(0, 1fr); }
+}
+
+/* A control on a form page is not a control in a toolbar: 40px comfortable /
+   34px compact, so the click target and the air around the text both grow. */
+epm-project-form-page .epm-ws-form :is(.d-form-input, .epm-select, .epm-date),
+epm-contract-form-page .epm-ws-form :is(.d-form-input, .epm-select, .epm-date) {
+  min-height: var(--ctl-h-lg); }
+epm-project-form-page .epm-ws-form textarea.d-form-input,
+epm-contract-form-page .epm-ws-form textarea.d-form-input { min-height: var(--space-80); }
 /* ── المسار 1 project form ────────────────────────────────────────────────
    The same three classes above carry the project definition card; these two
    are the only things it needs that the drawer did not. A field that failed
@@ -1440,7 +1507,8 @@ button.d-file > .fm { align-items: flex-start; }
    for an emblem colour — it derives one from the entity's code. The preview
    below is the only thing that shows it. */
 
-/* What the row will look like before it exists. */
+/* What the row will look like before it exists. It is a grid item now, and
+   it is a preview of the whole mark, so it takes the whole row. */
 .epm-ws-preview {
   display: flex; align-items: center; gap: var(--space-12);
   padding: var(--space-12); border: 1px solid var(--outline-variant);
@@ -1868,3 +1936,124 @@ button.d-file > .fm { align-items: flex-start; }
   background: var(--surface-container-high);
   border: 1px solid var(--outline-variant);
 }
+
+/* ══ THE FORM PAGE — measure, section rhythm, refusal band ════════════════
+   Management read these three screens as dense. The grid above fixed the
+   field widths; this fixes the page around them.
+
+   MEASURE. `.d-canvas-wrap` caps a PAGE at 1280/1480px (desktop.css:196) and
+   `.d-pz7` caps nothing at all, so at 1920 a single Arabic name field ran the
+   width of the screen and the eye had to travel the whole way back for the
+   next label. A form is read one line at a time, so it gets its own, shorter
+   measure, centred — the same reasoning as `.d-page-head p`'s 64ch.
+
+   SECTIONS. Both definition forms are the documented exception — see
+   CLAUDE.md §6 and P-301 in DECISIONS.md. They carry `[boxed]` sections,
+   which is `.d-sec.boxed` (desktop.css:1538), the same opt-in the
+   change-order screens already use. Chosen by the client from four mocked
+   directions. Nothing here invents a card: the rules below only tune the
+   padding, radius and title of the treatment that primitive already ships. */
+:root { --epm-form-measure: 1080px; }
+
+epm-project-form-page { display: block; max-inline-size: var(--epm-form-measure); margin-inline: auto; }
+/* `.d-pz7` is a COLUMN flex container (desktop.css:2429), and on a flex item
+   `margin-inline: auto` cancels the stretch — without the explicit 100% each
+   section shrank to its content and the form came out 120px wide. */
+epm-contract-form-page .d-pz7 > * {
+  inline-size: 100%; max-inline-size: var(--epm-form-measure); margin-inline: auto; }
+
+/* ── the definition forms' quiet panels ───────────────────────────────────
+   `.d-sec.boxed` was tuned for the change-order record, where a block holds
+   three or four read-only figures. A definition form holds eight fields in
+   two columns, so the interior needs the page's own padding step and the
+   corner matches `.d-panel` / `.d-card-sub` (--r-lg) rather than the drawer's
+   --r-md — on a 1080px block a 6px corner reads as an accident.
+
+   QUIET is the whole point: one hairline, one white plane, no shadow
+   (CLAUDE.md §6 — nothing floats). The panel separates; it does not lift. */
+epm-project-form-page .d-sec.boxed, epm-contract-form-page .d-sec.boxed {
+  margin-bottom: var(--space-20); border-radius: var(--r-lg);
+  border-color: var(--outline-variant); background: var(--surface-container-lowest);
+  box-shadow: none;
+}
+epm-project-form-page epm-section:last-of-type .d-sec.boxed,
+epm-contract-form-page epm-section:last-of-type .d-sec.boxed { margin-bottom: 0; }
+epm-project-form-page .d-sec.boxed > .d-sec-h,
+epm-contract-form-page .d-sec.boxed > .d-sec-h {
+  padding: var(--space-12) var(--space-20); min-height: 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+/* A panel title names the block it encloses, so it sits one step above the
+   12px field labels inside it and below the 24px page title (05 §2). */
+epm-project-form-page .d-sec.boxed > .d-sec-h .ttl,
+epm-contract-form-page .d-sec.boxed > .d-sec-h .ttl {
+  font-size: var(--fs-300); line-height: var(--lh-300); font-weight: var(--fw-semibold); }
+epm-project-form-page .d-sec.boxed > .d-sec-b,
+epm-contract-form-page .d-sec.boxed > .d-sec-b {
+  padding: var(--space-16) var(--space-20) var(--space-20); margin-top: 0; }
+/* A collapsed section («كتاب الإحالة» opens closed) is a header with no body,
+   so its header carries the panel's whole bottom edge. */
+epm-contract-form-page .d-sec.boxed:not(:has(> .d-sec-b)) > .d-sec-h { border-bottom: 0; }
+
+/* ── the field's remaining states ─────────────────────────────────────────
+   `.d-form-input` ships a default, a hover and a focus. A control that has
+   no error ring and no disabled treatment is three-fifths of a component, so
+   the other two are specified here, in the two places they are read.
+
+   ERROR takes a ring, not just a border, so the refused field is findable
+   after a 422 without hunting — and it is still never colour alone: the
+   reason is always rendered under it as `small.epm-f-err`.
+
+   DISABLED is «--surface-container / muted text / not-allowed, NEVER
+   opacity» (05 §4). مساحة العمل here, and رمز العقد + مبلغ الإحالة on the
+   contract form after the first save, are read-only context: they must look
+   unavailable without looking broken. */
+epm-project-form-page .epm-ws-form .epm-invalid:focus,
+epm-contract-form-page .epm-ws-form .epm-invalid:focus,
+epm-project-form-page .epm-ws-form .epm-invalid:focus-visible,
+epm-contract-form-page .epm-ws-form .epm-invalid:focus-visible {
+  outline: none; border-color: var(--error);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 18%, transparent);
+}
+epm-project-form-page .epm-ws-form .d-form-input:disabled,
+epm-contract-form-page .epm-ws-form .d-form-input:disabled {
+  opacity: 1; cursor: not-allowed;
+  background: var(--surface-container); color: var(--on-surface-variant);
+  border-color: var(--outline-variant);
+}
+
+/* The form-level refusal («تعذّر الحفظ. راجع الحقول أدناه.») was bare red text
+   the width of the page, indistinguishable from a caption. On a form it is a
+   band: its own ground, its own hairline, its own padding — and still text,
+   never colour alone (05 §7.6). Scoped to the three form hosts so the SAME
+   class inside a progress row or a BOQ cell stays the inline note it is. */
+epm-project-form-page > .d-inline-err,
+epm-contract-form-page .d-pz7 > .d-inline-err {
+  display: flex; align-items: flex-start; gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  border-radius: var(--r-md); background: var(--error-container);
+  margin-block-end: var(--space-16);
+}
+
+/* ── two §7 defects in the shared controls, fixed where they are read ──────
+   §7.7 is a contract: `:focus-visible` on EVERY interactive element, 2px
+   --primary. desktop.css:450 sets `outline: none` on `.d-form-input:focus`
+   and replaces it with a 1px inset underline, which cancels the global ring
+   from tokens.css:391 for every input in the app. The underline stays for
+   mouse focus; the ring comes back for the keyboard. */
+.d-form-input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* §4: a disabled control is «--surface-container / --fg-disabled /
+   --outline-variant / not-allowed — NEVER opacity». desktop.css:3369 used
+   `opacity: .5`, which dims the label and the icon with the button and lands
+   the text at an unreadable contrast. This is the Save button while saving. */
+.d-btn:disabled, .d-btn[disabled] {
+  opacity: 1; cursor: not-allowed;
+  background: var(--surface-container); color: var(--fg-disabled);
+  border-color: var(--outline-variant); box-shadow: none;
+}
+
+/* The one off-scale size left in the shared input (desktop.css:448 ships a
+   literal 14px with no line-height of its own). */
+.d-form-input { font-size: var(--fs-300); line-height: var(--lh-300); }

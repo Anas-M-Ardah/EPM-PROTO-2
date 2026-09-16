@@ -143,6 +143,15 @@ From client review. These are the ones most likely to be "simplified" by mistake
 - **No uppercase, no letter-spacing** — Arabic has no case and letter-spacing breaks its shaping.
 - **Nothing floats.** Separation is hairlines and plane changes, never shadows.
 - Sections are **label + space**, never nested boxes. Tables are the primary element, not cards.
+  **Two opt-in exceptions, both client-chosen, both `<epm-section [boxed]="true">`** — the
+  change-order wizard and record page (they match the reference, `vo-*.jsx`), and the
+  **project definition form** (`/projects/new`, chosen from four mocked directions — P-301 in
+  `DECISIONS.md`). `[boxed]` is the only sanctioned way to draw one: it is a hairline, a white
+  plane and a radius, never a shadow, and nothing floats. The default stays `false`, so every
+  other call site is unaffected. **Do not add a third without asking** — put the question in
+  `DECISIONS.md` (§8) first. A long entry FORM is the case this exception covers: twenty-odd
+  inputs whose own borders already carve the page up, where a bare hairline under a title
+  stopped reading as a group boundary. It is not a licence to box a register, a tab or a card.
 - Summary strips use `grid-template-columns: repeat(auto-fit, minmax(120px,1fr))` — **never** a
   pinned column count, never `flex: 1 1 <basis>` (`05 §8`).
 - **Status is never colour-only** — every pill carries a label.
