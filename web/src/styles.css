@@ -1146,8 +1146,13 @@ epm-workspaces-page > .d-grid.c2 > .d-panel { block-size: 100%; }
    The breakpoint is a CONTAINER query: the module frame the contract form
    sits in is narrower than the canvas the project form sits on, and it is the
    container, not the viewport, that decides whether two columns fit. */
+/* The container is the section BODY, not the form. An element is never its
+   own query container — declaring `container-type` on `.epm-ws-form` and then
+   asking `@container` to restyle `.epm-ws-form` matches nothing, so the
+   single-column collapse silently never fired and a 420px form still drew two
+   173px columns. Measured, not guessed. */
+epm-project-form-page .d-sec-b, epm-contract-form-page .d-sec-b { container-type: inline-size; }
 epm-project-form-page .epm-ws-form, epm-contract-form-page .epm-ws-form {
-  container-type: inline-size;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: var(--space-32); row-gap: var(--space-20); align-items: start;
 }
@@ -2055,5 +2060,10 @@ epm-contract-form-page .d-pz7 > .d-inline-err {
 }
 
 /* The one off-scale size left in the shared input (desktop.css:448 ships a
-   literal 14px with no line-height of its own). */
-.d-form-input { font-size: var(--fs-300); line-height: var(--lh-300); }
+   literal 14px). Only the SIZE moves onto the token — pairing it with
+   `--lh-300` clipped Arabic: Cairo needs a 23px line box at 14px, and
+   `.epm-select-v` is `overflow: hidden`, so the trigger's value lost 3px off
+   its descenders. The control is a fixed-height flex box that centres its own
+   content, so the line box is free to be as tall as the script needs. */
+.d-form-input { font-size: var(--fs-300); }
+.epm-select-v, .epm-date-v { line-height: normal; }
