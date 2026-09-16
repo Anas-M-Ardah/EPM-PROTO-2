@@ -16,6 +16,15 @@ export interface RevisionRow {
   status: string;
   /** ملغاة — kept in the register, never removed. */
   superseded: boolean;
+  /** P-267 — the rejection reason, or an optional approval note. */
+  decisionNote: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+}
+
+export interface DocumentDecisionInput {
+  decision: 'approve' | 'reject';
+  note: string | null;
 }
 
 export interface DocumentRow {

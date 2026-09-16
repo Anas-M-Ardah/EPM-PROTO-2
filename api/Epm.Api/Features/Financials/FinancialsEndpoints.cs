@@ -686,7 +686,7 @@ public static class FinancialsEndpoints
             // يتجاوز الكلفة المعدلة». Measured on the PROJECT, not the
             // contract: an allocation is released to a project and the revised
             // cost is the project's budget.
-            if (await Ceilings(db, p, net) is { } breach)
+            if (await Ceilings(db, p, contract.Id, net) is { } breach)
                 return Results.UnprocessableEntity(BreachMessage(breach));
 
             // P-79 — NO PAYMENT CODE IS INVENTED. The number is the next
@@ -843,7 +843,7 @@ public static class FinancialsEndpoints
             // stood then. Months of route later the allocation may have been
             // consumed by another certificate or the revised cost lowered by
             // الشكل 18, and THIS is the moment the money moves.
-            if (transition.Disbursed && await Ceilings(db, p, payment.NetAmount) is { } breach)
+            if (transition.Disbursed && await Ceilings(db, p, payment.ContractId, payment.NetAmount, payment.Id) is { } breach)
                 return Results.UnprocessableEntity(BreachMessage(breach));
 
             desk.FinishedAt = asOf;
@@ -1063,9 +1063,32 @@ public static class FinancialsEndpoints
     /// contract is measured against the same pair.
     /// </summary>
     private static async Task<PaymentCertificate.Breach?> Ceilings(
-        EpmDb db, Data.Entities.Project p, decimal amount)
+        EpmDb db, Data.Entities.Project p, string contractId, decimal amount, int? excludingPaymentId = null)
     {
         var asOf = p.DataDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // ── P-265 — the contract's own ceiling, checked first ─────────────
+        // A certificate may not take the contract past its EFFECTIVE value
+        // (original + applied amendments). Everything already on the contract's
+        // route counts — pending, certified or paid — except the certificate
+        // being released, which is `amount` itself.
+        var contract = await db.Contracts.AsNoTracking().FirstAsync(c => c.Id == contractId);
+        var deltas = await db.ContractAmendments.AsNoTracking()
+            .Where(a => a.ContractId == contractId)
+            .Select(a => new Amendments.Delta(a.No, a.DeltaValue, a.DeltaDays, a.AppliedAt != null))
+            .ToListAsync();
+        var effective = Amendments.Effective(
+            new Amendments.Version(0, contract.OriginalValue, contract.OriginalFinish, contract.OriginalDurationDays),
+            deltas).Value;
+        // Resolve the optional ID before EF parameterizes the expression.
+        // EF 9 can otherwise rebuild this comparison as int != int?, throwing
+        // at disbursement when excludingPaymentId has a value.
+        var excludedPaymentId = excludingPaymentId.GetValueOrDefault();
+        var committed = await db.Payments.AsNoTracking()
+            .Where(x => x.ContractId == contractId && x.Id != excludedPaymentId)
+            .SumAsync(x => (decimal?)x.NetAmount) ?? 0m;
+        if (PaymentCertificate.ContractCeiling(amount, committed, effective) is { } overContract)
+            return overContract;
 
         var ids = await db.Contracts.AsNoTracking()
             .Where(c => c.ProjectId == p.Id).Select(c => c.Id).ToListAsync();
@@ -1088,28 +1111,30 @@ public static class FinancialsEndpoints
         return PaymentCertificate.Ceilings(
             amount,
             PaymentCertificate.SpentIn(lines, asOf.Year), alloc,
-            PaymentCertificate.Disbursed(lines), p.RevisedCost);
+            PaymentCertificate.Disbursed(lines), p.RevisedCost, p.PlannedCost);
     }
 
     /// <summary>
     /// The 422 a breached ceiling produces. Names WHICH ceiling and BY HOW
     /// MUCH — «تجاوز» with no figure is a refusal the person cannot act on.
     /// </summary>
-    private static object BreachMessage(PaymentCertificate.Breach b) => b.Key == "allocation"
-        ? new
+    private static object BreachMessage(PaymentCertificate.Breach b)
+    {
+        var (ar, en) = b.Key switch
         {
-            messageAr = $"الصرف السنوي يتجاوز التخصيص — {b.Would:N0} مقابل تخصيص {b.Ceiling:N0} د.ع، بزيادة {b.Excess:N0}.",
-            messageEn = $"Annual spend would exceed the allocation — {b.Would:N0} against {b.Ceiling:N0} IQD, over by {b.Excess:N0}.",
-            field = "grossAmount",
-            ceiling = b.Key,
-        }
-        : new
+            "allocation" => ("الصرف السنوي يتجاوز التخصيص", "Annual spend would exceed the allocation"),
+            "contract-value" => ("مجموع مستخلصات العقد يتجاوز قيمته النافذة", "The contract's certificates would exceed its effective value"),
+            "planned-cost" => ("المصروف التراكمي يتجاوز الكلفة المقررة (لم تُدخَل كلفة معدلة)", "Cumulative spend would exceed the planned cost (no revised cost entered)"),
+            _ => ("المصروف التراكمي يتجاوز الكلفة المعدلة", "Cumulative spend would exceed the revised cost"),
+        };
+        return new
         {
-            messageAr = $"المصروف التراكمي يتجاوز الكلفة المعدلة — {b.Would:N0} مقابل {b.Ceiling:N0} د.ع، بزيادة {b.Excess:N0}.",
-            messageEn = $"Cumulative spend would exceed the revised cost — {b.Would:N0} against {b.Ceiling:N0} IQD, over by {b.Excess:N0}.",
+            messageAr = $"{ar} — {b.Would:N0} مقابل {b.Ceiling:N0} د.ع، بزيادة {b.Excess:N0}.",
+            messageEn = $"{en} — {b.Would:N0} against {b.Ceiling:N0} IQD, over by {b.Excess:N0}.",
             field = "grossAmount",
             ceiling = b.Key,
         };
+    }
 
     /// <summary>
     /// What الشكل 19 calls a recorded edit. The four keys `EP-FIN-04` writes,

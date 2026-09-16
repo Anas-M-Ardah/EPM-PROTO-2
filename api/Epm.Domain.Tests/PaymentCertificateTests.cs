@@ -32,6 +32,43 @@ public class PaymentCertificateTests
 
     // ── the four figures ────────────────────────────────────────────────────
 
+    // ── P-265 — the cost ceiling falls back to the planned cost ─────────────
+
+    [Fact]
+    public void Without_a_revised_cost_the_planned_cost_is_the_ceiling()
+    {
+        // Live audit 2026-09-13 (T8.5): planned 1,000,000, no revised cost, no
+        // allocation — a 5,000,000 certificate registered. It must breach.
+        var b = PaymentCertificate.Ceilings(5_000_000m, 0m, null, 0m, revisedCost: null, plannedCost: 1_000_000m);
+
+        Assert.NotNull(b);
+        Assert.Equal("planned-cost", b!.Key);
+        Assert.Equal(4_000_000m, b.Excess);
+    }
+
+    [Fact]
+    public void A_revised_cost_outranks_the_planned_cost()
+    {
+        var b = PaymentCertificate.Ceilings(1_500_000m, 0m, null, 0m, revisedCost: 2_000_000m, plannedCost: 1_000_000m);
+        Assert.Null(b);
+    }
+
+    [Fact]
+    public void With_neither_cost_nor_allocation_there_is_still_no_project_ceiling()
+        => Assert.Null(PaymentCertificate.Ceilings(5_000_000m, 0m, null, 0m, null, null));
+
+    [Fact]
+    public void A_contract_cannot_be_certified_past_its_effective_value()
+    {
+        // 950,000 contract, 100,000 already on its route: 900,000 more breaches by 50,000.
+        var b = PaymentCertificate.ContractCeiling(900_000m, 100_000m, 950_000m);
+
+        Assert.NotNull(b);
+        Assert.Equal("contract-value", b!.Key);
+        Assert.Equal(50_000m, b.Excess);
+        Assert.Null(PaymentCertificate.ContractCeiling(850_000m, 100_000m, 950_000m));
+    }
+
     [Fact]
     public void Net_is_gross_less_retention_less_advance_recovery()
         => Assert.Equal(52_700_000m, PaymentCertificate.Net(62_000_000m, 3_100_000m, 6_200_000m));

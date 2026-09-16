@@ -39,6 +39,7 @@ import { ReportRow, ReportCategory, ReportLabel, ReportProject, ReportCounts } f
   standalone: true,
   imports: [IconComponent, TableSkeletonComponent, PageHeadComponent, PagerComponent],
   encapsulation: ViewEncapsulation.None,
+  host: { class: 'epm-reports' },
   templateUrl: './reports.page.html',
 })
 export class ReportsPage {

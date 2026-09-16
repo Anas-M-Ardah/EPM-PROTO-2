@@ -291,6 +291,7 @@
                             } @else {
                               <span class="d-pill ongoing">{{ lang.t('doc_current') }}</span>
                             }
+                            <span class="d-pill" [class]="'d-pill ' + statusClass(r.status)">{{ statusLabel(r.status) }}</span>
                           </b>
                           <span>{{ r.issuer }} · {{ description(r) }}</span>
                           <span class="mono">
@@ -304,6 +305,41 @@
                           <epm-icon name="download" [size]="15" />
                         </button>
                       </div>
+
+                      @if (r.decisionNote) {
+                        <span class="d-cell-sub">{{ lang.t('doc_decision_note') }}: {{ r.decisionNote }}</span>
+                      }
+
+                      <!-- P-267 — المسار 12 steps 5–6 / 5أ, on the current draft only. -->
+                      @if (canDecide() && !r.superseded && r.status === 'draft') {
+                        @if (rejectingNo() === r.no) {
+                          <div class="d-form-field f-full">
+                            <label [for]="'rej-' + r.no">{{ lang.t('doc_reject_reason') }}<span class="req" aria-hidden="true">*</span></label>
+                            <input [id]="'rej-' + r.no" type="text" class="d-form-input"
+                                   [value]="rejectNote()" (input)="rejectNote.set($any($event.target).value)" />
+                          </div>
+                          <div class="d-l14-decfoot">
+                            <button type="button" class="d-btn sm" [disabled]="deciding()" (click)="cancelReject()">
+                              {{ lang.t('doc_pick_cancel') }}
+                            </button>
+                            <span class="sp"></span>
+                            <button type="button" class="d-btn sm primary"
+                                    [disabled]="deciding() || !rejectNote().trim()" (click)="confirmReject(r.no)">
+                              {{ lang.t('doc_reject_confirm') }}
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="d-l14-decfoot">
+                            <button type="button" class="d-btn sm" [disabled]="deciding()" (click)="startReject(r.no)">
+                              <epm-icon name="close" [size]="15" />{{ lang.t('doc_reject') }}
+                            </button>
+                            <span class="sp"></span>
+                            <button type="button" class="d-btn sm primary" [disabled]="deciding()" (click)="approveRevision(r.no)">
+                              <epm-icon name="check" [size]="15" />{{ lang.t('doc_approve') }}
+                            </button>
+                          </div>
+                        }
+                      }
                     </div>
                   }
                 </epm-section>

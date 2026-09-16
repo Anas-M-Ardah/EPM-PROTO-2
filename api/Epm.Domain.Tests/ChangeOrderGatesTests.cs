@@ -38,6 +38,26 @@ public class ChangeOrderGatesTests
     }
 
     [Fact]
+    public void A_decrease_sent_as_a_negative_delta_is_measured_as_a_magnitude()
+    {
+        // Live audit 2026-09-13 (T9.3): −45 against a remaining 38 was accepted,
+        // because −45 > 38 is false. The sign a caller uses must not matter.
+        var issues = ChangeOrderGates.Validate(Order([
+            new("AUD-02", "CNT-0279-EM", "dec", ContractedQty: 50m, ExecutedQty: 12m,
+                ContractorDeltaQty: -45m, ReDeptDeltaQty: -45m),
+        ]));
+
+        Assert.Equal(2, issues.Count);
+        Assert.All(issues, i => Assert.Equal("decrease-exceeds", i.Gate));
+    }
+
+    [Fact]
+    public void A_negative_decrease_within_the_remaining_quantity_still_passes()
+        => Assert.Empty(ChangeOrderGates.Validate(Order([
+            new("BQ-002", "CNT-0279-EM", "dec", 100m, 90m, -8m, -8m),
+        ])));
+
+    [Fact]
     public void A_decrease_within_the_remaining_quantity_passes()
         => Assert.Empty(ChangeOrderGates.Validate(Order([
             new("BQ-002", "CNT-0279-EM", "dec", 100m, 90m, 8m, 8m),

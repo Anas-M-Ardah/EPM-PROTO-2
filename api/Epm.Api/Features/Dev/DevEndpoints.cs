@@ -1,5 +1,6 @@
 using Epm.Api.Data;
 using Epm.Api.Features.Lookups;
+using Epm.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Epm.Api.Features.Dev;
@@ -70,6 +71,25 @@ public static class DevEndpoints
             Fixture.Load(db);
             return Results.Ok(new { ok = true, projects = await db.Projects.CountAsync() });
         });
+
+        // [EP-DEV-04] POST /api/dev/projects/{projectId}/document-prerequisites
+        // operator: FULL-FLOW-RECORDING.md | tables: Documents · DocumentRevisions
+        // Explicit sample preparation, not a production document-registration action.
+        app.MapPost("/api/dev/projects/{projectId}/document-prerequisites",
+            async (EpmDb db, IWebHostEnvironment env, HttpContext ctx, string projectId) =>
+            {
+                if (!env.IsDevelopment()) return Results.NotFound();
+                if (!WorkspaceScope.User(ctx).MinistryWide)
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                if (!await db.Projects.AnyAsync(p => p.Id == projectId))
+                    return Results.NotFound(new { message = "Target project does not exist." });
+                var added = await DemoDocuments.AddMissingAsync(db, projectId);
+                return Results.Ok(new
+                {
+                    projectId, added,
+                    message = "Illustrative document prerequisites prepared. Existing records preserved; no file bytes stored."
+                });
+            });
 
         // [EP-DEV-03] GET /api/dev/personas
         // web: persona.ts load() | The switcher in the command bar.

@@ -173,6 +173,13 @@ public static class ProjectsEndpoints
             Apply(p, input.Definition);
             Suggest(p, ws, nextNo);
 
+            // P-268 — a project defined without a data date had no "now": every
+            // date it later recorded fell back to the wall clock (D-06), and its
+            // alert rules could never be evaluated. It joins the portfolio at the
+            // data date the rest of the portfolio already stands on.
+            p.DataDate ??= await db.Projects.AsNoTracking().MaxAsync(x => x.DataDate)
+                           ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
             // ── المسار 1 step 3 — THE ONLY GATE ──────────────────────────
             // With the review step gone this is the last check the definition
             // ever gets, so it runs at save. A saved project is immediately in
@@ -192,6 +199,8 @@ public static class ProjectsEndpoints
             p.UpdatedAt = Today(p);
 
             db.Projects.Add(p);
+            // P-268 — the plate's fourteen alert rules, so the project can raise alerts.
+            db.AlertRules.AddRange(ProjectAlerts.DefaultAlertRules.For(p.Id));
             db.ProjectActivityEvents.Add(Event(p.Id, "created", user, Today(p)));
             await db.SaveChangesAsync();
 

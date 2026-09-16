@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { DocumentsResponse, RevisionInput } from './documents.types';
+import { DocumentDecisionInput, DocumentsResponse, RevisionInput } from './documents.types';
 
 /** Every call SCR-W12 makes — one, and it carries the revisions with it. */
 @Injectable({ providedIn: 'root' })
@@ -26,6 +26,16 @@ export class DocumentsApi {
   uploadRevision(projectId: string, code: string, body: RevisionInput) {
     return this.api.post<{ documentCode: string; revisionNo: number }>(
       `/api/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(code)}/revisions`,
+      body);
+  }
+
+  // [EP-DOC-03] POST /api/projects/{id}/documents/{code}/revisions/{no}/decision
+  //   → api/Features/Documents/DocumentsEndpoints.cs
+  //
+  // P-267 — «اعتماد المراجعة» / «رفض المراجعة مع بيان السبب» (المسار 12 steps 5–6, 5أ).
+  decide(projectId: string, code: string, no: number, body: DocumentDecisionInput) {
+    return this.api.post<{ documentCode: string; revisionNo: number; status: string }>(
+      `/api/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(code)}/revisions/${no}/decision`,
       body);
   }
 }

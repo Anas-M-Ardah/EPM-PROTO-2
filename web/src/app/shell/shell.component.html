@@ -130,7 +130,7 @@
                 [attr.aria-haspopup]="'dialog'"
                 [attr.aria-expanded]="!!accountAnchor()"
                 (click)="openAccount(acctBtn)">
-          <span class="d-side-av" aria-hidden="true">{{ initials() }}</span>
+          <span class="d-side-av epm-account-avatar" aria-hidden="true"><epm-icon name="person" [size]="20" /></span>
           <span class="d-side-acct-id">
             <b>{{ personaName() }}</b>
             <span>{{ personaRole() }}</span>
@@ -350,7 +350,7 @@
                [label]="lang.t('persona')"
                (closed)="closeOverlays()">
     <div class="d-pop-row" style="cursor:default">
-      <span class="d-side-av" aria-hidden="true">{{ initials() }}</span>
+      <span class="d-side-av epm-account-avatar" aria-hidden="true"><epm-icon name="person" [size]="20" /></span>
       <span class="d-pop-row-tx">
         <b>{{ personaName() }}</b>
         <span>{{ personaRole() }}</span>

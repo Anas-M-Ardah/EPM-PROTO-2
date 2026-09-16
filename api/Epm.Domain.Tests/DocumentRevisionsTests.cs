@@ -17,6 +17,22 @@ public class DocumentRevisionsTests
         new(2, "draft"),
     ];
 
+    // ── P-267 — which revision may be approved or rejected ──────────────────
+
+    [Fact]
+    public void Only_the_current_draft_can_be_decided()
+    {
+        Assert.True(DocumentRevisions.CanDecide(2, StDr002));
+        Assert.False(DocumentRevisions.CanDecide(1, StDr002));   // superseded
+    }
+
+    [Fact]
+    public void A_revision_already_decided_cannot_be_decided_again()
+    {
+        DocumentRevisions.Revision[] decided = [new(1, "approved"), new(2, "rejected")];
+        Assert.False(DocumentRevisions.CanDecide(2, decided));
+    }
+
     [Fact]
     public void The_current_revision_is_the_highest_NUMBER()
     {

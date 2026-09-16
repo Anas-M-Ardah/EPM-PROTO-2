@@ -327,6 +327,14 @@ public static class Personas
     /// its remit is a change to the order and not the receipt of a device.
     /// Recorded in DECISIONS rather than stretched to fit.
     /// </summary>
+    /// <summary>
+    /// المسار 12 steps 5–6 / 5أ — «قرار الاعتماد» belongs to إدارة المشاريع,
+    /// resolved the way P-157 resolves it everywhere else in this file:
+    /// دائرة المهندس المقيم or مدير المشروع (P-267).
+    /// </summary>
+    public static bool CanDecideDocument(this Persona p) =>
+        p.Party is "دائرة المهندس المقيم" or "مدير المشروع";
+
     public static bool CanRecordReceipt(this Persona p) =>
         p.Party is "لجنة الفحص والاستلام" or "مدير المشروع";
 }

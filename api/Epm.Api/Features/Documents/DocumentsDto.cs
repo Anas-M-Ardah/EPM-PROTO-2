@@ -17,7 +17,15 @@ public record RevisionRow(
     string TransmittalNo,
     string FileName,
     string Status,
-    bool Superseded);
+    bool Superseded,
+    /// <summary>P-267 — the reason on a rejection, an optional note on an approval.</summary>
+    string? DecisionNote,
+    string? DecidedByUserId,
+    string? DecidedAt);
+
+/// <param name="Decision">`approve` or `reject` — المسار 12 step 6 / 5أ.</param>
+/// <param name="Note">Required on `reject` («رفض المراجعة مع بيان السبب»).</param>
+public record DocumentDecisionInput(string Decision, string? Note);
 
 /// <param name="CurrentRevisionNo">
 /// The highest revision number — DERIVED by Domain/DocumentRevisions, never a

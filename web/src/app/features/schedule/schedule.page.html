@@ -354,7 +354,7 @@
                     </button>
                   </div>
 
-                  <div class="d-gantt-scroll">
+                  <div class="d-gantt-scroll" tabindex="0" role="region" [attr.aria-label]="lang.t('scd_wbs_activity')">
                     <div class="d-gantt-inner" [style.width.px]="innerWidth()">
 
                       <!-- ── header ─────────────────────────────────────── -->
@@ -674,10 +674,20 @@
                         @if (r.kind === 'wbs') {
                           <tr class="lvl1">
                             <td class="mono d-cell-sub"><bdi>{{ r.path }}</bdi></td>
-                            <td colspan="6" class="d-cell-strong"
-                                [style.padding-inline-start.px]="8 + indent(r.level)">{{ name(r) }}</td>
-                            <td class="r"></td>
-                            <td class="r"></td>
+                            <td class="d-cell-sub">—</td>
+                            <td class="d-cell-strong" [style.padding-inline-start.px]="8 + indent(r.level)">
+                              <button type="button" class="d-gantt-collapse" [attr.aria-label]="name(r)"
+                                      [attr.aria-expanded]="isOpen(r.path)" (click)="toggle(r.path)">
+                                <epm-icon [name]="isOpen(r.path) ? 'expand_more' : 'chevron_left'" [size]="16" />
+                              </button>
+                              {{ name(r) }}
+                            </td>
+                            <td class="r d-cell-sub">—</td>
+                            <td class="mono"><bdi>{{ fmt.date(r.baselineStart) }}</bdi></td>
+                            <td class="mono"><bdi>{{ fmt.date(r.baselineFinish) }}</bdi></td>
+                            <td class="mono"><bdi>{{ fmt.date(r.forecastFinish) }}</bdi></td>
+                            <td class="r mono"><bdi>{{ fmt.delta(r.slipDays) }}</bdi></td>
+                            <td class="r d-cell-sub">—</td>
                             <td class="r mono"><bdi>{{ fmt.pct(r.progress, 0) }}</bdi></td>
                             <td class="r mono"><bdi>{{ fmt.money(r.budgetedCost) }}</bdi></td>
                             <td class="r mono"><bdi>{{ fmt.pct(r.relativeWeight, 1) }}</bdi></td>

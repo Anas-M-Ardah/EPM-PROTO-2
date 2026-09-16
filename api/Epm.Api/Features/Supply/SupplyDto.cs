@@ -36,6 +36,8 @@ public record SupplyItemRow(
     decimal SuppliedQty,
     decimal ReceivedQty,
     decimal HandedOverQty,
+    /// <summary>P-269 — Σ FINAL receipts: what beneficiaries have finally accepted.</summary>
+    decimal FinalQty,
     decimal RemainingQty,
     decimal ReceivedPct,
     string Status,
@@ -44,6 +46,7 @@ public record SupplyItemRow(
     string Notes,
     int WarehouseReceipts,
     int PreliminaryReceipts,
+    int FinalReceipts,
     int Documents);
 
 /// <param name="AllocatedQty">المخصص — from `BoqDistributions` (BR-08).</param>
@@ -76,7 +79,10 @@ public record SupplyReceiptRow(
     string ItemCode,
     string ItemDevice,
     int ItemSeq,
-    IReadOnlyList<SupplyReceiptDocDto> Documents);
+    IReadOnlyList<SupplyReceiptDocDto> Documents,
+    int? RelatedReceiptId = null,
+    string? DueDate = null,
+    string? BeneficiaryCode = null);
 
 /// <param name="ItemCount">الشكل 50's footer — «الفقرات 7 / 7».</param>
 /// <param name="ReceivedPct">Σ received ÷ Σ contracted, at the bill level.</param>
@@ -89,7 +95,8 @@ public record SupplyTotals(
     decimal Amount,
     int Beneficiaries,
     int WarehouseReceipts,
-    int PreliminaryReceipts);
+    int PreliminaryReceipts,
+    int FinalReceipts);
 
 /// <param name="CountByStatus">
 /// الشكل 50's five filter chips, EVERY key present including the zeroes: a chip
@@ -127,7 +134,10 @@ public record SupplyItemDetailResponse(
     decimal UnallocatedQty,
     /// <summary>What may still be booked, per kind — الشكل 53/54's «المتبقي».</summary>
     decimal RemainingWarehouse,
-    decimal RemainingPreliminary);
+    decimal RemainingPreliminary,
+    /// <summary>P-269 — handed over and not yet finally accepted (all beneficiaries).</summary>
+    decimal RemainingFinal,
+    IReadOnlyList<string>? Alerts = null);
 
 /// <summary>الشكل 53 · الشكل 54 — the two receipt drawers, one shape.</summary>
 /// <param name="No">
@@ -144,4 +154,6 @@ public record SupplyReceiptInput(
     string? Committee,
     string? Conformity,
     string? Notes,
-    IReadOnlyList<SupplyReceiptDocDto>? Documents);
+    IReadOnlyList<SupplyReceiptDocDto>? Documents,
+    int? RelatedReceiptId = null,
+    string? DueDate = null);

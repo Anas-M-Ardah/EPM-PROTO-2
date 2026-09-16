@@ -12,6 +12,17 @@ public class AlertInboxTests
 {
     private static readonly DateOnly DataDate = new(2026, 8, 2);
 
+    [Fact]
+    public void Built_in_supply_checks_are_visible_and_count_only_open_due_alerts()
+    {
+        AlertInbox.Item[] alerts = [new(1, "SUP-11", DataDate, false),
+            new(2, "SUP-11", DataDate, true), new(3, "R99", DataDate, false)];
+        var live = AlertInbox.Live(alerts, []);
+        Assert.Equal(new[] { 1, 2 }, live.Select(a => a.Id));
+        Assert.Equal(1, AlertInbox.NeedsAction(live, DataDate));
+        Assert.Empty(AlertInbox.Live(alerts, [new("SUP-11", false)]));
+    }
+
     /// <summary>
     /// The plate's own inbox, as this fixture records it: eight alerts, four of
     /// them still open, three of those already due.

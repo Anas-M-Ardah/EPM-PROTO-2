@@ -44,6 +44,19 @@ public static class ProjectAlertsEndpoints
                 .OrderBy(r => r.Id)
                 .ToListAsync();
 
+            // P-268 — a project with no rule could never raise an alert. Give it
+            // the plate's set once; after that the rules are the project's own
+            // and switching one off is remembered.
+            if (rules.Count == 0)
+            {
+                db.AlertRules.AddRange(DefaultAlertRules.For(projectId));
+                await db.SaveChangesAsync();
+                rules = await db.AlertRules.AsNoTracking()
+                    .Where(r => r.ProjectId == projectId)
+                    .OrderBy(r => r.Id)
+                    .ToListAsync();
+            }
+
             // The DATA DATE, never a wall clock (D-06). A project with no data
             // date has no "now" to measure against, so every alert reads as a
             // notice rather than silently becoming overdue.

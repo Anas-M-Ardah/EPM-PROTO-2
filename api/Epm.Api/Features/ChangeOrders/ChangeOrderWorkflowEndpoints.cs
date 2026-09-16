@@ -217,14 +217,15 @@ public static class ChangeOrderWorkflowEndpoints
             {
                 // `03 §5` — back into the chain at the first applicable stage,
                 // with the clock restarting from today-as-the-project-knows-it.
-                var first = stages.First(s => s.Applicable);
-                foreach (var s in stages.Where(s => s.Applicable && s.Status == "returned"))
-                    s.Status = "pending";
-                first.Status = "active";
-                first.SentAt = asOf;
-                first.ActionedAt = null;
-                first.Decision = null;
-                order.Lifecycle = "pending";
+                var reviewLines = await db.ChangeOrderLines.Where(l => l.ChangeOrderId == order.Id).ToListAsync();
+                var previousReview = JsonSerializer.Serialize(new { stages, lines = reviewLines,
+                    order.ApprovedValue, order.ApprovedDays, order.DecisionDate, order.ApprovingAuthority });
+                ChangeOrderReview.Restart(order, stages, reviewLines, asOf);
+                db.ChangeOrderAuditEntries.Add(Audit(order, asOf, persona!.Id, "review-restarted", null,
+                    "review-cycle", previousReview,
+                    JsonSerializer.Serialize(new { stages, lines = reviewLines,
+                        order.ApprovedValue, order.ApprovedDays, order.DecisionDate, order.ApprovingAuthority }),
+                    "أُعيد بدء المسار وأُلغيت القيم المعتمدة السابقة لحين إعادة التدقيق."));
             }
             else
             {
@@ -251,6 +252,18 @@ public static class ChangeOrderWorkflowEndpoints
                     var itemById = items.ToDictionary(i => i.Id);
                     var lineByCode = lines.ToDictionary(l =>
                         itemById.TryGetValue(l.BoqItemId, out var it) ? it.Code : "—");
+
+                    // Validate every required line before mutating any approved figures.
+                    var required = lineByCode.Where(x => x.Value.ReDeptDeltaQty is not null || x.Value.ReDeptNewRate is not null);
+                    if (input.Approvals.Select(a => a.Code).Distinct().Count() != input.Approvals.Count
+                        || input.Approvals.Any(a => !lineByCode.ContainsKey(a.Code))
+                        || required.Any(x => input.Approvals.FirstOrDefault(a => a.Code == x.Key) is not { } a
+                            || !ChangeOrderReview.ValidApproval(x.Value, a.DeltaQty, a.Rate, a.ExcessRate)))
+                        return Results.UnprocessableEntity(new
+                        {
+                            message = "يجب إدخال القيمة المعتمدة من لجنة تثبيت الأسعار قبل اعتماد هذه المرحلة",
+                            field = "approvals",
+                        });
 
                     foreach (var a in input.Approvals)
                     {

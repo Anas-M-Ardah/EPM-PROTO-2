@@ -73,7 +73,7 @@
         } @else {
           <option value="" [selected]="!projectId()">{{ lang.t('rpt_all_projects') }}</option>
           @for (p of projects(); track p.id) {
-            <option [value]="p.id" [selected]="p.id === projectId()">{{ lang.pick(p.nameAr, p.nameEn) }}</option>
+            <option [value]="p.id" [selected]="p.id === projectId()">{{ p.id }} · {{ lang.pick(p.nameAr, p.nameEn) }}</option>
           }
         }
       </select>
@@ -104,7 +104,7 @@
       <div class="d-scopebar">
         <epm-icon name="info" [size]="15" />
         <span>{{ lang.t('rpt_scoped_to') }}
-          <b>{{ lang.pick(p.nameAr, p.nameEn) }}</b> — {{ lang.t('rpt_scoped_note') }}</span>
+          <b><bdi>{{ p.id }}</bdi> · {{ lang.pick(p.nameAr, p.nameEn) }}</b> — {{ lang.t('rpt_scoped_note') }}</span>
       </div>
     }
 
@@ -116,6 +116,7 @@
         <button type="button" class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
       </div>
     } @else {
+      <div class="epm-rpt-scroll" tabindex="0" role="region" [attr.aria-label]="lang.t('nav_reports')">
       <table class="d-table">
         <thead>
           <tr>
@@ -182,6 +183,7 @@
           }
         </tbody>
       </table>
+      </div>
 
       <epm-pager
         [page]="page()"
