@@ -42,6 +42,7 @@ var builder = WebApplication.CreateBuilder(args);
 // default that silently works.
 builder.Services.AddDbContext<EpmDb>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("Epm")));
+builder.Services.AddHttpClient();
 
 // The Angular dev server runs on :4200 and proxies /api, but allow direct
 // cross-origin calls too so the API can be poked from a browser or REST client.
@@ -120,6 +121,7 @@ app.MapMeetingsEndpoints();
 app.MapDocumentsEndpoints();
 app.MapProjectAlertsEndpoints();
 app.MapModelEndpoints();
+app.MapApsViewerEndpoints();
 app.MapAuditEndpoints();
 app.MapProjectReportsEndpoints();
 app.MapLookupsEndpoints();

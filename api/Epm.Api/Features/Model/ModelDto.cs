@@ -53,7 +53,8 @@ public record ModelVersionRow(
     string LabelEn,
     string? IssuedOn,
     string By,
-    bool IsCurrent);
+    bool IsCurrent,
+    string? Urn);
 
 /// <param name="Code">`all`, or a discipline code, or a status code.</param>
 public record ModelChip(string Code, int Count);

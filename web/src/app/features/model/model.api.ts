@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { ModelResponse } from './model.types';
+import { ModelResponse, ViewerToken } from './model.types';
 
-/** SCR-W10's one call. The viewer is stubbed (07 §8); the data is not. */
+/** SCR-W10 data plus its server-mediated APS viewer token. */
 @Injectable({ providedIn: 'root' })
 export class ModelApi {
   private api = inject(Api);
@@ -17,5 +17,11 @@ export class ModelApi {
   get(projectId: string) {
     return this.api.get<ModelResponse>(
       `/api/projects/${encodeURIComponent(projectId)}/model`);
+  }
+
+  // [EP-MDL-02] GET /api/model-viewer/token
+  //   → api/Features/Model/ApsViewerEndpoints.cs
+  getViewerToken() {
+    return this.api.get<ViewerToken>('/api/model-viewer/token');
   }
 }

@@ -50,6 +50,13 @@ export interface ModelVersionRow {
   issuedOn: string | null;
   by: string;
   isCurrent: boolean;
+  /** Base64url APS derivative identifier; never an access token or secret. */
+  urn: string | null;
+}
+
+export interface ViewerToken {
+  accessToken: string;
+  expiresIn: number;
 }
 
 export interface ModelChip {

@@ -44,6 +44,8 @@ services:
       # Environment configuration outranks appsettings.*.json, so this is the
       # connection string the app uses whichever environment it runs as.
       ConnectionStrings__Epm: "Server=db,1433;Database=EpmPrototype;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True;MultipleActiveResultSets=True"
+      Aps__ClientId: ${APS_CLIENT_ID:-}
+      Aps__ClientSecret: ${APS_CLIENT_SECRET:-}
     ports:
       - "5080:8080"
     depends_on:

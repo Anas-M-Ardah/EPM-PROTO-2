@@ -34,7 +34,7 @@ public static class ModelEndpoints
         // spec: ملحق الشكل 44 · 07 §8 | rules: —
         // tables: Projects · ModelElements · ModelVersions · BoqItems · Activities
         app.MapGet("/api/projects/{projectId}/model",
-            async (EpmDb db, HttpContext ctx, string projectId) =>
+            async (EpmDb db, HttpContext ctx, IConfiguration configuration, string projectId) =>
         {
             var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
             if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
@@ -122,14 +122,27 @@ public static class ModelEndpoints
                 .Select(s => new ModelChip(s, rows.Count(r => r.Status == s)))
                 .ToList();
 
-            var versions = await db.ModelVersions.AsNoTracking()
+            var versionData = await db.ModelVersions.AsNoTracking()
                 .Where(v => v.ProjectId == projectId)
                 .OrderByDescending(v => v.IssuedOn)
-                .Select(v => new ModelVersionRow(
-                    v.Code, v.LabelAr, v.LabelEn,
-                    v.IssuedOn == null ? null : v.IssuedOn.Value.ToString("yyyy-MM-dd"),
-                    v.By, v.IsCurrent))
+                .Select(v => new
+                {
+                    v.Code, v.LabelAr, v.LabelEn, v.IssuedOn, v.By, v.IsCurrent
+                })
                 .ToListAsync();
+
+            // The translated derivative URN is deployment configuration, not
+            // a credential and not project-domain data. Example environment
+            // key: Aps__ModelUrns__PRJ-0279.m3.
+            var versions = versionData.Select(v => new ModelVersionRow(
+                v.Code, v.LabelAr, v.LabelEn,
+                v.IssuedOn == null ? null : v.IssuedOn.Value.ToString("yyyy-MM-dd"),
+                v.By, v.IsCurrent,
+                configuration[$"Aps:ModelUrns:{projectId}.{v.Code}"]
+                    ?? (projectId == "PRJ-0301" && v.IsCurrent
+                        ? configuration["Aps:FixtureModelUrn"]
+                        : null)))
+                .ToList();
 
             return Results.Ok(new ModelResponse(
                 p.Id, p.NameAr, p.NameEn, p.DataDate?.ToString("yyyy-MM-dd"),
