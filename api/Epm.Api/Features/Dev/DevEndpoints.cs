@@ -22,6 +22,7 @@ public static class DevEndpoints
             if (!env.IsDevelopment()) return Results.NotFound();
             await db.Database.EnsureDeletedAsync();
             await db.Database.EnsureCreatedAsync();
+            await SlaAutomationSchema.EnsureAsync(db);
 
             // The VOCABULARY comes back with the schema. It is code-defined
             // reference data, not the `06 §12` scenario — without it every
@@ -60,6 +61,7 @@ public static class DevEndpoints
             {
                 await db.Database.EnsureDeletedAsync();
                 await db.Database.EnsureCreatedAsync();
+                await SlaAutomationSchema.EnsureAsync(db);
             }
 
             // The vocabulary, exactly once, on EVERY path into here.

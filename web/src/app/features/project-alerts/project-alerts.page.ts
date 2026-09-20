@@ -1,7 +1,7 @@
 import {
   Component, ViewEncapsulation, computed, effect, inject, signal, untracked,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -42,6 +42,7 @@ import { AlertRuleRow, ProjectAlertRow, ProjectAlertsResponse } from './project-
 export class ProjectAlertsPage {
   private api = inject(ProjectAlertsApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   toast = inject(ToastService);
@@ -64,6 +65,9 @@ export class ProjectAlertsPage {
   busyRule = signal<string | null>(null);
   /** Explicitly runs the demo-safe outbox and escalation processor. */
   runningAutomation = signal(false);
+  /** A durable notification moment, rather than a toast that disappears before a demo viewer can act on it. */
+  slaNotification = signal<ProjectAlertRow | null>(null);
+  private slaNotificationDismissed = signal(false);
 
   rows = computed(() => this.data()?.rows ?? []);
   rules = computed(() => this.data()?.rules ?? []);
@@ -211,6 +215,7 @@ export class ProjectAlertsPage {
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.list(pid) }).subscribe({
       next: ({ model }) => {
         this.data.set(model);
+        this.openSlaNotification(model);
         this.loading.set(false);
       },
       error: e => {
@@ -253,13 +258,45 @@ export class ProjectAlertsPage {
     this.api.runAutomation(this.projectId()).subscribe({
       next: result => {
         this.runningAutomation.set(false);
-        this.toast.show(`${this.lang.t('pal_run_done')} ${result.simulatedDeliveries} · ${result.escalations}`);
-        this.refresh();
+        this.api.list(this.projectId()).subscribe({
+          next: model => {
+            this.data.set(model);
+            // R12 is the payment-audit SLA breach used by the demo fixture. If
+            // a different critical SLA breach is active, surface that instead.
+            const alert = this.openSlaNotification(model);
+            if (!alert) {
+              this.toast.show(`${this.lang.t('pal_run_done')} ${result.simulatedDeliveries} · ${result.escalations}`);
+            }
+          },
+          error: e => this.toast.show(e?.error?.message ?? e?.message ?? 'request failed'),
+        });
       },
       error: e => {
         this.runningAutomation.set(false);
         this.toast.show(e?.error?.message ?? e?.message ?? 'request failed');
       },
+    });
+  }
+
+  private openSlaNotification(model: ProjectAlertsResponse): ProjectAlertRow | null {
+    if (this.slaNotificationDismissed()) return null;
+    const alert = model.rows.find(a => a.ruleCode === 'R12' && a.status === 'open')
+      ?? model.rows.find(a => a.severity === 'critical' && a.status === 'open')
+      ?? null;
+    this.slaNotification.set(alert);
+    return alert;
+  }
+
+  dismissSlaNotification() {
+    this.slaNotificationDismissed.set(true);
+    this.slaNotification.set(null);
+  }
+
+  /** Takes the viewer to the actual financial desk holding the breached item. */
+  reviewAndResolve() {
+    this.dismissSlaNotification();
+    this.router.navigate(['/projects', this.projectId(), 'financial'], {
+      queryParams: { tab: 'sla' },
     });
   }
 

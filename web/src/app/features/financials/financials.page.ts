@@ -310,6 +310,8 @@ export class FinancialsPage {
     (this.data()?.auditSla?.stages ?? []).find(s => s.state === 'current' || s.state === 'overdue') ?? null);
 
   releasing = signal(0);
+  /** An in-app notification appears automatically when the loaded route is overdue. */
+  slaNotification = signal(false);
 
   /**
    * المسار 8 steps 5–9. What this release MEANS — advance the route, certify
@@ -464,6 +466,12 @@ export class FinancialsPage {
       this.cancelEdit();
       this.load();
     });
+
+    // The SLA notification's call-to-action lands the viewer on the exact
+    // audit desk, rather than making them hunt for the resolving action.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
+      if (params.get('tab') === 'sla') this.view.set('sla');
+    });
   }
 
   // ── ملحق الشكل 20 — «تسجيل دفعة» ───────────────────────────────────────
@@ -498,6 +506,7 @@ export class FinancialsPage {
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.get(pid, this.year()) }).subscribe({
       next: ({ model }) => {
         this.data.set(model);
+        if (model.auditSla?.overallState === 'overdue') this.slaNotification.set(true);
         this.loading.set(false);
       },
       error: e => {

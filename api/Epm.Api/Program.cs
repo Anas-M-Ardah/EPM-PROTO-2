@@ -43,6 +43,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<EpmDb>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("Epm")));
 builder.Services.AddHttpClient();
+builder.Services.AddHostedService<SlaAlertAutomationService>();
 
 // The Angular dev server runs on :4200 and proxies /api, but allow direct
 // cross-origin calls too so the API can be poked from a browser or REST client.
@@ -85,6 +86,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<EpmDb>();
     db.Database.EnsureCreated();
+    SlaAutomationSchema.EnsureAsync(db).GetAwaiter().GetResult();
 
     // A database with a schema and no vocabulary cannot be typed into: every
     // lookup-backed select renders empty. Idempotent — it writes only when the

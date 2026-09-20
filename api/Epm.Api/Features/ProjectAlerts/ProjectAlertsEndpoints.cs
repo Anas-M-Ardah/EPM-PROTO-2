@@ -67,7 +67,7 @@ public static class ProjectAlertsEndpoints
             // whichever ENABLED rule's condition is computable, before reading
             // them back below exactly as any other alert.
             if (p.DataDate is not null)
-                await EvaluateAndRaise(db, p, dataDate, rules.Where(r => r.Enabled).ToList());
+                await ProcessProjectAsync(db, p);
 
             var alerts = await db.Alerts.AsNoTracking()
                 .Where(a => a.ProjectId == projectId)
@@ -170,11 +170,56 @@ public static class ProjectAlertsEndpoints
             if (p.DataDate is null)
                 return Results.BadRequest(new { message = "A project data date is required to run alert automation." });
 
-            var rules = await db.AlertRules.Where(r => r.ProjectId == projectId && r.Enabled).ToListAsync();
-            await EvaluateAndRaise(db, p, p.DataDate.Value, rules);
-            var result = await RunAutomation(db, projectId, p.DataDate.Value, rules);
+            var result = await ProcessProjectAsync(db, p);
             return Results.Ok(new RunAlertAutomationResponse(result.Deliveries, result.Escalations));
         });
+    }
+
+    /// <summary>
+    /// The idempotent SLA worker used both by the scheduled service and the
+    /// explicit demo control. It measures only against a project's data date;
+    /// a scheduler wakes the worker, but never changes what “today” means.
+    /// </summary>
+    public static async Task<(int Deliveries, int Escalations)> ProcessProjectAsync(EpmDb db, Project project)
+    {
+        if (project.DataDate is null) return (0, 0);
+
+        var rules = await db.AlertRules.Where(r => r.ProjectId == project.Id).ToListAsync();
+        if (rules.Count == 0)
+        {
+            db.AlertRules.AddRange(DefaultAlertRules.For(project.Id));
+            await db.SaveChangesAsync();
+            rules = await db.AlertRules.Where(r => r.ProjectId == project.Id).ToListAsync();
+        }
+
+        var enabled = rules.Where(r => r.Enabled).ToList();
+        await EvaluateAndRaise(db, project, project.DataDate.Value, enabled);
+        return await RunAutomation(db, project.Id, project.DataDate.Value, enabled);
+    }
+
+    /// <summary>
+    /// The background worker's narrow responsibility: payment-audit SLA (R12).
+    /// Other alert rules are evaluated by their owning workflows/on-demand; a
+    /// failure in an unrelated rule must never suppress a time-critical SLA.
+    /// </summary>
+    public static async Task<(int Deliveries, int Escalations)> ProcessSlaAlertsAsync(EpmDb db, Project project)
+    {
+        if (project.DataDate is null) return (0, 0);
+
+        var rule = await db.AlertRules
+            .FirstOrDefaultAsync(r => r.ProjectId == project.Id && r.Code == "R12");
+        if (rule is null)
+        {
+            db.AlertRules.AddRange(DefaultAlertRules.For(project.Id));
+            await db.SaveChangesAsync();
+            rule = await db.AlertRules
+                .FirstOrDefaultAsync(r => r.ProjectId == project.Id && r.Code == "R12");
+        }
+        if (rule is null || !rule.Enabled) return (0, 0);
+
+        var enabled = new List<AlertRule> { rule };
+        await EvaluateAndRaise(db, project, project.DataDate.Value, enabled);
+        return await RunAutomation(db, project.Id, project.DataDate.Value, enabled);
     }
 
     /// <summary>
