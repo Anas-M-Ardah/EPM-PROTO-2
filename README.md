@@ -45,6 +45,23 @@ Same ports: web on **:4300**, API on **:5080**, and SQL Server published on **:1
 can attach. The fixture is loaded the same way — the button on the Projects screen, or the
 `curl` above.
 
+### Configure the 3D model viewer
+
+The viewer uses Autodesk Platform Services (formerly Forge). For local `dotnet run`, keep
+the client credentials and translated derivative URN in .NET user secrets:
+
+```bash
+cd api/Epm.Api
+dotnet user-secrets set "Aps:ClientId" "<client-id>"
+dotnet user-secrets set "Aps:ClientSecret" "<client-secret>"
+```
+
+Docker reads `APS_CLIENT_ID` and `APS_CLIENT_SECRET` from the gitignored `.env`. The
+secret never reaches Angular; the API exchanges it for a short-lived `viewables:read`
+token. The non-secret URN for the synthetic demo building is checked into development
+configuration. Loading the fixture creates project `PRJ-0301`, whose current model version
+resolves to that uploaded derivative automatically.
+
 A few things worth knowing:
 
 - **`.env` holds the SA password.** It is gitignored; `.env.example` is the template.
@@ -153,6 +170,7 @@ That is intentional — see the comment above `AddDbContext` in `Program.cs`, an
 - **No real P6 / Excel import** (`07 §2`) — the validation gates are implemented, the parsers are not.
 - **No report rendering.** SCR-E7 defines all twelve reports and says, per row, whether the
   system holds the data to produce it — three do today. Producing the PDF is in no phase.
-- **No BIM viewer** — out of Phase 1 (`07 §8`); the tab is kept and stubbed.
+- **BIM geometry is deployment-configured** — the tab uses Autodesk APS Viewer when
+  credentials and a translated model URN are configured; its BOQ/schedule links remain EPM data.
 
 Each of these is recorded with its reasoning in `DECISIONS.md`.

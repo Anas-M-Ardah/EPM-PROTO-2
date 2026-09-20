@@ -10,18 +10,15 @@ import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
 import { ModelApi } from './model.api';
 import { ModelElementRow, ModelResponse } from './model.types';
+import { ApsViewerComponent } from './aps-viewer.component';
 
 /**
  * SCR-W10 — النموذج ثلاثي الأبعاد · **ملحق الشكل 44**.
  *
- * ── THE TAB IS KEPT AND THE VIEWER IS STUBBED ─────────────────────────────
- * `07 §8` puts real BIM/IFC rendering out of Phase 1 in exactly those words.
- * So everything on الشكل 44 that carries DATA is built — the version selector,
- * the discipline filters, the tree, the element panel, its links, the colour
- * key — and the scene is an honest placeholder that says what it would show
- * and why it is not there (P-120). The plate's floating toolbar is NOT drawn:
- * measure, section and snapshot controls over an empty viewport are the same
- * defect as a tab that opens onto nothing (P-118).
+ * ── THE VIEWER ───────────────────────────────────────────────────────────────────────
+ * Autodesk APS renders the derivative linked to each model version. Token
+ * exchange stays in the API; this page receives only a URN and the viewer's
+ * short-lived, viewables-only token.
  *
  * ── THE LINKS ARE THE SCREEN ──────────────────────────────────────────────
  * الشكل 44's own closing note says it: the element's links tie the model to the
@@ -36,7 +33,7 @@ import { ModelElementRow, ModelResponse } from './model.types';
 @Component({
   selector: 'epm-model-page',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, ApsViewerComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './model.page.html',
 })

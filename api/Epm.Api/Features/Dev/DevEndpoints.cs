@@ -40,7 +40,11 @@ public static class DevEndpoints
         // web: dev.api.ts loadFixture() | Loads the 06 §12 scenario ON DEMAND.
         // NEVER runs on boot. The figures are illustrative, not ministry data —
         // see the warning at the top of Fixture.cs.
-        app.MapPost("/api/dev/load-fixture", async (EpmDb db, IWebHostEnvironment env, bool force = false) =>
+        app.MapPost("/api/dev/load-fixture", async (
+            EpmDb db,
+            IWebHostEnvironment env,
+            IConfiguration configuration,
+            bool force = false) =>
         {
             if (!env.IsDevelopment()) return Results.NotFound();
 
@@ -69,7 +73,12 @@ public static class DevEndpoints
             await LookupCatalog.EnsureSeededAsync(db);
 
             Fixture.Load(db);
-            return Results.Ok(new { ok = true, projects = await db.Projects.CountAsync() });
+            return Results.Ok(new
+            {
+                ok = true,
+                projects = await db.Projects.CountAsync(),
+                modelConfigured = !string.IsNullOrWhiteSpace(configuration["Aps:FixtureModelUrn"])
+            });
         });
 
         // [EP-DEV-04] POST /api/dev/projects/{projectId}/document-prerequisites

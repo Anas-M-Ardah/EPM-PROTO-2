@@ -2386,6 +2386,85 @@ public static class Fixture
                 LabelAr = "الإصدار الحالي", LabelEn = "Current version",
                 IssuedOn = new DateOnly(2026, 6, 1), By = "م. أحمد فؤاد", IsCurrent = true });
 
+        // A self-contained viewer project. Its CC0 presentation mosque GLB is stored at
+        // docs/demo/omar-ali-saifuddien-mosque.glb and uploaded once to APS; the URN
+        // stays in secure deployment configuration (`Aps:FixtureModelUrn`).
+        // Loading this fixture creates the project/version that consumes it.
+        db.Projects.Add(new Project
+        {
+            Id = "PRJ-0301", WorkspaceCode = "ub", Code = "PC-0301",
+            NameAr = "جامع العرض الهندسي", NameEn = "Engineering Presentation Mosque",
+            RegistrationYear = 2026, PlannedCost = 25_000_000m,
+            ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2631",
+            Coordinates = "33.27,44.37", Formation = "وزارة التعليم العالي والبحث العلمي",
+            OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
+            Description = "مشروع جامع توضيحي غير حقيقي لعرض تكامل النموذج ثلاثي الأبعاد مع بيانات المشروع.",
+            Status = "ongoing", Type = "construction", ExecutionStage = "structure",
+            FundingType = "federal-budget", Region = "baghdad", Priority = "medium",
+            Branch = "شعبة الأبنية", Executor = "فريق العرض التجريبي",
+            ConsultantParty = "المكتب الاستشاري الهندسي", BeneficiaryCodes = "ub",
+            DataDate = new DateOnly(2026, 8, 2), UpdatedAt = new DateOnly(2026, 8, 2),
+        });
+
+        db.Contracts.Add(new Contract
+        {
+            Id = "CNT-0301", ProjectId = "PRJ-0301",
+            NameAr = "أعمال إنشاء الجامع التجريبي", NameEn = "Presentation mosque works",
+            OriginalValue = 25_000_000m, Status = "ongoing",
+            Start = new DateOnly(2026, 1, 15), OriginalFinish = new DateOnly(2026, 12, 15),
+            OriginalDurationDays = 335, ForecastFinish = new DateOnly(2026, 12, 15),
+            AwardAmount = 23_000_000m, ReserveAmount = 1_000_000m, SupervisionAmount = 1_000_000m,
+            IncomingNo = "DEMO-3D-01", IncomingDate = new DateOnly(2026, 1, 10),
+            Contractor = "فريق العرض التجريبي", Consultant = "المكتب الاستشاري الهندسي",
+            Component = "مبنى الجامع", ExecutingParty = "فريق العرض التجريبي",
+        });
+
+        db.BoqItems.Add(new BoqItem
+        {
+            ContractId = "CNT-0301", Code = "BQ-3D-01",
+            DescriptionAr = "الهيكل الخرساني وقباب الجامع التجريبي",
+            DescriptionEn = "Presentation mosque structure and domes",
+            Unit = "م²", Division = "03", DivisionName = "الأعمال الإنشائية",
+            OriginalQty = 960m, UnitRate = 23_958.3333m,
+        });
+
+        db.Activities.Add(new Activity
+        {
+            ContractId = "CNT-0301", ActivityId = "3D-A1",
+            NameAr = "تنفيذ هيكل وقباب الجامع التجريبي", NameEn = "Build mosque structure and domes",
+            WbsPath = "1.1", WbsNames = "مبنى الجامع / الهيكل والقباب",
+            ProgressPct = 68m, BaselineStart = new DateOnly(2026, 1, 15),
+            BaselineFinish = new DateOnly(2026, 12, 15), ActualStart = new DateOnly(2026, 1, 15),
+            ForecastFinish = new DateOnly(2026, 12, 15), OriginalDuration = 335,
+            RemainingDuration = 107, TotalFloat = 0m, IsCritical = true,
+            Calendar = "6 أيام/أسبوع", BudgetedCost = 23_000_000m,
+            BudgetedManHours = 12_000m, Status = "inprogress",
+        });
+
+        ModelElement DemoElement(string code, string ar, string en, string discipline, string level,
+                                 decimal qty, decimal progress, string status) => new()
+        {
+            ProjectId = "PRJ-0301", Code = code, NameAr = ar, NameEn = en,
+            Discipline = discipline, Status = status, IsCritical = code == "MOS-DOME",
+            BuildingAr = "مبنى الجامع", BuildingEn = "Mosque building",
+            Level = level, Zone = "Main", Qty = qty, Unit = "م²",
+            ContractId = "CNT-0301", BoqCode = "BQ-3D-01", ActivityCode = "3D-A1",
+            ProgressPct = progress, Revision = "R1",
+        };
+
+        db.ModelElements.AddRange(
+            DemoElement("MOS-FND", "الأساسات والساحة", "Foundations and courtyard", "structural", "L00", 3_500m, 100m, "completed"),
+            DemoElement("MOS-HALL", "قاعة الصلاة", "Prayer hall", "architectural", "L00", 1_700m, 85m, "inprogress"),
+            DemoElement("MOS-DOME", "القبة المركزية", "Central dome", "structural", "ROOF", 380m, 55m, "inprogress"),
+            DemoElement("MOS-MIN", "المآذن الأربع", "Four minarets", "architectural", "ROOF", 4m, 30m, "inprogress"));
+
+        db.ModelVersions.Add(new ModelVersion
+        {
+            ProjectId = "PRJ-0301", Code = "m1",
+            LabelAr = "نموذج الجامع", LabelEn = "Mosque presentation model",
+            IssuedOn = new DateOnly(2026, 8, 2), By = "فريق العرض التجريبي", IsCurrent = true,
+        });
+
         db.SaveChanges();
     }
 

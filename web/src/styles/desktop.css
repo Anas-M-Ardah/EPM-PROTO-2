@@ -1174,28 +1174,41 @@ select.ctl { cursor: pointer; }
 
 /* ================= 3D Model Viewer (Requirements 04) ================= */
 .d-model-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.d-model-shell3 { display: grid; grid-template-columns: 210px 1fr 270px; gap: 12px; height: 460px; }
-@media (max-width: 1200px) { .d-model-shell3 { grid-template-columns: 190px 1fr; } .d-model-props { display: none; } }
+.d-model-shell3 { display: grid; grid-template-columns: minmax(210px, 240px) minmax(360px, 1fr) minmax(250px, 290px);
+  grid-template-areas: "tree viewer props"; gap: var(--space-12); height: clamp(520px, 62dvh, 680px);
+  min-width: 0; max-width: 100%; align-items: stretch; }
+.d-model-tree { grid-area: tree; min-width: 0; min-height: 0; overflow-y: auto; padding: var(--space-12);
+  border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); }
 .d-model-filter { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-.d-chip2 { all: unset; box-sizing: border-box; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--outline-variant); font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; }
+.d-model-filter > .d-cell-sub { flex-basis: 100%; }
+.d-chip2 { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 32px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--outline-variant);
+  font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; }
 .d-chip2.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.d-chip2:focus-visible, .d-model-node.obj:focus-visible, .d-linkrow:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px; }
 .d-model-node.grp { font-weight: var(--fw-x); font-size: 12px; color: var(--on-surface); padding: 6px 4px; }
 .d-model-node.lvl { font-size: 11.5px; color: var(--on-surface-variant); }
-.d-model-node.obj { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 7px; width: 100%; padding: 6px 4px; font-size: 12px; color: var(--on-surface); cursor: pointer; border-radius: var(--r-sm); }
+.d-model-node.obj { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 7px; width: 100%; min-height: 36px; padding: 6px 4px; font-size: 12px; color: var(--on-surface); cursor: pointer; border-radius: var(--r-sm); }
 .d-model-node.obj .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .d-model-node.obj:hover { background: var(--surface-container-low); }
 .d-model-node.obj.on { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); font-weight: var(--fw-bold); }
-.d-model-canvas3 { position: relative; display: flex; flex-direction: column; border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden; background: linear-gradient(180deg, var(--surface-container-low), var(--surface-container-lowest)); }
+.d-model-canvas3 { grid-area: viewer; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden;
+  background: linear-gradient(180deg, var(--surface-container-low), var(--surface-container-lowest)); }
 .d-model-viewport { position: relative; flex: 1; min-height: 0; }
 .d-model-viewport canvas { display: block; }
+.d-model-viewport epm-aps-viewer,
+.epm-aps-viewer { position: absolute; inset: 0; display: block; direction: ltr; }
+.epm-aps-viewer .adsk-viewing-viewer { width: 100%; height: 100%; }
 .d-model-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--on-surface-variant); font-size: 12px; }
 .d-model-tool.live { opacity: 1; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
 .d-model-tool.live:hover { background: var(--primary); color: #fff; }
 .d-model-badge { display: inline-flex; align-items: center; padding: 0 10px; height: 26px; border-radius: 999px; background: color-mix(in srgb, var(--tertiary) 15%, transparent); color: var(--tertiary); font-size: 11px; font-weight: var(--fw-bold); margin-inline-start: auto; }
-.d-model-legend { display: flex; gap: 14px; padding: 8px 12px; border-top: 1px solid var(--outline-variant); background: var(--surface-container-lowest); font-size: 11px; color: var(--on-surface-variant); flex-wrap: wrap; }
+.d-model-legend { display: flex; align-items: center; gap: 8px 14px; padding: 8px 12px; border-top: 1px solid var(--outline-variant); background: var(--surface-container-lowest); font-size: 11px; color: var(--on-surface-variant); flex-wrap: wrap; }
 .d-model-legend .li { display: flex; align-items: center; gap: 5px; }
 .d-model-legend i { width: 11px; height: 11px; border-radius: 3px; }
-.d-model-props { border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow-y: auto; display: flex; flex-direction: column; }
+.d-model-props { grid-area: props; min-width: 0; min-height: 0; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow-y: auto; display: flex; flex-direction: column; }
 .d-model-props-head { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-bottom: 1px solid var(--outline-variant); }
 .d-model-props-head b { font-size: 13px; }
 .d-model-props-head .d-pill { align-self: flex-start; }
@@ -1209,6 +1222,76 @@ select.ctl { cursor: pointer; }
 .d-linkrow { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--outline-variant); border-radius: var(--r-sm); font-size: 12px; cursor: pointer; }
 .d-linkrow span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .d-linkrow:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+/* The model page keeps every pane available as space narrows. At laptop/tablet
+   width the detail pane becomes a full-width summary; on phones the scene is
+   the primary content and the tree/detail cards follow in document order. */
+@media (max-width: 1550px) {
+  .d-model-shell3 { grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+    grid-template-areas: "tree viewer" "props props"; height: auto; align-items: stretch; }
+  .d-model-canvas3 { min-height: clamp(430px, 56dvh, 620px); }
+  .d-model-tree { max-height: clamp(430px, 56dvh, 620px); }
+  .d-model-props { display: grid; grid-template-columns: minmax(180px, 230px) minmax(260px, 1fr) minmax(240px, 320px);
+    overflow: hidden; }
+  .d-model-props-head { border-bottom: 0; border-inline-end: 1px solid var(--outline-variant); }
+  .d-model-plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-20); }
+  .d-model-link { border-top: 0; border-inline-start: 1px solid var(--outline-variant); }
+}
+
+@media (max-width: 820px) {
+  .d-model-page .d-pz7 { padding-inline: var(--space-12); }
+  .d-model-shell3 { grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "viewer" "tree" "props"; gap: var(--space-12); }
+  .d-model-canvas3 { min-height: clamp(360px, 58dvh, 540px); }
+  .d-model-tree { max-height: 360px; }
+  .d-model-props { display: flex; overflow: visible; }
+  .d-model-props-head { border-inline-end: 0; border-bottom: 1px solid var(--outline-variant); }
+  .d-model-plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-20); }
+  .d-model-link { border-inline-start: 0; border-top: 1px solid var(--outline-variant); }
+}
+
+@media (max-width: 560px) {
+  /* On a phone the two permanent desktop rails would consume more than a
+     third of the viewport. Keep the project modules reachable as a horizontal
+     strip and give the current task the full screen width. */
+  .d-app { grid-template-columns: minmax(0, 1fr); }
+  .d-side { display: none; }
+  .d-topbar { padding-inline: var(--space-8); }
+  .d-topbar .d-crumb, .d-topbar .d-search { display: none; }
+  .d-topbar .d-projpick { flex: 1; min-width: 0; }
+  .d-topbar .d-projpick-btn { width: 100%; min-width: 0; }
+  .d-topbar .d-projpick-tx { min-width: 0; }
+
+  .d-detail-layout { flex-direction: column; }
+  .d-modnav { width: 100%; height: 52px; display: flex; flex: none; gap: var(--space-4);
+    padding: var(--space-4) var(--space-8); overflow-x: auto; overflow-y: hidden;
+    border-inline-end: 0; border-bottom: 1px solid var(--outline-variant); scrollbar-width: none; }
+  .d-modnav::-webkit-scrollbar { display: none; }
+  .d-modnav-group { display: flex; flex: none; gap: var(--space-4); margin: 0; padding: 0; border-top: 0; }
+  .d-modnav > .d-modnav-item, .d-modnav-group .d-modnav-item { width: 44px; min-width: 44px; min-height: 44px; padding: 0; }
+  .d-modnav-item.on::before { inset-inline: 6px; top: auto; bottom: 0; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+  .d-pz2 { padding-inline: var(--space-12); }
+  .d-pz2 .z2-crumbs { overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+  .d-pz2 .z2-title { flex-wrap: wrap; gap: var(--space-6); }
+  .d-pz2 .z2-title h2 { max-width: 100%; }
+
+  .d-model-page > .d-pz6 { align-items: stretch; padding: var(--space-8) var(--space-12); gap: var(--space-8); }
+  .d-model-page > .d-pz6 .z6-t { width: 100%; flex-wrap: wrap; white-space: normal; }
+  .d-model-page > .d-pz6 .z6-t em { flex-basis: 100%; }
+  .d-model-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: var(--space-8); }
+  .d-model-toolbar > .ctl { width: 100%; min-width: 0; }
+  .d-model-toolbar > .d-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .d-model-toolbar > .d-seg button { min-height: 40px; white-space: normal; }
+  .d-model-page .d-pz7 { padding: var(--space-10) var(--space-8) var(--space-32); }
+  .d-model-canvas3 { min-height: clamp(340px, 58dvh, 480px); }
+  .d-model-tree { max-height: none; }
+  .d-chip2 { min-height: 40px; padding-inline: var(--space-12); }
+  .d-model-node.obj { min-height: 44px; }
+  .d-model-legend { padding: var(--space-8); }
+  .d-model-legend .sp { display: none; }
+  .d-model-plist { grid-template-columns: minmax(0, 1fr); }
+  .d-model-split .d-table { min-width: 620px; }
+}
 
 .d-model-split { margin-top: 14px; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow: hidden; }
 .d-model-split-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--outline-variant); }
