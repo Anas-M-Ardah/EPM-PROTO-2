@@ -30,7 +30,10 @@ public record ProjectAlertRow(
     int? DaysToDue,
     string Bucket,
     string Status,
-    string? AcknowledgedByUserId);
+    string? AcknowledgedByUserId,
+    int DeliveryCount,
+    int EscalationCount,
+    string? LatestEscalationRole);
 
 /// <param name="EscalateAfterHours">
 /// Null is الشكل 47's «بلا تصعيد». The unit shown — «48 ساعة» against «5 أيام» —
@@ -72,7 +75,12 @@ public record ProjectAlertsResponse(
     IReadOnlyList<AlertChip> Severities,
     IReadOnlyList<AlertChip> Buckets,
     IReadOnlyList<ProjectAlertRow> Rows,
-    IReadOnlyList<AlertRuleRow> Rules);
+    IReadOnlyList<AlertRuleRow> Rules,
+    int SimulatedDeliveries,
+    int Escalations);
 
 /// <summary>Body of EP-PAL-02. A toggle, so the caller states the target state.</summary>
 public record SetRuleEnabledRequest(bool Enabled);
+
+/// <summary>Result of an explicit, demo-safe automation run.</summary>
+public record RunAlertAutomationResponse(int SimulatedDeliveries, int Escalations);
