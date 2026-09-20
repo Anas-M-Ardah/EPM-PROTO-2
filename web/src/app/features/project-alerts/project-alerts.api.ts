@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Api } from '../../core/api';
-import { ProjectAlertsResponse } from './project-alerts.types';
+import { ProjectAlertsResponse, RunAlertAutomationResponse } from './project-alerts.types';
 
 /** SCR-W13's calls: one read, one rule switch, and the Alerts Centre's ack. */
 @Injectable({ providedIn: 'root' })
@@ -27,6 +27,12 @@ export class ProjectAlertsApi {
     return this.api.post<{ code: string; enabled: boolean }>(
       `/api/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(code)}/enabled`,
       { enabled });
+  }
+
+  // [EP-PAL-03] POST /api/projects/{id}/alerts/run → ProjectAlertsEndpoints.cs
+  runAutomation(projectId: string) {
+    return this.api.post<RunAlertAutomationResponse>(
+      `/api/projects/${encodeURIComponent(projectId)}/alerts/run`, {});
   }
 
   // [EP-ALR-02] POST /api/alerts/{id}/ack → api/Features/Alerts/AlertsEndpoints.cs

@@ -115,7 +115,7 @@
     </p>
 
     <!-- ── 1. هوية المشروع ────────────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_identity')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_identity')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
 
         <label class="epm-ws-f">
@@ -144,7 +144,7 @@
           server would refuse is not offered.
         -->
         @if (isNew() && !scopedWorkspace()) {
-          <div class="epm-ws-f" style="margin-bottom:12px">
+          <div class="epm-ws-f">
             <span>{{ lang.t('inf_workspace') }}<i>*</i></span>
             <epm-select [options]="workspaceOptions()"
                         [value]="workspace()"
@@ -152,7 +152,7 @@
                         [placeholder]="lang.t('prj_pick_workspace')"
                         [invalid]="!!formError() && !workspace()"
                         (changed)="setWorkspace($event)" />
-            <small class="d-cell-sub">{{ lang.t('prj_workspace_hint') }}</small>
+            <small>{{ lang.t('prj_workspace_hint') }}</small>
           </div>
         }
 
@@ -218,7 +218,7 @@
     </epm-section>
 
     <!-- ── 2. الموقع ──────────────────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_location')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_location')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
         <div class="epm-ws-f2">
           <label class="epm-ws-f">
@@ -245,7 +245,7 @@
     </epm-section>
 
     <!-- ── 3. التمويل والموازنة ───────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_funding')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_funding')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
         <div class="epm-ws-f2">
           <div class="epm-ws-f">
@@ -312,9 +312,9 @@
     </epm-section>
 
     <!-- ── 4. الوصف ───────────────────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_description')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_description')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
-        <label class="epm-ws-f">
+        <label class="epm-ws-f c12">
           <span>{{ lang.t('inf_description') }}</span>
           <textarea class="d-form-input" rows="3" [value]="form().description ?? ''"
                     (input)="setText('description', $any($event.target).value)"></textarea>
@@ -323,7 +323,7 @@
     </epm-section>
 
     <!-- ── 5. الجهة ───────────────────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_entity')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_entity')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
         <!-- مساحة العمل is NOT a field. It is the context this screen was opened
              in (الشكل 3 is «مساحة العمل › المشاريع»), and المسار 1 validates
@@ -376,7 +376,7 @@
     </epm-section>
 
     <!-- ── 6. الاستشاري ───────────────────────────────────────────────── -->
-    <epm-section [title]="lang.t('inf_group_consultant')" [collapsible]="true" [defaultOpen]="true">
+    <epm-section [title]="lang.t('inf_group_consultant')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
       <div class="epm-ws-form">
         <label class="epm-ws-f">
           <span>{{ lang.t('inf_consultantParty') }}<i>*</i></span>

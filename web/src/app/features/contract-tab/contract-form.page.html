@@ -102,7 +102,7 @@
           </p>
 
           <!-- ── 1. هوية العقد (step 2) ────────────────────────────────── -->
-          <epm-section [title]="lang.t('con_group_identity')" [collapsible]="true" [defaultOpen]="true">
+          <epm-section [title]="lang.t('con_group_identity')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
             <div class="epm-ws-form">
               <div class="epm-ws-f2">
                 <label class="epm-ws-f">
@@ -164,7 +164,7 @@
           </epm-section>
 
           <!-- ── 2. المبالغ (step 3) ───────────────────────────────────── -->
-          <epm-section [title]="lang.t('con_group_amounts')" [collapsible]="true" [defaultOpen]="true">
+          <epm-section [title]="lang.t('con_group_amounts')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
             <div class="epm-ws-form">
               <label class="epm-ws-f">
                 <span>{{ lang.t('con_award') }}<i>*</i></span>
@@ -181,29 +181,27 @@
                 @if (!isNew()) { <small>{{ lang.t('con_award_locked') }}</small> }
               </label>
 
-              <div class="epm-ws-f2">
-                <label class="epm-ws-f">
-                  <span>{{ lang.t('con_reserve') }}</span>
-                  <input class="d-form-input mono" dir="ltr" type="number" min="0"
-                         [class.epm-invalid]="errorFor('reserveAmount')"
-                         [value]="form().reserveAmount ?? ''"
-                         (input)="setNumber('reserveAmount', $any($event.target).value)" />
-                  @if (errorFor('reserveAmount')) {
-                    <small class="epm-f-err">{{ errorFor('reserveAmount') }}</small>
-                  }
-                </label>
+              <label class="epm-ws-f">
+                <span>{{ lang.t('con_reserve') }}</span>
+                <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                       [class.epm-invalid]="errorFor('reserveAmount')"
+                       [value]="form().reserveAmount ?? ''"
+                       (input)="setNumber('reserveAmount', $any($event.target).value)" />
+                @if (errorFor('reserveAmount')) {
+                  <small class="epm-f-err">{{ errorFor('reserveAmount') }}</small>
+                }
+              </label>
 
-                <label class="epm-ws-f">
-                  <span>{{ lang.t('con_supervision') }}</span>
-                  <input class="d-form-input mono" dir="ltr" type="number" min="0"
-                         [class.epm-invalid]="errorFor('supervisionAmount')"
-                         [value]="form().supervisionAmount ?? ''"
-                         (input)="setNumber('supervisionAmount', $any($event.target).value)" />
-                  @if (errorFor('supervisionAmount')) {
-                    <small class="epm-f-err">{{ errorFor('supervisionAmount') }}</small>
-                  }
-                </label>
-              </div>
+              <label class="epm-ws-f">
+                <span>{{ lang.t('con_supervision') }}</span>
+                <input class="d-form-input mono" dir="ltr" type="number" min="0"
+                       [class.epm-invalid]="errorFor('supervisionAmount')"
+                       [value]="form().supervisionAmount ?? ''"
+                       (input)="setNumber('supervisionAmount', $any($event.target).value)" />
+                @if (errorFor('supervisionAmount')) {
+                  <small class="epm-f-err">{{ errorFor('supervisionAmount') }}</small>
+                }
+              </label>
 
               <label class="epm-ws-f">
                 <span>{{ lang.t('con_monitoring') }}</span>
@@ -237,7 +235,7 @@
           </epm-section>
 
           <!-- ── 3. التواريخ (step 4) ──────────────────────────────────── -->
-          <epm-section [title]="lang.t('con_group_dates')" [collapsible]="true" [defaultOpen]="true">
+          <epm-section [title]="lang.t('con_group_dates')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
             <div class="epm-ws-form">
               <div class="epm-ws-f2">
                 <label class="epm-ws-f">
@@ -269,7 +267,7 @@
           </epm-section>
 
           <!-- ── 4. المقاول والأطراف (step 4) ──────────────────────────── -->
-          <epm-section [title]="lang.t('con_group_parties')" [collapsible]="true" [defaultOpen]="true">
+          <epm-section [title]="lang.t('con_group_parties')" [collapsible]="true" [defaultOpen]="true" [boxed]="true">
             <div class="epm-ws-form">
               <div class="epm-ws-f2">
                 <label class="epm-ws-f">
@@ -316,7 +314,7 @@
           </epm-section>
 
           <!-- ── 5. كتاب الإحالة ──────────────────────────────────────── -->
-          <epm-section [title]="lang.t('con_group_letter')" [collapsible]="true" [defaultOpen]="false">
+          <epm-section [title]="lang.t('con_group_letter')" [collapsible]="true" [defaultOpen]="false" [boxed]="true">
             <div class="epm-ws-form">
               <div class="epm-ws-f2">
                 <label class="epm-ws-f">

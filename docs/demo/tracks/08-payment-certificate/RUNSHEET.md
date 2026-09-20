@@ -43,8 +43,10 @@ Capacity **مهندس مقيم** → project → «الموقف المالي» �
 
 ## Not in this build — do not claim on camera
 
-- **Automatic escalation** when a desk passes its cap (٦أ): the cap and elapsed days are shown, but
-  nothing is escalated.
+- The audit desk's SLA breach can be demonstrated in **track 13 — Alerts**:
+  leave a desk open beyond its cap, evaluate R12, then run the explicit demo
+  automation. Delivery and escalation records are simulated; no real email or
+  SMS is sent and no background scheduler is running.
 - One certificate covers **one contract**; the proposal's multi-contract certificate is not supported.
 - The project-level ceilings use the revised cost, else the planned cost, and the annual allocation
   only when finance has entered one (P-265).

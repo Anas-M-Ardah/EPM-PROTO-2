@@ -73,6 +73,11 @@ public static class ProjectAlertsEndpoints
                 .Where(a => a.ProjectId == projectId)
                 .OrderByDescending(a => a.RaisedAt)
                 .ToListAsync();
+            var alertIds = alerts.Select(a => a.Id).ToList();
+            var deliveries = await db.AlertDeliveries.AsNoTracking()
+                .Where(x => alertIds.Contains(x.AlertId)).ToListAsync();
+            var escalations = await db.AlertEscalations.AsNoTracking()
+                .Where(x => alertIds.Contains(x.AlertId)).ToListAsync();
 
             var live = AlertInbox.Live(
                 alerts.Select(a => new AlertInbox.Item(a.Id, a.RuleCode, a.DueOn, a.Acknowledged)).ToList(),
@@ -89,7 +94,11 @@ public static class ProjectAlertsEndpoints
                     AlertInbox.DaysToDue(a.DueOn, dataDate),
                     AlertInbox.Bucket(a.DueOn, dataDate),
                     a.Acknowledged ? "acknowledged" : "open",
-                    a.AcknowledgedByUserId))
+                    a.AcknowledgedByUserId,
+                    deliveries.Count(d => d.AlertId == a.Id),
+                    escalations.Count(e => e.AlertId == a.Id),
+                    escalations.Where(e => e.AlertId == a.Id)
+                        .OrderByDescending(e => e.Level).Select(e => e.RecipientRole).FirstOrDefault()))
                 .ToList();
 
             // الشكل 47's inbox tabs: الكل · حرجة · متوسطة · منخفضة. Every
@@ -115,7 +124,8 @@ public static class ProjectAlertsEndpoints
                 rules.Select(r => new AlertRuleRow(
                     r.Code, r.NameAr, r.NameEn, r.TriggerAr, r.TriggerEn, r.Severity,
                     r.ChannelInApp, r.ChannelEmail, r.ChannelSms,
-                    r.Recurrence, r.EscalateAfterHours, r.Enabled)).ToList()));
+                    r.Recurrence, r.EscalateAfterHours, r.Enabled)).ToList(),
+                deliveries.Count(d => d.Status == "simulated"), escalations.Count));
         });
 
         // [EP-PAL-02] POST /api/projects/{projectId}/alert-rules/{code}/enabled
@@ -143,6 +153,81 @@ public static class ProjectAlertsEndpoints
 
             return Results.Ok(new { rule.Code, rule.Enabled });
         });
+
+        // [EP-PAL-03] POST /api/projects/{projectId}/alerts/run
+        // web: project-alerts.api.ts runAutomation() → project-alerts.page.ts
+        // rules: AlertAutomation · AlertRuleEngine | tables: Alerts · AlertRules
+        //         · AlertDeliveries · AlertEscalations
+        // An explicit control makes the prototype demonstrable without hiding a
+        // background service behind a button.  It persists simulated delivery
+        // attempts and the escalation trail; it never sends an external message.
+        app.MapPost("/api/projects/{projectId}/alerts/run",
+            async (EpmDb db, HttpContext ctx, string projectId) =>
+        {
+            var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == projectId);
+            if (p is null) return Results.NotFound(new { message = $"project {projectId} not found" });
+            if (WorkspaceScope.Deny(ctx, p.WorkspaceCode) is { } denied) return denied;
+            if (p.DataDate is null)
+                return Results.BadRequest(new { message = "A project data date is required to run alert automation." });
+
+            var rules = await db.AlertRules.Where(r => r.ProjectId == projectId && r.Enabled).ToListAsync();
+            await EvaluateAndRaise(db, p, p.DataDate.Value, rules);
+            var result = await RunAutomation(db, projectId, p.DataDate.Value, rules);
+            return Results.Ok(new RunAlertAutomationResponse(result.Deliveries, result.Escalations));
+        });
+    }
+
+    /// <summary>
+    /// Demo outbox and escalation processor.  The records it creates are real
+    /// audit evidence, but every external route is marked simulated: no user
+    /// can mistake a demo for a sent e-mail or SMS.
+    /// </summary>
+    private static async Task<(int Deliveries, int Escalations)> RunAutomation(
+        EpmDb db, string projectId, DateOnly dataDate, IReadOnlyList<AlertRule> enabledRules)
+    {
+        var rules = enabledRules.ToDictionary(r => r.Code);
+        var alerts = await db.Alerts.Where(a => a.ProjectId == projectId && !a.Acknowledged).ToListAsync();
+        var alertIds = alerts.Select(a => a.Id).ToList();
+        var delivered = await db.AlertDeliveries.Where(d => alertIds.Contains(d.AlertId)).ToListAsync();
+        var escalated = await db.AlertEscalations.Where(e => alertIds.Contains(e.AlertId)).ToListAsync();
+        var createdDeliveries = 0;
+        var createdEscalations = 0;
+
+        foreach (var alert in alerts)
+        {
+            if (alert.RuleCode is not { } code || !rules.TryGetValue(code, out var rule)) continue;
+            var channels = new List<string>();
+            if (rule.ChannelInApp) channels.Add("in-app");
+            if (rule.ChannelEmail) channels.Add("email");
+            if (rule.ChannelSms) channels.Add("sms");
+
+            foreach (var channel in channels.Where(c => !delivered.Any(d => d.AlertId == alert.Id && d.Channel == c)))
+            {
+                db.AlertDeliveries.Add(new AlertDelivery
+                {
+                    AlertId = alert.Id, Channel = channel,
+                    Recipient = channel == "in-app" ? "project-team" : $"demo-{channel}-recipient",
+                    Status = "simulated", AttemptedAt = dataDate.ToDateTime(TimeOnly.MinValue),
+                    Detail = "Demo delivery only — no external gateway configured."
+                });
+                createdDeliveries++;
+            }
+
+            foreach (var step in AlertAutomation.DueSteps(alert.RaisedAt, rule.EscalateAfterHours, dataDate)
+                .Where(s => !escalated.Any(e => e.AlertId == alert.Id && e.Level == s.Level)))
+            {
+                db.AlertEscalations.Add(new AlertEscalation
+                {
+                    AlertId = alert.Id, Level = step.Level, RecipientRole = step.RecipientRole,
+                    EscalatedAt = dataDate.ToDateTime(TimeOnly.MinValue),
+                    Reason = $"Open alert exceeded the {rule.EscalateAfterHours}-hour escalation ceiling."
+                });
+                createdEscalations++;
+            }
+        }
+
+        if (createdDeliveries + createdEscalations > 0) await db.SaveChangesAsync();
+        return (createdDeliveries, createdEscalations);
     }
 
     /// <summary>

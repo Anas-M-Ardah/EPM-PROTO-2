@@ -22,6 +22,9 @@ export interface ProjectAlertRow {
   bucket: string;
   status: string;
   acknowledgedByUserId: string | null;
+  deliveryCount: number;
+  escalationCount: number;
+  latestEscalationRole: string | null;
 }
 
 export interface AlertRuleRow {
@@ -58,4 +61,11 @@ export interface ProjectAlertsResponse {
   buckets: AlertChip[];
   rows: ProjectAlertRow[];
   rules: AlertRuleRow[];
+  simulatedDeliveries: number;
+  escalations: number;
+}
+
+export interface RunAlertAutomationResponse {
+  simulatedDeliveries: number;
+  escalations: number;
 }

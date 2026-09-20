@@ -128,6 +128,11 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
     // The rule the alert came from. Disabling it withdraws the alert.
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
 
+    // Automation history is append-only.  It makes a demo delivery and every
+    // escalation visible without mutating the alert itself.
+    public DbSet<AlertDelivery> AlertDeliveries => Set<AlertDelivery>();
+    public DbSet<AlertEscalation> AlertEscalations => Set<AlertEscalation>();
+
     // ── SCR-W10 3D model · الشكل 44 ──────────────────────────────────────
     // The tab is kept and the VIEWER is stubbed (07 §8). These two tables back
     // the tree, the element panel and the version selector — the parts that
@@ -275,6 +280,8 @@ public class EpmDb(DbContextOptions<EpmDb> options) : DbContext(options)
 
         // Alert has no natural key — an alert is an event, not a named thing.
         b.Entity<Alert>().HasKey(x => x.Id);
+        b.Entity<AlertDelivery>().HasKey(x => x.Id);
+        b.Entity<AlertEscalation>().HasKey(x => x.Id);
 
         // Same reason: an activity event is something that HAPPENED, so it has
         // no natural name. Ordered by Id, which is the order it occurred in.

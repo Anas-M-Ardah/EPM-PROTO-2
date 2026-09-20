@@ -71,6 +71,10 @@
                 (click)="toast.demo('ضبط قواعد التنبيه', 'Configure alert rules')">
           <epm-icon name="settings" [size]="15" />{{ lang.t('pal_configure') }}
         </button>
+        <button type="button" class="d-btn sm primary" [disabled]="runningAutomation()"
+                (click)="runAutomation()">
+          <epm-icon name="play_arrow" [size]="15" />{{ lang.t('pal_run') }}
+        </button>
 
         <div class="d-seg">
           <button type="button" [class.on]="view() === 'inbox'" (click)="view.set('inbox')">
@@ -173,6 +177,13 @@
                   <span class="mbody">{{ lang.t('pal_engine_b') }}</span>
                 </div>
               </div>
+              <div class="d-msgbar info">
+                <epm-icon name="notifications" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('pal_demo_t') }}</b>
+                  <span class="mbody">{{ lang.t('pal_demo_b') }} <bdi>{{ d.simulatedDeliveries }}</bdi> · <bdi>{{ d.escalations }}</bdi></span>
+                </div>
+              </div>
             }
           </epm-section>
         }
@@ -242,6 +253,10 @@
                                  system raised it on itself and no rule can
                                  silence it. -->
                             <span class="mono"><bdi>{{ a.ruleCode ?? '—' }}</bdi></span>
+                            @if (a.escalationCount > 0) {
+                              <span>·</span>
+                              <span>{{ lang.t('pal_escalated_to') }} {{ escalationRole(a.latestEscalationRole) }} <bdi>({{ a.escalationCount }})</bdi></span>
+                            }
                             @if (a.targetRef) {
                               <span>·</span><span class="mono"><bdi>{{ a.targetRef }}</bdi></span>
                             }

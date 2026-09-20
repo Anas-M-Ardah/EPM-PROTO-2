@@ -62,6 +62,8 @@ export class ProjectAlertsPage {
   picked = signal<ReadonlySet<number>>(new Set());
   /** A rule mid-write, so its switch cannot be clicked twice. */
   busyRule = signal<string | null>(null);
+  /** Explicitly runs the demo-safe outbox and escalation processor. */
+  runningAutomation = signal(false);
 
   rows = computed(() => this.data()?.rows ?? []);
   rules = computed(() => this.data()?.rules ?? []);
@@ -89,6 +91,12 @@ export class ProjectAlertsPage {
   }
   statusClass(code: string): string {
     return code === 'acknowledged' ? 'completed' : 'ongoing';
+  }
+
+  escalationRole(role: string | null): string {
+    return role === 'project-manager' ? this.lang.t('pal_role_pm')
+      : role === 'department-manager' ? this.lang.t('pal_role_dept')
+      : role === 'technical-deputy' ? this.lang.t('pal_role_tech') : '';
   }
 
   /**
@@ -234,6 +242,22 @@ export class ProjectAlertsPage {
       },
       error: e => {
         this.busyRule.set(null);
+        this.toast.show(e?.error?.message ?? e?.message ?? 'request failed');
+      },
+    });
+  }
+
+  runAutomation() {
+    if (this.runningAutomation()) return;
+    this.runningAutomation.set(true);
+    this.api.runAutomation(this.projectId()).subscribe({
+      next: result => {
+        this.runningAutomation.set(false);
+        this.toast.show(`${this.lang.t('pal_run_done')} ${result.simulatedDeliveries} · ${result.escalations}`);
+        this.refresh();
+      },
+      error: e => {
+        this.runningAutomation.set(false);
         this.toast.show(e?.error?.message ?? e?.message ?? 'request failed');
       },
     });
