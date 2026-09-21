@@ -1187,12 +1187,23 @@ select.ctl { cursor: pointer; }
   min-width: 0; max-width: 100%; align-items: stretch; }
 .d-model-tree { grid-area: tree; min-width: 0; min-height: 0; overflow-y: auto; padding: var(--space-12);
   border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); }
-.d-model-filter { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.d-model-toolbar .d-model-version-select { display: block; min-width: min(320px, 52vw); }
+.d-model-toolbar .d-model-version-select .epm-select { width: 100%; }
+.d-model-filter { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-bottom: var(--space-12); }
 .d-model-filter > .d-cell-sub { flex-basis: 100%; }
+.d-model-filter-head { flex: 1 0 100%; display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-8); padding-bottom: var(--space-4); }
+.d-model-filter-head > :first-child { color: var(--on-surface); font-size: 12px; font-weight: var(--fw-bold); }
+.d-model-filter-head > :last-child { color: var(--on-surface-variant); font-size: 10.5px; text-align: end; }
+.d-model-meta-loading { display: inline-flex; align-items: center; min-height: 32px; padding-inline: 4px;
+  color: var(--on-surface-variant); font-size: 11px; }
 .d-chip2 { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
-  min-height: 32px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--outline-variant);
-  font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; }
+  gap: 7px; min-height: 34px; padding: 4px 6px 4px 11px; border-radius: 999px; border: 1px solid var(--outline-variant);
+  font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; white-space: nowrap; }
+.d-chip2 bdi { min-width: 25px; padding: 2px 6px; border-radius: 999px; background: var(--surface-container-low);
+  color: var(--on-surface); font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; text-align: center; }
 .d-chip2.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.d-chip2.on bdi { background: color-mix(in srgb, #fff 18%, transparent); color: #fff; }
 .d-chip2:focus-visible, .d-model-node.obj:focus-visible, .d-linkrow:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px; }
 .d-model-node.grp { font-weight: var(--fw-x); font-size: 12px; color: var(--on-surface); padding: 6px 4px; }
@@ -1215,6 +1226,7 @@ select.ctl { cursor: pointer; }
 .d-model-badge { display: inline-flex; align-items: center; padding: 0 10px; height: 26px; border-radius: 999px; background: color-mix(in srgb, var(--tertiary) 15%, transparent); color: var(--tertiary); font-size: 11px; font-weight: var(--fw-bold); margin-inline-start: auto; }
 .d-model-legend { display: flex; align-items: center; gap: 8px 14px; padding: 8px 12px; border-top: 1px solid var(--outline-variant); background: var(--surface-container-lowest); font-size: 11px; color: var(--on-surface-variant); flex-wrap: wrap; }
 .d-model-legend .li { display: flex; align-items: center; gap: 5px; }
+.d-model-metadata-total { margin-inline-start: auto; font-weight: var(--fw-bold); }
 .d-model-legend i { width: 11px; height: 11px; border-radius: 3px; }
 .d-model-props { grid-area: props; min-width: 0; min-height: 0; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow-y: auto; display: flex; flex-direction: column; }
 .d-model-props-head { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-bottom: 1px solid var(--outline-variant); }
@@ -1287,7 +1299,7 @@ select.ctl { cursor: pointer; }
   .d-model-page > .d-pz6 .z6-t { width: 100%; flex-wrap: wrap; white-space: normal; }
   .d-model-page > .d-pz6 .z6-t em { flex-basis: 100%; }
   .d-model-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: var(--space-8); }
-  .d-model-toolbar > .ctl { width: 100%; min-width: 0; }
+  .d-model-toolbar .d-model-version-select { width: 100%; min-width: 0; }
   .d-model-toolbar > .d-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .d-model-toolbar > .d-seg button { min-height: 40px; white-space: normal; }
   .d-model-page .d-pz7 { padding: var(--space-10) var(--space-8) var(--space-32); }

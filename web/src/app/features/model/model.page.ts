@@ -9,8 +9,9 @@ import { LangService } from '../../core/lang';
 import { LookupsService } from '../../core/lookups';
 import * as fmt from '../../core/format';
 import { ModelApi } from './model.api';
-import { ModelElementRow, ModelResponse } from './model.types';
+import { ModelElementRow, ModelResponse, ViewerMetadataSummary } from './model.types';
 import { ApsViewerComponent } from './aps-viewer.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
 
 /**
  * SCR-W10 — النموذج ثلاثي الأبعاد · **ملحق الشكل 44**.
@@ -33,7 +34,7 @@ import { ApsViewerComponent } from './aps-viewer.component';
 @Component({
   selector: 'epm-model-page',
   standalone: true,
-  imports: [IconComponent, ApsViewerComponent],
+  imports: [IconComponent, ApsViewerComponent, SelectComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './model.page.html',
 })
@@ -58,6 +59,8 @@ export class ModelPage {
   versionCode = signal<string | null>(null);
   /** The plate opens with COL-L1 selected. */
   selected = signal<string | null>(null);
+  viewerMetadata = signal<ViewerMetadataSummary | null>(null);
+  viewerGroup = signal('all');
 
   elements = computed(() => this.data()?.elements ?? []);
   versions = computed(() => this.data()?.versions ?? []);
@@ -65,6 +68,18 @@ export class ModelPage {
   current = computed(() => this.versions().find(v => v.isCurrent) ?? null);
   selectedVersion = computed(() =>
     this.versions().find(v => v.code === this.versionCode()) ?? this.current());
+  versionOptions = computed<SelectOption[]>(() => this.versions().map(v => ({
+    code: v.code,
+    label: `${this.versionLabel(v)} · ${this.fmt.date(v.issuedOn)}`,
+  })));
+  viewerGroups = computed(() => {
+    const metadata = this.viewerMetadata();
+    if (!metadata?.elementCount) return [];
+    return [
+      { key: 'all', label: this.lang.t('mdl_all'), count: metadata.elementCount },
+      ...metadata.groups.slice(0, 6).map(({ key, label, count }) => ({ key, label, count })),
+    ];
+  });
 
   name(e: { nameAr: string; nameEn: string }): string {
     return this.lang.pick(e.nameAr, e.nameEn);
@@ -80,7 +95,9 @@ export class ModelPage {
   }
 
   disciplineLabel(code: string): string {
-    return code === 'all' ? this.lang.t('mdl_all') : this.lookups.label('doc-discipline', code);
+    if (code === 'all') return this.lang.t('mdl_all');
+    if (code === 'other') return this.lang.t('mdl_other');
+    return this.lookups.label('doc-discipline', code);
   }
   statusLabel(code: string): string { return this.lookups.label('activity-status', code); }
 
@@ -178,6 +195,8 @@ export class ModelPage {
       this.status.set('all');
       this.versionCode.set(null);
       this.selected.set(null);
+      this.viewerMetadata.set(null);
+      this.viewerGroup.set('all');
     });
 
     effect(() => {
@@ -208,7 +227,13 @@ export class ModelPage {
     });
   }
 
-  chooseVersion(event: Event) {
-    this.versionCode.set((event.target as HTMLSelectElement).value || null);
+  chooseVersion(code: string) {
+    this.viewerMetadata.set(null);
+    this.viewerGroup.set('all');
+    this.versionCode.set(code || null);
+  }
+
+  onViewerMetadata(summary: ViewerMetadataSummary) {
+    this.viewerMetadata.set(summary);
   }
 }

@@ -1,11 +1,12 @@
 import {
   AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy,
-  SimpleChanges, ViewChild, inject, signal,
+  Output, EventEmitter, SimpleChanges, ViewChild, inject, signal,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 import { LangService } from '../../core/lang';
 import { ModelApi } from './model.api';
+import { ViewerGroupSummary, ViewerMetadataSummary } from './model.types';
 
 declare const Autodesk: any;
 
@@ -42,6 +43,8 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
   lang = inject(LangService);
 
   @Input() urn: string | null = null;
+  @Input() group = 'all';
+  @Output() metadataReady = new EventEmitter<ViewerMetadataSummary>();
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLElement>;
 
   loading = signal(false);
@@ -52,6 +55,8 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
   private generation = 0;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
+  private groupDbIds = new Map<string, number[]>();
+  private geometryHandler: ((event: any) => void) | null = null;
 
   ngAfterViewInit() {
     this.ready = true;
@@ -68,6 +73,7 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges) {
     if (this.ready && changes['urn']) void this.load();
+    else if (this.ready && changes['group']) this.applyGroupFilter();
   }
 
   async load() {
@@ -103,6 +109,16 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
         );
       });
       if (generation === this.generation) {
+        this.fitWhenGeometryIsReady(this.viewer.model);
+        try {
+          const summary = await this.readMetadata();
+          if (generation !== this.generation) return;
+          this.metadataReady.emit(summary);
+          this.applyGroupFilter();
+        } catch {
+          // A missing property tree must not hide otherwise valid geometry.
+          this.metadataReady.emit({ elementCount: 0, groups: [] });
+        }
         this.viewer.fitToView();
         this.loading.set(false);
       }
@@ -129,7 +145,10 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
     await new Promise<void>((resolve, reject) => {
       Autodesk.Viewing.Initializer({
         env: 'AutodeskProduction2',
-        api: 'streamingV2',
+        // PPlus stores these derivatives in its EMEA bucket. Pointing an EMEA
+        // URN at the default US stream leaves the hierarchy available but the
+        // geometry download stalled indefinitely.
+        api: 'streamingV2_EU',
         getAccessToken: async (callback: (token: string, expiresIn: number) => void) => {
           try {
             const token = await firstValueFrom(this.api.getViewerToken());
@@ -150,6 +169,122 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private clearModel() {
+    this.groupDbIds.clear();
+    if (this.geometryHandler) {
+      this.viewer?.removeEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, this.geometryHandler);
+      this.geometryHandler = null;
+    }
     if (this.viewer?.model) this.viewer.unloadModel(this.viewer.model);
+  }
+
+  /** Progressive NWD streams can finish their hierarchy before any fragments
+   * are drawable. Re-fit once geometry arrives so the initial camera cannot
+   * remain pointed at the empty pre-load bounds. */
+  private fitWhenGeometryIsReady(model: any) {
+    let onGeometry: (event: any) => void;
+    const fit = () => {
+      if (this.viewer?.model !== model) return;
+      this.viewer.fitToView();
+      this.viewer.removeEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, onGeometry);
+      this.geometryHandler = null;
+    };
+    onGeometry = (event: any) => {
+      if (!event.model || event.model === model) fit();
+    };
+    if (model?.isLoadDone?.()) fit();
+    else {
+      this.geometryHandler = onGeometry;
+      this.viewer.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, onGeometry);
+    }
+  }
+
+  /**
+   * APS already downloads an instance tree with every viewable. Reading that
+   * tree keeps the statistics tied to the actual derivative without shipping
+   * thousands of property rows through our API. The category names in the
+   * immediate parent is retained as its real model group. We intentionally do
+   * not infer disciplines from names: an inference is not model metadata.
+   */
+  private async readMetadata(): Promise<ViewerMetadataSummary> {
+    const model = this.viewer?.model;
+    if (!model) return { elementCount: 0, groups: [] };
+
+    const tree = await this.waitForObjectTree(model);
+    const ids = new Map<string, number[]>();
+
+    const visit = (dbId: number, ancestry: string[]) => {
+      const name = String(tree.getNodeName(dbId) ?? '');
+      const path = [...ancestry, name];
+      if (tree.getChildCount(dbId) === 0) {
+        const label = this.modelGroup(path);
+        if (label) {
+          const group = ids.get(label);
+          if (group) group.push(dbId);
+          else ids.set(label, [dbId]);
+        }
+        return;
+      }
+      tree.enumNodeChildren(dbId, (childId: number) => visit(childId, path), false);
+    };
+    tree.enumNodeChildren(tree.getRootId(), (id: number) => visit(id, []), false);
+
+    const groups: ViewerGroupSummary[] = [...ids.entries()]
+      .map(([label, dbIds]) => ({ key: label, label, count: dbIds.length, dbIds }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    for (const item of groups) this.groupDbIds.set(item.key, item.dbIds);
+    return {
+      elementCount: groups.reduce((total, item) => total + item.count, 0),
+      groups,
+    };
+  }
+
+  private waitForObjectTree(model: any): Promise<any> {
+    const existing = model.getData?.()?.instanceTree;
+    if (existing) return Promise.resolve(existing);
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let timeout: number | null = null;
+      const cleanup = () => {
+        if (timeout !== null) clearTimeout(timeout);
+        this.viewer?.removeEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, onCreated);
+      };
+      const finish = (tree: any) => {
+        if (settled || !tree) return;
+        settled = true;
+        cleanup();
+        resolve(tree);
+      };
+      const onCreated = (event: any) => {
+        if (!event.model || event.model === model) finish(model.getData?.()?.instanceTree);
+      };
+      timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('APS object tree was not available'));
+      }, 30_000);
+
+      this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, onCreated);
+      model.getObjectTree((created: any) => finish(created), () => undefined);
+    });
+  }
+
+  private modelGroup(ancestry: string[]): string | null {
+    // The final name is the leaf itself; its direct parent is the grouping APS
+    // exposes in the model browser (for example Doors, Windows, or Rooms).
+    const label = ancestry.at(-2)?.trim();
+    return label || null;
+  }
+
+  private applyGroupFilter() {
+    if (!this.viewer?.model) return;
+    if (this.group === 'all') {
+      this.viewer.showAll();
+      return;
+    }
+    const dbIds = this.groupDbIds.get(this.group) ?? [];
+    if (dbIds.length) this.viewer.isolate(dbIds, this.viewer.model);
+    else this.viewer.showAll();
   }
 }

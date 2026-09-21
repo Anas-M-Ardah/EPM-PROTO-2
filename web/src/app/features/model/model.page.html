@@ -52,20 +52,14 @@
         }
       </span>
 
-      @if (d.elementCount > 0 && versions().length > 0) {
+      @if (versions().length > 0) {
         <div class="grp d-model-toolbar">
-          <select class="d-form-input ctl" [value]="versionCode() ?? ''"
-                  [attr.aria-label]="lang.t('mdl_versions')" (change)="chooseVersion($event)">
-            @for (v of versions(); track v.code) {
-              <option [value]="v.code">{{ versionLabel(v) }} · {{ fmt.date(v.issuedOn) }}</option>
-            }
-          </select>
-          <div class="d-seg">
-            <button type="button" [class.on]="colourBy() === 'status'"
-                    (click)="colourBy.set('status')">{{ lang.t('mdl_by_status') }}</button>
-            <button type="button" [class.on]="colourBy() === 'discipline'"
-                    (click)="colourBy.set('discipline')">{{ lang.t('mdl_by_discipline') }}</button>
-          </div>
+          <epm-select class="d-model-version-select"
+                      [options]="versionOptions()"
+                      [value]="versionCode() ?? ''"
+                      [label]="lang.t('mdl_versions')"
+                      [allowEmpty]="false"
+                      (changed)="chooseVersion($event)" />
         </div>
       }
     </div>
@@ -73,7 +67,7 @@
     <div class="d-pbody no-aside">
       <div class="d-pz7">
 
-        @if (d.elementCount === 0) {
+        @if (d.elementCount === 0 && !selectedVersion()?.urn) {
           <div class="d-empty">
             <span class="d-empty-ico"><epm-icon name="deployed_code" [size]="30" /></span>
             <b>{{ lang.t('mdl_empty_t') }}</b>
@@ -87,26 +81,22 @@
             <!-- ══ شجرة النموذج ══════════════════════════════════════════ -->
             <div class="d-model-tree">
               <div class="d-model-filter">
-                <span class="d-cell-sub">{{ lang.t('mdl_discipline') }}</span>
-                @for (c of d.disciplines; track c.code) {
-                  <button type="button" class="d-chip2" [class.on]="discipline() === c.code"
-                          (click)="discipline.set(c.code)">
-                    {{ disciplineLabel(c.code) }} <bdi>{{ c.count }}</bdi>
+                <div class="d-model-filter-head">
+                  <span>{{ lang.t('mdl_model_groups') }}</span>
+                  <span>{{ lang.t('mdl_source_aps') }}</span>
+                </div>
+                @if (viewerMetadata() === null) {
+                  <span class="d-model-meta-loading" aria-live="polite">{{ lang.t('mdl_metadata_loading') }}</span>
+                } @else if (viewerGroups().length === 0) {
+                  <span class="d-model-meta-loading">{{ lang.t('mdl_metadata_unavailable') }}</span>
+                }
+                @for (c of viewerGroups(); track c.key) {
+                  <button type="button" class="d-chip2" [class.on]="viewerGroup() === c.key"
+                          [attr.aria-pressed]="viewerGroup() === c.key"
+                          (click)="viewerGroup.set(c.key)">
+                    <span>{{ c.label }}</span><bdi>{{ c.count }}</bdi>
                   </button>
                 }
-              </div>
-              <div class="d-model-filter">
-                <span class="d-cell-sub">{{ lang.t('col_status') }}</span>
-                @for (c of d.statuses; track c.code) {
-                  <button type="button" class="d-chip2" [class.on]="status() === c.code"
-                          (click)="status.set(c.code)">
-                    {{ statusLabel(c.code) }} <bdi>{{ c.count }}</bdi>
-                  </button>
-                }
-                <button type="button" class="d-chip2" [class.on]="status() === 'all'"
-                        (click)="status.set('all')">
-                  {{ lang.t('mdl_all') }} <bdi>{{ d.elementCount }}</bdi>
-                </button>
               </div>
 
               @if (tree().length === 0) {
@@ -140,28 +130,27 @@
             <!-- Autodesk APS scene for the selected model version. -->
             <div class="d-model-canvas3">
               <div class="d-model-viewport">
-                <epm-aps-viewer [urn]="selectedVersion()?.urn ?? null" />
+                <epm-aps-viewer [urn]="selectedVersion()?.urn ?? null"
+                                [group]="viewerGroup()"
+                                (metadataReady)="onViewerMetadata($event)" />
               </div>
 
               <!-- مفتاح ألوان حالات العناصر, under the scene as the plate has
                    it. حرج is the fourth entry and the only one drawn as a
                    ring — it is not a fourth status (CLAUDE.md §6). -->
               <div class="d-model-legend">
-                @for (s of d.statuses; track s.code) {
-                  <span class="li">
-                    <i class="epm-model-mark {{ s.code }}"></i>
-                    {{ statusLabel(s.code) }} <bdi>{{ s.count }}</bdi>
+                @if (viewerMetadata(); as metadata) {
+                  <span class="li d-model-metadata-total">
+                    <epm-icon name="account_tree" [size]="15" />
+                    <span>{{ lang.t('mdl_elements_from_model') }}</span>
+                    <bdi>{{ metadata.elementCount }}</bdi>
+                  </span>
+                } @else {
+                  <span class="li" aria-live="polite">
+                    {{ lang.t('mdl_elements') }}
+                    <bdi>…</bdi>
                   </span>
                 }
-                <span class="li">
-                  <i class="ring"></i>
-                  {{ lang.t('mdl_critical') }} <bdi>{{ d.criticalCount }}</bdi>
-                </span>
-                <span class="sp" style="flex: 1"></span>
-                <span class="li">
-                  {{ lang.t('mdl_elements') }}
-                  <bdi>{{ shownCount() }}</bdi> / <bdi>{{ d.elementCount }}</bdi>
-                </span>
               </div>
             </div>
 
