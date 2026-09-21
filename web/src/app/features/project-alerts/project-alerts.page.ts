@@ -59,6 +59,8 @@ export class ProjectAlertsPage {
   /** The plate's segmented control. It opens on القواعد, which is what الشكل 47 shows. */
   view = signal<'inbox' | 'rules'>('rules');
   severity = signal('all');
+  /** A deep-linkable, single-record walkthrough for the documented R12 demo. */
+  focusRule = signal<string | null>(null);
   /** «محدد N» — the rows ticked for a bulk acknowledgement. */
   picked = signal<ReadonlySet<number>>(new Set());
   /** A rule mid-write, so its switch cannot be clicked twice. */
@@ -71,6 +73,12 @@ export class ProjectAlertsPage {
 
   rows = computed(() => this.data()?.rows ?? []);
   rules = computed(() => this.data()?.rules ?? []);
+  scopedRows = computed(() => {
+    const focus = this.focusRule();
+    return focus ? this.rows().filter(a => a.ruleCode === focus) : this.rows();
+  });
+  isFocusedDemo = computed(() => this.focusRule() === 'R12');
+  focusedAlert = computed(() => this.scopedRows()[0] ?? null);
 
   title(a: { titleAr: string; titleEn: string }): string {
     return this.lang.pick(a.titleAr, a.titleEn);
@@ -159,7 +167,7 @@ export class ProjectAlertsPage {
 
   shown = computed(() => {
     const sev = this.severity();
-    return this.rows().filter(a => sev === 'all' || a.severity === sev);
+    return this.scopedRows().filter(a => sev === 'all' || a.severity === sev);
   });
 
   /** The four groups, in `Domain/AlertInbox`'s order, empty ones dropped. */
@@ -170,11 +178,11 @@ export class ProjectAlertsPage {
       .filter(g => g.items.length > 0);
   });
 
-  openCount = computed(() => this.rows().filter(a => a.status === 'open').length);
+  openCount = computed(() => this.scopedRows().filter(a => a.status === 'open').length);
 
   /** «حرجة N» in the footer — read off the chip the endpoint counted. */
   criticalCount = computed(() =>
-    this.data()?.severities.find(s => s.code === 'critical')?.count ?? 0);
+    this.scopedRows().filter(a => a.severity === 'critical').length);
 
   isPicked(id: number): boolean { return this.picked().has(id); }
 
@@ -198,6 +206,14 @@ export class ProjectAlertsPage {
       this.view.set('rules');
       this.severity.set('all');
       this.clearPicked();
+    });
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(qm => {
+      const focused = qm.get('scenario') === 'r12';
+      this.focusRule.set(focused ? 'R12' : null);
+      if (focused) {
+        this.view.set('inbox');
+        this.severity.set('all');
+      }
     });
 
     effect(() => {

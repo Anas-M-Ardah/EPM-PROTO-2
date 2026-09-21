@@ -43,8 +43,8 @@
       <span class="z6-t">
         {{ lang.t('mod_alerts') }}
         <em>
-          @if (d.needsAction > 0) {
-            <bdi>{{ d.needsAction }}</bdi> {{ lang.t('pal_need_action') }}
+          @if (openCount() > 0) {
+            <bdi>{{ openCount() }}</bdi> {{ lang.t('pal_need_action') }}
           } @else {
             {{ lang.t('pal_nothing_overdue') }}
           }
@@ -90,6 +90,16 @@
     <div class="d-pbody no-aside">
       <div class="d-pz7">
 
+        @if (isFocusedDemo()) {
+          <div class="d-msgbar info epm-r12-demo-banner">
+            <epm-icon name="play_arrow" [size]="18" class="mgi" />
+            <div class="mtx">
+              <b class="mtitle">سيناريو العرض: R12 — تجاوز مهلة تدقيق المعاملة</b>
+              <span class="mbody">خطوة 1: تنبيه وتصعيد · خطوة 2: معالجة مالية · خطوة 3: صرف وإقفال الأثر التدقيقي</span>
+            </div>
+          </div>
+        }
+
         <!-- Operational summary: each figure is a purposeful route into the
              inbox, not decorative dashboard chrome. -->
         <div class="epm-alert-ops" aria-label="ملخص تشغيل التنبيهات">
@@ -102,16 +112,16 @@
           <button type="button" class="epm-alert-stat action"
                   (click)="view.set('inbox'); severity.set('all')">
             <span class="epm-alert-stat-icon"><epm-icon name="notifications_active" [size]="18" /></span>
-            <span><small>{{ lang.t('pal_need_action') }}</small><bdi>{{ d.needsAction }}</bdi></span>
+            <span><small>{{ lang.t('pal_need_action') }}</small><bdi>{{ openCount() }}</bdi></span>
             <epm-icon name="arrow_forward" [size]="16" class="epm-alert-stat-arrow" />
           </button>
           <div class="epm-alert-stat neutral">
             <span class="epm-alert-stat-icon"><epm-icon name="arrow_upward" [size]="18" /></span>
-            <span><small>{{ lang.t('pal_escalated_to') }}</small><bdi>{{ d.escalations }}</bdi></span>
+            <span><small>{{ lang.t('pal_escalated_to') }}</small><bdi>{{ isFocusedDemo() ? (focusedAlert()?.escalationCount ?? 0) : d.escalations }}</bdi></span>
           </div>
           <div class="epm-alert-stat neutral">
             <span class="epm-alert-stat-icon"><epm-icon name="verified_shield" [size]="18" /></span>
-            <span><small>{{ lang.t('pal_ch_inapp') }}</small><bdi>{{ d.simulatedDeliveries }}</bdi></span>
+            <span><small>{{ lang.t('pal_ch_inapp') }}</small><bdi>{{ isFocusedDemo() ? (focusedAlert()?.deliveryCount ?? 0) : d.simulatedDeliveries }}</bdi></span>
           </div>
         </div>
 
@@ -234,7 +244,7 @@
             </div>
           }
 
-          @if (rows().length === 0) {
+          @if (scopedRows().length === 0) {
             <!-- An empty inbox is a SUCCESS state, not "no records found". -->
             <div class="d-empty ok">
               <span class="d-empty-ico ok"><epm-icon name="check_circle" [size]="30" /></span>
@@ -306,11 +316,11 @@
         <div class="d-pager">
           <span>
             {{ lang.t('mod_alerts') }}
-            <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ d.alertCount }}</bdi></b>
+            <b><bdi>{{ shown().length }}</bdi> / <bdi>{{ scopedRows().length }}</bdi></b>
           </span>
           <span class="sp"></span>
           <span class="d-cell-sub">
-            {{ lang.t('pal_f_need') }} <bdi>{{ d.needsAction }}</bdi> ·
+            {{ lang.t('pal_f_need') }} <bdi>{{ openCount() }}</bdi> ·
             {{ lang.t('pal_f_critical') }} <bdi>{{ criticalCount() }}</bdi> ·
             {{ lang.t('pal_selected') }} <bdi>{{ picked().size }}</bdi>
           </span>

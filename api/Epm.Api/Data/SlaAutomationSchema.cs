@@ -11,6 +11,12 @@ namespace Epm.Api.Data;
 public static class SlaAutomationSchema
 {
     public static Task EnsureAsync(EpmDb db) => db.Database.ExecuteSqlRawAsync("""
+        IF COL_LENGTH(N'[Contracts]', N'PenaltyRatePct') IS NULL
+        BEGIN
+            ALTER TABLE [Contracts]
+                ADD [PenaltyRatePct] decimal(18,2) NOT NULL
+                    CONSTRAINT [DF_Contracts_PenaltyRatePct] DEFAULT 0.10;
+        END;
         IF OBJECT_ID(N'[AlertDeliveries]', N'U') IS NULL
         BEGIN
             CREATE TABLE [AlertDeliveries] (
