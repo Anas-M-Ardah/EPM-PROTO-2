@@ -2,10 +2,17 @@
   SCR-W10 — النموذج ثلاثي الأبعاد · ملحق الشكل 44.
 
   The scene loads the derivative URN linked to the selected model version.
-  Autodesk's native Model Structure panel owns the hierarchy, exactly as it
-  does in PPlus; this page does not rebuild or flatten that tree.
-  Unlinked versions keep an explicit empty state instead of borrowing geometry.
+  Autodesk's native Model Structure panel owns the model hierarchy, exactly as
+  it does in PPlus; this page does not rebuild or flatten that tree.
 
+  Under the scene, the plate's data as registers:
+    the view toggle — الحالة | التخصص
+    العناصر المرتبطة with discipline and status filters, the colour key
+      (مكتمل · قيد التنفيذ · متأخر, and حرج as a RING), and a details drawer
+      with the element's روابط to its BOQ line and activity
+    إصدارات النموذج as a record
+
+  Unlinked versions keep an explicit empty state instead of borrowing geometry.
   Every number, ID and date is <bdi>-isolated (05 §5.2).
 -->
 <div class="d-pframe d-model-page">
@@ -54,6 +61,14 @@
                       [label]="lang.t('mdl_versions')"
                       [allowEmpty]="false"
                       (changed)="chooseVersion($event)" />
+          @if (d.elementCount > 0) {
+            <div class="d-seg">
+              <button type="button" [class.on]="colourBy() === 'status'" [attr.aria-pressed]="colourBy() === 'status'"
+                      (click)="colourBy.set('status')">{{ lang.t('mdl_by_status') }}</button>
+              <button type="button" [class.on]="colourBy() === 'discipline'" [attr.aria-pressed]="colourBy() === 'discipline'"
+                      (click)="colourBy.set('discipline')">{{ lang.t('mdl_by_discipline') }}</button>
+            </div>
+          }
         </div>
       }
     </div>
@@ -77,56 +92,249 @@
             </div>
           </div>
 
-          <!-- ══ Model version record ════════════════════════════════════
-               The selector loads the derivative linked to that version; the
-               hierarchy above is always derived from the selected file. -->
+          <!-- ══ The registers under the scene ═══════════════════════════ -->
           <div class="d-model-split">
             <div class="d-model-split-head">
-              <epm-icon name="history" [size]="16" />
-              <b>{{ lang.t('mdl_versions') }}</b>
-              <span class="d-cell-sub"><bdi>{{ versions().length }}</bdi></span>
-            </div>
-            <div class="d-tablewrap"><table class="d-table">
-              <thead>
-                <tr>
-                  <th>{{ lang.t('mdl_v_code') }}</th>
-                  <th>{{ lang.t('mdl_v_label') }}</th>
-                  <th>{{ lang.t('mdl_v_date') }}</th>
-                  <th>{{ lang.t('mdl_v_by') }}</th>
-                  <th>{{ lang.t('col_status') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (v of versions(); track v.code) {
-                  <tr>
-                    <td class="mono d-cell-sub"><bdi>{{ v.code }}</bdi></td>
-                    <td class="d-cell-strong">{{ versionLabel(v) }}</td>
-                    <td class="mono"><bdi>{{ fmt.date(v.issuedOn) }}</bdi></td>
-                    <td>{{ v.by }}</td>
-                    <td>
-                      @if (v.isCurrent) {
-                        <span class="d-pill completed">{{ lang.t('mdl_v_current') }}</span>
-                      } @else {
-                        <span class="d-pill">{{ lang.t('mdl_v_previous') }}</span>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table></div>
-
-            <div class="d-msgbar">
-              <epm-icon name="info" [size]="16" class="mgi" />
-              <div class="mtx">
-                <b class="mtitle">{{ lang.t('mdl_ver_t') }}</b>
-                <span class="mbody">{{ lang.t('mdl_ver_b') }}</span>
+              <div class="d-seg" role="tablist">
+                <button type="button" role="tab" [class.on]="tab() === 'elements'" [attr.aria-selected]="tab() === 'elements'"
+                        (click)="tab.set('elements')">
+                  <epm-icon name="account_tree" [size]="14" />{{ lang.t('mdl_tab_elements') }}
+                  <bdi>{{ d.elementCount }}</bdi>
+                </button>
+                <button type="button" role="tab" [class.on]="tab() === 'versions'" [attr.aria-selected]="tab() === 'versions'"
+                        (click)="tab.set('versions')">
+                  <epm-icon name="history" [size]="14" />{{ lang.t('mdl_versions') }}
+                  <bdi>{{ versions().length }}</bdi>
+                </button>
               </div>
             </div>
+
+            @if (tab() === 'elements') {
+              @if (d.elementCount === 0) {
+                <!-- Nothing recorded — a different state from «the filters
+                     excluded everything», with a different message (04 §9). -->
+                <div class="d-empty">
+                  <span class="d-empty-ico"><epm-icon name="account_tree" [size]="30" /></span>
+                  <b>{{ lang.t('mdl_no_elements_t') }}</b>
+                  <span>{{ lang.t('mdl_no_elements_b') }}</span>
+                </div>
+              } @else {
+                <div class="d-model-filter d-model-filter-row">
+                  <div class="d-model-filter-group">
+                    <span class="d-cell-sub">{{ lang.t('mdl_discipline') }}</span>
+                    @for (c of d.disciplines; track c.code) {
+                      <button type="button" class="d-chip2" [class.on]="discipline() === c.code"
+                              [attr.aria-pressed]="discipline() === c.code" (click)="discipline.set(c.code)">
+                        <span>{{ disciplineLabel(c.code) }}</span><bdi>{{ c.count }}</bdi>
+                      </button>
+                    }
+                  </div>
+                  <div class="d-model-filter-group">
+                    <span class="d-cell-sub">{{ lang.t('col_status') }}</span>
+                    <button type="button" class="d-chip2" [class.on]="status() === 'all'"
+                            [attr.aria-pressed]="status() === 'all'" (click)="status.set('all')">
+                      <span>{{ lang.t('mdl_all') }}</span><bdi>{{ d.elementCount }}</bdi>
+                    </button>
+                    @for (c of d.statuses; track c.code) {
+                      <button type="button" class="d-chip2" [class.on]="status() === c.code"
+                              [attr.aria-pressed]="status() === c.code" (click)="status.set(c.code)">
+                        <span>{{ statusLabel(c.code) }}</span><bdi>{{ c.count }}</bdi>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                @if (shown().length === 0) {
+                  <div class="d-empty">
+                    <span class="d-empty-ico"><epm-icon name="search_off" [size]="30" /></span>
+                    <b>{{ lang.t('mdl_filter_empty') }}</b>
+                    <button type="button" class="d-btn" (click)="clearFilters()">{{ lang.t('clear_filters') }}</button>
+                  </div>
+                } @else {
+                  <div class="d-tablewrap"><table class="d-table">
+                    <thead>
+                      <tr>
+                        <th>{{ lang.t('mdl_code') }}</th>
+                        <th>{{ lang.t('mdl_element') }}</th>
+                        <th>{{ lang.t('mdl_location') }}</th>
+                        <th>{{ lang.t('mdl_discipline') }}</th>
+                        <th>{{ lang.t('col_status') }}</th>
+                        <th class="num">{{ lang.t('mdl_progress') }}</th>
+                        <th>{{ lang.t('mdl_boq_line') }}</th>
+                        <th>{{ lang.t('mdl_activity') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (e of shown(); track e.code) {
+                        <tr [class.sel]="selected() === e.code" (click)="open(e.code)" style="cursor: pointer">
+                          <!-- The row is the pointer target and the code is
+                               the KEYBOARD one: a <tr> cannot take
+                               :focus-visible (05 §7). -->
+                          <td class="mono">
+                            <i class="epm-model-mark {{ markClass(e) }}"
+                               [attr.title]="markTitle(e)" [attr.aria-label]="markTitle(e)"></i>
+                            <button type="button" class="lnk" [attr.aria-expanded]="selected() === e.code"
+                                    (click)="open(e.code); $event.stopPropagation()"><bdi>{{ e.code }}</bdi></button>
+                          </td>
+                          <td class="d-cell-strong">{{ name(e) }}</td>
+                          <td>{{ building(e) }} · <bdi class="mono">{{ e.level }}</bdi></td>
+                          <td>{{ disciplineLabel(e.discipline) }}</td>
+                          <td>
+                            <span class="d-pill {{ statusClass(e.status) }}">{{ statusLabel(e.status) }}</span>
+                            @if (e.isCritical) {
+                              <span class="d-pill critical">{{ lang.t('mdl_critical') }}</span>
+                            }
+                          </td>
+                          <td class="num"><bdi>{{ fmt.pct(e.progressPct, 0) }}</bdi></td>
+                          <td class="mono d-cell-sub"><bdi>{{ e.boqCode }}</bdi></td>
+                          <td class="mono d-cell-sub"><bdi>{{ e.activityCode }}</bdi></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table></div>
+                }
+
+                <!-- مفتاح ألوان حالات العناصر. حرج is the only entry drawn as a
+                     ring — it is not a fourth status (CLAUDE.md §6). -->
+                <div class="d-model-legend">
+                  @for (s of d.statuses; track s.code) {
+                    <span class="li">
+                      <i class="epm-model-mark {{ s.code }}"></i>
+                      {{ statusLabel(s.code) }} <bdi>{{ s.count }}</bdi>
+                    </span>
+                  }
+                  <span class="li">
+                    <i class="ring"></i>
+                    {{ lang.t('mdl_critical') }} <bdi>{{ d.criticalCount }}</bdi>
+                  </span>
+                  <span class="sp" style="flex: 1"></span>
+                  <span class="li">
+                    {{ lang.t('mdl_elements') }}
+                    <bdi>{{ shown().length }}</bdi> / <bdi>{{ d.elementCount }}</bdi>
+                  </span>
+                </div>
+
+                <div class="d-msgbar">
+                  <epm-icon name="info" [size]="16" class="mgi" />
+                  <div class="mtx">
+                    <b class="mtitle">{{ lang.t('mdl_link_note_t') }}</b>
+                    <span class="mbody">{{ lang.t('mdl_link_note_b') }}</span>
+                  </div>
+                </div>
+              }
+
+            } @else {
+              <!-- ══ Model version record ══════════════════════════════════
+                   The selector loads the derivative linked to that version. -->
+              <div class="d-tablewrap"><table class="d-table">
+                <thead>
+                  <tr>
+                    <th>{{ lang.t('mdl_v_code') }}</th>
+                    <th>{{ lang.t('mdl_v_label') }}</th>
+                    <th>{{ lang.t('mdl_v_date') }}</th>
+                    <th>{{ lang.t('mdl_v_by') }}</th>
+                    <th>{{ lang.t('col_status') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (v of versions(); track v.code) {
+                    <tr [class.sel]="selectedVersion()?.code === v.code">
+                      <td class="mono d-cell-sub"><bdi>{{ v.code }}</bdi></td>
+                      <td class="d-cell-strong">{{ versionLabel(v) }}</td>
+                      <td class="mono"><bdi>{{ fmt.date(v.issuedOn) }}</bdi></td>
+                      <td>{{ v.by }}</td>
+                      <td>
+                        @if (v.isCurrent) {
+                          <span class="d-pill completed">{{ lang.t('mdl_v_current') }}</span>
+                        } @else {
+                          <span class="d-pill">{{ lang.t('mdl_v_previous') }}</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table></div>
+
+              <div class="d-msgbar">
+                <epm-icon name="info" [size]="16" class="mgi" />
+                <div class="mtx">
+                  <b class="mtitle">{{ lang.t('mdl_ver_t') }}</b>
+                  <span class="mbody">{{ lang.t('mdl_ver_b') }}</span>
+                </div>
+              </div>
+            }
           </div>
         }
 
       </div>
     </div>
+
+    <!-- ══ لوحة تفاصيل العنصر — secondary detail goes in a drawer ═════════ -->
+    @if (opened(); as e) {
+      <epm-drawer [title]="name(e)" [sub]="e.code" (closed)="close()">
+        <div class="d-model-props-head">
+          <span class="d-pill {{ statusClass(e.status) }}">{{ statusLabel(e.status) }}</span>
+          @if (e.isCritical) {
+            <span class="d-pill critical">{{ lang.t('mdl_critical') }}</span>
+          }
+        </div>
+
+        <div class="d-model-plist">
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_code') }}</span>
+            <span class="v mono"><bdi>{{ e.code }}</bdi></span>
+          </div>
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_discipline') }}</span>
+            <span class="v">{{ disciplineLabel(e.discipline) }}</span>
+          </div>
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_level') }}</span>
+            <span class="v mono"><bdi>{{ e.level }}</bdi></span>
+          </div>
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_zone') }}</span>
+            <span class="v"><bdi>{{ e.zone }}</bdi></span>
+          </div>
+          <!-- The element's OWN quantity, not the BOQ line's: one line of
+               concrete covers several elements. -->
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_qty') }}</span>
+            <span class="v num"><bdi>{{ fmt.qty(e.qty) }} {{ e.unit }}</bdi></span>
+          </div>
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_revision') }}</span>
+            <span class="v mono"><bdi>{{ e.revision }}</bdi></span>
+          </div>
+          <div class="d-plist-i">
+            <span class="k">{{ lang.t('mdl_progress') }}</span>
+            <span class="v num"><bdi>{{ fmt.pct(e.progressPct, 0) }}</bdi></span>
+          </div>
+        </div>
+
+        <!-- الشكل 44's «قسم روابط» — the reason the screen exists: the element
+             names one BOQ line and one activity, each in its own contract. -->
+        <div class="d-model-link">
+          <span class="lk-t">{{ lang.t('mdl_links') }}</span>
+
+          <button type="button" class="d-linkrow" (click)="openBoq(e)">
+            <epm-icon name="list_alt" [size]="15" />
+            <span><bdi>{{ boqText(e) }}</bdi></span>
+            <epm-icon name="chevron_left" [size]="15" />
+          </button>
+
+          <button type="button" class="d-linkrow" (click)="openActivity(e)">
+            <epm-icon name="timeline" [size]="15" />
+            <span><bdi>{{ activityText(e) }}</bdi></span>
+            <epm-icon name="chevron_left" [size]="15" />
+          </button>
+
+          <span class="d-cell-sub">
+            {{ lang.t('mdl_contract') }} <bdi>{{ e.contractId }}</bdi>
+          </span>
+        </div>
+      </epm-drawer>
+    }
    }
   }
 </div>

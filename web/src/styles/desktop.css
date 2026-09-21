@@ -1191,6 +1191,12 @@ select.ctl { cursor: pointer; }
 .d-model-toolbar .d-model-version-select .epm-select { width: 100%; }
 .d-model-filter { display: flex; flex-direction: column; gap: var(--space-8); }
 .d-model-filter > .d-cell-sub { flex-basis: 100%; }
+/* The linked-elements register's chips: two labelled groups on one wrapping
+   row above the table, separated from it by a hairline. */
+.d-model-filter.d-model-filter-row { flex-direction: row; flex-wrap: wrap; gap: var(--space-8) var(--space-24);
+  padding: var(--space-10) var(--space-10); border-bottom: 1px solid var(--outline-variant); }
+.d-model-filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.d-model-split .d-table .epm-model-mark { margin-inline-end: var(--space-8); vertical-align: middle; }
 .d-model-filter-head { flex: 1 0 100%; display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--space-8); padding-bottom: var(--space-4); }
 .d-model-filter-head > :first-child { color: var(--on-surface); font-size: 12px; font-weight: var(--fw-bold); }
@@ -1246,6 +1252,10 @@ select.ctl { cursor: pointer; }
 .epm-aps-viewer .model-structure-panel .docking-panel-container-solid-color-a {
   background-color: var(--surface-container-lowest); }
 .epm-aps-viewer .model-structure-panel .search-box:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Autodesk's stock sheet gives the expand/collapse arrows cursor: zoom-in /
+   zoom-out, which reads as the canvas zoom tool leaking into the panel. They
+   are toggles. One class more than Autodesk's (0,4,2) selector. */
+.epm-aps-viewer .adsk-viewing-viewer.bim-theme .treeview :is(.collapsed, .expanded) > lmvheader > icon { cursor: pointer; }
 .epm-aps-viewer .treeview lmvheader > label { display: inline-block; max-width: calc(100% - 76px); vertical-align: top;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; }
 .d-model-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--on-surface-variant); font-size: 12px; }
@@ -1266,7 +1276,13 @@ select.ctl { cursor: pointer; }
 .d-plist-i .k { color: var(--on-surface-variant); }
 .d-plist-i .v { font-weight: var(--fw-bold); }
 .d-model-link { padding: 12px 16px; border-top: 1px solid var(--outline-variant); display: flex; flex-direction: column; gap: 7px; }
-.d-model-link .lk-t { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--on-surface-variant); font-weight: var(--fw-bold); }
+.d-model-link .lk-t { font-size: 11px; color: var(--on-surface-variant); font-weight: var(--fw-bold); }
+/* The element's details now open in the shared drawer rather than a third
+   pane, so the pane's breakpoint layouts (two-column list, side border) must
+   not reach it — the drawer body already pads and spaces its sections. */
+.d-drawer .d-model-props-head { flex-direction: row; flex-wrap: wrap; gap: var(--space-6); padding: 0; border: 0; }
+.d-drawer .d-model-plist { display: block; padding: 0; }
+.d-drawer .d-model-link { padding: var(--space-12) 0 0; border: 0; border-top: 1px solid var(--outline-variant); }
 .d-linkrow { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--outline-variant); border-radius: var(--r-sm); font-size: 12px; cursor: pointer; }
 .d-linkrow span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .d-linkrow:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
