@@ -15,7 +15,9 @@ declare const Autodesk: any;
   standalone: true,
   imports: [IconComponent],
   template: `
-    <div class="epm-aps-viewer" #host></div>
+    <!-- dir="ltr" as PPlus does on its viewer splitter: Autodesk's panels and
+         toolbar are laid out LTR, and the 3D canvas is never mirrored. -->
+    <div class="epm-aps-viewer" #host dir="ltr" [attr.aria-label]="lang.t('mod_model')"></div>
     @if (!urn) {
       <div class="d-model-loading">
         <epm-icon name="deployed_code" [size]="34" />
@@ -96,14 +98,19 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
         Autodesk.Viewing.Document.load(
           documentId,
           (doc: any) => {
-            const geometry = doc.getRoot().getDefaultGeometry();
+            const root = doc.getRoot();
+            const geometry = root.getDefaultGeometry()
+              ?? root.search({ type: 'geometry' })[0];
+            if (!geometry) {
+              reject(new Error('No viewable geometry was found in this document'));
+              return;
+            }
             this.viewer.loadDocumentNode(doc, geometry).then(() => resolve(), reject);
           },
           (code: number, message: string) => reject(new Error(`${code}: ${message}`)),
         );
       });
       if (generation === this.generation) {
-        this.viewer.fitToView();
         this.loading.set(false);
       }
     } catch (e: any) {
@@ -128,8 +135,19 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
   private async initialize() {
     await new Promise<void>((resolve, reject) => {
       Autodesk.Viewing.Initializer({
-        env: 'AutodeskProduction2',
-        api: 'streamingV2',
+        // Keep these values identical to PPlus. In particular, using a
+        // different streaming environment can yield a different presentation
+        // of the same derivative's viewables and model tree.
+        //
+        // No `language` option, as in PPlus: Autodesk picks its UI strings
+        // from the browser. Viewer 7 ships no Arabic locale (res/locales/ar
+        // is a 404), so its chrome falls back to English on an Arabic
+        // browser in both apps. Node names are not UI strings — they are
+        // authored in the model file and arrive unchanged from its
+        // property database, so the file (URN) decides their language.
+        env: 'AutodeskProduction',
+        api: 'derivativeV2',
+        enableMemoryManagement: true,
         getAccessToken: async (callback: (token: string, expiresIn: number) => void) => {
           try {
             const token = await firstValueFrom(this.api.getViewerToken());
@@ -140,11 +158,16 @@ export class ApsViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
         },
       }, () => {
         this.viewer = new Autodesk.Viewing.GuiViewer3D(this.host.nativeElement, {
-          extensions: ['Autodesk.DocumentBrowser'],
+          disableBrowserContextMenu: true,
+          useConsolidation: true,
+          theme: 'bim-theme',
         });
         const code = this.viewer.start();
         if (code > 0) reject(new Error(`Viewer start failed (${code})`));
-        else resolve();
+        else {
+          this.viewer.setSelectionMode(Autodesk.Viewing.SelectionMode.FIRST_OBJECT);
+          resolve();
+        }
       });
     });
   }

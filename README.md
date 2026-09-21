@@ -47,8 +47,8 @@ can attach. The fixture is loaded the same way — the button on the Projects sc
 
 ### Configure the 3D model viewer
 
-The viewer uses Autodesk Platform Services (formerly Forge). For local `dotnet run`, keep
-the client credentials and translated derivative URN in .NET user secrets:
+The viewer uses Autodesk Platform Services (formerly Forge). The approved workspace-7
+credentials are copied once into EPM's project-scoped .NET user-secrets store:
 
 ```bash
 cd api/Epm.Api
@@ -56,11 +56,15 @@ dotnet user-secrets set "Aps:ClientId" "<client-id>"
 dotnet user-secrets set "Aps:ClientSecret" "<client-secret>"
 ```
 
-Docker reads `APS_CLIENT_ID` and `APS_CLIENT_SECRET` from the gitignored `.env`. The
-secret never reaches Angular; the API exchanges it for a short-lived `viewables:read`
-token. The non-secret URN for the synthetic demo building is checked into development
-configuration. Loading the fixture creates project `PRJ-0301`, whose current model version
-resolves to that uploaded derivative automatically.
+For direct `dotnet run`, the Development configuration provider reads these automatically.
+Docker mounts the same EPM `secrets.json` read-only at `/run/secrets/epm-aps.json`. The
+PPlus checkout is therefore not required when EPM runs again; the secrets remain local and
+outside Git.
+
+The secret never reaches Angular; the API exchanges it for a short-lived
+`viewables:read` token. The non-secret EMEA URN for the coordinated demonstration building
+is checked into development configuration. Loading the fixture creates project `PRJ-0301`,
+whose current model version resolves to that translated derivative automatically.
 
 A few things worth knowing:
 

@@ -27,8 +27,28 @@ using Epm.Api.Features.Model;
 using Epm.Api.Features.Audit;
 using Epm.Api.Features.ProjectReports;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Docker cannot see the host's .NET user-secrets provider. It mounts this
+// project's own secrets.json read-only and points Aps:CredentialFile at it.
+// Import only the two flattened user-secret keys; no secret is checked in.
+var apsCredentialFile = builder.Configuration["Aps:CredentialFile"];
+if (!string.IsNullOrWhiteSpace(apsCredentialFile))
+{
+    using var document = JsonDocument.Parse(File.ReadAllText(apsCredentialFile));
+    var root = document.RootElement;
+    if (!root.TryGetProperty("Aps:ClientId", out var clientId)
+        || !root.TryGetProperty("Aps:ClientSecret", out var clientSecret))
+        throw new InvalidOperationException("The configured APS credential file is not this project's user-secrets file.");
+
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Aps:ClientId"] = clientId.GetString(),
+        ["Aps:ClientSecret"] = clientSecret.GetString(),
+    });
+}
 
 // Dev reads this from appsettings.Development.json (local SQL Server). Every
 // other environment supplies it as configuration from OUTSIDE the repository —

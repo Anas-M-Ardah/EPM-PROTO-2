@@ -11,29 +11,31 @@ import * as fmt from '../../core/format';
 import { ModelApi } from './model.api';
 import { ModelElementRow, ModelResponse } from './model.types';
 import { ApsViewerComponent } from './aps-viewer.component';
+import { SelectComponent, SelectOption } from '../../shared/select.component';
+import { DrawerComponent } from '../../shared/drawer.component';
 
 /**
  * SCR-W10 — النموذج ثلاثي الأبعاد · **ملحق الشكل 44**.
  *
- * ── THE VIEWER ───────────────────────────────────────────────────────────────────────
- * Autodesk APS renders the derivative linked to each model version. Token
- * exchange stays in the API; this page receives only a URN and the viewer's
- * short-lived, viewables-only token.
+ * ── THE VIEWER OWNS THE HIERARCHY ─────────────────────────────────────────
+ * Autodesk APS renders the derivative linked to each model version, and its
+ * native Model Structure panel is the model hierarchy, as in PPlus. Token
+ * exchange stays in the API; this page receives only a URN.
  *
  * ── THE LINKS ARE THE SCREEN ──────────────────────────────────────────────
- * الشكل 44's own closing note says it: the element's links tie the model to the
- * BOQ line and the schedule activity. Those are joins `EP-MDL-01` resolved, and
- * clicking one navigates to the tab that owns it.
+ * Beside the scene sit the project's own elements, each joined by `EP-MDL-01`
+ * to one BOQ line and one activity. They are a register, not a second tree:
+ * an element carries no object ID from the model file yet, so selecting one
+ * opens its details and links rather than pretending to isolate geometry.
  *
  * ── STATUS IS THE COLOUR; CRITICALITY IS A RING ───────────────────────────
- * The plate's key lists «حرج» fourth, beside three statuses. It is not a fourth
- * status — an element can be both مكتمل and حرج — so it rides a ring, the same
- * channel `.d-gantt-bar.crit` uses on SCR-W5 (CLAUDE.md §6).
+ * «حرج» is not a fourth status — an element can be both مكتمل and حرج — so it
+ * rides a ring (CLAUDE.md §6).
  */
 @Component({
   selector: 'epm-model-page',
   standalone: true,
-  imports: [IconComponent, ApsViewerComponent],
+  imports: [IconComponent, ApsViewerComponent, SelectComponent, DrawerComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './model.page.html',
 })
@@ -53,10 +55,12 @@ export class ModelPage {
 
   /** «مفتاح تبديل بين عرض الحالة وعرض التخصص». */
   colourBy = signal<'status' | 'discipline'>('status');
+  /** The register under the scene: the linked elements, or the version record. */
+  tab = signal<'elements' | 'versions'>('elements');
   discipline = signal('all');
   status = signal('all');
   versionCode = signal<string | null>(null);
-  /** The plate opens with COL-L1 selected. */
+  /** The element whose details drawer is open. */
   selected = signal<string | null>(null);
 
   elements = computed(() => this.data()?.elements ?? []);
@@ -65,6 +69,21 @@ export class ModelPage {
   current = computed(() => this.versions().find(v => v.isCurrent) ?? null);
   selectedVersion = computed(() =>
     this.versions().find(v => v.code === this.versionCode()) ?? this.current());
+  versionOptions = computed<SelectOption[]>(() => this.versions().map(v => ({
+    code: v.code,
+    label: `${this.versionLabel(v)} · ${this.fmt.date(v.issuedOn)}`,
+  })));
+
+  /** The register, filtered by the discipline and status chips. */
+  shown = computed(() => {
+    const d = this.discipline(), s = this.status();
+    return this.elements().filter(e =>
+      (d === 'all' || e.discipline === d) && (s === 'all' || e.status === s));
+  });
+
+  filtered = computed(() => this.discipline() !== 'all' || this.status() !== 'all');
+
+  opened = computed(() => this.elements().find(e => e.code === this.selected()) ?? null);
 
   name(e: { nameAr: string; nameEn: string }): string {
     return this.lang.pick(e.nameAr, e.nameEn);
@@ -91,55 +110,18 @@ export class ModelPage {
       : '';
   }
 
-  /** The tree mark: status colour, plus a ring when the element is critical. */
+  /** The row mark: status colour, plus a ring when the element is critical. */
   markClass(e: ModelElementRow): string {
     const base = this.colourBy() === 'status' ? e.status : '';
     return `${base}${e.isCritical ? ' crit' : ''}`;
   }
 
-  /** With «التخصص» selected the tree names the discipline instead of colouring by status. */
+  /** The mark's word, so the mark is never colour alone (05 §7.6). */
   markTitle(e: ModelElementRow): string {
-    return this.colourBy() === 'status'
+    const word = this.colourBy() === 'status'
       ? this.statusLabel(e.status)
       : this.disciplineLabel(e.discipline);
-  }
-
-  /** The tree, filtered by the discipline chips. Empty floors are not drawn. */
-  tree = computed(() => {
-    const d = this.discipline();
-    return (this.data()?.tree ?? [])
-      .map(b => ({
-        buildingAr: b.buildingAr,
-        buildingEn: b.buildingEn,
-          levels: b.levels
-          .map(l => ({
-            level: l.level,
-            elements: l.elements.filter(e => d === 'all' || e.discipline === d),
-          }))
-          .map(l => ({
-            ...l,
-            elements: l.elements.filter(e => this.status() === 'all' || e.status === this.status()),
-          }))
-          .filter(l => l.elements.length > 0),
-      }))
-      .filter(b => b.levels.length > 0);
-  });
-
-  shownCount = computed(() =>
-    this.tree().reduce((n, b) => n + b.levels.reduce((m, l) => m + l.elements.length, 0), 0));
-
-  opened = computed(() => {
-    const visible = this.tree().flatMap(b => b.levels.flatMap(l => l.elements));
-    return visible.find(e => e.code === this.selected()) ?? visible[0] ?? null;
-  });
-
-  select(code: string) { this.selected.set(code); }
-
-  onNodeKey(e: KeyboardEvent, code: string) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      this.select(code);
-    }
+    return e.isCritical ? `${word} · ${this.lang.t('mdl_critical')}` : word;
   }
 
   boqText(e: ModelElementRow): string {
@@ -152,16 +134,17 @@ export class ModelPage {
     return n ? `${e.activityCode} — ${n}` : `${e.activityCode} — ${this.lang.t('mdl_unlinked')}`;
   }
 
+  open(code: string) { this.selected.set(code); }
+  close() { this.selected.set(null); }
+
+  clearFilters() {
+    this.discipline.set('all');
+    this.status.set('all');
+  }
+
   /**
-   * The link is a link. الشكل 44's whole argument is that the element points at
-   * a real BOQ line and a real activity, so following one lands on the tab that
-   * OWNS that record rather than on a copy of it here.
-   *
-   * The contract is a route segment on both tabs, not a filter — switching
-   * contracts re-scopes everything (01 §1) — so the link carries the element's
-   * own contract and opens that register. It does not pre-select the row:
-   * neither tab reads a row from the URL, and teaching them to would be a
-   * change to two screens this one is only reading.
+   * The link is a link: it lands on the tab that OWNS the record, scoped to
+   * the element's own contract, rather than on a copy of it here.
    */
   openBoq(e: ModelElementRow) {
     this.router.navigate(['/projects', this.projectId(), 'boq', e.contractId]);
@@ -174,8 +157,7 @@ export class ModelPage {
   constructor() {
     this.route.parent!.paramMap.pipe(takeUntilDestroyed()).subscribe(pm => {
       this.projectId.set(pm.get('id') ?? '');
-      this.discipline.set('all');
-      this.status.set('all');
+      this.clearFilters();
       this.versionCode.set(null);
       this.selected.set(null);
     });
@@ -195,9 +177,6 @@ export class ModelPage {
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.get(pid) }).subscribe({
       next: ({ model }) => {
         this.data.set(model);
-        // الشكل 44 opens with an element already selected, because an empty
-        // panel beside a tree teaches nothing about what the tree is for.
-        this.selected.set(model.elements[0]?.code ?? null);
         this.versionCode.set(model.versions.find(v => v.isCurrent)?.code ?? model.versions[0]?.code ?? null);
         this.loading.set(false);
       },
@@ -208,7 +187,7 @@ export class ModelPage {
     });
   }
 
-  chooseVersion(event: Event) {
-    this.versionCode.set((event.target as HTMLSelectElement).value || null);
+  chooseVersion(code: string) {
+    this.versionCode.set(code || null);
   }
 }

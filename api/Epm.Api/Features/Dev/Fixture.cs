@@ -2386,19 +2386,25 @@ public static class Fixture
                 LabelAr = "الإصدار الحالي", LabelEn = "Current version",
                 IssuedOn = new DateOnly(2026, 6, 1), By = "م. أحمد فؤاد", IsCurrent = true });
 
-        // A self-contained viewer project. Its CC0 presentation mosque GLB is stored at
-        // docs/demo/omar-ali-saifuddien-mosque.glb and uploaded once to APS; the URN
-        // stays in secure deployment configuration (`Aps:FixtureModelUrn`).
-        // Loading this fixture creates the project/version that consumes it.
+        // A self-contained viewer project backed by a coordinated NWD already
+        // translated in the approved PPlus staging APS workspace. Its object
+        // hierarchy and properties drive the live model statistics; the URN
+        // stays in deployment configuration (`Aps:FixtureModelUrn`).
+        // It must be the file PPlus staging's SM-00000001 (جامعة كربلاء) loads,
+        // 2268cc96cfcf4b13b5bcaa63032ee7db.nwd, read from its live viewer on
+        // 2026-09-21. The bucket also holds d0eaa6eb….nwd, whose node names are
+        // authored in English. Node names come from the file's property
+        // database, so pointing at that file is what showed «College of Law»
+        // where PPlus shows «كلية القانون». No viewer setting changes that.
         db.Projects.Add(new Project
         {
             Id = "PRJ-0301", WorkspaceCode = "ub", Code = "PC-0301",
-            NameAr = "جامع العرض الهندسي", NameEn = "Engineering Presentation Mosque",
+            NameAr = "مبنى الحرم الجامعي الذكي", NameEn = "Smart Campus Building",
             RegistrationYear = 2026, PlannedCost = 25_000_000m,
             ExpenditureCategory = "construction", BudgetApprovalNumber = "BA-2631",
             Coordinates = "33.27,44.37", Formation = "وزارة التعليم العالي والبحث العلمي",
             OrgStructure = "دائرة الإعمار والمشاريع › القسم الهندسي › الأبنية",
-            Description = "مشروع جامع توضيحي غير حقيقي لعرض تكامل النموذج ثلاثي الأبعاد مع بيانات المشروع.",
+            Description = "مشروع توضيحي غير حقيقي لعرض تكامل نموذج مبنى منسق وبياناته الوصفية مع بيانات المشروع.",
             Status = "ongoing", Type = "construction", ExecutionStage = "structure",
             FundingType = "federal-budget", Region = "baghdad", Priority = "medium",
             Branch = "شعبة الأبنية", Executor = "فريق العرض التجريبي",
@@ -2409,21 +2415,21 @@ public static class Fixture
         db.Contracts.Add(new Contract
         {
             Id = "CNT-0301", ProjectId = "PRJ-0301",
-            NameAr = "أعمال إنشاء الجامع التجريبي", NameEn = "Presentation mosque works",
+            NameAr = "أعمال إنشاء المبنى التجريبي", NameEn = "Presentation building works",
             OriginalValue = 25_000_000m, Status = "ongoing",
             Start = new DateOnly(2026, 1, 15), OriginalFinish = new DateOnly(2026, 12, 15),
             OriginalDurationDays = 335, ForecastFinish = new DateOnly(2026, 12, 15),
             AwardAmount = 23_000_000m, ReserveAmount = 1_000_000m, SupervisionAmount = 1_000_000m,
             IncomingNo = "DEMO-3D-01", IncomingDate = new DateOnly(2026, 1, 10),
             Contractor = "فريق العرض التجريبي", Consultant = "المكتب الاستشاري الهندسي",
-            Component = "مبنى الجامع", ExecutingParty = "فريق العرض التجريبي",
+            Component = "المبنى الجامعي", ExecutingParty = "فريق العرض التجريبي",
         });
 
         db.BoqItems.Add(new BoqItem
         {
             ContractId = "CNT-0301", Code = "BQ-3D-01",
-            DescriptionAr = "الهيكل الخرساني وقباب الجامع التجريبي",
-            DescriptionEn = "Presentation mosque structure and domes",
+            DescriptionAr = "الأعمال الإنشائية والمعمارية للمبنى التجريبي",
+            DescriptionEn = "Presentation building structure and architecture",
             Unit = "م²", Division = "03", DivisionName = "الأعمال الإنشائية",
             OriginalQty = 960m, UnitRate = 23_958.3333m,
         });
@@ -2431,8 +2437,8 @@ public static class Fixture
         db.Activities.Add(new Activity
         {
             ContractId = "CNT-0301", ActivityId = "3D-A1",
-            NameAr = "تنفيذ هيكل وقباب الجامع التجريبي", NameEn = "Build mosque structure and domes",
-            WbsPath = "1.1", WbsNames = "مبنى الجامع / الهيكل والقباب",
+            NameAr = "تنفيذ هيكل وتشطيبات المبنى التجريبي", NameEn = "Build the presentation building",
+            WbsPath = "1.1", WbsNames = "المبنى الجامعي / الهيكل والتشطيبات",
             ProgressPct = 68m, BaselineStart = new DateOnly(2026, 1, 15),
             BaselineFinish = new DateOnly(2026, 12, 15), ActualStart = new DateOnly(2026, 1, 15),
             ForecastFinish = new DateOnly(2026, 12, 15), OriginalDuration = 335,
@@ -2445,23 +2451,23 @@ public static class Fixture
                                  decimal qty, decimal progress, string status) => new()
         {
             ProjectId = "PRJ-0301", Code = code, NameAr = ar, NameEn = en,
-            Discipline = discipline, Status = status, IsCritical = code == "MOS-DOME",
-            BuildingAr = "مبنى الجامع", BuildingEn = "Mosque building",
+            Discipline = discipline, Status = status, IsCritical = code == "BLD-MEP",
+            BuildingAr = "المبنى الجامعي", BuildingEn = "Campus building",
             Level = level, Zone = "Main", Qty = qty, Unit = "م²",
             ContractId = "CNT-0301", BoqCode = "BQ-3D-01", ActivityCode = "3D-A1",
             ProgressPct = progress, Revision = "R1",
         };
 
         db.ModelElements.AddRange(
-            DemoElement("MOS-FND", "الأساسات والساحة", "Foundations and courtyard", "structural", "L00", 3_500m, 100m, "completed"),
-            DemoElement("MOS-HALL", "قاعة الصلاة", "Prayer hall", "architectural", "L00", 1_700m, 85m, "inprogress"),
-            DemoElement("MOS-DOME", "القبة المركزية", "Central dome", "structural", "ROOF", 380m, 55m, "inprogress"),
-            DemoElement("MOS-MIN", "المآذن الأربع", "Four minarets", "architectural", "ROOF", 4m, 30m, "inprogress"));
+            DemoElement("BLD-FND", "الأساسات", "Foundations", "structural", "L00", 3_500m, 100m, "completed"),
+            DemoElement("BLD-ARC", "الأعمال المعمارية", "Architectural works", "architectural", "L01", 1_700m, 85m, "inprogress"),
+            DemoElement("BLD-MEP", "الخدمات الميكانيكية", "Mechanical services", "mechanical", "L02", 380m, 55m, "inprogress"),
+            DemoElement("BLD-ELC", "الخدمات الكهربائية", "Electrical services", "electrical", "L02", 420m, 30m, "inprogress"));
 
         db.ModelVersions.Add(new ModelVersion
         {
             ProjectId = "PRJ-0301", Code = "m1",
-            LabelAr = "نموذج الجامع", LabelEn = "Mosque presentation model",
+            LabelAr = "نموذج المبنى المنسق", LabelEn = "Coordinated building model",
             IssuedOn = new DateOnly(2026, 8, 2), By = "فريق العرض التجريبي", IsCurrent = true,
         });
 

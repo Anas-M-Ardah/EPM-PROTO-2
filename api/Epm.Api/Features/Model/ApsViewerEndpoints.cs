@@ -31,7 +31,7 @@ public static class ApsViewerEndpoints
             {
                 return Results.Problem(
                     title: "APS viewer is not configured",
-                    detail: "Set Aps:ClientId and Aps:ClientSecret in environment configuration.",
+                    detail: "Configure Aps:ClientId and Aps:ClientSecret in this project's user-secrets store.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 

@@ -1187,12 +1187,29 @@ select.ctl { cursor: pointer; }
   min-width: 0; max-width: 100%; align-items: stretch; }
 .d-model-tree { grid-area: tree; min-width: 0; min-height: 0; overflow-y: auto; padding: var(--space-12);
   border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); }
-.d-model-filter { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.d-model-toolbar .d-model-version-select { display: block; min-width: min(320px, 52vw); }
+.d-model-toolbar .d-model-version-select .epm-select { width: 100%; }
+.d-model-filter { display: flex; flex-direction: column; gap: var(--space-8); }
 .d-model-filter > .d-cell-sub { flex-basis: 100%; }
+/* The linked-elements register's chips: two labelled groups on one wrapping
+   row above the table, separated from it by a hairline. */
+.d-model-filter.d-model-filter-row { flex-direction: row; flex-wrap: wrap; gap: var(--space-8) var(--space-24);
+  padding: var(--space-10) var(--space-10); border-bottom: 1px solid var(--outline-variant); }
+.d-model-filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.d-model-split .d-table .epm-model-mark { margin-inline-end: var(--space-8); vertical-align: middle; }
+.d-model-filter-head { flex: 1 0 100%; display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-8); padding-bottom: var(--space-4); }
+.d-model-filter-head > :first-child { color: var(--on-surface); font-size: 12px; font-weight: var(--fw-bold); }
+.d-model-filter-head > :last-child { color: var(--on-surface-variant); font-size: 10.5px; text-align: end; }
+.d-model-meta-loading { display: inline-flex; align-items: center; min-height: 32px; padding-inline: 4px;
+  color: var(--on-surface-variant); font-size: 11px; }
 .d-chip2 { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
-  min-height: 32px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--outline-variant);
-  font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; }
+  gap: 7px; min-height: 34px; padding: 4px 6px 4px 11px; border-radius: 999px; border: 1px solid var(--outline-variant);
+  font-size: 11px; font-weight: var(--fw-bold); color: var(--on-surface-variant); cursor: pointer; white-space: nowrap; }
+.d-chip2 bdi { min-width: 25px; padding: 2px 6px; border-radius: 999px; background: var(--surface-container-low);
+  color: var(--on-surface); font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; text-align: center; }
 .d-chip2.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.d-chip2.on bdi { background: color-mix(in srgb, #fff 18%, transparent); color: #fff; }
 .d-chip2:focus-visible, .d-model-node.obj:focus-visible, .d-linkrow:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px; }
 .d-model-node.grp { font-weight: var(--fw-x); font-size: 12px; color: var(--on-surface); padding: 6px 4px; }
@@ -1204,17 +1221,50 @@ select.ctl { cursor: pointer; }
 .d-model-canvas3 { grid-area: viewer; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
   border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden;
   background: linear-gradient(180deg, var(--surface-container-low), var(--surface-container-lowest)); }
+/* Capped by the room under the shell's header rows (~200px) so Autodesk's
+   bottom toolbar — and its Model Browser button — stays above the fold. */
+.d-model-pplus-viewer { height: clamp(440px, min(70dvh, 100dvh - 200px), 780px); }
 .d-model-viewport { position: relative; flex: 1; min-height: 0; }
 .d-model-viewport canvas { display: block; }
 .d-model-viewport epm-aps-viewer,
-.epm-aps-viewer { position: absolute; inset: 0; display: block; direction: ltr; }
+.epm-aps-viewer { position: absolute; inset: 0; display: block; }
+/* Only the Autodesk surface is LTR; the component's own Arabic overlays keep
+   the page direction. */
+.epm-aps-viewer { direction: ltr; }
 .epm-aps-viewer .adsk-viewing-viewer { width: 100%; height: 100%; }
+/* Autodesk's native Model Structure panel, as PPlus uses it. The viewer stays
+   LTR (PPlus wraps it in dir="ltr"); these rules only undo collisions with the
+   app sheets and make the stock panel legible — they do not rebuild the tree.
+   · Autodesk marks an unfilled search box `.adsk-searchbox.empty`; app.css's
+     global `.empty` (a centred 48px-padded flex column) pushed it out of its
+     bar and over the first rows.
+   · Stock rows are inline labels, so Autodesk's own ellipsis never applied
+     and long names ran under the visibility icon. The label keeps the row's
+     native layout and stops short of the icon.
+   · `plaintext` lets an Arabic-authored node name take RTL order inside the
+     LTR tree, so «كلية القانون (5967)» reads with its count at the end.
+   · Autodesk writes height, max-height and position inline, and its resize
+     handle writes width inline, so this width is only the opening size. */
+.epm-aps-viewer .adsk-searchbox.empty { display: block; flex-direction: initial; align-items: initial;
+  gap: 0; padding: 0; color: inherit; }
+.epm-aps-viewer .model-structure-panel { width: min(380px, calc(100% - 20px));
+  min-width: min(240px, calc(100% - 20px)); }
+.epm-aps-viewer .model-structure-panel .docking-panel-container-solid-color-a {
+  background-color: var(--surface-container-lowest); }
+.epm-aps-viewer .model-structure-panel .search-box:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Autodesk's stock sheet gives the expand/collapse arrows cursor: zoom-in /
+   zoom-out, which reads as the canvas zoom tool leaking into the panel. They
+   are toggles. One class more than Autodesk's (0,4,2) selector. */
+.epm-aps-viewer .adsk-viewing-viewer.bim-theme .treeview :is(.collapsed, .expanded) > lmvheader > icon { cursor: pointer; }
+.epm-aps-viewer .treeview lmvheader > label { display: inline-block; max-width: calc(100% - 76px); vertical-align: top;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; }
 .d-model-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--on-surface-variant); font-size: 12px; }
 .d-model-tool.live { opacity: 1; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
 .d-model-tool.live:hover { background: var(--primary); color: #fff; }
 .d-model-badge { display: inline-flex; align-items: center; padding: 0 10px; height: 26px; border-radius: 999px; background: color-mix(in srgb, var(--tertiary) 15%, transparent); color: var(--tertiary); font-size: 11px; font-weight: var(--fw-bold); margin-inline-start: auto; }
 .d-model-legend { display: flex; align-items: center; gap: 8px 14px; padding: 8px 12px; border-top: 1px solid var(--outline-variant); background: var(--surface-container-lowest); font-size: 11px; color: var(--on-surface-variant); flex-wrap: wrap; }
 .d-model-legend .li { display: flex; align-items: center; gap: 5px; }
+.d-model-metadata-total { margin-inline-start: auto; font-weight: var(--fw-bold); }
 .d-model-legend i { width: 11px; height: 11px; border-radius: 3px; }
 .d-model-props { grid-area: props; min-width: 0; min-height: 0; border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); overflow-y: auto; display: flex; flex-direction: column; }
 .d-model-props-head { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-bottom: 1px solid var(--outline-variant); }
@@ -1226,7 +1276,13 @@ select.ctl { cursor: pointer; }
 .d-plist-i .k { color: var(--on-surface-variant); }
 .d-plist-i .v { font-weight: var(--fw-bold); }
 .d-model-link { padding: 12px 16px; border-top: 1px solid var(--outline-variant); display: flex; flex-direction: column; gap: 7px; }
-.d-model-link .lk-t { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--on-surface-variant); font-weight: var(--fw-bold); }
+.d-model-link .lk-t { font-size: 11px; color: var(--on-surface-variant); font-weight: var(--fw-bold); }
+/* The element's details now open in the shared drawer rather than a third
+   pane, so the pane's breakpoint layouts (two-column list, side border) must
+   not reach it — the drawer body already pads and spaces its sections. */
+.d-drawer .d-model-props-head { flex-direction: row; flex-wrap: wrap; gap: var(--space-6); padding: 0; border: 0; }
+.d-drawer .d-model-plist { display: block; padding: 0; }
+.d-drawer .d-model-link { padding: var(--space-12) 0 0; border: 0; border-top: 1px solid var(--outline-variant); }
 .d-linkrow { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--outline-variant); border-radius: var(--r-sm); font-size: 12px; cursor: pointer; }
 .d-linkrow span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .d-linkrow:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
@@ -1287,13 +1343,16 @@ select.ctl { cursor: pointer; }
   .d-model-page > .d-pz6 .z6-t { width: 100%; flex-wrap: wrap; white-space: normal; }
   .d-model-page > .d-pz6 .z6-t em { flex-basis: 100%; }
   .d-model-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: var(--space-8); }
-  .d-model-toolbar > .ctl { width: 100%; min-width: 0; }
+  .d-model-toolbar .d-model-version-select { width: 100%; min-width: 0; }
   .d-model-toolbar > .d-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .d-model-toolbar > .d-seg button { min-height: 40px; white-space: normal; }
   .d-model-page .d-pz7 { padding: var(--space-10) var(--space-8) var(--space-32); }
   .d-model-canvas3 { min-height: clamp(340px, 58dvh, 480px); }
   .d-model-tree { max-height: none; }
-  .d-chip2 { min-height: 40px; padding-inline: var(--space-12); }
+  .d-model-pplus-viewer { height: clamp(440px, 66dvh, 620px); }
+  /* Autodesk's toolbar wraps to two rows (~110px) here, and its inline
+     max-height would let the panel run over it; inline needs !important. */
+  .epm-aps-viewer .model-structure-panel { max-height: calc(100% - 136px) !important; }
   .d-model-node.obj { min-height: 44px; }
   .d-model-legend { padding: var(--space-8); }
   .d-model-legend .sp { display: none; }
