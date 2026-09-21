@@ -2390,6 +2390,12 @@ public static class Fixture
         // translated in the approved PPlus staging APS workspace. Its object
         // hierarchy and properties drive the live model statistics; the URN
         // stays in deployment configuration (`Aps:FixtureModelUrn`).
+        // It must be the file PPlus staging's SM-00000001 (جامعة كربلاء) loads,
+        // 2268cc96cfcf4b13b5bcaa63032ee7db.nwd, read from its live viewer on
+        // 2026-09-21. The bucket also holds d0eaa6eb….nwd, whose node names are
+        // authored in English. Node names come from the file's property
+        // database, so pointing at that file is what showed «College of Law»
+        // where PPlus shows «كلية القانون». No viewer setting changes that.
         db.Projects.Add(new Project
         {
             Id = "PRJ-0301", WorkspaceCode = "ub", Code = "PC-0301",

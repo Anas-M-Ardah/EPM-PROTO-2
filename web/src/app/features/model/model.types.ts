@@ -59,20 +59,6 @@ export interface ViewerToken {
   expiresIn: number;
 }
 
-/** Counts derived from the APS derivative's instance tree, not fixture rows. */
-export interface ViewerGroupSummary {
-  /** Exact group name from the APS instance tree. */
-  key: string;
-  label: string;
-  count: number;
-  dbIds: number[];
-}
-
-export interface ViewerMetadataSummary {
-  elementCount: number;
-  groups: ViewerGroupSummary[];
-}
-
 export interface ModelChip {
   code: string;
   count: number;

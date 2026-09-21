@@ -1,15 +1,9 @@
 <!--
   SCR-W10 — النموذج ثلاثي الأبعاد · ملحق الشكل 44.
 
-  The plate's data and controls, now with Autodesk APS rendering:
-    a version selector — «الحالي · 01-06-2026»
-    a view toggle — الحالة | التخصص
-    شجرة النموذج with discipline filters: الكل · إنشائي · ميكانيكي · كهربائي
-    مبنى A → L00 · L01 · L02 → the elements
-    the colour key: مكتمل · قيد التنفيذ · متأخر, and حرج as a RING
-    لوحة تفاصيل العنصر — properties, then روابط
-
   The scene loads the derivative URN linked to the selected model version.
+  Autodesk's native Model Structure panel owns the hierarchy, exactly as it
+  does in PPlus; this page does not rebuild or flatten that tree.
   Unlinked versions keep an explicit empty state instead of borrowing geometry.
 
   Every number, ID and date is <bdi>-isolated (05 §5.2).
@@ -75,161 +69,17 @@
           </div>
         } @else {
 
-          <!-- الشكل 44's three panes: tree · scene · element details. -->
-          <div class="d-model-shell3">
-
-            <!-- ══ شجرة النموذج ══════════════════════════════════════════ -->
-            <div class="d-model-tree">
-              <div class="d-model-filter">
-                <div class="d-model-filter-head">
-                  <span>{{ lang.t('mdl_model_groups') }}</span>
-                  <span>{{ lang.t('mdl_source_aps') }}</span>
-                </div>
-                @if (viewerMetadata() === null) {
-                  <span class="d-model-meta-loading" aria-live="polite">{{ lang.t('mdl_metadata_loading') }}</span>
-                } @else if (viewerGroups().length === 0) {
-                  <span class="d-model-meta-loading">{{ lang.t('mdl_metadata_unavailable') }}</span>
-                }
-                @for (c of viewerGroups(); track c.key) {
-                  <button type="button" class="d-chip2" [class.on]="viewerGroup() === c.key"
-                          [attr.aria-pressed]="viewerGroup() === c.key"
-                          (click)="viewerGroup.set(c.key)">
-                    <span>{{ c.label }}</span><bdi>{{ c.count }}</bdi>
-                  </button>
-                }
-              </div>
-
-              @if (tree().length === 0) {
-                <div class="d-cell-sub">{{ lang.t('mdl_nomatch') }}</div>
-              }
-
-              @for (b of tree(); track b.buildingAr) {
-                <div class="d-model-node grp">{{ building(b) }}</div>
-                @for (l of b.levels; track l.level) {
-                  <div class="d-model-node lvl"><bdi>{{ l.level }}</bdi></div>
-                  @for (e of l.elements; track e.code) {
-                    <button type="button" class="d-model-node obj"
-                            [class.on]="selected() === e.code"
-                            [attr.aria-pressed]="selected() === e.code"
-                            (click)="select(e.code)" (keydown)="onNodeKey($event, e.code)">
-                      <!-- Status is the colour and criticality is the RING;
-                           the title carries the word, so neither is ever
-                           colour alone (05 §7.6). -->
-                      <i class="epm-model-mark {{ markClass(e) }}"
-                         [attr.title]="markTitle(e)" [attr.aria-label]="markTitle(e)"></i>
-                      <span class="nm">{{ name(e) }}</span>
-                      @if (colourBy() === 'discipline') {
-                        <span class="d-cell-sub">{{ disciplineLabel(e.discipline) }}</span>
-                      }
-                    </button>
-                  }
-                }
-              }
+          <!-- PPlus delegates the complete hierarchy and selection behavior
+               to Autodesk's native viewer rather than drawing a second tree. -->
+          <div class="d-model-canvas3 d-model-pplus-viewer">
+            <div class="d-model-viewport">
+              <epm-aps-viewer [urn]="selectedVersion()?.urn ?? null" />
             </div>
-
-            <!-- Autodesk APS scene for the selected model version. -->
-            <div class="d-model-canvas3">
-              <div class="d-model-viewport">
-                <epm-aps-viewer [urn]="selectedVersion()?.urn ?? null"
-                                [group]="viewerGroup()"
-                                (metadataReady)="onViewerMetadata($event)" />
-              </div>
-
-              <!-- مفتاح ألوان حالات العناصر, under the scene as the plate has
-                   it. حرج is the fourth entry and the only one drawn as a
-                   ring — it is not a fourth status (CLAUDE.md §6). -->
-              <div class="d-model-legend">
-                @if (viewerMetadata(); as metadata) {
-                  <span class="li d-model-metadata-total">
-                    <epm-icon name="account_tree" [size]="15" />
-                    <span>{{ lang.t('mdl_elements_from_model') }}</span>
-                    <bdi>{{ metadata.elementCount }}</bdi>
-                  </span>
-                } @else {
-                  <span class="li" aria-live="polite">
-                    {{ lang.t('mdl_elements') }}
-                    <bdi>…</bdi>
-                  </span>
-                }
-              </div>
-            </div>
-
-            <!-- ══ لوحة تفاصيل العنصر ════════════════════════════════════ -->
-            @if (opened(); as e) {
-              <div class="d-model-props">
-                <div class="d-model-props-head">
-                  <b>{{ name(e) }}</b>
-                  <span class="d-pill {{ statusClass(e.status) }}">{{ statusLabel(e.status) }}</span>
-                  @if (e.isCritical) {
-                    <span class="d-pill critical">{{ lang.t('mdl_critical') }}</span>
-                  }
-                </div>
-
-                <div class="d-model-plist">
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_code') }}</span>
-                    <span class="v mono"><bdi>{{ e.code }}</bdi></span>
-                  </div>
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_discipline') }}</span>
-                    <span class="v">{{ disciplineLabel(e.discipline) }}</span>
-                  </div>
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_level') }}</span>
-                    <span class="v mono"><bdi>{{ e.level }}</bdi></span>
-                  </div>
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_zone') }}</span>
-                    <span class="v"><bdi>{{ e.zone }}</bdi></span>
-                  </div>
-                  <!-- The element's OWN quantity, not the BOQ line's: one line
-                       of concrete covers several elements. -->
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_qty') }}</span>
-                    <span class="v num"><bdi>{{ fmt.qty(e.qty) }} {{ e.unit }}</bdi></span>
-                  </div>
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_revision') }}</span>
-                    <span class="v mono"><bdi>{{ e.revision }}</bdi></span>
-                  </div>
-                  <div class="d-plist-i">
-                    <span class="k">{{ lang.t('mdl_progress') }}</span>
-                    <span class="v num"><bdi>{{ fmt.pct(e.progressPct, 0) }}</bdi></span>
-                  </div>
-                </div>
-
-                <!-- الشكل 44's «قسم روابط» — and the reason the screen exists:
-                     the element names one BOQ line and one activity, each in
-                     its own contract. -->
-                <div class="d-model-link">
-                  <span class="lk-t">{{ lang.t('mdl_links') }}</span>
-
-                  <button type="button" class="d-linkrow" (click)="openBoq(e)">
-                    <epm-icon name="list_alt" [size]="15" />
-                    <span><bdi>{{ boqText(e) }}</bdi></span>
-                    <epm-icon name="chevron_left" [size]="15" />
-                  </button>
-
-                  <button type="button" class="d-linkrow" (click)="openActivity(e)">
-                    <epm-icon name="timeline" [size]="15" />
-                    <span><bdi>{{ activityText(e) }}</bdi></span>
-                    <epm-icon name="chevron_left" [size]="15" />
-                  </button>
-
-                  <span class="d-cell-sub">
-                    {{ lang.t('mdl_contract') }} <bdi>{{ e.contractId }}</bdi>
-                  </span>
-                </div>
-              </div>
-            }
           </div>
 
-          <!-- ══ إصدارات النموذج ═════════════════════════════════════════
-               The selector on the plate picks a version. Only the current one
-               can be rendered here — elements belong to the project, not to a
-               version — so the list is shown as a RECORD and says so, rather
-               than offering a choice that would quietly show today's elements
-               under yesterday's label (P-120). -->
+          <!-- ══ Model version record ════════════════════════════════════
+               The selector loads the derivative linked to that version; the
+               hierarchy above is always derived from the selected file. -->
           <div class="d-model-split">
             <div class="d-model-split-head">
               <epm-icon name="history" [size]="16" />

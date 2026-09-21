@@ -1189,7 +1189,7 @@ select.ctl { cursor: pointer; }
   border: 1px solid var(--outline-variant); border-radius: var(--r-md); background: var(--surface-container-lowest); }
 .d-model-toolbar .d-model-version-select { display: block; min-width: min(320px, 52vw); }
 .d-model-toolbar .d-model-version-select .epm-select { width: 100%; }
-.d-model-filter { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-bottom: var(--space-12); }
+.d-model-filter { display: flex; flex-direction: column; gap: var(--space-8); }
 .d-model-filter > .d-cell-sub { flex-basis: 100%; }
 .d-model-filter-head { flex: 1 0 100%; display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--space-8); padding-bottom: var(--space-4); }
@@ -1215,11 +1215,39 @@ select.ctl { cursor: pointer; }
 .d-model-canvas3 { grid-area: viewer; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
   border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden;
   background: linear-gradient(180deg, var(--surface-container-low), var(--surface-container-lowest)); }
+/* Capped by the room under the shell's header rows (~200px) so Autodesk's
+   bottom toolbar — and its Model Browser button — stays above the fold. */
+.d-model-pplus-viewer { height: clamp(440px, min(70dvh, 100dvh - 200px), 780px); }
 .d-model-viewport { position: relative; flex: 1; min-height: 0; }
 .d-model-viewport canvas { display: block; }
 .d-model-viewport epm-aps-viewer,
-.epm-aps-viewer { position: absolute; inset: 0; display: block; direction: ltr; }
+.epm-aps-viewer { position: absolute; inset: 0; display: block; }
+/* Only the Autodesk surface is LTR; the component's own Arabic overlays keep
+   the page direction. */
+.epm-aps-viewer { direction: ltr; }
 .epm-aps-viewer .adsk-viewing-viewer { width: 100%; height: 100%; }
+/* Autodesk's native Model Structure panel, as PPlus uses it. The viewer stays
+   LTR (PPlus wraps it in dir="ltr"); these rules only undo collisions with the
+   app sheets and make the stock panel legible — they do not rebuild the tree.
+   · Autodesk marks an unfilled search box `.adsk-searchbox.empty`; app.css's
+     global `.empty` (a centred 48px-padded flex column) pushed it out of its
+     bar and over the first rows.
+   · Stock rows are inline labels, so Autodesk's own ellipsis never applied
+     and long names ran under the visibility icon. The label keeps the row's
+     native layout and stops short of the icon.
+   · `plaintext` lets an Arabic-authored node name take RTL order inside the
+     LTR tree, so «كلية القانون (5967)» reads with its count at the end.
+   · Autodesk writes height, max-height and position inline, and its resize
+     handle writes width inline, so this width is only the opening size. */
+.epm-aps-viewer .adsk-searchbox.empty { display: block; flex-direction: initial; align-items: initial;
+  gap: 0; padding: 0; color: inherit; }
+.epm-aps-viewer .model-structure-panel { width: min(380px, calc(100% - 20px));
+  min-width: min(240px, calc(100% - 20px)); }
+.epm-aps-viewer .model-structure-panel .docking-panel-container-solid-color-a {
+  background-color: var(--surface-container-lowest); }
+.epm-aps-viewer .model-structure-panel .search-box:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.epm-aps-viewer .treeview lmvheader > label { display: inline-block; max-width: calc(100% - 76px); vertical-align: top;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; }
 .d-model-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--on-surface-variant); font-size: 12px; }
 .d-model-tool.live { opacity: 1; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
 .d-model-tool.live:hover { background: var(--primary); color: #fff; }
@@ -1305,7 +1333,10 @@ select.ctl { cursor: pointer; }
   .d-model-page .d-pz7 { padding: var(--space-10) var(--space-8) var(--space-32); }
   .d-model-canvas3 { min-height: clamp(340px, 58dvh, 480px); }
   .d-model-tree { max-height: none; }
-  .d-chip2 { min-height: 40px; padding-inline: var(--space-12); }
+  .d-model-pplus-viewer { height: clamp(440px, 66dvh, 620px); }
+  /* Autodesk's toolbar wraps to two rows (~110px) here, and its inline
+     max-height would let the panel run over it; inline needs !important. */
+  .epm-aps-viewer .model-structure-panel { max-height: calc(100% - 136px) !important; }
   .d-model-node.obj { min-height: 44px; }
   .d-model-legend { padding: var(--space-8); }
   .d-model-legend .sp { display: none; }
