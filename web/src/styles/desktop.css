@@ -666,6 +666,14 @@ select.d-form-input::-ms-expand { display: none; }
 .d-modal-head b { font-size: 15px; }
 .d-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
 .d-modal-foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--outline-variant); }
+.epm-sla-notification { z-index: 260; }
+.epm-sla-notification .d-modal { width: min(560px, 100%); }
+.epm-sla-notification-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--error) 14%, var(--surface)); color: var(--error); flex: none; }
+.epm-sla-notification-head { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.epm-sla-notification-head b { font-size: 16px; }.epm-sla-notification-head span { font-size: 12px; color: var(--on-surface-variant); }
+.epm-sla-notification-body { display: grid; gap: 14px; }.epm-sla-notification-body > b { font-size: 15px; }.epm-sla-notification-body p { margin: 0; color: var(--on-surface-variant); line-height: 1.7; }
+.epm-sla-notification-facts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden; }
+.epm-sla-notification-facts span { padding: 10px 12px; border-inline-end: 1px solid var(--outline-variant); display: grid; gap: 3px; }.epm-sla-notification-facts span:last-child { border-inline-end: 0; }.epm-sla-notification-facts small { font-size: 11px; color: var(--on-surface-variant); }.epm-sla-notification-facts bdi { font-weight: var(--fw-bold); }
 .d-stepper { display: flex; gap: 4px; padding: 14px 20px; border-bottom: 1px solid var(--outline-variant); overflow-x: auto; }
 .d-step { display: flex; align-items: center; gap: 7px; padding: 0 10px; flex: none; opacity: .5; }
 .d-step.on, .d-step.done { opacity: 1; }
@@ -3899,6 +3907,18 @@ html[dir="ltr"] .d-rpane select.d-form-input {
 @media (max-width: 1180px) { .d-pbody.aside-l18, .d-pbody.aside-l18.aside-wide { grid-template-columns: 1fr; } }
 
 .d-l18-fall { display: none; }
+
+/* SLA / alerts operational layer — compact, explicit and safe for long RTL labels. */
+.epm-alert-ops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-10); margin-bottom: var(--space-16); }
+.epm-alert-stat { min-width: 0; display: flex; align-items: center; gap: var(--space-10); padding: var(--space-12); border: 1px solid var(--stroke-default); border-radius: var(--r-md); background: var(--surface-container-lowest); color: var(--on-surface); text-align: start; }
+button.epm-alert-stat { cursor: pointer; font: inherit; } button.epm-alert-stat:hover { border-color: var(--primary); background: var(--hover-overlay); } button.epm-alert-stat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.epm-alert-stat > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }.epm-alert-stat small, .epm-sla-summary small { color: var(--fg-subtle); font-size: var(--fs-100); line-height: var(--lh-200); }.epm-alert-stat bdi { font-size: var(--fs-500); line-height: 1; font-family: var(--font-mono); font-weight: var(--fw-x); }
+.epm-alert-stat-icon, .epm-sla-summary-icon { width: 34px; height: 34px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--surface-container-high); color: var(--on-surface-variant); }.epm-alert-stat-arrow { margin-inline-start: auto; flex: none; color: var(--fg-subtle); }
+.epm-alert-stat.critical { border-color: color-mix(in srgb, var(--error) 36%, var(--stroke-default)); }.epm-alert-stat.critical .epm-alert-stat-icon { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }.epm-alert-stat.action .epm-alert-stat-icon { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.epm-sla-summary { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(110px, 1fr)); gap: 0; margin: var(--space-12) 0 var(--space-16); border: 1px solid color-mix(in srgb, var(--status-completed) 28%, var(--stroke-default)); border-radius: var(--r-md); overflow: hidden; background: color-mix(in srgb, var(--status-completed) 4%, var(--surface-container-lowest)); }.epm-sla-summary.overdue { border-color: color-mix(in srgb, var(--error) 42%, var(--stroke-default)); background: color-mix(in srgb, var(--error) 4%, var(--surface-container-lowest)); }
+.epm-sla-summary > div { min-width: 0; display: grid; align-content: center; gap: 4px; min-height: 72px; padding: var(--space-10) var(--space-12); border-inline-start: 1px solid var(--stroke-subtle); }.epm-sla-summary > div:first-child { border-inline-start: 0; }.epm-sla-summary b, .epm-sla-summary bdi { font-size: var(--fs-200); line-height: var(--lh-300); font-weight: var(--fw-bold); overflow-wrap: anywhere; }.epm-sla-summary-lead { display: flex !important; align-items: center; gap: var(--space-10); }.epm-sla-summary-lead > span:last-child { display: grid; gap: 4px; min-width: 0; }.epm-sla-summary.overdue .epm-sla-summary-icon { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+@media (max-width: 900px) { .epm-alert-ops { grid-template-columns: repeat(2, minmax(0, 1fr)); }.epm-sla-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.epm-sla-summary > div:nth-child(3) { border-inline-start: 0; border-top: 1px solid var(--stroke-subtle); }.epm-sla-summary > div:nth-child(4) { border-top: 1px solid var(--stroke-subtle); } }
+@media (max-width: 520px) { .epm-alert-ops { grid-template-columns: 1fr; }.epm-sla-summary { grid-template-columns: 1fr; }.epm-sla-summary > div { border-inline-start: 0; border-top: 1px solid var(--stroke-subtle); }.epm-sla-summary > div:first-child { border-top: 0; } }
 /* At this width the grid is one column, so a sticky tree would pin itself over
    the register it filters, and the shell hides Z8 — the preview needs a home
    in Z7 or a row click appears to do nothing at all. */

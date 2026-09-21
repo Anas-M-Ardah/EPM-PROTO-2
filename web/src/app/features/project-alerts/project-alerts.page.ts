@@ -1,7 +1,7 @@
 import {
   Component, ViewEncapsulation, computed, effect, inject, signal, untracked,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
@@ -42,6 +42,7 @@ import { AlertRuleRow, ProjectAlertRow, ProjectAlertsResponse } from './project-
 export class ProjectAlertsPage {
   private api = inject(ProjectAlertsApi);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   lang = inject(LangService);
   lookups = inject(LookupsService);
   toast = inject(ToastService);
@@ -58,15 +59,26 @@ export class ProjectAlertsPage {
   /** The plate's segmented control. It opens on القواعد, which is what الشكل 47 shows. */
   view = signal<'inbox' | 'rules'>('rules');
   severity = signal('all');
+  /** A deep-linkable, single-record walkthrough for the documented R12 demo. */
+  focusRule = signal<string | null>(null);
   /** «محدد N» — the rows ticked for a bulk acknowledgement. */
   picked = signal<ReadonlySet<number>>(new Set());
   /** A rule mid-write, so its switch cannot be clicked twice. */
   busyRule = signal<string | null>(null);
   /** Explicitly runs the demo-safe outbox and escalation processor. */
   runningAutomation = signal(false);
+  /** A durable notification moment, rather than a toast that disappears before a demo viewer can act on it. */
+  slaNotification = signal<ProjectAlertRow | null>(null);
+  private slaNotificationDismissed = signal(false);
 
   rows = computed(() => this.data()?.rows ?? []);
   rules = computed(() => this.data()?.rules ?? []);
+  scopedRows = computed(() => {
+    const focus = this.focusRule();
+    return focus ? this.rows().filter(a => a.ruleCode === focus) : this.rows();
+  });
+  isFocusedDemo = computed(() => this.focusRule() === 'R12');
+  focusedAlert = computed(() => this.scopedRows()[0] ?? null);
 
   title(a: { titleAr: string; titleEn: string }): string {
     return this.lang.pick(a.titleAr, a.titleEn);
@@ -155,7 +167,7 @@ export class ProjectAlertsPage {
 
   shown = computed(() => {
     const sev = this.severity();
-    return this.rows().filter(a => sev === 'all' || a.severity === sev);
+    return this.scopedRows().filter(a => sev === 'all' || a.severity === sev);
   });
 
   /** The four groups, in `Domain/AlertInbox`'s order, empty ones dropped. */
@@ -166,11 +178,11 @@ export class ProjectAlertsPage {
       .filter(g => g.items.length > 0);
   });
 
-  openCount = computed(() => this.rows().filter(a => a.status === 'open').length);
+  openCount = computed(() => this.scopedRows().filter(a => a.status === 'open').length);
 
   /** «حرجة N» in the footer — read off the chip the endpoint counted. */
   criticalCount = computed(() =>
-    this.data()?.severities.find(s => s.code === 'critical')?.count ?? 0);
+    this.scopedRows().filter(a => a.severity === 'critical').length);
 
   isPicked(id: number): boolean { return this.picked().has(id); }
 
@@ -195,6 +207,14 @@ export class ProjectAlertsPage {
       this.severity.set('all');
       this.clearPicked();
     });
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(qm => {
+      const focused = qm.get('scenario') === 'r12';
+      this.focusRule.set(focused ? 'R12' : null);
+      if (focused) {
+        this.view.set('inbox');
+        this.severity.set('all');
+      }
+    });
 
     effect(() => {
       const pid = this.projectId();
@@ -211,6 +231,7 @@ export class ProjectAlertsPage {
     forkJoin({ lookups: this.lookups.ensureLoaded(), model: this.api.list(pid) }).subscribe({
       next: ({ model }) => {
         this.data.set(model);
+        this.openSlaNotification(model);
         this.loading.set(false);
       },
       error: e => {
@@ -253,13 +274,45 @@ export class ProjectAlertsPage {
     this.api.runAutomation(this.projectId()).subscribe({
       next: result => {
         this.runningAutomation.set(false);
-        this.toast.show(`${this.lang.t('pal_run_done')} ${result.simulatedDeliveries} · ${result.escalations}`);
-        this.refresh();
+        this.api.list(this.projectId()).subscribe({
+          next: model => {
+            this.data.set(model);
+            // R12 is the payment-audit SLA breach used by the demo fixture. If
+            // a different critical SLA breach is active, surface that instead.
+            const alert = this.openSlaNotification(model);
+            if (!alert) {
+              this.toast.show(`${this.lang.t('pal_run_done')} ${result.simulatedDeliveries} · ${result.escalations}`);
+            }
+          },
+          error: e => this.toast.show(e?.error?.message ?? e?.message ?? 'request failed'),
+        });
       },
       error: e => {
         this.runningAutomation.set(false);
         this.toast.show(e?.error?.message ?? e?.message ?? 'request failed');
       },
+    });
+  }
+
+  private openSlaNotification(model: ProjectAlertsResponse): ProjectAlertRow | null {
+    if (this.slaNotificationDismissed()) return null;
+    const alert = model.rows.find(a => a.ruleCode === 'R12' && a.status === 'open')
+      ?? model.rows.find(a => a.severity === 'critical' && a.status === 'open')
+      ?? null;
+    this.slaNotification.set(alert);
+    return alert;
+  }
+
+  dismissSlaNotification() {
+    this.slaNotificationDismissed.set(true);
+    this.slaNotification.set(null);
+  }
+
+  /** Takes the viewer to the actual financial desk holding the breached item. */
+  reviewAndResolve() {
+    this.dismissSlaNotification();
+    this.router.navigate(['/projects', this.projectId(), 'financial'], {
+      queryParams: { tab: 'sla' },
     });
   }
 
